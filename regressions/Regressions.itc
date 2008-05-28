@@ -1,0 +1,14 @@
+###
+# Clusterlib Regression Suite
+###
+
+# Common Library
+# Test("../common/regressions/test.sh");
+
+# Client
+# Test("../client/regressions/test.sh");
+
+# Server
+# Test("../server/regressions/test.sh");
+
+1;
