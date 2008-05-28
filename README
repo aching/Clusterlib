@@ -1,0 +1,16 @@
+README for clusterlib
+=====================
+
+Directory structure:
+
+common		Common files that are used both on client and server
+client          Files that are only for client use
+server          Files that are only for server use
+
+Building:
+
+% make -f Makefile.cvs
+% automake
+% make clean
+% make -j 24
+% make test_tinderbox
