@@ -1,0 +1,8 @@
+@BUILD_PATH@/common				/bin/
+- common
+
+@BUILD_PATH@/client			        /bin/
+- client
+
+@BUILD_PATH@/server				/bin/
+- server
