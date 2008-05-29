@@ -12,5 +12,7 @@ INCLUDES = \
 	-I@CPPUTILS_INCLUDES@
 METASOURCES = AUTO
 lib_LIBRARIES = libcluster.a
-libcluster_a_SOURCES =
+libcluster_a_SOURCES = \
+	thread.cc \
+	zkadapter.cc
 AM_CXXFLAGS = -Wall @CDXCORE_CXXFLAGS@

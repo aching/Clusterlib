@@ -11,6 +11,13 @@
 #ifndef	_CLUSTERLIB_H_
 #define	_CLUSTERLIB_H_
 
+#include "forwarddecls.h"
+#include "blockingqueue.h"
+#include "mutex.h"
+#include "thread.h"
+#include "event.h"
+#include "zkadapter.h"
+#include "clusterexception.h"
 #include "clusterclient.h"
 #include "clusterserver.h"
 
@@ -47,6 +54,6 @@ class Factory
                                 bool createReg = false);
 };
 
-};
+};	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CLUSTERLIB_H_ */

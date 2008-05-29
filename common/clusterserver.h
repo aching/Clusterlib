@@ -21,6 +21,6 @@ class ClusterServer
 {
 };
 
-};
+};	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CLUSTERSERVER_H_ */
