@@ -13,6 +13,9 @@ INCLUDES = \
 METASOURCES = AUTO
 lib_LIBRARIES = libcluster.a
 libcluster_a_SOURCES = \
+	event.cc \
+	hash.cc \
+	log.cc \
 	thread.cc \
 	zkadapter.cc
 AM_CXXFLAGS = -Wall @CDXCORE_CXXFLAGS@
