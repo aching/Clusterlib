@@ -427,9 +427,10 @@ class ZooKeeperAdapter
          * @return the list of absolute paths of child nodes, possibly empty
          * @throw ZooKeeperException if the operation has failed
          */
-        vector<string> getNodeChildren(const string &path, 
-                                       ZKEventListener *listener = NULL, 
-                                       void *context = NULL) 
+        void getNodeChildren(vector<string> &children,
+                             const string &path, 
+                             ZKEventListener *listener = NULL, 
+                             void *context = NULL) 
             throw(ZooKeeperException);
                 
         /**

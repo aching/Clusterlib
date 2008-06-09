@@ -658,7 +658,8 @@ ZooKeeperAdapter::deleteNode(const string &path,
         if (rc == ZNOTEMPTY && recursive) {
             LOG_WARN( LOG, "Error %d for %s", rc, path.c_str() );
             //get all children and delete them recursively...
-            vector<string> nodeList = getNodeChildren( path, false );
+            vector<string> nodeList;
+            getNodeChildren( nodeList, path, false );
             for (vector<string>::const_iterator i = nodeList.begin();
                  i != nodeList.end();
                  ++i) {
@@ -727,8 +728,9 @@ ZooKeeperAdapter::nodeExists(const string &path,
     }
 }
 
-vector<string>
-ZooKeeperAdapter::getNodeChildren(const string &path, 
+void
+ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
+                                  const string &path, 
                                   ZKEventListener *listener,
                                   void *context)
     throw (ZooKeeperException)
@@ -767,7 +769,6 @@ ZooKeeperAdapter::getNodeChildren(const string &path,
                                   path, 
                                   rc );
     } else {
-        vector<string> nodeList;
         for (int i = 0; i < children.count; ++i) {
             //convert each child's path from relative to absolute 
             string absPath(path);
@@ -779,7 +780,6 @@ ZooKeeperAdapter::getNodeChildren(const string &path,
         }
         //make sure the order is always deterministic
         sort( nodeList.begin(), nodeList.end() );
-        return nodeList;
     }
 }
 
@@ -831,7 +831,7 @@ ZooKeeperAdapter::getNodeData(const string &path,
             string("Unable to get data of node ") + path, rc 
         );
     } else {
-        return string( buffer, len );
+        return string( buffer, buffer + len );
     }
 }
 

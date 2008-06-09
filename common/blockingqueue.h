@@ -41,7 +41,8 @@ class BlockingQueue
          * \brief no elements are present in this queue.
          * 
          * @param timeout how long to wait until an element becomes availabe, 
-         *                in milliseconds; if <code>0</code> then wait forever
+         *                in milliseconds; if <code>0</code> then wait forever;
+         *                if <code>< 0</code> then do not wait at all.
          * @param timedOut if not NULL then set to true whether this function timed out
          * @return the element from the queue
          */
@@ -116,7 +117,11 @@ E BlockingQueue<E>::take(int32_t timeout, bool *timedOut)
     m_mutex.Acquire();
     bool hasResult = true;
     while (m_queue.empty()) {
-        if (timeout <= 0) {
+        if (timeout < 0) {
+            hasResult = false;
+            break;
+        }
+        if (timeout == 0) {
             m_cond.Wait( m_mutex );
         } else {
             if (!m_cond.Wait( m_mutex, timeout )) {
@@ -128,16 +133,16 @@ E BlockingQueue<E>::take(int32_t timeout, bool *timedOut)
     if (hasResult) {
         E e = m_queue.front();
         m_queue.pop_front();            
-        m_mutex.Release();
         if (timedOut) {
             *timedOut = false;
         }
+        m_mutex.Release();
         return e;
     } else {
-        m_mutex.Release();
         if (timedOut) {
             *timedOut = true;
         }
+        m_mutex.Release();
         return E();
     }
 }

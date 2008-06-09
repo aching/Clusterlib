@@ -17,6 +17,7 @@
 #include "thread.h"
 #include "event.h"
 #include "zkadapter.h"
+#include "healthchecker.h"
 #include "clusterexception.h"
 #include "clusterclient.h"
 #include "clusterserver.h"
@@ -51,6 +52,7 @@ class Factory
     ClusterServer *createServer(const string &app,
                                 const string &group,
                                 const string &node,
+                                HealthChecker *checker,
                                 bool createReg = false);
 };
 
