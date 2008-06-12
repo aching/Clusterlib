@@ -6,7 +6,7 @@
  * =============================================================================
  */
 
-#include "event.h"
+#include "clusterlib.h"
 
 #define LOG_LEVEL LOG_FATAL
 #define MODULE_NAME "Event"

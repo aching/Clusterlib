@@ -20,6 +20,17 @@ namespace clusterlib
 class ClusterClient
 {
   public:
+    /*
+     * Retrieve an application.
+     */
+    Application *getApplication(const string &appName)
+        throw(ClusterException);
+
+    /*
+     * Retrieve a map of all applications.
+     */
+    ApplicationMap *getApplications() throw(ClusterException);
+
   protected:
     /*
      * Make the factory a friend.
@@ -29,10 +40,12 @@ class ClusterClient
     /*
      * Constructor used by the factory.
      */
-    ClusterClient(Factory *f, ZooKeeperAdapter *zk)
+    ClusterClient(Factory *f, 
+                  ::zk::ZooKeeperAdapter *zk)
         : mp_f(f),
           mp_zk(zk)
     {
+        m_apps.clear();
     }
 
   private:
@@ -42,19 +55,25 @@ class ClusterClient
      */
     ClusterClient()
     {
-        throw ClusterException("Someone called the default constructor!");
+        throw ClusterException("Someone called the ClusterClient "
+                               "default constructor!");
     }
 
   private:
     /*
-     * The ZooKeeper adapter instance we're using.
-     */
-    ZooKeeperAdapter *mp_zk;
-
-    /*
      * The factory instance we're using.
      */
     Factory *mp_f;
+
+    /*
+     * The ZooKeeper adapter instance we're using.
+     */
+    ::zk::ZooKeeperAdapter *mp_zk;
+
+    /*
+     * All the applications.
+     */
+    ApplicationMap m_apps;
 };
 
 };	/* End of 'namespace clusterlib' */

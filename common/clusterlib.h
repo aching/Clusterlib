@@ -11,6 +11,10 @@
 #ifndef	_CLUSTERLIB_H_
 #define	_CLUSTERLIB_H_
 
+#include <string>
+#include <vector>
+#include <map>
+
 #include "forwarddecls.h"
 #include "blockingqueue.h"
 #include "mutex.h"
@@ -21,6 +25,10 @@
 #include "clusterexception.h"
 #include "clusterclient.h"
 #include "clusterserver.h"
+#include "application.h"
+#include "group.h"
+#include "node.h"
+#include "datadistribution.h"
 
 namespace clusterlib
 {
