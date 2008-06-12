@@ -1,0 +1,222 @@
+PRELIMINARIES
+
+This is a brain dump for the purpose of soliciting feedback.  None of
+this is set in stone, everything is open for change and
+improvement. Your comments are most welcome, indeed they are essential
+for improving this API.
+
+CLUSTERLIB OVERVIEW
+
+Clusterlib provides facilities for managing long running groups of
+servers providing common functionality. The work of the application is
+divided amongst the servers using a data distribution. Clients acquire
+the data distribution and send work to the correct server using means
+outside of clusterlib. Clusterlib provides mechanisms for servers and
+clients to acquire and use data distributions, and tools for managing
+server lifecycles.
+
+BUILD PREREQUISITES
+
+Include clusterlib.h:
+
+   #include "clusterlib.h"
+
+Make sure clusterlib is in the include path for your build, add
+-I/usr/releng/internal/include or wherever you have it installed.
+
+Link with clusterlib:
+
+   CC -o <yourapp> .... -lclusterlib
+
+PROGRAMMING WITH CLUSTERLIB
+
+Clusterlib provided types are scoped within the 'clusterlib'
+namespace. Add a 'using' declaration to your program to get access to
+these type declarations and APIs.
+
+Clusterlib operates independently of your program and uses its own set
+of threads to provide functionality. You can call some APIs on the
+objects provided by clusterlib from your own threads, and clusterlib
+will take care of synchronization to ensure protection of its own
+resources. Any callbacks that you provide to clusterlib are invoked in
+clusterlib's own threads, so your callbacks can run concurrently with
+your own threads, and you should take care to synchronize access to
+any resources that should be protected from multiple and concurrent
+access.
+
+A few steps are needed in your program, usually in the init phase of
+your main program, before you can use clusterlib. I always instantiate
+the clusterlib support in my main program, during initialization, and
+then use the object returned by the clusterlib initialization to
+perform further operations.
+
+static void Factory::parseArgs(int ac, char **av);
+
+This call parses a standard argv vector and sets global options such
+as the ZooKeeper instance to use. All options have some reasonable
+default value, but may not be appropriate for your specific
+situation. I'll add more information about the standard accepted
+options, later.
+
+After optionally parsing the command line arguments, your program
+should call createClient or createServer, as follows:
+
+static Client *Factory::createClient();
+
+This call creates a client endpoint that allows you to use clusterlib
+as a pure client.
+
+static Server *Factory::createServer(int port = -1,
+                                     const string &name = "",
+                                     const string &group = "",
+                                     const string &cluster = "");
+
+This creates a server endpoint which allows the program to participate
+as a server. All args can pre-specified using the argv/argc and hence
+can be optional.
+
+If you created a server, you might want to register a few call-backs
+to be used by clusterlib. Clusterlib provides defaults that basically
+do nothing, so it's a good idea to provide your own:
+
+void Server::registerHealthCheckHandler(
+	const HealthCheckHandler *h);
+
+This call registers a health checker object (derived from the
+clusterlib class HealthCheckHandler) that provides a call-back which
+will be called periodically by clusterlib to determine if the server
+is healthy.
+
+void Server::registerExitHandler(const ExitHandler &e);
+
+Registers an exit handler object (derived from the clusterlib class
+ExitHandler) that provides a call-back which will be called before
+this server is terminated. You can use this call-back to clean up any
+remaining state in your server.
+
+A WALK THROUGH FROM A TO Z
+
+...
+#include "clusterlib.h"
+...
+using namespace clusterlib;
+...
+int main(int ac, char **av)
+{
+    ...
+    Factory.parseArgs(ac, av);
+    ...
+    /*
+     * All arguments to createServer are
+     * expected to be pre-specified in the
+     * argv/argc.
+     */
+    Server *s = Factory.createServer();
+    HealthCheckHandler *h = new myHealthCheckHandler(...);
+    ExitHandler *e = new myExitHandler(...);
+
+    /*
+     * Register some handlers.
+     */
+    s->registerHealthCheckHandler(h);
+    s->registerExitHandler(e);
+
+    /*
+     * Do the normal business of your main program
+     * here.
+     */
+    ...
+}
+
+class myExitHandler : public clusterlib::ExitHandler
+{
+  public:
+    /*
+     * This is called when the server should terminate.
+     * The msGraceTime parameter specifies how many ms
+     * time you have till the clusterlib forcefully
+     * terminates the program.
+     */
+     virtual void handleExit(int msGraceTime);
+
+  private:
+    /*
+     * Store whatever you need here, e.g. a pointer
+     * to your server object, or whatever.
+     */
+    ...
+};
+
+class myHealthCheckHandler :
+    public clusterlib::HealthCheckHandler
+{
+  public:
+    /*
+     * This is called periodically to check the health
+     * of the server. The msTimeout parameter specifies
+     * how many ms time you have before clusterlib
+     * decides that the health check is not working as
+     * it should and reports unhealthy.
+     *
+     * A return value of true indicates the server is
+     * healthy, false means unhealthy.
+     */
+     virtual bool checkHealth(unsigned int msTimeout);
+  private:
+    /*
+     * Store whatever you need here, e.g. a pointer
+     * to your server object, or whatever.
+     */
+};
+
+DATA DISTRIBUTIONS, NODE ADDRESSES
+
+A data distribution is a function that maps from an input (usually a
+byte array of arbitrary size) to a target server.
+
+DataDistribution *Server::getDataDistribution(const string &name);
+
+You can use a data distribution to map a specific key to a node
+address:
+
+NodeAddress *DataDistribution::map(const string &key);
+
+And then get the name and port of the server:
+
+unsigned int NodeAddress::getPort();
+const string &NodeAddress::getServerName();
+
+Additionally, you can get your own server's NodeAddress:
+
+NodeAddress *Server::getMyNodeAddress();
+
+MISCELANEOUS
+
+The Server class provides some additional functionality:
+
+enum NodeState {
+     NS_ILLEGAL,
+     NS_GREEN,
+     NS_YELLOW,
+     NS_RED,
+     NS_DOWN,
+     NS_SPARE,
+     NS_INACTIVE
+};
+bool Server::amIConnected();
+bool Server::amIOnline();
+bool Server::amISpare();
+bool Server::amIHealthy();
+const string &Server::lastTransitionReason();
+NodeState Server::getMyState();
+
+A future version of class Server may also provide functionality
+similar to the following:
+
+Group *Server::getGroup();
+const string &Server::getGroupName();
+
+The DataDistribution class provides the following functionality:
+
+vector<int> *DataDistribution::getNodeShards(NodeAddress *na);
+bool DataDistribution::isAssignedToMe(const string &key);
