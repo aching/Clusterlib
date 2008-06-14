@@ -5,8 +5,8 @@
  * application of clusterlib.
  *
  * $Header:$
- * $Revision:$
- * $Date:$
+ * $Revision$
+ * $Date$
  */
 
 #ifndef	_NODE_H_
@@ -19,24 +19,19 @@ namespace clusterlib
  * Definition of class Node
  */
 class Node
+    : public virtual NotificationTarget
 {
   public:
     /*
      * Retrieve the name of the node.
      */
-    const string getName()
-    {
-        return m_name;
-    }
+    const string getName() { return m_name; }
 
     /*
      * Retrieve the group object for the group that
      * this node is in.
      */
-    const Group *getGroup()
-    {
-        return mp_group;
-    }
+    const Group *getGroup() { return mp_group; }
 
   protected:
     /*
@@ -50,20 +45,28 @@ class Node
      */
     Node(const Group *group,
          const string &name,
+         const string &key,
          Factory *f,
-         ::zk::ZooKeeperAdapter *zk)
-        : mp_f(f),
-          mp_zk(zk),
+         Notifyable *nrp)
+        : NotificationTarget(nrp),
+	  mp_f(f),
           mp_group(group),
-          m_name(name)
+          m_name(name),
+          m_key(key)
     {
     }
+
+    /*
+     * Allow the factory access to my key.
+     */
+    const string getKey() { return m_key; }
 
   private:
     /*
      * Make the default constructor private so it cannot be called.
      */
     Node()
+        : NotificationTarget(NULL)
     {
         throw ClusterException("Someone called the Node default "
                                "constructor!");
@@ -76,11 +79,6 @@ class Node
     Factory *mp_f;
 
     /*
-     * The ZooKeeper adapter instance we're using.
-     */
-    ::zk::ZooKeeperAdapter *mp_zk;
-
-    /*
      * The group this node is in.
      */
     const Group *mp_group;
@@ -89,6 +87,11 @@ class Node
      * The name of this node.
      */
     const string m_name;
+
+    /*
+     * The key associated with this node.
+     */
+    const string m_key;
 };
 
 };	/* End of 'namespace clusterlib' */

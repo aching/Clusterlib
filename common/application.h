@@ -5,8 +5,8 @@
  * together form a clusterlib application.
  *
  * $Header:$
- * $Revision:$
- * $Date:$
+ * $Revision$
+ * $Date$
  */
 
 #ifndef	_APPLICATION_H_
@@ -19,15 +19,13 @@ namespace clusterlib
  * Definition of class Application.
  */
 class Application
+    : public virtual NotificationTarget
 {
   public:
     /*
      * Retrieve the name of the application.
      */
-    const string getName()
-    {
-        return m_name;
-    }
+    const string getName() { return m_name; }
 
     /*
      * Retrieve a named group within an application.
@@ -38,7 +36,7 @@ class Application
     /*
      * Retrieve a map of all groups within the application.
      */
-    GroupMap *getGroups() throw(ClusterException);
+    GroupMap *getGroups() { return &m_groups; }
 
     /*
      * Retrieve a named data distribution within an
@@ -51,8 +49,8 @@ class Application
      * Retrieve a map of all data distributions within the
      * application (at the application level).
      */
-    DataDistributionMap *getDistributions()
-        throw(ClusterException);
+    DataDistributionMap *getDistributions() { return &m_distributions; }
+
   protected:
     /*
      * Friend declaration for factory so that it can call
@@ -64,21 +62,29 @@ class Application
      * Constructor used by Factory.
      */
     Application(const string &name,
+                const string &key,
                 Factory *f,
-                ::zk::ZooKeeperAdapter *zk)
-        : mp_f(f),
-	  mp_zk(zk),
-          m_name(name)
+                Notifyable *nrp)
+        : NotificationTarget(nrp),
+	  mp_f(f),
+          m_name(name),
+          m_key(key)
     {
         m_groups.clear();
         m_distributions.clear();
     }
+
+    /*
+     * Allow the factory access to my key.
+     */
+    const string getKey() { return m_key; }
 
   private:
     /*
      * The default constructor is private so noone can call it.
      */
     Application()
+        : NotificationTarget(NULL)
     {
         throw ClusterException("Someone called the Application "
                                "default constructor!");
@@ -91,14 +97,14 @@ class Application
     Factory *mp_f;
 
     /*
-     * The instance of ZooKeeper adapter in use.
-     */
-    ::zk::ZooKeeperAdapter *mp_zk;
-
-    /*
      * The name of this application.
      */
     const string m_name;
+
+    /*
+     * The key associated with this application.
+     */
+    const string m_key;
 
     /*
      * Map of all groups within this application.

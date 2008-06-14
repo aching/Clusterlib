@@ -5,8 +5,8 @@
  * from a key to a node) in clusterlib.
  *
  * $Header:$
- * $Revision:$
- * $Date:$
+ * $Revision$
+ * $Date$
  */
 
 #ifndef	_DATADISTRIBUTION_H_
@@ -19,24 +19,19 @@ namespace clusterlib
  * Definition of class DataDistribution.
  */
 class DataDistribution
+    : public virtual NotificationTarget
 {
   public:
     /*
      * Retrieve the name of this distribution.
      */
-    const string getName()
-    {
-        return m_name;
-    }
+    const string getName() { return m_name; }
 
     /*
      * Retrieve the application object in which this
      * distribution is contained.
      */
-    const Application *getApplication()
-    {
-        return mp_app;
-    }
+    const Application *getApplication() { return mp_app; }
 
   protected:
     /*
@@ -50,35 +45,51 @@ class DataDistribution
      */
     DataDistribution(const Application *app,
                      const string &name,
+                     const string &key,
                      Factory *f,
-                     ::zk::ZooKeeperAdapter *zk)
-        : mp_f(f),
-          mp_zk(zk),
+                     Notifyable *nrp)
+        : NotificationTarget(nrp),
+          mp_f(f),
           mp_app(app),
-          m_name(name)
+          m_name(name),
+          m_key(key)
     {
+        m_shards.clear();
+        m_overrides.clear();
+#ifdef	NOT_IMPLMENTED_YET
+        if (nrp != NULL) {
+            mp_f->addDistributionInterests(m_key, nrp);
+        }
+#endif
+        updateDistribution();
     }
+
+    /*
+     * Allow the factory access to my key.
+     */
+    const string getKey() { return m_key; }
 
   private:
     /*
      * Make the default constructor private so it cannot be called.
      */
     DataDistribution()
+        : NotificationTarget(NULL)
     {
         throw ClusterException("Someone called the DataDistribution "
                                "default constructor!");
     }
+
+    /*
+     * Update the distribution.
+     */
+    void updateDistribution() throw(ClusterException);
 
   private:
     /*
      * The factory instance we're using.
      */
     Factory *mp_f;
-
-    /*
-     * The instance of ZooKeeper adapter we're using.
-     */
-    ::zk::ZooKeeperAdapter *mp_zk;
 
     /*
      * The application object for the application that contains
@@ -90,6 +101,28 @@ class DataDistribution
      * The name of this data distribution.
      */
     const string m_name;
+
+    /*
+     * The factory key for this object.
+     */
+    const string m_key;
+
+    /*
+     * The shards in this data distribution.
+     */
+    ShardList m_shards;
+
+    /*
+     * The manual overrides for this data distribution.
+     */
+    ManualOverridesMap m_overrides;
+};
+
+/*
+ * Definition of class Shard.
+ */
+class Shard
+{
 };
 
 };	/* End of 'namespace clusterlib' */

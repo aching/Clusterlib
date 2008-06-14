@@ -5,8 +5,8 @@
  * application of clusterlib.
  *
  * $Header:$
- * $Revision:$
- * $Date:$
+ * $Revision$
+ * $Date$
  */
 
 #ifndef	_GROUP_H_
@@ -19,24 +19,19 @@ namespace clusterlib
  * Definition of class Group.
  */
 class Group
+    : public virtual NotificationTarget
 {
   public:
     /*
      * Retrieve the name of this group.
      */
-    const string getName()
-    {
-        return m_name;
-    }
+    const string getName() { return m_name; }
 
     /*
      * Retrieve the application object for the application
      * that this group is part of.
      */
-    const Application *getApplication()
-    {
-        return mp_app;
-    }
+    const Application *getApplication() { return mp_app; }
 
     /*
      * Retrieve a node with a given name in this group.
@@ -46,7 +41,7 @@ class Group
     /*
      * Retrieve the map of nodes in this group.
      */
-    NodeMap *getNodes() throw(ClusterException);
+    NodeMap *getNodes() { return &m_nodes; }
 
     /*
      * Retrieve a named data distribution that covers (some or all
@@ -59,7 +54,7 @@ class Group
      * Retrieve the map of data distributions that cover
      * (some or all of) their shards with nodes from this group.
      */
-    DataDistributionMap *getDistributions() throw(ClusterException);
+    DataDistributionMap *getDistributions() { return &m_distributions; }
 
   protected:
     /*
@@ -72,22 +67,30 @@ class Group
      */
     Group(const Application *app,
           const string &name,
+          const string &key,
           Factory *f,
-          ::zk::ZooKeeperAdapter *zk)
-        : mp_f(f),
-          mp_zk(zk),
+          Notifyable *nrp)
+        : NotificationTarget(nrp),
+          mp_f(f),
           mp_app(app),
-          m_name(name)
+          m_name(name),
+          m_key(key)
     {
         m_nodes.clear();
         m_distributions.clear();
     }
+
+    /*
+     * Allow the factory access to my key.
+     */
+    const string getKey() { return m_key; }
 
   private:
     /*
      * Make the default constructor private so it cannot be called.
      */
     Group()
+        : NotificationTarget(NULL)
     {
         throw ClusterException("Someone called the Group default "
                                "constructor!");
@@ -100,11 +103,6 @@ class Group
     Factory *mp_f;
 
     /*
-     * The ZooKeeper adapter instance we're using.
-     */
-    ::zk::ZooKeeperAdapter *mp_zk;
-
-    /*
      * The application object that contains this group.
      */
     const Application *mp_app;
@@ -113,6 +111,11 @@ class Group
      * The name of this group.
      */
     const string m_name;
+
+    /*
+     * The key associated with this group.
+     */
+    const string m_key;
 
     /*
      * Map of all nodes within this group.

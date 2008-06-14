@@ -16,6 +16,7 @@
 #include <map>
 
 #include "forwarddecls.h"
+#include "notifyable.h"
 #include "blockingqueue.h"
 #include "mutex.h"
 #include "thread.h"

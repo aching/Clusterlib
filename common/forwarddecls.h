@@ -4,7 +4,7 @@
  * Forward declarations for classes that need to be
  * forward-declared.
  *
- * $Header$
+ * $Header:$
  * $Revision$
  * $Date$
  */
@@ -30,6 +30,8 @@ class Group;
 class HealthChecker;
 class Node;
 class NodeAddress;
+class Notifyable;
+class ManualOverride;
 class Shard;
 
 /*
@@ -57,6 +59,7 @@ typedef map<string, DataDistribution *>		DataDistributionMap;
 typedef map<string, Factory *>			FactoryMap;
 typedef map<string, Group *>			GroupMap;
 typedef map<string, HealthChecker *>		HealthCheckerMap;
+typedef map<string, ManualOverride *>		ManualOverridesMap;
 typedef map<string, Node *>	        	NodeMap;
 
 };	/* End of 'namespace clusterlib' */
