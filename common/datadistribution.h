@@ -19,7 +19,7 @@ namespace clusterlib
  * Definition of class DataDistribution.
  */
 class DataDistribution
-    : public virtual NotificationTarget
+    : public virtual Notifyable
 {
   public:
     /*
@@ -32,6 +32,11 @@ class DataDistribution
      * distribution is contained.
      */
     const Application *getApplication() { return mp_app; }
+
+    /*
+     * Receive a notification of an event.
+     */
+    void notify(const Event e);
 
   protected:
     /*
@@ -46,21 +51,15 @@ class DataDistribution
     DataDistribution(const Application *app,
                      const string &name,
                      const string &key,
-                     Factory *f,
-                     Notifyable *nrp)
-        : NotificationTarget(nrp),
-          mp_f(f),
+                     FactoryOps *f)
+        : Notifyable(f),
           mp_app(app),
           m_name(name),
           m_key(key)
     {
         m_shards.clear();
         m_overrides.clear();
-#ifdef	NOT_IMPLMENTED_YET
-        if (nrp != NULL) {
-            mp_f->addDistributionInterests(m_key, nrp);
-        }
-#endif
+
         updateDistribution();
     }
 
@@ -74,7 +73,7 @@ class DataDistribution
      * Make the default constructor private so it cannot be called.
      */
     DataDistribution()
-        : NotificationTarget(NULL)
+        : Notifyable(NULL)
     {
         throw ClusterException("Someone called the DataDistribution "
                                "default constructor!");
@@ -86,11 +85,6 @@ class DataDistribution
     void updateDistribution() throw(ClusterException);
 
   private:
-    /*
-     * The factory instance we're using.
-     */
-    Factory *mp_f;
-
     /*
      * The application object for the application that contains
      * this distribution.

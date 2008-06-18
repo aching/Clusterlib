@@ -26,6 +26,7 @@ class ClusterException;
 class ClusterServer;
 class DataDistribution;
 class Factory;
+class FactoryOps;
 class Group;
 class HealthChecker;
 class Node;
@@ -43,6 +44,7 @@ typedef vector<ClusterClient *>			ClusterClientList;
 typedef vector<ClusterServer *>			ClusterServerList;
 typedef vector<DataDistribution *>		DataDistributionList;
 typedef vector<Factory *>			FactoryList;
+typedef vector<FactoryOps *>			FactoryOpsList;
 typedef vector<Group *>				GroupList;
 typedef vector<HealthChecker *>			HealthCheckerList;
 typedef vector<Node *>				NodeList;
@@ -57,10 +59,12 @@ typedef map<string, ClusterClient *>		ClusterClientMap;
 typedef map<string, ClusterServer *>		ClusterServerMap;
 typedef map<string, DataDistribution *>		DataDistributionMap;
 typedef map<string, Factory *>			FactoryMap;
+typedef map<string, FactoryOps *>		FactoryOpsMap;
 typedef map<string, Group *>			GroupMap;
 typedef map<string, HealthChecker *>		HealthCheckerMap;
 typedef map<string, ManualOverride *>		ManualOverridesMap;
 typedef map<string, Node *>	        	NodeMap;
+typedef map<string, Notifyable *>		NotifyableMap;
 
 };	/* End of 'namespace clusterlib' */
 

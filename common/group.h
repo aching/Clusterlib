@@ -19,7 +19,7 @@ namespace clusterlib
  * Definition of class Group.
  */
 class Group
-    : public virtual NotificationTarget
+    : public virtual Notifyable
 {
   public:
     /*
@@ -56,6 +56,11 @@ class Group
      */
     DataDistributionMap *getDistributions() { return &m_distributions; }
 
+    /*
+     * Receive a notification of an event.
+     */
+    void notify(const Event e);
+
   protected:
     /*
      * Friend declaration so that Factory can call the constructor.
@@ -68,10 +73,8 @@ class Group
     Group(const Application *app,
           const string &name,
           const string &key,
-          Factory *f,
-          Notifyable *nrp)
-        : NotificationTarget(nrp),
-          mp_f(f),
+          FactoryOps *f)
+        : Notifyable(f),
           mp_app(app),
           m_name(name),
           m_key(key)
@@ -90,18 +93,13 @@ class Group
      * Make the default constructor private so it cannot be called.
      */
     Group()
-        : NotificationTarget(NULL)
+        : Notifyable(NULL)
     {
         throw ClusterException("Someone called the Group default "
                                "constructor!");
     }
 
   private:
-    /*
-     * The factory instance we're using.
-     */
-    Factory *mp_f;
-
     /*
      * The application object that contains this group.
      */

@@ -19,7 +19,7 @@ namespace clusterlib
  * Definition of class Node
  */
 class Node
-    : public virtual NotificationTarget
+    : public virtual Notifyable
 {
   public:
     /*
@@ -46,10 +46,8 @@ class Node
     Node(const Group *group,
          const string &name,
          const string &key,
-         Factory *f,
-         Notifyable *nrp)
-        : NotificationTarget(nrp),
-	  mp_f(f),
+         FactoryOps *f)
+        : Notifyable(f),
           mp_group(group),
           m_name(name),
           m_key(key)
@@ -61,23 +59,23 @@ class Node
      */
     const string getKey() { return m_key; }
 
+    /*
+     * Receive a notification of an event.
+     */
+    void notify(const Event e);
+
   private:
     /*
      * Make the default constructor private so it cannot be called.
      */
     Node()
-        : NotificationTarget(NULL)
+        : Notifyable(NULL)
     {
         throw ClusterException("Someone called the Node default "
                                "constructor!");
     }
 
   private:
-    /*
-     * The factory instance we're using.
-     */
-    Factory *mp_f;
-
     /*
      * The group this node is in.
      */

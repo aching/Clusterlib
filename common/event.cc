@@ -8,12 +8,10 @@
 
 #include "clusterlib.h"
 
-#define LOG_LEVEL LOG_FATAL
+#define LOG_LEVEL LOG_WARN
 #define MODULE_NAME "Event"
 
-using namespace std;
-
-namespace clusterlib {
-
-}       /* end of 'namespace clusterlib' */
+namespace clusterlib
+{
+};       /* End of 'namespace clusterlib' */
 

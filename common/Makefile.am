@@ -13,6 +13,7 @@ INCLUDES = \
 METASOURCES = AUTO
 lib_LIBRARIES = libcluster.a
 libcluster_a_SOURCES = \
+	clusterlib.cc \
 	event.cc \
 	hash.cc \
 	log.cc \

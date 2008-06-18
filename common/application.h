@@ -19,7 +19,7 @@ namespace clusterlib
  * Definition of class Application.
  */
 class Application
-    : public virtual NotificationTarget
+    : public virtual Notifyable
 {
   public:
     /*
@@ -61,12 +61,8 @@ class Application
     /*
      * Constructor used by Factory.
      */
-    Application(const string &name,
-                const string &key,
-                Factory *f,
-                Notifyable *nrp)
-        : NotificationTarget(nrp),
-	  mp_f(f),
+    Application(const string &name, const string &key, FactoryOps *f)
+        : Notifyable(f),
           m_name(name),
           m_key(key)
     {
@@ -79,23 +75,23 @@ class Application
      */
     const string getKey() { return m_key; }
 
+    /*
+     * Receive a notification of an event.
+     */
+    void notify(const Event e);
+
   private:
     /*
      * The default constructor is private so noone can call it.
      */
     Application()
-        : NotificationTarget(NULL)
+        : Notifyable(NULL)
     {
         throw ClusterException("Someone called the Application "
                                "default constructor!");
     }
 
   private:
-    /*
-     * The instance of the factory in use.
-     */
-    Factory *mp_f;
-
     /*
      * The name of this application.
      */

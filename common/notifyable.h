@@ -4,8 +4,8 @@
  * Contains the base class for notifyable objects.
  *
  * $Header:$
- * $Revision:$
- * $Date:$
+ * $Revision$
+ * $Date$
  */
 
 #ifndef	_NOTIFYABLE_H_
@@ -16,70 +16,124 @@ using namespace std;
 namespace clusterlib
 {
 
-class NotificationObject
+/*
+ * Various notification constants.
+ */
+const int EN_APP_CREATION		(1<<0);
+const int EN_APP_DELETION		(1<<1);
+
+const int EN_GRP_CREATION		(1<<5);
+const int EN_GRP_DELETION		(1<<6);
+const int EN_GRP_MEMBERSHIP		(1<<7);
+
+const int EN_NODE_CREATION		(1<<10);
+const int EN_NODE_DELETION		(1<<11);
+const int EN_NODE_HEALTHCHANGE		(1<<12);
+const int EN_NODE_CONNECTCHANGE		(1<<13);
+const int EN_NODE_MASTERSTATECHANGE	(1<<14);
+
+const int EN_DIST_CREATION		(1<<20);
+const int EN_DIST_DELETION		(1<<21);
+const int EN_DIST_CHANGE		(1<<22);
+
+const int EN_APP_INTERESTS =    (EN_APP_CREATION | EN_APP_DELETION);
+const int EN_GRP_INTERESTS =	(EN_GRP_CREATION |
+                                 EN_GRP_DELETION |
+                                 EN_GRP_MEMBERSHIP);
+const int EN_NODE_INTERESTS =	(EN_NODE_CREATION |
+                                 EN_NODE_DELETION |
+                                 EN_NODE_HEALTHCHANGE |
+                                 EN_NODE_CONNECTCHANGE |
+                                 EN_NODE_MASTERSTATECHANGE);
+const int EN_DIST_INTERESTS =	(EN_DIST_CREATION |
+                                 EN_DIST_DELETION |
+                                 EN_DIST_CHANGE);
+
+/*
+ * An event type.
+ */
+typedef int Event;
+
+/*
+ * Interface for notification receiver. Must be derived
+ * to define specific behavior for handling events.
+ */
+class NotificationReceiver
 {
   public:
     /*
-     * Enumerate the possible events being notified.
+     * Add a notification receiver to the chain.
      */
-    enum Event {
-        NE_ILLEGAL		= -1,
-
-        NE_APPLICATION_DELETED	= 0,
-        NE_APPLICATION_CREATED  = 1,
-        NE_APPLICATION_PROPS    = 2,
-
-        NE_GROUP_DELETED        = 10,
-        NE_GROUP_CREATED	= 11,
-        NE_GROUP_PROPS          = 12,
-
-        NE_NODE_DELETED		= 20,
-        NE_NODE_CREATED		= 21,
-        NE_NODE_PROPS		= 22,
-
-        NE_DIST_DELETED		= 30,
-        NE_DIST_CREATED		= 31,
-        NE_DIST_MODIFIED	= 32,
-        NE_DIST_PROPS		= 33
-    };
-
-    /*
-     * The key of the object being notified.
-     */
-    const string getKey() { return m_key; }
-
-    /*
-     * The event being notified.
-     */
-    Event getEvent() { return m_e; }
-
-  protected:
-    /*
-     * Declare a friend relation with Factory so that
-     * the factory can call a protected constructor.
-     */
-    friend class Factory;
-
-    /*
-     * Protected constructor used by the factory.
-     */
-    NotificationObject(const string &key,
-                       Event e)
-        : m_key(key),
-          m_e(e)
+    void add(NotificationReceiver *ap)
     {
+        if (mp_next == NULL) {
+            mp_next = ap;
+        } else {
+            mp_next->add(ap);
+        }
     };
+
+    /*
+     * Remove a notification receiver from the chain.
+     */
+    void remove(NotificationReceiver *ap)
+    {
+        if (mp_next == NULL) {
+            return;
+        }
+        if (mp_next != ap) {
+            mp_next->remove(ap);
+            return;
+        }
+        mp_next = ap->mp_next;
+        ap->mp_next = NULL;
+    }
+
+    /*
+     * Constructor.
+     */
+    NotificationReceiver(const Event mask)
+        : m_mask(mask),
+          mp_next(NULL)
+    {
+    }
+
+    /*
+     * Destructor.
+     */
+    virtual ~NotificationReceiver()
+    {
+        if (mp_next != NULL) {
+            throw ClusterException("Destroying a registered "
+                                   "notification receiver!");
+        }
+    }
+
+    /*
+     * This must be implemented by subclasses.
+     */
+    virtual void deliverNotification(const Event e) = 0;
+        
+    /*
+     * Is this event one we're interested in?
+     */
+    bool matchEvent(const Event e) { return (m_mask & e) == 0 ? false : true; }
+
+    /*
+     * Return the next receiver in the chain.
+     */
+    NotificationReceiver *next() { return mp_next; }
 
   private:
     /*
-     * The key for which the event is.
+     * The events that this receiver is interested in receiving.
      */
-    const string m_key;
+    Event m_mask;
 
     /*
-     * The event (type of notification).
+     * The next receiver in the chain.
      */
-    const Event m_e;
+    NotificationReceiver *mp_next;
 };
 
 /*
@@ -89,57 +143,83 @@ class Notifyable
 {
   public:
     /*
-     * Notify the notifyable object.
-     */
-    virtual void notify(const NotificationObject *notification) = 0;
-};
-
-/*
- * Base class for all objects that can have associated Notifyable objects.
- */
-class NotificationTarget
-{
-  public:
-    /*
-     * Retrieve the notification receiver associated with
-     * this data distribution.
-     */
-    Notifyable *getNotifyable() { return mp_nrp; }
-
-    /*
-     * Set the associated notification receiver object
-     * to a new notification receiver.
-     */
-    void setNotifyable(Notifyable *nrp)
-    {
-#ifdef	NOT_YET_IMPLEMENTED
-        if (mp_nrp != NULL) {
-            mp_f->removeInterests(m_key, mp_nrp);
-        }
-        mp_f->addDistributionInterests(m_key, mp_nrp);
-#endif
-        mp_nrp = nrp;
-    }
-
-    /*
      * Constructor.
      */
-    NotificationTarget(Notifyable *nrp)
-        : mp_nrp(nrp)
+    Notifyable(FactoryOps *f)
+        : mp_f(f),
+          mp_unrp(NULL)
     {
     };
 
-  private:
     /*
-     * Default constructor is hidden so it cannot be called.
+     * Destructor.
      */
-    NotificationTarget() {}
+    virtual ~Notifyable() {};
+
+    /*
+     * Get the associated factory delegate object.
+     */
+    FactoryOps *getDelegate() { return mp_f; }
+
+  public:
+    /*
+     * Notify the notifyable object.
+     */
+    virtual void notify(const Event e)
+    {
+        NotificationReceiver *unrp;
+
+        deliverNotification(e);
+        for (unrp = mp_unrp; unrp != NULL; unrp = unrp->next()) {
+            if (unrp->matchEvent(e)) {
+                unrp->deliverNotification(e);
+            }
+        }
+    };
+
+    /*
+     * This must be supplied by subclasses.
+     */
+    virtual void deliverNotification(const Event e) = 0;
+
+    /*
+     * Register a receiver.
+     */
+    void registerNotificationReceiver(NotificationReceiver *unrp)
+    {
+        unrp->add(NULL);
+        if (mp_unrp == NULL) {
+            mp_unrp = unrp;
+        } else {
+            mp_unrp->add(unrp);
+        }
+    };
+
+    /*
+     * Unregister a receiver.
+     */
+    void unregisterNotificationReceiver(NotificationReceiver *unrp)
+    {
+        if (unrp == NULL) {
+            return;
+        }
+        if (mp_unrp == unrp) {
+            mp_unrp = unrp->next();
+        } else {
+            mp_unrp->remove(unrp);
+        }
+    }
 
   private:
     /*
-     * Associated notifyable object.
+     * The associated factory delegate.
      */
-    Notifyable *mp_nrp;
+    FactoryOps *mp_f;
+
+    /*
+     * The list of receivers attached to this notifyable object.
+     */
+    NotificationReceiver *mp_unrp;
 };
 
 };	/* End of 'namespace clusterlib' */
