@@ -14,6 +14,7 @@ METASOURCES = AUTO
 lib_LIBRARIES = libcluster.a
 libcluster_a_SOURCES = \
 	clusterlib.cc \
+	datadistribution.cc \
 	event.cc \
 	hash.cc \
 	log.cc \

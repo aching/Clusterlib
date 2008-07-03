@@ -33,6 +33,11 @@ class Node
      */
     const Group *getGroup() { return mp_group; }
 
+    /*
+     * Deliver event notifications.
+     */
+    void deliverNotification(const Event e);
+
   protected:
     /*
      * Friend declaration for Factory so that it will be able
@@ -47,29 +52,18 @@ class Node
          const string &name,
          const string &key,
          FactoryOps *f)
-        : Notifyable(f),
+        : Notifyable(f, key),
           mp_group(group),
-          m_name(name),
-          m_key(key)
+          m_name(name)
     {
     }
-
-    /*
-     * Allow the factory access to my key.
-     */
-    const string getKey() { return m_key; }
-
-    /*
-     * Receive a notification of an event.
-     */
-    void notify(const Event e);
 
   private:
     /*
      * Make the default constructor private so it cannot be called.
      */
     Node()
-        : Notifyable(NULL)
+        : Notifyable(NULL, "")
     {
         throw ClusterException("Someone called the Node default "
                                "constructor!");
@@ -85,11 +79,6 @@ class Node
      * The name of this node.
      */
     const string m_name;
-
-    /*
-     * The key associated with this node.
-     */
-    const string m_key;
 };
 
 };	/* End of 'namespace clusterlib' */

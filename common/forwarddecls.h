@@ -40,17 +40,17 @@ class Shard;
  */
 typedef vector<string>				IdList;
 typedef vector<Application *>			ApplicationList;
+typedef vector<DataDistribution *>		DataDistributionList;
 typedef vector<ClusterClient *>			ClusterClientList;
 typedef vector<ClusterServer *>			ClusterServerList;
-typedef vector<DataDistribution *>		DataDistributionList;
 typedef vector<Factory *>			FactoryList;
 typedef vector<FactoryOps *>			FactoryOpsList;
 typedef vector<Group *>				GroupList;
 typedef vector<HealthChecker *>			HealthCheckerList;
 typedef vector<Node *>				NodeList;
 typedef	vector<NodeAddress *>			NodeAddressList;
-typedef	vector<Shard *>				ShardList;
-
+typedef vector<Shard *>				ShardList;
+    
 /*
  * Maps of pointers to these classes.
  */

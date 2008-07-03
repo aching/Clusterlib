@@ -62,52 +62,17 @@ class NotificationReceiver
 {
   public:
     /*
-     * Add a notification receiver to the chain.
-     */
-    void add(NotificationReceiver *ap)
-    {
-        if (mp_next == NULL) {
-            mp_next = ap;
-        } else {
-            mp_next->add(ap);
-        }
-    };
-
-    /*
-     * Remove a notification receiver from the chain.
-     */
-    void remove(NotificationReceiver *ap)
-    {
-        if (mp_next == NULL) {
-            return;
-        }
-        if (mp_next != ap) {
-            mp_next->remove(ap);
-            return;
-        }
-        mp_next = ap->mp_next;
-        ap->mp_next = NULL;
-    }
-
-    /*
      * Constructor.
      */
     NotificationReceiver(const Event mask)
-        : m_mask(mask),
-          mp_next(NULL)
+        : m_mask(mask)
     {
     }
 
     /*
      * Destructor.
      */
-    virtual ~NotificationReceiver()
-    {
-        if (mp_next != NULL) {
-            throw ClusterException("Destroying a registered "
-                                   "notification receiver!");
-        }
-    }
+    virtual ~NotificationReceiver() {}
 
     /*
      * This must be implemented by subclasses.
@@ -119,22 +84,22 @@ class NotificationReceiver
      */
     bool matchEvent(const Event e) { return (m_mask & e) == 0 ? false : true; }
 
-    /*
-     * Return the next receiver in the chain.
-     */
-    NotificationReceiver *next() { return mp_next; }
+    bool operator==(NotificationReceiver *other)
+    {
+        return ((long) this == (long) other) ? true : false;
+    }
 
   private:
     /*
      * The events that this receiver is interested in receiving.
      */
     Event m_mask;
-
-    /*
-     * The next receiver in the chain.
-     */
-    NotificationReceiver *mp_next;
 };
+
+/*
+ * A list of notification receivers.
+ */
+typedef vector<NotificationReceiver *> NotificationReceivers;
 
 /*
  * Interface that must be derived by specific notifyable objects.
@@ -145,10 +110,11 @@ class Notifyable
     /*
      * Constructor.
      */
-    Notifyable(FactoryOps *f)
+    Notifyable(FactoryOps *f, const string &key)
         : mp_f(f),
-          mp_unrp(NULL)
+          m_key(key)
     {
+        m_receivers.clear();
     };
 
     /*
@@ -161,18 +127,24 @@ class Notifyable
      */
     FactoryOps *getDelegate() { return mp_f; }
 
+    /*
+     * Return the string identifying the represented
+     * cluster object.
+     */
+    const string getKey() { return m_key; }
+
   public:
     /*
      * Notify the notifyable object.
      */
     virtual void notify(const Event e)
     {
-        NotificationReceiver *unrp;
+        NotificationReceivers::iterator i;
 
         deliverNotification(e);
-        for (unrp = mp_unrp; unrp != NULL; unrp = unrp->next()) {
-            if (unrp->matchEvent(e)) {
-                unrp->deliverNotification(e);
+        for (i = m_receivers.begin(); i != m_receivers.end(); i++) {
+            if ((*i)->matchEvent(e)) {
+                (*i)->deliverNotification(e);
             }
         }
     };
@@ -187,12 +159,7 @@ class Notifyable
      */
     void registerNotificationReceiver(NotificationReceiver *unrp)
     {
-        unrp->add(NULL);
-        if (mp_unrp == NULL) {
-            mp_unrp = unrp;
-        } else {
-            mp_unrp->add(unrp);
-        }
+        m_receivers.push_back(unrp);
     };
 
     /*
@@ -200,13 +167,11 @@ class Notifyable
      */
     void unregisterNotificationReceiver(NotificationReceiver *unrp)
     {
-        if (unrp == NULL) {
-            return;
-        }
-        if (mp_unrp == unrp) {
-            mp_unrp = unrp->next();
-        } else {
-            mp_unrp->remove(unrp);
+        NotificationReceivers::iterator i;
+
+        if ((i = find(m_receivers.begin(), m_receivers.end(), unrp))
+            != m_receivers.end()) {
+            m_receivers.erase(i);
         }
     }
 
@@ -217,9 +182,16 @@ class Notifyable
     FactoryOps *mp_f;
 
     /*
-     * The list of receivers attached to this notifyable object.
+     * The key to pass to the factory delegate for
+     * operations on the represented cluster node.
      */
-    NotificationReceiver *mp_unrp;
+    const string m_key;
+
+    /*
+     * The vector of notification receivers associated with
+     * this notifyable.
+     */
+    NotificationReceivers m_receivers;
 };
 
 };	/* End of 'namespace clusterlib' */

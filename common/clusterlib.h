@@ -86,17 +86,10 @@ class Factory
     friend class FactoryOps;
 
     /*
-     * Add interests in events, and deliver notification
-     * to the given Notifyable object.
+     * Manage interests in events.
      */
-    void addApplicationInterests(const string &key,
-                                 Notifyable *nrp);
-    void addGroupInterests(const string &key,
-                           Notifyable *nrp);
-    void addNodeInterests(const string &key,
-                          Notifyable *nrp);
-    void addDistributionInterests(const string &key,
-                                  Notifyable *nrp);
+    void addInterests(Notifyable *nrp, const Event events);
+    void removeInterests(Notifyable *nrp, const Event events);
 
     /*
      * Retrieve (and potentially create) instances of
@@ -139,6 +132,55 @@ class Factory
      * The ZooKeeper adapter object being used.
      */
     ZooKeeperAdapter *mp_zk;
+
+    class InterestRecord
+    {
+      public:
+        /*
+         * Constructor.
+         */
+        InterestRecord(Notifyable *nrp, Event e)
+            : mp_nrp(nrp),
+              m_e(e)
+        {
+        };
+
+        /*
+         * Retrieve the elements of the record.
+         */
+        Event getInterests() { return m_e; }
+        Notifyable *getNotifyable() { return mp_nrp; }
+
+        /*
+         * Manage the selection of which notifications
+         * are delivered.
+         */
+        void addInterests(Event e)
+        {
+            m_e |= e;
+        }
+        void removeInterests(Event e)
+        {
+            m_e &= (~(e));
+        }
+
+      private:
+        /*
+         * The notifyable object to deliver events to.
+         */
+        Notifyable *mp_nrp;
+
+        /*
+         * The events of interest.
+         */
+        Event m_e;
+    };
+    typedef map<string, InterestRecord *> NotificationInterestsMap;
+
+    /*
+     * Map from keys to notification interests records.
+     */
+    NotificationInterestsMap m_notificationInterests;
 };
 
 /*
@@ -150,29 +192,15 @@ class Factory
 class FactoryOps
 {
   public:
-    /*
-     * All the operations simply delegate to the factory.
-     */
-    void addApplicationInterests(const string &key,
-                                 Notifyable *nrp)
+    void addInterests(Notifyable *nrp, Event events)
     {
-        mp_f->addApplicationInterests(key, nrp);
+        mp_f->addInterests(nrp, events);
     }
-    void addGroupInterests(const string &key,
-                           Notifyable *nrp)
+    void removeInterests(Notifyable *nrp, Event events)
     {
-        mp_f->addGroupInterests(key, nrp);
+        mp_f->removeInterests(nrp, events);
     }
-    void addNodeInterests(const string &key,
-                          Notifyable *nrp)
-    {
-        mp_f->addNodeInterests(key, nrp);
-    }
-    void addDistributionInterests(const string &key,
-                                  Notifyable *nrp)
-    {
-        mp_f->addDistributionInterests(key, nrp);
-    }
+
     Application *getApplication(const string &name)
     {
         return mp_f->getApplication(name);

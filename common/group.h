@@ -57,9 +57,9 @@ class Group
     DataDistributionMap *getDistributions() { return &m_distributions; }
 
     /*
-     * Receive a notification of an event.
+     * Deliver event notifications.
      */
-    void notify(const Event e);
+    void deliverNotification(const Event e);
 
   protected:
     /*
@@ -74,26 +74,20 @@ class Group
           const string &name,
           const string &key,
           FactoryOps *f)
-        : Notifyable(f),
+        : Notifyable(f, key),
           mp_app(app),
-          m_name(name),
-          m_key(key)
+          m_name(name)
     {
         m_nodes.clear();
         m_distributions.clear();
     }
-
-    /*
-     * Allow the factory access to my key.
-     */
-    const string getKey() { return m_key; }
 
   private:
     /*
      * Make the default constructor private so it cannot be called.
      */
     Group()
-        : Notifyable(NULL)
+        : Notifyable(NULL, "")
     {
         throw ClusterException("Someone called the Group default "
                                "constructor!");
@@ -109,11 +103,6 @@ class Group
      * The name of this group.
      */
     const string m_name;
-
-    /*
-     * The key associated with this group.
-     */
-    const string m_key;
 
     /*
      * Map of all nodes within this group.

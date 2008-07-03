@@ -51,6 +51,11 @@ class Application
      */
     DataDistributionMap *getDistributions() { return &m_distributions; }
 
+    /*
+     * Deliver received event notifications.
+     */
+    void deliverNotification(const Event e);
+
   protected:
     /*
      * Friend declaration for factory so that it can call
@@ -62,30 +67,19 @@ class Application
      * Constructor used by Factory.
      */
     Application(const string &name, const string &key, FactoryOps *f)
-        : Notifyable(f),
-          m_name(name),
-          m_key(key)
+        : Notifyable(f, key),
+          m_name(name)
     {
         m_groups.clear();
         m_distributions.clear();
     }
-
-    /*
-     * Allow the factory access to my key.
-     */
-    const string getKey() { return m_key; }
-
-    /*
-     * Receive a notification of an event.
-     */
-    void notify(const Event e);
 
   private:
     /*
      * The default constructor is private so noone can call it.
      */
     Application()
-        : Notifyable(NULL)
+        : Notifyable(NULL, "")
     {
         throw ClusterException("Someone called the Application "
                                "default constructor!");
@@ -96,11 +90,6 @@ class Application
      * The name of this application.
      */
     const string m_name;
-
-    /*
-     * The key associated with this application.
-     */
-    const string m_key;
 
     /*
      * Map of all groups within this application.
