@@ -31,7 +31,7 @@ class Node
      * Retrieve the group object for the group that
      * this node is in.
      */
-    const Group *getGroup() { return mp_group; }
+    Group *getGroup() { return mp_group; }
 
     /*
      * Deliver event notifications.
@@ -48,7 +48,7 @@ class Node
     /*
      * Constructor used by the factory.
      */
-    Node(const Group *group,
+    Node(Group *group,
          const string &name,
          const string &key,
          FactoryOps *f)
@@ -73,7 +73,7 @@ class Node
     /*
      * The group this node is in.
      */
-    const Group *mp_group;
+    Group *mp_group;
 
     /*
      * The name of this node.

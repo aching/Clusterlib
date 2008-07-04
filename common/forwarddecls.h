@@ -32,7 +32,6 @@ class HealthChecker;
 class Node;
 class NodeAddress;
 class Notifyable;
-class ManualOverride;
 class Shard;
 
 /*
@@ -62,7 +61,6 @@ typedef map<string, Factory *>			FactoryMap;
 typedef map<string, FactoryOps *>		FactoryOpsMap;
 typedef map<string, Group *>			GroupMap;
 typedef map<string, HealthChecker *>		HealthCheckerMap;
-typedef map<string, ManualOverride *>		ManualOverridesMap;
 typedef map<string, Node *>	        	NodeMap;
 typedef map<string, Notifyable *>		NotifyableMap;
 

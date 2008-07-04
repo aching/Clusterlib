@@ -48,7 +48,7 @@ class DataDistribution
      * Retrieve the application object in which this
      * distribution is contained.
      */
-    const Application *getApplication() { return mp_app; }
+    Application *getApplication() { return mp_app; }
 
     /*
      * Deliver an event notification.
@@ -78,7 +78,7 @@ class DataDistribution
     /*
      * Constructor used by Factory.
      */
-    DataDistribution(const Application *app,
+    DataDistribution(Application *app,
                      const string &name,
                      const string &key,
                      FactoryOps *f,
@@ -96,6 +96,38 @@ class DataDistribution
     }
 
     /*
+     * Unmarshall a string into this data distribution.
+     */
+    void unmarshall(const string &marshalledDist) throw(ClusterException);
+
+    /*
+     * Unmarshall a stringified sequence of shards.
+     */
+    void unmarshallShards(const string &marshalledShards, ShardList &l)
+        throw(ClusterException);
+
+    /*
+     * Unmarshall a stringified sequence of manual overrides.
+     */
+    void unmarshallOverrides(const string &marshalledOverrides, NodeMap &m)
+        throw(ClusterException);
+
+    /*
+     * Marshall a data distribution into a string.
+     */
+    string marshall();
+
+    /*
+     * Marshall shards into a string.
+     */
+    string marshallShards();
+
+    /*
+     * Marshall manual overrides into a string.
+     */
+    string marshallOverrides();
+
+    /*
      * Update the distribution.
      */
     void updateDistribution() throw(ClusterException);
@@ -105,7 +137,7 @@ class DataDistribution
      * The application object for the application that contains
      * this distribution.
      */
-    const Application *mp_app;
+    Application *mp_app;
 
     /*
      * The name of this data distribution.
@@ -120,7 +152,7 @@ class DataDistribution
     /*
      * The manual overrides for this data distribution.
      */
-    ManualOverridesMap m_overrides;
+    NodeMap m_manualOverrides;
 
     /*
      * Which hash function to use.

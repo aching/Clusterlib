@@ -31,12 +31,12 @@ class Group
      * Retrieve the application object for the application
      * that this group is part of.
      */
-    const Application *getApplication() { return mp_app; }
+    Application *getApplication() { return mp_app; }
 
     /*
      * Retrieve a node with a given name in this group.
      */
-    const Node *getNode(const string &nodeName) throw(ClusterException);
+    Node *getNode(const string &nodeName) throw(ClusterException);
 
     /*
      * Retrieve the map of nodes in this group.
@@ -47,7 +47,7 @@ class Group
      * Retrieve a named data distribution that covers (some or all
      * of) its shards with nodes from this group.
      */
-    const DataDistribution *getDistribution(const string &distName)
+    DataDistribution *getDistribution(const string &distName)
         throw(ClusterException);
 
     /*
@@ -70,7 +70,7 @@ class Group
     /*
      * Constructor used by the factory.
      */
-    Group(const Application *app,
+    Group(Application *app,
           const string &name,
           const string &key,
           FactoryOps *f)
@@ -97,7 +97,7 @@ class Group
     /*
      * The application object that contains this group.
      */
-    const Application *mp_app;
+    Application *mp_app;
 
     /*
      * The name of this group.

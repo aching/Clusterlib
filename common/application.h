@@ -30,7 +30,7 @@ class Application
     /*
      * Retrieve a named group within an application.
      */
-    const Group *getGroup(const string &groupName)
+    Group *getGroup(const string &groupName)
         throw(ClusterException);
 
     /*

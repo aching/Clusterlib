@@ -14,7 +14,13 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <algorithm>
+#include <iostream>
 
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/split.hpp>
+
+#include "log.h"
 #include "forwarddecls.h"
 #include "zkadapter.h"
 #include "blockingqueue.h"
@@ -34,6 +40,8 @@ using namespace zk;
 #include "group.h"
 #include "node.h"
 #include "datadistribution.h"
+
+DEFINE_LOGGER( CL_LOG, "clusterlib" )
 
 namespace clusterlib
 {
@@ -97,10 +105,26 @@ class Factory
      * and distributions.
      */
     Application *getApplication(const string &name);
+
     Group *getGroup(const string &name, Application *app);
+    Group *getGroup(const string &appName,
+                    const string &grpName);
+
     Node *getNode(const string &name, Group *grp);
+    Node *getNode(const string &appName,
+                  const string &grpName,
+                  const string &nodeName);
+
     DataDistribution *getDistribution(const string &name,
                                       Application *app);
+    DataDistribution *getDistribution(const string &appname,
+                                      const string &distName);
+
+    Shard *createShard(const string &startRange,
+                       const string &endRange,
+                       const string &appname,
+                       const string &grpName,
+                       const string &nodeName);
 
   private:
     /*
@@ -205,18 +229,49 @@ class FactoryOps
     {
         return mp_f->getApplication(name);
     }
+
     Group *getGroup(const string &name, Application *app)
     {
         return mp_f->getGroup(name, app);
     }
+    Group *getGroup(const string &appName, const string &grpName)
+    {
+        return mp_f->getGroup(appName, grpName);
+    }
+
     Node *getNode(const string &name, Group *grp)
     {
         return mp_f->getNode(name, grp);
     }
+    Node *getNode(const string &appName,
+                  const string &grpName,
+                  const string &nodeName)
+    {
+        return mp_f->getNode(appName, grpName, nodeName);
+    }
+
     DataDistribution *getDistribution(const string &name,
                                       Application *app)
     {
         return mp_f->getDistribution(name, app);
+    }
+    DataDistribution *getDistribution(const string &appName,
+                                      const string &distName)
+    {
+        return mp_f->getDistribution(appName, distName);
+    }
+
+    Shard *createShard(const string &beginRange,
+                       const string &endRange,
+                       const string &appName,
+                       const string &grpName,
+                       const string &nodeName)
+    {
+        return mp_f->createShard(beginRange,
+                                 endRange,
+                                 appName,
+                                 grpName,
+                                 nodeName);
     }
     
   private:
