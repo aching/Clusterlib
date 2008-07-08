@@ -6,8 +6,7 @@
  * =============================================================================
  */
 
-#include "log.h"
-#include "thread.h"
+#include "clusterlib.h"
 
 DEFINE_LOGGER( LOG, "Thread" )
 

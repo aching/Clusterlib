@@ -16,23 +16,32 @@
 #include <map>
 #include <algorithm>
 #include <iostream>
+#include <pthread.h>
+#include <errno.h>
+#include <sys/time.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
 
-#include "log.h"
+using namespace std;
+
 #include "forwarddecls.h"
-#include "zkadapter.h"
+
+using namespace clusterlib;
+
+#include "log.h"
+#include "clusterexception.h"
 #include "blockingqueue.h"
 #include "mutex.h"
 #include "thread.h"
 #include "event.h"
-#include "clusterexception.h"
-#include "notifyable.h"
+#include "zkadapter.h"
 
-using namespace std;
 using namespace zk;
 
+#include "notifyable.h"
 #include "healthchecker.h"
 #include "clusterclient.h"
 #include "clusterserver.h"
@@ -117,14 +126,38 @@ class Factory
 
     DataDistribution *getDistribution(const string &name,
                                       Application *app);
-    DataDistribution *getDistribution(const string &appname,
+    DataDistribution *getDistribution(const string &appName,
                                       const string &distName);
 
     Shard *createShard(const string &startRange,
                        const string &endRange,
-                       const string &appname,
+                       const string &appName,
                        const string &grpName,
                        const string &nodeName);
+
+    string createNodeKey(const string &appName,
+                         const string &groupName,
+                         const string &nodeName,
+                         bool managed);
+    string createGroupKey(const string &appName,
+                          const string &groupName);
+    string createAppKey(const string &appName);
+    string createDistKey(const string &appName,
+                         const string &distName);
+
+    bool isNodeKey(const string &key, bool *managedP = NULL);
+    bool isGroupKey(const string &key);
+    bool isAppKey(const string &key);
+    bool isDistKey(const string &key);
+
+    /*
+     * Load entities from ZooKeeper.
+     */
+    Application *loadApplication(const string &key);
+    DataDistribution *loadDistribution(const string &key,
+                                       Application *app);
+    Group *loadGroup(const string &key, Application *app);
+    Node *loadNode(const string &key, Group *grp);
 
   private:
     /*
@@ -136,21 +169,25 @@ class Factory
      * The registry of cached data distributions.
      */
     DataDistributionMap m_dataDistributions;
+    Mutex m_ddLock;
 
     /*
      * The registry of cached applications.
      */
     ApplicationMap m_applications;
+    Mutex m_appLock;
 
     /*
      * The registry of cached groups.
      */
     GroupMap m_groups;
+    Mutex m_grpLock;
 
     /*
      * The registry of cached nodes.
      */
     NodeMap m_nodes;
+    Mutex m_nodeLock;
 
     /*
      * The ZooKeeper adapter object being used.
@@ -205,6 +242,7 @@ class Factory
      * Map from keys to notification interests records.
      */
     NotificationInterestsMap m_notificationInterests;
+    Mutex m_notificationLock;
 };
 
 /*

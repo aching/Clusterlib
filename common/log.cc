@@ -5,12 +5,8 @@
  * $Date$
  * =============================================================================
  */
-
-#include <string>
   
-#include "log.h"
-
-using namespace std;
+#include "clusterlib.h"
   
 namespace clusterlib {
 

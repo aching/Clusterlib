@@ -6,16 +6,7 @@
  * =============================================================================
  */
 
-#include <algorithm>
-#include <iostream>
-
-#include "blockingqueue.h"
-#include "thread.h"
-#include "zkadapter.h"
-
-using namespace std;
-using namespace clusterlib;
-using namespace zk;
+#include "clusterlib.h"
 
 DEFINE_LOGGER( LOG, "zookeeper.adapter" )
 DEFINE_LOGGER( ZK_LOG, "zookeeper.core" )

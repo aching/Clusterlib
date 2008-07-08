@@ -9,22 +9,9 @@
 #ifndef __ZKADAPTER_H__
 #define __ZKADAPTER_H__
 
-#include <string>
-#include <vector>
-#include <map>
-
 extern "C" {
 #include <zookeeper/zookeeper.h>
 }
-
-#include "log.h"
-#include "mutex.h"
-#include "thread.h"
-#include "blockingqueue.h"
-#include "event.h"
-
-using namespace std;
-using namespace clusterlib;
 
 namespace zk {
     

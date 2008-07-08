@@ -9,8 +9,6 @@
 #ifndef __CLUSTEREXCEPTION_H__
 #define __CLUSTEREXCEPTION_H__
 
-#include <string>
-
 namespace clusterlib {
 /**
  * \brief A cluster related exception.

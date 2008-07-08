@@ -9,10 +9,6 @@
 #ifndef __LOG_H__
 #define __LOG_H__
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <pthread.h>
-
 #include <log4cxx/logger.h> 
 #include <log4cxx/propertyconfigurator.h> 
 #include <log4cxx/helpers/exception.h> 

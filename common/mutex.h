@@ -9,12 +9,6 @@
 #ifndef __MUTEX_H__
 #define __MUTEX_H__
 
-#include <pthread.h>
-#include <errno.h>
-#include <sys/time.h>
-
-#include "log.h"
-
 namespace clusterlib {
 
 /*
@@ -144,6 +138,47 @@ class Lock
          * The condition associated with this lock's mutex.
          */
         Cond m_cond;         
+};
+
+/*
+ * A class that locks a mutex on construction and
+ * unlocks the mutex on destruction.
+ */
+class Locker
+{
+  public:
+    /*
+     * Constructor locks the passed mutex.
+     */
+    Locker(Mutex *mp)
+    {
+        mp->Lock();
+        mp_lock = mp;
+    }
+
+    /*
+     * Destructor unlocks the mutex.
+     */
+    ~Locker()
+    {
+        mp_lock->Unlock();
+    }
+  private:
+    /*
+     * Make the default constructor private so it
+     * cannot be called.
+     */
+    Locker()
+    {
+        throw ClusterException("Someone called the "
+                               "Locker default constructor!");
+    }
+
+  private:
+    /*
+     * Hold onto the mutex being locked.
+     */
+    Mutex *mp_lock;
 };
 
 };	/* End of 'namespace clusterlib' */
