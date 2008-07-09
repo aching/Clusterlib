@@ -19,6 +19,64 @@ namespace clusterlib
 {
 
 /*
+ * All the string constants needed to construct and deconstruct
+ * ZK keys.
+ */
+const string ClusterlibStrings::ROOTNODE = "/";
+const string ClusterlibStrings::PATHSEPARATOR = "/";
+
+const string ClusterlibStrings::CLUSTERLIB = "clusterlib";
+const string ClusterlibStrings::VERSION = "1.0";
+
+const string ClusterlibStrings::PROPERTIES = "properties";
+const string ClusterlibStrings::CONFIGURATION = "configuration";
+const string ClusterlibStrings::ALERTS = "alerts";
+
+const string ClusterlibStrings::APPLICATIONS = "applications";
+const string ClusterlibStrings::GROUPS = "groups";
+const string ClusterlibStrings::NODES = "nodes";
+const string ClusterlibStrings::UNMANAGEDNODES = "unmanagedNodes";
+const string ClusterlibStrings::DISTRIBUTIONS = "distributions";
+
+const string ClusterlibStrings::CLIENTSTATE = "clientState";
+const string ClusterlibStrings::CLIENTSTATEDESC = "clientStateDesc";
+const string ClusterlibStrings::ADDRESS = "address";
+const string ClusterlibStrings::LASTCONNECTED = "lastConnected";
+const string ClusterlibStrings::CLIENTVERSION = "clientVersion";
+const string ClusterlibStrings::CONNECTED = "connected";
+const string ClusterlibStrings::BOUNCY = "bouncy";
+const string ClusterlibStrings::READY = "ready";
+const string ClusterlibStrings::ALIVE = "alive";
+const string ClusterlibStrings::MASTERSETSTATE = "masterSetState";
+const string ClusterlibStrings::SUPPORTEDVERSIONS = "supportedVersions";
+
+const string ClusterlibStrings::ELECTIONS = "elections";
+const string ClusterlibStrings::BIDS = "bids";
+const string ClusterlibStrings::CURRENTLEADER = "currentLeader";
+
+const string ClusterlibStrings::SHARDS = "shards";
+const string ClusterlibStrings::GOLDENSHARDS = "goldenShards";
+const string ClusterlibStrings::MANUALOVERRIDES = "manualOverrides";
+
+const string ClusterlibStrings::LOCKS = "locks";
+const string ClusterlibStrings::QUEUES = "queues";
+const string ClusterlibStrings::BARRIERS = "barriers";
+const string ClusterlibStrings::TRANSACTIONS = "transactions";
+
+/*
+ * All strings that are used as ZK values or part of values.
+ */
+const string ClusterlibStrings::BIDPREFIX = "L_";
+const string ClusterlibStrings::INFLUX = "influx";
+const string ClusterlibStrings::HEALTHY = "healthy";
+const string ClusterlibStrings::UNHEALTHY = "unhealthy";
+
+/*
+ * Names associated with the special clusterlib master application.
+ */
+const string ClusterlibStrings::MASTER = "master";
+
+/*
  * Constructor of Factory.
  *
  * Connect to ZooKeeper via the registry specification.
@@ -135,6 +193,9 @@ Factory::getApplication(const string &name)
         return app;
     }
     app = loadApplication(key);
+    /*
+     * TODO: Check for null app.
+     */
     m_applications[key] = app;
 
     return app;
@@ -157,7 +218,8 @@ Factory::getGroup(const string &groupName,
     return grp;
 }
 Group *
-Factory::getGroup(const string &appName, const string &groupName)
+Factory::getGroup(const string &appName,
+                  const string &groupName)
 {
     string key = createGroupKey(appName, groupName);
     Locker l(&m_grpLock);
@@ -168,6 +230,9 @@ Factory::getGroup(const string &appName, const string &groupName)
     }
 
     Application *app = getApplication(appName);
+    /*
+     * TODO: Check for null app.
+     */
     grp = loadGroup(key, app);
     m_groups[key] = grp;
 
@@ -175,12 +240,12 @@ Factory::getGroup(const string &appName, const string &groupName)
 }
 
 Node *
-Factory::getNode(const string &nodeName, Group *grp)
+Factory::getNode(const string &nodeName, Group *grp, bool managed)
 {
     string key = createNodeKey(grp->getApplication()->getName(),
                                grp->getName(),
                                nodeName,
-                               true);
+                               managed);
     Locker l(&m_nodeLock);
     Node *np = m_nodes[key];
 
@@ -188,9 +253,59 @@ Factory::getNode(const string &nodeName, Group *grp)
         return np;
     }
     np = loadNode(key, grp);
+    /*
+     * TODO: Check for null np.
+     */
     m_nodes[key] = np;
 
     return np;
+}
+Node *
+Factory::getNode(const string &appName,
+                 const string &groupName,
+                 const string &nodeName,
+                 bool managed)
+{
+    string key = createNodeKey(appName, groupName, nodeName, managed);
+    Locker l(&m_nodeLock);
+    Node *np = m_nodes[key];
+
+    if (np != NULL) {
+        return np;
+    }
+    Group *grp = getGroup(appName, groupName);
+    /*
+     * TODO: Check for null grp.
+     */
+    np = loadNode(key, grp);
+    /*
+     * TODO: Check for null np.
+     */
+    m_nodes[key] = np;
+
+    return np;
+}
+
+/*
+ * Return an object representing a shard.
+ */
+Shard *
+Factory::createShard(DataDistribution *dp,
+                     const string &startRange,
+                     const string &endRange,
+                     const string &appName,
+                     const string &grpName,
+                     const string &nodeName)
+{
+    Node *np = getNode(appName, grpName, nodeName, true);
+    unsigned long long lo = atoll(startRange.c_str());
+    unsigned long long hi = atoll(endRange.c_str());
+
+    /*
+     * TODO: Check np for NULL.
+     */
+
+    return new Shard(dp, np, lo, hi);
 }
 
 /*
@@ -202,16 +317,28 @@ Factory::createNodeKey(const string &appName,
                        const string &nodeName,
                        bool managed)
 {
-    string res = "";
+    string res =
+        createGroupKey(appName, groupName) +
+        PATHSEPARATOR +
+        (managed ? NODES : UNMANAGEDNODES) +
+        PATHSEPARATOR +
+        nodeName
+        ;
 
     return res;
 }
 
 string
-Factory::createGroupKey(const string &appname,
+Factory::createGroupKey(const string &appName,
                         const string &groupName)
 {
-    string res = "";
+    string res = 
+        createAppKey(appName) +
+        PATHSEPARATOR +
+        GROUPS +
+        PATHSEPARATOR +
+        groupName
+        ;
 
     return res;
 }
@@ -219,7 +346,17 @@ Factory::createGroupKey(const string &appname,
 string
 Factory::createAppKey(const string &appName)
 {
-    string res = "";
+    string res =
+        ROOTNODE +
+        CLUSTERLIB +
+        PATHSEPARATOR +
+        VERSION +
+        PATHSEPARATOR +
+        APPLICATIONS +
+        PATHSEPARATOR +
+        appName
+        ;
+
 
     return res;
 }
@@ -228,7 +365,13 @@ string
 Factory::createDistKey(const string &appName,
                        const string &distName)
 {
-    string res = "";
+    string res =
+        createAppKey(appName) +
+        PATHSEPARATOR +
+        DISTRIBUTIONS +
+        PATHSEPARATOR +
+        distName
+        ;
 
     return res;
 }
@@ -238,22 +381,120 @@ Factory::isNodeKey(const string &key, bool *managedP)
 {
     return true;
 }
+bool
+Factory::hasNodeKeyPrefix(const string &key, bool *managedP)
+{
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    return hasNodeKeyPrefix(components, managedP);
+}
+bool
+Factory::hasNodeKeyPrefix(vector<string> &components, bool *managedP)
+{
+    if ((components.size() < 9) ||
+        (hasGroupKeyPrefix(components) == false) ||
+        ((components[7] != NODES) &&
+         (components[7] != UNMANAGEDNODES))) {
+        return false;
+    }
+    if (managedP != NULL) {
+        *managedP = ((components[7] == NODES) ? true : false);
+    }
+    return true;
+}
 
 bool
 Factory::isGroupKey(const string &key)
 {
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    if ((components.size() != 7) ||
+        (hasGroupKeyPrefix(components) == false)) {
+        return false;
+    }
+    return true;
+}
+bool
+Factory::hasGroupKeyPrefix(const string &key)
+{
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    return hasGroupKeyPrefix(components);
+}
+bool
+Factory::hasGroupKeyPrefix(vector<string> &components)
+{
+    if ((components.size() < 7) ||
+        (hasAppKeyPrefix(components) == false) ||
+        (components[5] != GROUPS)) {
+        return false;
+    }
     return true;
 }
 
 bool
 Factory::isAppKey(const string &key)
 {
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    if ((components.size() != 5) ||
+        (hasAppKeyPrefix(components) == false)) {
+        return false;
+    }
+    return true;
+}
+bool
+Factory::hasAppKeyPrefix(const string &key)
+{
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    return hasAppKeyPrefix(components);
+}
+bool
+Factory::hasAppKeyPrefix(vector<string> &components)
+{
+    if ((components.size() < 5) ||
+        (components[1] != CLUSTERLIB) ||
+        (components[2] != VERSION) ||
+        (components[3] != APPLICATIONS)) {
+        return false;
+    }
     return true;
 }
 
 bool
 Factory::isDistKey(const string &key)
 {
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    if ((components.size() != 7) ||
+        (hasDistKeyPrefix(components) == false)) {
+        return false;
+    }
+    return true;
+}
+bool
+Factory::hasDistKeyPrefix(const string &key)
+{
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    return hasDistKeyPrefix(components);
+}
+bool
+Factory::hasDistKeyPrefix(vector<string> &components)
+{
+    if ((components.size() < 7) ||
+        (hasAppKeyPrefix(components) == false) ||
+        (components[5] != DISTRIBUTIONS)) {
+        return false;
+    }
     return true;
 }
 

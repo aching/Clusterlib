@@ -134,7 +134,8 @@ DataDistribution::unmarshallShards(const string &marshalledShards,
                                    *i +
                                    "\", expecting 5 components");
         }
-        nsp = getDelegate()->createShard(shardComponents[0],
+        nsp = getDelegate()->createShard(this,
+                                         shardComponents[0],
                                          shardComponents[1],
                                          shardComponents[2],
                                          shardComponents[3],
@@ -151,6 +152,10 @@ DataDistribution::unmarshallShards(const string &marshalledShards,
          */
         if (app == NULL) {
             app = nsp->getNode()->getGroup()->getApplication();
+            if (app != mp_app) {
+                throw ClusterException("Distribution spanning multiple "
+                                       "applications, unsupported");
+            }
         } else {
             if (app != nsp->getNode()->getGroup()->getApplication()) {
                 throw ClusterException("Distribution spanning multiple "
@@ -192,7 +197,8 @@ DataDistribution::unmarshallOverrides(const string &marshalledOverrides,
         }
         np = getDelegate()->getNode(moComponents[1],
                                     moComponents[2],
-                                    moComponents[3]);
+                                    moComponents[3],
+                                    true);
         if (np == NULL) {
             throw ClusterException("Could not find node for manual "
                                    "override \"" +
