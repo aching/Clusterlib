@@ -44,22 +44,14 @@ class Group
     NodeMap *getNodes() { return &m_nodes; }
 
     /*
-     * Retrieve a named data distribution that covers (some or all
-     * of) its shards with nodes from this group.
-     */
-    DataDistribution *getDistribution(const string &distName)
-        throw(ClusterException);
-
-    /*
-     * Retrieve the map of data distributions that cover
-     * (some or all of) their shards with nodes from this group.
-     */
-    DataDistributionMap *getDistributions() { return &m_distributions; }
-
-    /*
      * Deliver event notifications.
      */
     void deliverNotification(const Event e);
+
+    /*
+     * Has the node map already been filled?
+     */
+    bool filledNodeMap() { return m_filledNodeMap; }
 
   protected:
     /*
@@ -76,11 +68,16 @@ class Group
           FactoryOps *f)
         : Notifyable(f, key),
           mp_app(app),
-          m_name(name)
+          m_name(name),
+          m_filledNodeMap(false)
     {
         m_nodes.clear();
-        m_distributions.clear();
     }
+
+    /*
+     * Set the filled flag for the node map.
+     */
+    void setFilledNodeMap(bool v) { m_filledNodeMap = v; }
 
   private:
     /*
@@ -92,6 +89,8 @@ class Group
         throw ClusterException("Someone called the Group default "
                                "constructor!");
     }
+
+    Mutex *getNodeMapLock() { return &m_nodeMapLock; }
 
   private:
     /*
@@ -108,12 +107,12 @@ class Group
      * Map of all nodes within this group.
      */
     NodeMap m_nodes;
+    Mutex m_nodeMapLock;
 
     /*
-     * Map of all data distributions that can use nodes within
-     * this group.
+     * Denote whether we've filled the node map.
      */
-    DataDistributionMap m_distributions;
+    bool m_filledNodeMap;
 };
 
 };	/* End of 'namespace clusterlib' */

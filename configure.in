@@ -378,4 +378,4 @@ AC_SUBST(LIBNSL)
 makefile_inc="$srcdir/Makefile.inc"
 AC_SUBST_FILE(makefile_inc)
 
-AC_OUTPUT(Manifest Makefile common/Makefile)
+AC_OUTPUT(Manifest Makefile common/Makefile example/Makefile)

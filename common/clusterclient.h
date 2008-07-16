@@ -40,10 +40,8 @@ class ClusterClient
     /*
      * Constructor used by the factory.
      */
-    ClusterClient(Factory *f, 
-                  ::zk::ZooKeeperAdapter *zk)
-        : mp_f(f),
-          mp_zk(zk)
+    ClusterClient(FactoryOps *f)
+        : mp_f(f)
     {
         m_apps.clear();
     }
@@ -61,14 +59,9 @@ class ClusterClient
 
   private:
     /*
-     * The factory instance we're using.
+     * The factory delegate instance we're using.
      */
-    Factory *mp_f;
-
-    /*
-     * The ZooKeeper adapter instance we're using.
-     */
-    ::zk::ZooKeeperAdapter *mp_zk;
+    FactoryOps *mp_f;
 
     /*
      * All the applications.

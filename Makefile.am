@@ -2,16 +2,12 @@
 # have all needed files, that a GNU package needs
 AUTOMAKE_OPTIONS = foreign 1.4
 
-SUBDIRS = common
+SUBDIRS = common example
 
 PKGDIR = @PACKAGE@_@VERSION@.@OS_TYPE@
 
 ###
 # Packaging targets
-##
-#
-#package_yinst: $(top_srcdir)/llf-proxy/llf_proxy.yicf
-#	yinst_create -r $(top_srcdir)/llf-proxy/llf_proxy.yicf
 
 package_clusterlib: $(top_builddir)/Manifest
 	devpackage $(top_builddir)/Manifest $(top_builddir)/install

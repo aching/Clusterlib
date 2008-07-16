@@ -150,7 +150,9 @@ class Notifyable
     };
 
     /*
-     * This must be supplied by subclasses.
+     * This must be supplied by subclasses. Use it to
+     * update the cached representation before the user
+     * defined notification receivers are called.
      */
     virtual void deliverNotification(const Event e) = 0;
 

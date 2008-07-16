@@ -79,11 +79,12 @@ const string ClusterlibStrings::MASTER = "master";
 /*
  * Constructor of Factory.
  *
- * Connect to ZooKeeper via the registry specification.
+ * Connect to cluster via the registry specification.
  * Initialize all the cache data structures.
  * Create the associated FactoryOps delegate object.
  */
 Factory::Factory(const string &registry)
+    : m_filledApplicationMap(false)
 {
     TRACE( CL_LOG, "Factory" );
 
@@ -103,6 +104,9 @@ Factory::Factory(const string &registry)
 Factory::~Factory()
 {
     TRACE( CL_LOG, "~Factory" );
+
+    delete mp_zk;
+    delete mp_ops;
 };
 
 /*
@@ -135,7 +139,7 @@ Factory::createServer(const string &app,
  * Handle events.
  */
 void
-Factory::eventReceived(const ZKEventSource zksrc, const ZKWatcherEvent &e)
+Factory::eventReceived(const ZKEventSource &zksrc, const ZKWatcherEvent &e)
 {
     TRACE( CL_LOG, "eventReceived" );
 };
@@ -148,32 +152,32 @@ Factory::eventReceived(const ZKEventSource zksrc, const ZKWatcherEvent &e)
  * Manage interests in events.
  */
 void
-Factory::addInterests(Notifyable *nrp, const Event events)
+Factory::addInterests(const string &key, Notifyable *nrp, const Event events)
 {
     TRACE( CL_LOG, "addInterests" );
 
     Locker l(&m_notificationLock);
-    InterestRecord *r = m_notificationInterests[nrp->getKey()];
+    InterestRecord *r = m_notificationInterests[key];
 
     if (r == NULL) {
         r = new InterestRecord(nrp, events);
-        m_notificationInterests[nrp->getKey()] = r;
+        m_notificationInterests[key] = r;
     }
     r->addInterests(events);
 };
 
 void
-Factory::removeInterests(Notifyable *nrp, const Event events)
+Factory::removeInterests(const string &key, const Event events)
 {
     TRACE( CL_LOG, "removeInterests" );
 
     Locker l(&m_notificationLock);
-    InterestRecord *r = m_notificationInterests[nrp->getKey()];
+    InterestRecord *r = m_notificationInterests[key];
 
     if (r != NULL) {
         r->removeInterests(events);
         if (r->getInterests() == 0) {
-            m_notificationInterests.erase(nrp->getKey());
+            m_notificationInterests.erase(key);
             delete r;
         }
     }
@@ -186,19 +190,38 @@ Application *
 Factory::getApplication(const string &name)
 {
     string key = createAppKey(name);
-    Locker l(&m_appLock);
-    Application *app = m_applications[key];
 
-    if (app != NULL) {
-        return app;
+    {
+        /*
+         * Scope the lock to the smallest extent
+         * possible.
+         */
+        Locker l(&m_appLock);
+        Application *app = m_applications[key];
+        if (app != NULL) {
+            return app;
+        }
     }
-    app = loadApplication(key);
-    /*
-     * TODO: Check for null app.
-     */
-    m_applications[key] = app;
+    return loadApplication(name, key);
+}
 
-    return app;
+DataDistribution *
+Factory::getDistribution(const string &distName,
+                         Application *app)
+{
+    string key = createDistKey(app->getName(), distName);
+
+    {
+        /*
+         * Scope the lock to the smallest extent possible.
+         */
+        Locker l(&m_ddLock);
+        DataDistribution *dist = m_dataDistributions[key];
+        if (dist != NULL) {
+            return dist;
+        }
+    }
+    return loadDistribution(distName, key, app);
 }
 
 Group *
@@ -206,37 +229,26 @@ Factory::getGroup(const string &groupName,
                   Application *app)
 {
     string key = createGroupKey(app->getName(), groupName);
-    Locker l(&m_grpLock);
-    Group *grp = m_groups[key];
 
-    if (grp != NULL) {
-        return grp;
+    {
+        /*
+         * Scope the lock to the smallest extent possible.
+         */
+        Locker l(&m_grpLock);
+        Group *grp = m_groups[key];
+        if (grp != NULL) {
+            return grp;
+        }
     }
-    grp = loadGroup(key, app);
-    m_groups[key] = grp;
-
-    return grp;
+    return loadGroup(groupName, key, app);
 }
 Group *
 Factory::getGroup(const string &appName,
                   const string &groupName)
 {
-    string key = createGroupKey(appName, groupName);
-    Locker l(&m_grpLock);
-    Group *grp = m_groups[key];
-
-    if (grp != NULL) {
-        return grp;
-    }
-
     Application *app = getApplication(appName);
-    /*
-     * TODO: Check for null app.
-     */
-    grp = loadGroup(key, app);
-    m_groups[key] = grp;
 
-    return grp;
+    return getGroup(groupName, app);
 }
 
 Node *
@@ -246,19 +258,19 @@ Factory::getNode(const string &nodeName, Group *grp, bool managed)
                                grp->getName(),
                                nodeName,
                                managed);
-    Locker l(&m_nodeLock);
-    Node *np = m_nodes[key];
 
-    if (np != NULL) {
-        return np;
+    {
+        /*
+         * Scope the lock to the smallest extent
+         * possible.
+         */
+        Locker l(&m_nodeLock);
+        Node *np = m_nodes[key];
+        if (np != NULL) {
+            return np;
+        }
     }
-    np = loadNode(key, grp);
-    /*
-     * TODO: Check for null np.
-     */
-    m_nodes[key] = np;
-
-    return np;
+    return loadNode(nodeName, key, grp);
 }
 Node *
 Factory::getNode(const string &appName,
@@ -266,24 +278,9 @@ Factory::getNode(const string &appName,
                  const string &nodeName,
                  bool managed)
 {
-    string key = createNodeKey(appName, groupName, nodeName, managed);
-    Locker l(&m_nodeLock);
-    Node *np = m_nodes[key];
-
-    if (np != NULL) {
-        return np;
-    }
     Group *grp = getGroup(appName, groupName);
-    /*
-     * TODO: Check for null grp.
-     */
-    np = loadNode(key, grp);
-    /*
-     * TODO: Check for null np.
-     */
-    m_nodes[key] = np;
 
-    return np;
+    return getNode(nodeName, grp, managed);
 }
 
 /*
@@ -403,6 +400,27 @@ Factory::hasNodeKeyPrefix(vector<string> &components, bool *managedP)
     }
     return true;
 }
+string
+Factory::getNodeKeyPrefix(const string &key, bool *managedP)
+{
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    if (hasNodeKeyPrefix(components, managedP) == false) {
+        return string("");
+    }
+    return getNodeKeyPrefix(components);
+}
+string
+Factory::getNodeKeyPrefix(vector<string> &components)
+{
+    return
+        getGroupKeyPrefix(components) +
+        PATHSEPARATOR +
+        components[7] +
+        PATHSEPARATOR +
+        components[8];
+}
 
 bool
 Factory::isGroupKey(const string &key)
@@ -433,6 +451,27 @@ Factory::hasGroupKeyPrefix(vector<string> &components)
         return false;
     }
     return true;
+}
+string
+Factory::getGroupKeyPrefix(const string &key)
+{
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    if (hasGroupKeyPrefix(components) == false) {
+        return string("");
+    }
+    return getGroupKeyPrefix(components);
+}
+string
+Factory::getGroupKeyPrefix(vector<string> &components)
+{
+    return
+        getAppKeyPrefix(components) +
+        PATHSEPARATOR +
+        GROUPS +
+        PATHSEPARATOR +
+        components[6];
 }
 
 bool
@@ -466,6 +505,30 @@ Factory::hasAppKeyPrefix(vector<string> &components)
     }
     return true;
 }
+string
+Factory::getAppKeyPrefix(const string &key)
+{
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    if (hasAppKeyPrefix(components) == false) {
+        return string("");
+    }
+    return getAppKeyPrefix(components);
+}
+string
+Factory::getAppKeyPrefix(vector<string> &components)
+{
+    return
+        ROOTNODE +
+        components[1] +
+        PATHSEPARATOR +
+        components[2] +
+        PATHSEPARATOR +
+        components[3] +
+        PATHSEPARATOR +
+        components[4];
+}
 
 bool
 Factory::isDistKey(const string &key)
@@ -496,6 +559,343 @@ Factory::hasDistKeyPrefix(vector<string> &components)
         return false;
     }
     return true;
+}
+string
+Factory::getDistKeyPrefix(const string &key)
+{
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    if (hasDistKeyPrefix(components) == false) {
+        return string("");
+    }
+    return getDistKeyPrefix(components);
+}
+string
+Factory::getDistKeyPrefix(vector<string> &components)
+{
+    return
+        getAppKeyPrefix(components) +
+        PATHSEPARATOR +
+        DISTRIBUTIONS +
+        PATHSEPARATOR +
+        components[6];
+}
+
+/*
+ * Entity loading from ZooKeeper. Also add it to the
+ * global cache.
+ */
+Application *
+Factory::loadApplication(const string &name, const string &key)
+{
+    TRACE( CL_LOG, "loadApplication");
+
+    Application *app;
+    {
+        /*
+         * Scope the lock to the shortest sequence possible.
+         */
+        Locker l(&m_appLock);
+
+        app = m_applications[key];
+        if (app != NULL) {
+            return app;
+        }
+        if (mp_zk->nodeExists(key, this, (void *) EN_APP_INTERESTS) == 
+            false) {
+            return NULL;
+        }
+        app = new Application(name, key, mp_ops);
+        m_applications[key] = app;
+    }
+
+    addInterests(key, app, EN_APP_INTERESTS);
+    addInterests(key + PATHSEPARATOR + GROUPS,
+                 app,
+                 EN_GRP_CREATION | EN_GRP_DELETION);
+    addInterests(key + PATHSEPARATOR + DISTRIBUTIONS,
+                 app,
+                 EN_DIST_CREATION | EN_DIST_DELETION);
+
+    return app;
+}
+void
+Factory::fillApplicationMap(ApplicationMap *amp)
+{
+    if (filledApplicationMap()) {
+        return;
+    }
+
+    vector<string> children;
+    vector<string>::iterator i;
+    string appsKey =
+        ROOTNODE +
+        CLUSTERLIB +
+        PATHSEPARATOR +
+        VERSION +
+        PATHSEPARATOR +
+        APPLICATIONS;
+    string appKey;
+    Application *app;
+
+    mp_zk->getNodeChildren(children, appsKey, this, (void *) EN_APP_INTERESTS);
+    for (i = children.begin(); i != children.end(); i++) {
+        app = getApplication(*i);
+        if (app == NULL) {
+            appKey = appsKey + PATHSEPARATOR + *i;
+            app = loadApplication(*i, appKey);
+            (*amp)[appKey] = app;
+        }
+    }
+    setFilledApplicationMap(true);
+}
+
+    
+DataDistribution *
+Factory::loadDistribution(const string &name,
+                          const string &key,
+                          Application *app)
+{
+    TRACE( CL_LOG, "loadDataDistribution" );
+
+    DataDistribution *dist;
+
+    {
+        /*
+         * Scope the lock to the shortest sequence possible.
+         */
+        Locker l(&m_ddLock);
+
+        dist = m_dataDistributions[key];
+        if (dist != NULL) {
+            return dist;
+        }
+        if (mp_zk->nodeExists(key, this, (void *) EN_DIST_INTERESTS) 
+            == false) {
+            return NULL;
+        }
+        dist = new DataDistribution(app, name, key, mp_ops);
+        m_dataDistributions[key] = dist;
+    }
+
+    addInterests(key, dist, EN_DIST_INTERESTS);
+    addInterests(key + PATHSEPARATOR + SHARDS,
+                 dist,
+                 EN_DIST_CHANGE);
+    addInterests(key + PATHSEPARATOR + GOLDENSHARDS,
+                 dist,
+                 EN_DIST_CHANGE);
+    addInterests(key + PATHSEPARATOR + MANUALOVERRIDES,
+                 dist,
+                 EN_DIST_CHANGE);
+
+    return dist;
+}
+void
+Factory::fillDataDistributionMap(DataDistributionMap *dmp,
+                                 Application *app)
+{
+    if (app->filledDataDistributionMap()) {
+        return;
+    }
+
+    vector<string> children;
+    vector<string>::iterator i;
+    string distsKey =
+        ROOTNODE +
+        CLUSTERLIB +
+        PATHSEPARATOR +
+        VERSION +
+        PATHSEPARATOR +
+        app->getName() +
+        PATHSEPARATOR +
+        DISTRIBUTIONS;
+    string distKey;
+    DataDistribution *dist;
+
+    mp_zk->getNodeChildren(children, distsKey, this, (void *) EN_DIST_INTERESTS);
+    Locker l(app->getDistributionMapLock());
+    for (i = children.begin(); i != children.end(); i++) {
+        dist = getDistribution(*i, app);
+        if (dist == NULL) {
+            distKey = distsKey + PATHSEPARATOR + *i;
+            dist = loadDistribution(*i, distKey, app);
+            (*dmp)[distKey] = dist;
+        }
+    }
+    app->setFilledDataDistributionMap(true);
+}
+
+Group *
+Factory::loadGroup(const string &name,
+                   const string &key,
+                   Application *app)
+{
+    TRACE( CL_LOG, "loadGroup" );
+
+    Group *grp;
+
+    {
+        /*
+         * Scope the lock to the shortest sequence possible.
+         */
+        Locker l(&m_grpLock);
+
+        grp = m_groups[key];
+        if (grp != NULL) {
+            return grp;
+        }
+        if (mp_zk->nodeExists(key, this, (void *) EN_GRP_INTERESTS)
+            == false) {
+            return NULL;
+        }
+        grp = new Group(app, name, key, mp_ops);
+        m_groups[key] = grp;
+    }
+
+    addInterests(key, grp, EN_GRP_INTERESTS);
+    addInterests(key + PATHSEPARATOR + NODES,
+                 grp,
+                 EN_GRP_MEMBERSHIP);
+
+    return NULL;
+}
+void
+Factory::fillGroupMap(GroupMap *gmp, Application *app)
+{
+    if (app->filledGroupMap()) {
+        return;
+    }
+
+    vector<string> children;
+    vector<string>::iterator i;
+    string groupsKey =
+        app->getKey() +
+        PATHSEPARATOR +
+        GROUPS;
+    string groupKey;
+    Group *grp;
+
+    mp_zk->getNodeChildren(children, groupsKey, this, (void *) EN_GRP_INTERESTS);
+    Locker l(app->getGroupMapLock());
+    for (i = children.begin(); i != children.end(); i++) {
+        grp = getGroup(*i, app);
+        if (grp == NULL) {
+            groupKey = groupsKey + PATHSEPARATOR + *i;
+            grp = loadGroup(*i, groupKey, app);
+            (*gmp)[groupKey] = grp;
+        }
+    }
+    app->setFilledGroupMap(true);
+}
+
+Node *
+Factory::loadNode(const string &name,
+                  const string &key,
+                  Group *grp)
+{
+    TRACE( CL_LOG, "loadNode" );
+
+    Node *node;
+
+    {
+        /*
+         * Scope the lock to the shortest sequence possible.
+         */
+        Locker l(&m_nodeLock);
+
+        node = m_nodes[key];
+        if (node != NULL) {
+            return node;
+        }
+        if (mp_zk->nodeExists(key, this, (void *) EN_NODE_INTERESTS)
+            == false) {
+            return NULL;
+        }
+        node = new Node(grp, name, key, mp_ops);
+        m_nodes[key] = node;
+    }
+
+    addInterests(key, node, EN_NODE_INTERESTS);
+    addInterests(key + PATHSEPARATOR + CLIENTSTATE,
+                 node,
+                 EN_NODE_HEALTHCHANGE);
+    addInterests(key + PATHSEPARATOR + CONNECTED,
+                 node,
+                 EN_NODE_CONNECTCHANGE);
+    addInterests(key + PATHSEPARATOR + MASTERSETSTATE,
+                 node,
+                 EN_NODE_MASTERSTATECHANGE);
+
+    return node;
+}
+void
+Factory::fillNodeMap(NodeMap *nmp, Group *grp)
+{
+    if (grp->filledNodeMap()) {
+        return;
+    }
+
+    vector<string> children;
+    vector<string>::iterator i;
+    string nodesKey =
+        grp->getKey() +
+        PATHSEPARATOR +
+        NODES;
+    string nodeKey;
+    Node *node;
+    bool managed;
+
+    mp_zk->getNodeChildren(children, nodesKey, this, (void *) EN_NODE_INTERESTS);
+    Locker l(grp->getNodeMapLock());
+    for (i = children.begin(); i != children.end(); i++) {
+        node = getNode(*i, grp, &managed);
+        if (node == NULL) {
+            nodeKey = nodesKey + PATHSEPARATOR + *i;
+            node = loadNode(*i, nodeKey, grp);
+            (*nmp)[nodeKey] = node;
+        }
+    }
+    grp->setFilledNodeMap(true);
+}
+
+/*
+ * Entity creation in ZooKeeper.
+ */
+Application *
+Factory::createApplication(const string &key)
+{
+    TRACE( CL_LOG, "createApplication" );
+
+    return NULL;
+}
+
+DataDistribution *
+Factory::createDistribution(const string &key,
+                            const string &marshalledShards,
+                            const string &marshalledManualOverrides,
+                            Application *app)
+{
+    TRACE( CL_LOG, "createDataDistribution" );
+
+    return NULL;
+}
+
+Group *
+Factory::createGroup(const string &key, Application *app)
+{
+    TRACE( CL_LOG, "createGroup" );
+
+    return NULL;
+}
+
+Node *
+Factory::createNode(const string &key, Group *grp)
+{
+    TRACE( CL_LOG, "createNode" );
+
+    return NULL;
 }
 
 };	/* End of 'namespace clusterlib' */

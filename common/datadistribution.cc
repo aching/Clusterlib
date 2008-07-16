@@ -326,6 +326,14 @@ DataDistribution::hashWork(const string &key)
 };
 
 /*
+ * Deliver a notification.
+ */
+void
+DataDistribution::deliverNotification(const Event e)
+{
+}
+
+/*
  * Return the node responsible for handling the work
  * represented by the given key.
  */

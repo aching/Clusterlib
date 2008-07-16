@@ -131,6 +131,12 @@ class Factory
 {
   public:
     /*
+     * This type defines a Factory callback function
+     * that handles a particular event.
+     */
+    typedef EventHandlerWrapper<Factory> FactoryEventHandler;
+
+    /*
      * Create a factory instance, connect it to
      * the specified cluster registry.
      */
@@ -161,7 +167,7 @@ class Factory
      * This API must be provided because of inheritance from
      * EventListener.
      */
-    void eventReceived(const ZKEventSource zksrc, const ZKWatcherEvent &e);
+    void eventReceived(const ZKEventSource &zksrc, const ZKWatcherEvent &e);
 
   private:
     /*
@@ -173,8 +179,10 @@ class Factory
     /*
      * Manage interests in events.
      */
-    void addInterests(Notifyable *nrp, const Event events);
-    void removeInterests(Notifyable *nrp, const Event events);
+    void addInterests(const string &key, 
+                      Notifyable *nrp,
+                      const Event events);
+    void removeInterests(const string &key, const Event events);
 
     /*
      * Retrieve (and potentially create) instances of
@@ -217,34 +225,71 @@ class Factory
 
     bool isNodeKey(const string &key, bool *managedP = NULL);
     bool hasNodeKeyPrefix(const string &key, bool *managedP = NULL);
-    bool hasNodeKeyPrefix(vector<string> &components, bool *managedP);
+    bool hasNodeKeyPrefix(vector<string> &components, bool *managedP = NULL);
+    string getNodeKeyPrefix(const string &key, bool *managedP = NULL);
+    string getNodeKeyPrefix(vector<string> &components);
 
     bool isGroupKey(const string &key);
     bool hasGroupKeyPrefix(const string &key);
     bool hasGroupKeyPrefix(vector<string> &components);
+    string getGroupKeyPrefix(const string &key);
+    string getGroupKeyPrefix(vector<string> &components);
 
     bool isAppKey(const string &key);
     bool hasAppKeyPrefix(const string &key);
     bool hasAppKeyPrefix(vector<string> &components);
+    string getAppKeyPrefix(const string &key);
+    string getAppKeyPrefix(vector<string> &components);
 
     bool isDistKey(const string &key);
     bool hasDistKeyPrefix(const string &key);
     bool hasDistKeyPrefix(vector<string> &components);
+    string getDistKeyPrefix(const string &key);
+    string getDistKeyPrefix(vector<string> &components);
 
     /*
      * Load entities from ZooKeeper.
      */
-    Application *loadApplication(const string &key);
-    DataDistribution *loadDistribution(const string &key,
+    Application *loadApplication(const string &name,
+                                 const string &key);
+    DataDistribution *loadDistribution(const string &name,
+                                       const string &key,
                                        Application *app);
-    Group *loadGroup(const string &key, Application *app);
-    Node *loadNode(const string &key, Group *grp);
+    Group *loadGroup(const string &name,
+                     const string &key,
+                     Application *app);
+    Node *loadNode(const string &name,
+                   const string &key,
+                   Group *grp);
+
+    void fillApplicationMap(ApplicationMap *amp);
+    void fillGroupMap(GroupMap *gmp, Application *app);
+    void fillNodeMap(NodeMap *nmp, Group *grp);
+    void fillDataDistributionMap(DataDistributionMap *dmp,
+                                 Application *app);
+
+    /*
+     * Did we already fill the application map?
+     */
+    bool filledApplicationMap() { return m_filledApplicationMap; }
+    void setFilledApplicationMap(bool v) { m_filledApplicationMap = v; }
+
+    /*
+     * Create entities in ZooKeeper.
+     */
+    Application *createApplication(const string &key);
+    DataDistribution *createDistribution(const string &key,
+                                         const string &marshalledShards,
+                                         const string &marshalledManualOverrides,
+                                         Application *app);
+    Group *createGroup(const string &key, Application *app);
+    Node *createNode(const string &key, Group *grp);
 
   private:
     /*
      * The factory ops delegator.
      */
-    FactoryOps *m_ops;
+    FactoryOps *mp_ops;
 
     /*
      * The registry of cached data distributions.
@@ -324,6 +369,11 @@ class Factory
      */
     NotificationInterestsMap m_notificationInterests;
     Mutex m_notificationLock;
+
+    /*
+     * Did we already fill the application map?
+     */
+    bool m_filledApplicationMap;
 };
 
 /*
@@ -337,16 +387,22 @@ class FactoryOps
   public:
     void addInterests(Notifyable *nrp, Event events)
     {
-        mp_f->addInterests(nrp, events);
+        mp_f->addInterests(nrp->getKey(), nrp, events);
     }
     void removeInterests(Notifyable *nrp, Event events)
     {
-        mp_f->removeInterests(nrp, events);
+        mp_f->removeInterests(nrp->getKey(), events);
     }
 
     Application *getApplication(const string &name)
     {
         return mp_f->getApplication(name);
+    }
+    void fillApplicationMap(ApplicationMap *amp)
+    {
+        if (mp_f->filledApplicationMap() == false) {
+            mp_f->fillApplicationMap(amp);
+        }
     }
 
     Group *getGroup(const string &name, Application *app)
@@ -356,6 +412,12 @@ class FactoryOps
     Group *getGroup(const string &appName, const string &grpName)
     {
         return mp_f->getGroup(appName, grpName);
+    }
+    void fillGroupMap(GroupMap *gmp, Application *app)
+    {
+        if (app->filledGroupMap() == false) {
+            mp_f->fillGroupMap(gmp, app);
+        }
     }
 
     Node *getNode(const string &name, Group *grp, bool managed)
@@ -369,6 +431,12 @@ class FactoryOps
     {
         return mp_f->getNode(appName, grpName, nodeName, managed);
     }
+    void fillNodeMap(NodeMap *nmp, Group *grp)
+    {
+        if (grp->filledNodeMap() == false) {
+            mp_f->fillNodeMap(nmp, grp);
+        }
+    }
 
     DataDistribution *getDistribution(const string &name,
                                       Application *app)
@@ -379,6 +447,13 @@ class FactoryOps
                                       const string &distName)
     {
         return mp_f->getDistribution(appName, distName);
+    }
+    void fillDataDistributionMap(DataDistributionMap *dmp,
+                                 Application *app)
+    {
+        if (app->filledDataDistributionMap() == false) {
+            mp_f->fillDataDistributionMap(dmp, app);
+        }
     }
 
     Shard *createShard(DataDistribution *dp,

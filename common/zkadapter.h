@@ -234,6 +234,47 @@ typedef EventSource<ZKWatcherEvent> ZKEventSource;
  * \brief The type definition of ZK event listener.
  */
 typedef EventListener<ZKWatcherEvent> ZKEventListener;
+
+/**
+ * \brief This is a helper class for handling events using a member function.
+ */
+template<class T>
+class EventHandlerWrapper
+{
+  public:
+    /*
+     * Signature for embedded method to call on event.
+     */
+    typedef void (T::*EventHandler)(const ZKWatcherEvent &watcherEvent);
+
+    /*
+     * Constructor.
+     */
+    EventHandlerWrapper(T &obj, EventHandler handler)
+        : m_obj(obj),
+          m_handler(handler)
+    {
+    }
+
+    /*
+     * Call the embedded method.
+     */
+    void handleEvent(const ZKWatcherEvent &watcherEvent)
+    {
+        (m_obj.*m_handler)(watcherEvent);
+    }
+        
+  private:
+    /*
+     * The instance to call.
+     */
+    T &m_obj;
+
+    /*
+     * Pointer to the embedded method.
+     */
+    EventHandler m_handler;
+};
            
 /**
  * \brief This is a wrapper around ZK C synchrounous API.
