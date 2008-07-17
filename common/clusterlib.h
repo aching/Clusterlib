@@ -268,6 +268,9 @@ class Factory
     void fillDataDistributionMap(DataDistributionMap *dmp,
                                  Application *app);
 
+    string loadShards(const string &key);
+    string loadManualOverrides(const string &key);
+
     /*
      * Did we already fill the application map?
      */
@@ -454,6 +457,14 @@ class FactoryOps
         if (app->filledDataDistributionMap() == false) {
             mp_f->fillDataDistributionMap(dmp, app);
         }
+    }
+    string loadShards(const string &key)
+    {
+        return mp_f->loadShards(key);
+    }
+    string loadManualOverrides(const string &key)
+    {
+        return mp_f->loadManualOverrides(key);
     }
 
     Shard *createShard(DataDistribution *dp,

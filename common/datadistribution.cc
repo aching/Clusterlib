@@ -303,13 +303,32 @@ DataDistribution::marshallOverrides()
 };
 
 /*
- * Update the data distribution from ZK.
+ * Update the data distribution from the cluster.
  */
 void
 DataDistribution::updateDistribution()
     throw(ClusterException)
 {
     TRACE( CL_LOG, "updateDistribution" );
+
+    string shards = getDelegate()->loadShards(getKey());
+    string overrides = getDelegate()->loadManualOverrides(getKey());
+    ShardList::iterator si;
+    NodeMap::iterator mi;
+
+    for (si = m_shards.begin(); si != m_shards.end(); si++) {
+        delete *si;
+    }
+    for (mi = m_manualOverrides.begin();
+         mi != m_manualOverrides.end();
+         mi++) {
+        delete mi->second;
+    }
+    m_shards.clear();
+    m_manualOverrides.clear();
+
+    unmarshallShards(shards, m_shards);
+    unmarshallOverrides(overrides, m_manualOverrides);    
 };
 
 /*
@@ -326,11 +345,15 @@ DataDistribution::hashWork(const string &key)
 };
 
 /*
- * Deliver a notification.
+ * Deliver a notification. Use this to update the cached
+ * representation of the distribution.
  */
 void
 DataDistribution::deliverNotification(const Event e)
 {
+    TRACE( CL_LOG, "deliverNotification" );
+
+    updateDistribution();
 }
 
 /*

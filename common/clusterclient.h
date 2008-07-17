@@ -31,6 +31,11 @@ class ClusterClient
      */
     ApplicationMap *getApplications() throw(ClusterException);
 
+    /*
+     * Get the input queue of this client.
+     */
+    ClientEventQueue *getQueue() { return &m_queue; }
+
   protected:
     /*
      * Make the factory a friend.
@@ -67,6 +72,12 @@ class ClusterClient
      * All the applications.
      */
     ApplicationMap m_apps;
+
+    /*
+     * The blocking queue for delivering notifications
+     * to this client.
+     */
+    ClientEventQueue m_queue;
 };
 
 };	/* End of 'namespace clusterlib' */

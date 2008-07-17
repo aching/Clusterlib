@@ -117,7 +117,7 @@ Factory::createClient()
 {
     TRACE( CL_LOG, "createClient" );
 
-    return NULL;
+    return new ClusterClient(mp_ops);
 };
 
 /*
@@ -683,9 +683,6 @@ Factory::loadDistribution(const string &name,
     addInterests(key + PATHSEPARATOR + SHARDS,
                  dist,
                  EN_DIST_CHANGE);
-    addInterests(key + PATHSEPARATOR + GOLDENSHARDS,
-                 dist,
-                 EN_DIST_CHANGE);
     addInterests(key + PATHSEPARATOR + MANUALOVERRIDES,
                  dist,
                  EN_DIST_CHANGE);
@@ -725,6 +722,29 @@ Factory::fillDataDistributionMap(DataDistributionMap *dmp,
         }
     }
     app->setFilledDataDistributionMap(true);
+}
+
+string
+Factory::loadShards(const string &key)
+{
+    string snode =
+        key +
+        PATHSEPARATOR +
+        SHARDS;
+    return mp_zk->getNodeData(snode,
+                              this,
+                              (void *) EN_DIST_CHANGE);
+}
+string
+Factory::loadManualOverrides(const string &key)
+{
+    string monode =
+        key +
+        PATHSEPARATOR +
+        MANUALOVERRIDES;
+    return mp_zk->getNodeData(monode,
+                              this,
+                              (void *) EN_DIST_CHANGE);
 }
 
 Group *

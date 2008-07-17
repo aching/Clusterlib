@@ -55,6 +55,29 @@ const int EN_DIST_INTERESTS =	(EN_DIST_CREATION |
 typedef int Event;
 
 /*
+ * Structure for passing events+handler to clients.
+ */
+struct ClientEvent
+{
+    NotificationReceiver *mp_rp;
+    Event m_e;
+
+    /*
+     * Constructor.
+     */
+    ClientEvent(NotificationReceiver *rp, Event e)
+    {
+        m_e = e;
+        mp_rp = rp;
+    }
+};
+
+/*
+ * Typedef for client event delivery queue.
+ */
+typedef BlockingQueue<ClientEvent *> ClientEventQueue;
+
+/*
  * Interface for notification receiver. Must be derived
  * to define specific behavior for handling events.
  */
@@ -64,10 +87,9 @@ class NotificationReceiver
     /*
      * Constructor.
      */
-    NotificationReceiver(const Event mask)
-        : m_mask(mask)
-    {
-    }
+    NotificationReceiver(const Event mask,
+                         ClusterClient *cl,
+                         Notifyable *np);
 
     /*
      * Destructor.
@@ -89,11 +111,41 @@ class NotificationReceiver
         return ((long) this == (long) other) ? true : false;
     }
 
+    /*
+     * Get the object for which the event is being delivered.
+     */
+    Notifyable *getNotifyable() { return mp_notifyable; }
+
+  protected:
+    /*
+     * Make Notifyable a friend so it can invoke
+     * passNotification().
+     */
+    friend class Notifyable;
+
+    /*
+     * Pass the event notification onto the enclosed queue.
+     */
+    void passNotification(Event e)
+    {
+        mp_queue->put(new ClientEvent(this, e));
+    }
+
   private:
     /*
      * The events that this receiver is interested in receiving.
      */
     Event m_mask;
+
+    /*
+     * The notifyable object that the events are about.
+     */
+    Notifyable *mp_notifyable;
+
+    /*
+     * The queue to which to deliver the events.
+     */
+    ClientEventQueue *mp_queue;
 };
 
 /*
@@ -133,18 +185,36 @@ class Notifyable
      */
     const string getKey() { return m_key; }
 
-  public:
     /*
      * Notify the notifyable object.
      */
     virtual void notify(const Event e)
     {
         NotificationReceivers::iterator i;
+        NotificationReceivers receivers;
 
+        /*
+         * Update the cached object.
+         */
         deliverNotification(e);
-        for (i = m_receivers.begin(); i != m_receivers.end(); i++) {
+
+        {
+            /*
+             * Make a copy of the current notification reciever
+             * list to protect against side effects. Suggested by
+             * ruslanm@yahoo-inc.com, thanks!
+             */
+            Locker l(getReceiversLock());
+
+            receivers = m_receivers;
+        }
+
+        /*
+         * Deliver the event to all interested "user-land" clients.
+         */
+        for (i = receivers.begin(); i != receivers.end(); i++) {
             if ((*i)->matchEvent(e)) {
-                (*i)->deliverNotification(e);
+                (*i)->passNotification(e);
             }
         }
     };
@@ -161,6 +231,8 @@ class Notifyable
      */
     void registerNotificationReceiver(NotificationReceiver *unrp)
     {
+        Locker l(getReceiversLock());
+
         m_receivers.push_back(unrp);
     };
 
@@ -170,12 +242,16 @@ class Notifyable
     void unregisterNotificationReceiver(NotificationReceiver *unrp)
     {
         NotificationReceivers::iterator i;
+        Locker l(getReceiversLock());
 
         if ((i = find(m_receivers.begin(), m_receivers.end(), unrp))
             != m_receivers.end()) {
             m_receivers.erase(i);
         }
     }
+
+  private:
+    Mutex *getReceiversLock() { return &m_receiversLock; }
 
   private:
     /*
@@ -194,6 +270,7 @@ class Notifyable
      * this notifyable.
      */
     NotificationReceivers m_receivers;
+    Mutex m_receiversLock;
 };
 
 };	/* End of 'namespace clusterlib' */

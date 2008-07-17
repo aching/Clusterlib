@@ -5,8 +5,8 @@
  *
  * =============================================================================
  * $Header:$
- * $Revision:$
- * $Date:$
+ * $Revision$
+ * $Date$
  * =============================================================================
  */
 
@@ -27,13 +27,19 @@ Group *
 Application::getGroup(const string &groupName)
     throw(ClusterException)
 {
+    Group *grp;
+
     /*
      * If it is already cached, return the
      * cached group object.
      */
-    Group *grp = m_groups[groupName];
-    if (grp != NULL) {
-        return grp;
+    {
+        Locker l1(getGroupMapLock());
+
+        grp = m_groups[groupName];
+        if (grp != NULL) {
+            return grp;
+        }
     }
 
     /*
@@ -43,6 +49,8 @@ Application::getGroup(const string &groupName)
      */
     grp = getDelegate()->getGroup(groupName, this);
     if (grp != NULL) {
+        Locker l2(getGroupMapLock());
+
         m_groups[groupName] = grp;
         return grp;
     }
@@ -54,6 +62,61 @@ Application::getGroup(const string &groupName)
                            "Cannot find group object " +
                            groupName);
 };
+
+/*
+ * Retrieve a data distribution object. Load
+ * it from the cluster if it is not yet in
+ * the cache.
+ */
+DataDistribution *
+Application::getDistribution(const string &distName)
+    throw(ClusterException)
+{
+    DataDistribution *dist;
+
+    /*
+     * If it is already cached, return the
+     * cached group object.
+     */
+    {
+        Locker l1(getDistributionMapLock());
+
+        dist = m_distributions[distName];
+        if (dist != NULL) {
+            return dist;
+        }
+    }
+
+    /*
+     * If it's not yet cached, load the distribution
+     * from the cluster, cache it, and return it.
+     */
+    dist = getDelegate()->getDistribution(distName, this);
+    if (dist != NULL) {
+        Locker l2(getDistributionMapLock());
+        
+        m_distributions[distName] = dist;
+        return dist;
+    }
+
+    /*
+     * Object not found.
+     */
+    throw ClusterException(string ("") +
+                           "Cannot find distribution object " +
+                           distName);
+}
+
+/*
+ * Deliver notification to the Notifyable object first,
+ * before calling user supplied notification receivers.
+ * This gives the object a chance to update its cached
+ * representation.
+ */
+void
+Application::deliverNotification(const Event event)
+{
+}
 
 };	/* End of 'namespace clusterlib' */
 

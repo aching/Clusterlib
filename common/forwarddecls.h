@@ -31,6 +31,7 @@ class Group;
 class HealthChecker;
 class Node;
 class NodeAddress;
+class NotificationReceiver;
 class Notifyable;
 class Shard;
 
@@ -62,7 +63,6 @@ typedef map<string, FactoryOps *>		FactoryOpsMap;
 typedef map<string, Group *>			GroupMap;
 typedef map<string, HealthChecker *>		HealthCheckerMap;
 typedef map<string, Node *>	        	NodeMap;
-typedef map<string, Notifyable *>		NotifyableMap;
 
 };	/* End of 'namespace clusterlib' */
 
