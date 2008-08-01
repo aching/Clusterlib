@@ -16,6 +16,20 @@ namespace clusterlib
 {
 
 /*
+ * Define the possible states a node
+ * can be in.
+ */
+enum NodeState {
+    NS_ILLEGAL = -1,
+    NS_GREEN = 0,
+    NS_YELLOW = 1,
+    NS_RED = 2,
+    NS_DOWN = 3,
+    NS_INACTIVE = 4,
+    NS_SPARE = 5
+};
+
+/*
  * Definition of class Node
  */
 class Node

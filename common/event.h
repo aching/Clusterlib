@@ -1,9 +1,9 @@
 /* 
- * =============================================================================
+ * ============================================================================
  * $Header$
  * $Revision$
  * $Date$
- * =============================================================================
+ * ============================================================================
  */
 
 #ifndef __EVENT_H__
@@ -28,6 +28,15 @@ using namespace boost;
 
 namespace clusterlib {
 
+/*
+ * Enum of the various types of events supported:
+ */
+enum EventTypes {
+    ILLEGALEVENT = -1,
+    TIMEREVENT = 0,
+    ZKEVENT = 1
+};
+
 //forward declaration of EventSource
 template<typename E>
 class EventSource;
@@ -37,18 +46,21 @@ class EventSource;
  * \brief of a particular {@link EventSource}.
  */
 template<typename E>
-class EventListener {
-    public:
+class EventListener
+{
+  public:
         
-        /**
-         * \brief This method is invoked whenever an event 
-         * \brief has been received by the event source being observed.
-         * 
-         * @param source the source the triggered the event
-         * @param event the actual event being triggered
-         */
-        virtual void eventReceived(const EventSource<E> &source, const E &e) = 0;
-};            
+    /**
+     * \brief This method is invoked whenever an event 
+     * \brief has been received by the event source being observed.
+     * 
+     * @param source the source the triggered the event
+     * @param event the actual event being triggered
+     */
+    virtual void eventReceived(const EventSource<E> &source, 
+                               const E &e)
+        = 0;
+};  
 
 /**
  * \brief This class represents a source of events.
@@ -59,148 +71,161 @@ class EventListener {
  * using {@link #fireEvent} method.
  */
 template<typename E>           
-class EventSource {
-    public:
+class EventSource
+{
+  public:
         
-        /**
-         * \brief The type corresponding to the list of registered event listeners.
-         */
-        typedef set<EventListener<E> *> EventListeners;
+    /**
+     * \brief The type corresponding to the list of registered
+     * event listeners.
+     */
+    typedef set<EventListener<E> *> EventListeners;
         
-        /**
-         * \brief Registers a new event listener.
-         * 
-         * @param listener the listener to be added to the set of listeners
-         */
-        void addListener(EventListener<E> *listener) {
-            m_listeners.insert( listener );
-        }
+    /**
+     * \brief Registers a new event listener.
+     * 
+     * @param listener the listener to be added to the set of listeners
+     */
+    void addListener(EventListener<E> *listener)
+    {
+        m_listeners.insert( listener );
+    }
         
-        /**
-         * \brief Removes an already registered listener.
-         * 
-         * @param listener the listener to be removed
-         */
-        void removeListener(EventListener<E> *listener) {
-            m_listeners.erase( listener );
-        }
+    /**
+     * \brief Removes an already registered listener.
+     * 
+     * @param listener the listener to be removed
+     */
+    void removeListener(EventListener<E> *listener)
+    {
+        m_listeners.erase( listener );
+    }
         
-        /**
-         * \brief Destructor.
-         */
-        virtual ~EventSource() {}
+    /**
+     * \brief Destructor.
+     */
+    virtual ~EventSource() {}
         
-    protected:
+  protected:
         
-        /**
-         * \brief Fires the given event to all registered listeners.
-         * 
-         * <p>
-         * This method essentially iterates over all listeners
-         * and invokes {@link fireEvent(EventListener<E> *listener, const E &event)}
-         * for each element. All derived classes are free to
-         * override the method to provide better error handling
-         * than the default implementation.
-         * 
-         * @param event the event to be propagated to all listeners
-         */
-        void fireEvent(const E &event);
+    /**
+     * \brief Fires the given event to all registered listeners.
+     * 
+     * <p>
+     * This method essentially iterates over all listeners
+     * and invokes 
+     * {@link fireEvent(EventListener<E> *listener, const E &event)}
+     * for each element. All derived classes are free to
+     * override the method to provide better error handling
+     * than the default implementation.
+     * 
+     * @param event the event to be propagated to all listeners
+     */
+    void fireEvent(const E &event);
         
-        /**
-         * \brief Sends an event to the given listener.
-         * 
-         * @param listener the listener to whom pass the event
-         * @param event the event to be handled
-         */
-        virtual void fireEvent(EventListener<E> *listener, const E &event);
+    /**
+     * \brief Sends an event to the given listener.
+     * 
+     * @param listener the listener to whom pass the event
+     * @param event the event to be handled
+     */
+    virtual void fireEvent(EventListener<E> *listener, const E &event);
         
-    private:
+  private:
         
-        /**
-         * The set of registered event listeners.
-         */
-        EventListeners m_listeners;            
-    
+    /**
+     * The set of registered event listeners.
+     */
+    EventListeners m_listeners;            
 };
 
 /**
  * \brief The interface of a generic event wrapper.
  */
-class AbstractEventWrapper {
-    public:
+class AbstractEventWrapper
+{
+  public:
         
-        /**
-         * \brief Destructor.
-         */
-        virtual ~AbstractEventWrapper() {}
+    /**
+     * \brief Destructor.
+     */
+    virtual ~AbstractEventWrapper() {}
         
-        /**
-         * \brief Returns the underlying wrapee's data.
-         */
-        virtual void *getWrapee() = 0;
+    /**
+     * \brief Returns the underlying wrapee's data.
+     */
+    virtual void *getWrapee() = 0;
 };
 
 /**
  * \brief A template based implementation of {@link AbstractEventWrapper}.
  */
 template<typename E>
-class EventWrapper : public AbstractEventWrapper {
-    public:
-        EventWrapper(const E &e) : m_e(e) {
-        }
-        void *getWrapee() {
-            return &m_e;
-        }
-    private:
-        E m_e;
+class EventWrapper
+    : public AbstractEventWrapper
+{
+  public:
+    EventWrapper(const E &e)
+        : m_e(e)
+    {
+    }
+    void *getWrapee()
+    {
+        return &m_e;
+    }
+  private:
+    E m_e;
 };
 
 /**
  * \brief This class represents a generic event.
  */
-class GenericEvent {
-    public:
+class GenericEvent
+{
+  public:
         
-        /**
-         * \brief Constructor.
-         */
-        GenericEvent() : m_type(0) {}
+    /**
+     * \brief Constructor.
+     */
+    GenericEvent() : m_type(0) {}
 
-        /**
-         * \brief Constructor.
-         * 
-         * @param type the type of this event
-         * @param eventWarpper the wrapper around event's data
-         */
-        GenericEvent(int type, AbstractEventWrapper *eventWrapper) : 
-            m_type(type), m_eventWrapper(eventWrapper) {
-        }
+    /**
+     * \brief Constructor.
+     * 
+     * @param type the type of this event
+     * @param eventWarpper the wrapper around event's data
+     */
+    GenericEvent(int type, AbstractEventWrapper *eventWrapper)
+        : m_type(type),
+          mp_eventWrapper(eventWrapper)
+    {
+    }
         
-        /**
-         * \brief Returns the type of this event.
-         * 
-         * @return type of this event
-         */
-        int getType() const { return m_type; }
+    /**
+     * \brief Returns the type of this event.
+     * 
+     * @return type of this event
+     */
+    int getType() const { return m_type; }
         
-        /**
-         * \brief Returns the event's data.
-         * 
-         * @return the event's data
-         */
-        void *getEvent() const { return m_eventWrapper->getWrapee(); }
+    /**
+     * \brief Returns the event's data.
+     * 
+     * @return the event's data
+     */
+    void *getEvent() const { return mp_eventWrapper->getWrapee(); }
         
-    private:
+  private:
+    /**
+     * The event type.
+     */
+    int m_type;
 
-        /**
-         * The event type.
-         */
-        int m_type;
-
-        /**
-         * The event represented as abstract wrapper.
-         */
-        shared_ptr<AbstractEventWrapper> m_eventWrapper;
+    /**
+     * The event represented as abstract wrapper.
+     */
+    AbstractEventWrapper *mp_eventWrapper;
+    //shared_ptr<AbstractEventWrapper> m_eventWrapper;
         
 };
     
@@ -210,76 +235,82 @@ class GenericEvent {
  * as {@link GenericEvent}s.
  */
 template<typename E, const int type>
-class EventListenerAdapter : public virtual EventListener<E>,
-                             public virtual EventSource<GenericEvent>
+class EventListenerAdapter
+    : public virtual EventListener<E>,
+      public virtual EventSource<GenericEvent>
 {
-    public:
+  public:
         
-        /**
-         * \brief Constructor.
-         * 
-         * @param eventSource the source on which register this listener
-         */
-        EventListenerAdapter(EventSource<E> &eventSource) {
-            eventSource.addListener(this);
-        }
+    /**
+     * \brief Constructor.
+     * 
+     * @param eventSource the source on which register this listener
+     */
+    EventListenerAdapter(EventSource<E> &eventSource)
+    {
+        eventSource.addListener(this);
+    }
         
-        void eventReceived(const EventSource<E> &source, const E &e) {
-            AbstractEventWrapper *wrapper = new EventWrapper<E>(e);
-            GenericEvent event(type, wrapper);
-            fireEvent( event );
-        }
-
+    void eventReceived(const EventSource<E> &source, const E &e)
+    {
+        AbstractEventWrapper *wrapper = new EventWrapper<E>(e);
+        GenericEvent event(type, wrapper);
+        fireEvent( event );
+    }
 };        
 
 /**
- * \brief This class provides an adapter between an asynchronous and synchronous 
- * \brief event handling.
+ * \brief This class provides an adapter between an asynchronous
+ * and synchronous event handling.
  * 
  * <p>
  * This class queues up all received events and exposes them through 
  * {@link #getNextEvent()} method.
  */
 template<typename E>                  
-class SynchronousEventAdapter : public EventListener<E> {
-    public:
+class SynchronousEventAdapter
+    : public EventListener<E>
+{
+  public:
         
-        void eventReceived(const EventSource<E> &source, const E &e) {
-            m_queue.put( e );
-        }
+    void eventReceived(const EventSource<E> &source, const E &e)
+    {
+        m_queue.put( e );
+    }
 
-        /**
-         * \brief Returns the next available event from the underlying queue,
-         * \brief possibly blocking, if no data is available.
-         * 
-         * @return the next available event
-         */
-        E getNextEvent() {
-            return m_queue.take();
-        }
+    /**
+     * \brief Returns the next available event from the underlying queue,
+     * \brief possibly blocking, if no data is available.
+     * 
+     * @return the next available event
+     */
+    E getNextEvent()
+    {
+        return m_queue.take();
+    }
         
-        /**
-         * \brief Returns whether there are any events in the queue or not.
-         * 
-         * @return true if there is at least one event and 
-         *         the next call to {@link #getNextEvent} won't block
-         */
-        bool hasEvents() const {
-            return (m_queue.empty() ? false : true);
-        }
+    /**
+     * \brief Returns whether there are any events in the queue or not.
+     * 
+     * @return true if there is at least one event and 
+     *         the next call to {@link #getNextEvent} won't block
+     */
+    bool hasEvents() const
+    {
+        return (m_queue.empty() ? false : true);
+    }
         
-        /**
-         * \brief Destructor.
-         */
-        virtual ~SynchronousEventAdapter() {}
+    /**
+     * \brief Destructor.
+     */
+    virtual ~SynchronousEventAdapter() {}
 
-    private:
-        
-        /**
-         * The blocking queue of all events received so far.
-         */
-        BlockingQueue<E> m_queue;
-        
+  private:
+
+    /**
+     * The blocking queue of all events received so far.
+     */
+    BlockingQueue<E> m_queue;
 };
 
 /**
@@ -291,237 +322,256 @@ typedef int32_t TimerId;
  * This class represents a timer event parametrized by the user's data type.
  */
 template<typename T>
-class TimerEvent {
-    public:
+class TimerEvent
+{
+  public:
        
-        /**
-         * \brief Constructor.
-         * 
-         * @param id the ID of this event
-         * @param alarmTime when this event is to be triggered
-         * @param userData the user data associated with this event
-         */
-        TimerEvent(TimerId id, int64_t alarmTime, const T &userData) :
-            m_id(id), m_alarmTime(alarmTime), m_userData(userData) 
-        {}     
+    /**
+     * \brief Constructor.
+     * 
+     * @param id the ID of this event
+     * @param alarmTime when this event is to be triggered
+     * @param userData the user data associated with this event
+     */
+    TimerEvent(TimerId id, int64_t alarmTime, const T &userData)
+        : m_id(id),
+          m_alarmTime(alarmTime),
+          m_userData(userData) 
+    {
+    }     
 
-        /**
-         * \brief Constructor.
-         */
-        TimerEvent() : m_id(-1), m_alarmTime(-1) {}
+    /**
+     * \brief Constructor.
+     */
+    TimerEvent()
+        : m_id(-1),
+          m_alarmTime(-1)
+    {
+    }
                            
-        /**
-         * \brief Returns the ID.
-         * 
-         * @return the ID of this event
-         */
-        TimerId getID() const { return m_id; }
+    /**
+     * \brief Returns the ID.
+     * 
+     * @return the ID of this event
+     */
+    TimerId getID() const { return m_id; }
         
-        /**
-         * \brief Returns the alarm time.
-         * 
-         * @return the alarm time
-         */
-        int64_t getAlarmTime() const { return m_alarmTime; }
+    /**
+     * \brief Returns the alarm time.
+     * 
+     * @return the alarm time
+     */
+    int64_t getAlarmTime() const { return m_alarmTime; }
               
-        /**
-         * \brief Returns the user's data.
-         * 
-         * @return the user's data
-         */
-        T const &getUserData() const { return m_userData; }
+    /**
+     * \brief Returns the user's data.
+     * 
+     * @return the user's data
+     */
+    T const &getUserData() const { return m_userData; }
         
-        /**
-         * \brief Returns whether the given alarm time is less than this event's 
-         * \brief time.
-         */
-        bool operator<(const int64_t alarmTime) const {
-            return m_alarmTime < alarmTime;
-        }
+    /**
+     * \brief Returns whether the given alarm time is less than this event's 
+     * \brief time.
+     */
+    bool operator<(const int64_t alarmTime) const
+    {
+        return m_alarmTime < alarmTime;
+    }
         
-    private:
+  private:
+  
+    /**
+     * The ID of ths event.
+     */
+    TimerId m_id;
         
-        /**
-         * The ID of ths event.
-         */
-        TimerId m_id;
+    /**
+     * The time at which this event triggers.
+     */
+    int64_t m_alarmTime;    
         
-        /**
-         * The time at which this event triggers.
-         */
-        int64_t m_alarmTime;    
-        
-        /**
-         * The user specific data associated with this event.
-         */
-        T m_userData;
-        
+    /**
+     * The user specific data associated with this event.
+     */
+    T m_userData;
 };
 
 template<typename T>
-class Timer : public EventSource<TimerEvent<T> > {
-    public:
+class Timer
+    : public EventSource<TimerEvent<T> >
+{
+  public:
         
-        /**
-         * \brief Constructor.
-         */
-        Timer() : m_currentEventID(0), m_terminating(false) {
-            m_workerThread.Create( *this, &Timer<T>::sendAlarms );
-        }
+    /**
+     * \brief Constructor.
+     */
+    Timer()
+        : m_currentEventID(0),
+          m_terminating(false)
+    {
+        m_workerThread.Create( *this, &Timer<T>::sendAlarms );
+    }
         
-        /**
-         * \brief Destructor.
-         */
-        ~Timer() {
-            m_terminating = true;
-            m_lock.notify();
-            m_workerThread.Join();
-        }
+    /**
+     * \brief Destructor.
+     */
+    virtual ~Timer()
+    {
+        m_terminating = true;
+        m_lock.notify();
+        m_workerThread.Join();
+    }
         
-        /**
-         * \brief Schedules the given event <code>timeFromNow</code> milliseconds.
-         * 
-         * @param timeFromNow time from now, in milliseconds, when the event 
-         *                    should be triggered 
-         * @param userData the user data associated with the timer event
-         * 
-         * @return the ID of the newly created timer event
-         */
-        TimerId scheduleAfter(int64_t timeFromNow, const T &userData) {
-            return scheduleAt( getCurrentTimeMillis() + timeFromNow, userData );
-        }
+    /**
+     * \brief Schedules the given event <code>timeFromNow</code> milliseconds.
+     * 
+     * @param timeFromNow time from now, in milliseconds, when the event 
+     *                    should be triggered 
+     * @param userData the user data associated with the timer event
+     * 
+     * @return the ID of the newly created timer event
+     */
+    TimerId scheduleAfter(int64_t timeFromNow, const T &userData)
+    {
+        return scheduleAt( getCurrentTimeMillis() + timeFromNow, userData );
+    }
 
-        /**
-         * \brief Schedules an event at the given time.
-         * 
-         * @param absTime absolute time, in milliseconds, at which the event 
-         *                should be triggered; the time is measured
-         *                from Jan 1st, 1970   
-         * @param userData the user data associated with the timer event
-         * 
-         * @return the ID of the newly created timer event
-         */
-        TimerId scheduleAt(int64_t absTime, const T &userData) {
-            m_lock.lock();
-            typename QueueType::iterator pos = 
-                    lower_bound( m_queue.begin(), m_queue.end(), absTime );
-            TimerId id = m_currentEventID++;
-            TimerEvent<T> event(id, absTime, userData); 
-            m_queue.insert( pos, event );
-            m_lock.notify();
-            m_lock.unlock();
-            return id;
-        }
+    /**
+     * \brief Schedules an event at the given time.
+     * 
+     * @param absTime absolute time, in milliseconds, at which the event 
+     *                should be triggered; the time is measured
+     *                from Jan 1st, 1970   
+     * @param userData the user data associated with the timer event
+     * 
+     * @return the ID of the newly created timer event
+     */
+    TimerId scheduleAt(int64_t absTime, const T &userData)
+    {
+        m_lock.lock();
+        typename QueueType::iterator pos = 
+            lower_bound( m_queue.begin(), m_queue.end(), absTime );
+        TimerId id = m_currentEventID++;
+        TimerEvent<T> event(id, absTime, userData); 
+        m_queue.insert( pos, event );
+        m_lock.notify();
+        m_lock.unlock();
+        return id;
+    }
         
-        /**
-         * \brief Returns the current time since Jan 1, 1970, in milliseconds.
-         * 
-         * @return the current time in milliseconds
-         */
-        static int64_t getCurrentTimeMillis() {
-            struct timeval now;
-            gettimeofday( &now, NULL );
-            return now.tv_sec * 1000LL + now.tv_usec / 1000;
-        }
+    /**
+     * \brief Returns the current time since Jan 1, 1970, in milliseconds.
+     * 
+     * @return the current time in milliseconds
+     */
+    static int64_t getCurrentTimeMillis()
+    {
+        struct timeval now;
+        gettimeofday( &now, NULL );
+        return now.tv_sec * 1000LL + now.tv_usec / 1000;
+    }
 
-        /**
-         * \brief Cancels the given timer event.
-         * 
-         * 
-         * @param eventID the ID of the event to be canceled
-         * 
-         * @return whether the event has been canceled
-         */
-        bool cancelAlarm(TimerId eventID) {
-            bool canceled = false;                      
-            m_lock.lock();
-            typename QueueType::iterator i;
-            for (i = m_queue.begin(); i != m_queue.end(); ++i) {
-                if (eventID == i->getID()) {
-                    m_queue.erase( i );
-                    canceled = true;
-                    break;
-                }
+    /**
+     * \brief Cancels the given timer event.
+     * 
+     * 
+     * @param eventID the ID of the event to be canceled
+     * 
+     * @return whether the event has been canceled
+     */
+    bool cancelAlarm(TimerId eventID)
+    {
+        bool canceled = false;                      
+        m_lock.lock();
+        typename QueueType::iterator i;
+        for (i = m_queue.begin(); i != m_queue.end(); ++i) {
+            if (eventID == i->getID()) {
+                m_queue.erase( i );
+                canceled = true;
+                break;
             }
-            m_lock.unlock();
-            return canceled;
         }
+        m_lock.unlock();
+        return canceled;
+    }
         
-        /**
-         * Executes the main loop of the worker thread.
-         */
-        void sendAlarms() {
-            //iterate until terminating
-            while (!m_terminating) {
-                m_lock.lock();
-                //1 step - wait until there is an event in the queue
-                if (m_queue.empty()) {
-                    //wait up to 100ms to get next event
-                    m_lock.wait( 100 );
-                }     
-                bool fire = false;
-                if (!m_queue.empty()) {
-                    //retrieve the event from the queue and send it
-                    TimerEvent<T> event = m_queue.front();      
-                    //check whether we can send it right away
-                    int64_t timeToWait = 
-                        event.getAlarmTime() - getCurrentTimeMillis();
-                    if (timeToWait <= 0) {
-                        m_queue.pop_front();
-                        //we fire only if it's still in the queue and alarm
-                        //time has just elapsed (in case the top event
-                        //is canceled)
-                        fire = true;    
-                    } else {
-                        m_lock.wait( timeToWait );
-                    }
-                    m_lock.unlock();
-                    if (fire) {
-                        fireEvent( event );
-                    }
+    /**
+     * Executes the main loop of the worker thread.
+     */
+    void sendAlarms()
+    {
+        //iterate until terminating
+        while (!m_terminating) {
+            m_lock.lock();
+            //1 step - wait until there is an event in the queue
+            if (m_queue.empty()) {
+                //wait up to 100ms to get next event
+                m_lock.wait( 100 );
+            }     
+            bool fire = false;
+            if (!m_queue.empty()) {
+                //retrieve the event from the queue and send it
+                TimerEvent<T> event = m_queue.front();      
+                //check whether we can send it right away
+                int64_t timeToWait = 
+                    event.getAlarmTime() - getCurrentTimeMillis();
+                if (timeToWait <= 0) {
+                    m_queue.pop_front();
+                    //we fire only if it's still in the queue and alarm
+                    //time has just elapsed (in case the top event
+                    //is canceled)
+                    fire = true;    
                 } else {
-                    m_lock.unlock();
+                    m_lock.wait( timeToWait );
                 }
-            }    
-        }
+                m_lock.unlock();
+                if (fire) {
+                    fireEvent( event );
+                }
+            } else {
+                m_lock.unlock();
+            }
+        }    
+    }
         
-    private:
+  private:
         
-        /**
-         * The type of timer events queue.
-         */
-        typedef deque<TimerEvent<T> > QueueType;
+    /**
+     * The type of timer events queue.
+     */
+    typedef deque<TimerEvent<T> > QueueType;
         
-        /**
-         * The current event ID, auto-incremented each time a new event 
-         * is created.
-         */
-        TimerId m_currentEventID;
+    /**
+     * The current event ID, auto-incremented each time a new event 
+     * is created.
+     */
+    TimerId m_currentEventID;
         
-        /**
-         * The queue of timer events sorted by {@link TimerEvent#alarmTime}.
-         */
-        QueueType m_queue;
+    /**
+     * The queue of timer events sorted by {@link TimerEvent#alarmTime}.
+     */
+    QueueType m_queue;
         
-        /**
-         * The lock used to guard {@link #m_queue}.
-         */
-        Lock m_lock;
+    /**
+     * The lock used to guard {@link #m_queue}.
+     */
+    Lock m_lock;
         
-        /**
-         * The thread that triggers alarms.
-         */
-        CXXThread<Timer<T> > m_workerThread;
+    /**
+     * The thread that triggers alarms.
+     */
+    CXXThread<Timer<T> > m_workerThread;
         
-        /**
-         * Whether {@link #m_workerThread}  is terminating.
-         */
-        volatile bool m_terminating;
-        
+    /**
+     * Whether {@link #m_workerThread}  is terminating.
+     */
+    volatile bool m_terminating;
 };
 
 template<typename E>
-void EventSource<E>::fireEvent(const E &event) {
+void EventSource<E>::fireEvent(const E &event)
+{
     for (typename EventListeners::iterator i = m_listeners.begin(); 
          i != m_listeners.end(); 
          ++i) 
@@ -531,10 +581,63 @@ void EventSource<E>::fireEvent(const E &event) {
 }
 
 template<typename E>
-void EventSource<E>::fireEvent(EventListener<E> *listener, const E &event) {
+void EventSource<E>::fireEvent(EventListener<E> *listener, const E &event)
+{
     listener->eventReceived( *this, event );
 }
-        
+
+/*
+ * This is a helper class for handling events using a member function.
+ */
+template<class T>
+class EventHandler
+{
+  public:
+    /*
+     * Define the type of the member function to invoke.
+     */
+    typedef void (T::*EventMethod)(void *data);
+
+    /*
+     * Constructor.
+     */
+    EventHandler(T *obj, EventMethod handler)
+        : mp_obj(obj),    
+          m_handler(handler)
+    {
+    };
+
+    /*
+     * Deliver the event.
+     */
+    void deliver(void *data)
+    {
+        ((*mp_obj).*m_handler)(data);
+    };
+
+    /*
+     * Retrieve the object on which the method
+     * is being called.
+     */
+    T *getObject() { return mp_obj; }
+
+  private:
+    /*
+     * The instance.
+     */
+    T *mp_obj;
+
+    /*
+     * The handler method to call.
+     */
+    EventMethod m_handler;
+};
+
+/*
+ * Generic types for delivering events.
+ */
+typedef EventHandler<ClusterClient> ClusterClientEventHandler;
+ 
 }   /* end of 'namespace clusterlib' */
 
 #endif /* __EVENT_H__ */

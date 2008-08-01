@@ -26,16 +26,6 @@ class ClusterClient
     Application *getApplication(const string &appName)
         throw(ClusterException);
 
-    /*
-     * Retrieve a map of all applications.
-     */
-    ApplicationMap *getApplications() throw(ClusterException);
-
-    /*
-     * Get the input queue of this client.
-     */
-    ClientEventQueue *getQueue() { return &m_queue; }
-
   protected:
     /*
      * Make the factory a friend.
@@ -48,7 +38,14 @@ class ClusterClient
     ClusterClient(FactoryOps *f)
         : mp_f(f)
     {
-        m_apps.clear();
+    }
+
+    /*
+     * Send an event to this client.
+     */
+    void sendEvent(Payload *pp)
+    {
+        m_queue.put(pp);
     }
 
   private:
@@ -69,15 +66,10 @@ class ClusterClient
     FactoryOps *mp_f;
 
     /*
-     * All the applications.
-     */
-    ApplicationMap m_apps;
-
-    /*
      * The blocking queue for delivering notifications
      * to this client.
      */
-    ClientEventQueue m_queue;
+    PayloadQueue m_queue;
 };
 
 };	/* End of 'namespace clusterlib' */

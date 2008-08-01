@@ -16,12 +16,13 @@ libcluster_a_SOURCES = \
 	application.cc \
 	clusterclient.cc \
 	clusterlib.cc \
+	clusterserver.cc \
 	datadistribution.cc \
 	event.cc \
 	group.cc \
 	log.cc \
 	node.cc \
-	notifyable.cc \
 	thread.cc \
+	timer.cc \
 	zkadapter.cc
 AM_CXXFLAGS = -Wall @CDXCORE_CXXFLAGS@

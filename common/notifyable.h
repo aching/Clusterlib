@@ -89,7 +89,12 @@ class NotificationReceiver
      */
     NotificationReceiver(const Event mask,
                          ClusterClient *cl,
-                         Notifyable *np);
+                         Notifyable *np)
+        : m_mask(mask),
+          mp_notifyable(np),
+          mp_cl(cl)
+    {
+    }
 
     /*
      * Destructor.
@@ -104,8 +109,14 @@ class NotificationReceiver
     /*
      * Is this event one we're interested in?
      */
-    bool matchEvent(const Event e) { return (m_mask & e) == 0 ? false : true; }
+    bool matchEvent(const Event e)
+    {
+        return (m_mask & e) == 0 ? false : true;
+    }
 
+    /*
+     * Equality operator.
+     */
     bool operator==(NotificationReceiver *other)
     {
         return ((long) this == (long) other) ? true : false;
@@ -116,20 +127,11 @@ class NotificationReceiver
      */
     Notifyable *getNotifyable() { return mp_notifyable; }
 
-  protected:
     /*
-     * Make Notifyable a friend so it can invoke
-     * passNotification().
+     * Get the client to which this notification receiver
+     * object belongs.
      */
-    friend class Notifyable;
-
-    /*
-     * Pass the event notification onto the enclosed queue.
-     */
-    void passNotification(Event e)
-    {
-        mp_queue->put(new ClientEvent(this, e));
-    }
+    ClusterClient *getClient() { return mp_cl; }
 
   private:
     /*
@@ -143,9 +145,9 @@ class NotificationReceiver
     Notifyable *mp_notifyable;
 
     /*
-     * The queue to which to deliver the events.
+     * The client to which we belong.
      */
-    ClientEventQueue *mp_queue;
+    ClusterClient *mp_cl;
 };
 
 /*
@@ -188,7 +190,8 @@ class Notifyable
     /*
      * Notify the notifyable object.
      */
-    virtual void notify(const Event e)
+    virtual void notify(const Event e,
+                        const string &key)
     {
         NotificationReceivers::iterator i;
         NotificationReceivers receivers;
@@ -214,7 +217,7 @@ class Notifyable
          */
         for (i = receivers.begin(); i != receivers.end(); i++) {
             if ((*i)->matchEvent(e)) {
-                (*i)->passNotification(e);
+                (*i)->deliverNotification(e);
             }
         }
     };

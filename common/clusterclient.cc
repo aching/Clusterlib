@@ -5,8 +5,8 @@
  *
  * =============================================================================
  * $Header:$
- * $Revision:$
- * $Date:$
+ * $Revision$
+ * $Date$
  * =============================================================================
  */
 
@@ -26,23 +26,13 @@ Application *
 ClusterClient::getApplication(const string &appName)
     throw(ClusterException)
 {
-    Application *app = m_apps[appName];
+    Application *app = mp_f->getApplication(appName);
 
     /*
-     * If the application object is cached already,
+     * If the application object is found,
      * just return it.
      */
     if (app != NULL) {
-        return app;
-    }
-
-    /*
-     * Otherwise load it from the cluster, cache it,
-     * and return it.
-     */
-    app = mp_f->getApplication(appName);
-    if (app != NULL) {
-        m_apps[appName] = app;
         return app;
     }
 

@@ -61,7 +61,12 @@ class BlockingQueue
          * @return true if this queue has no elements; false otherwise
          */
         bool empty() const;
-        
+
+        /**
+         * \brief Erases the queue.
+         */
+        void erase();
+
     private:
         
         /**
@@ -146,6 +151,14 @@ E BlockingQueue<E>::take(int32_t timeout, bool *timedOut)
         return E();
     }
 }
+
+template<class E>
+void BlockingQueue<E>::erase()
+{
+    m_mutex.Acquire();
+    m_queue.resize(0);
+    m_mutex.Release();
+ }
 
 }	/* End of 'namespace clusterlib' */
 

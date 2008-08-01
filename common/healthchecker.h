@@ -20,8 +20,8 @@ class HealthChecker
     /*
      * Constructor.
      */
-    HealthChecker(ClusterServer *server)
-        : mp_server(server)
+    HealthChecker()
+        : mp_server(NULL)
     {
     }
 
@@ -36,11 +36,12 @@ class HealthChecker
     virtual bool CheckHealth() = 0;
 
     /*
-     * Get the ClusterServer object that
+     * Get/set the ClusterServer object that
      * this health checker is associated
      * with.
      */
     ClusterServer *getServer() { return mp_server; }
+    void setServer(ClusterServer *s) { mp_server = s; }
 
   private:
     /*

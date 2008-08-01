@@ -37,24 +37,38 @@ using namespace clusterlib;
 #include "mutex.h"
 #include "thread.h"
 #include "event.h"
+#include "payload.h"
+#include "command.h"
 #include "zkadapter.h"
 
 using namespace zk;
 
-#include "notifyable.h"
 #include "healthchecker.h"
+#include "notifyable.h"
 #include "clusterclient.h"
 #include "clusterserver.h"
 #include "application.h"
 #include "group.h"
 #include "node.h"
 #include "datadistribution.h"
+#include "timer.h"
 
 DEFINE_LOGGER( CL_LOG, "clusterlib" )
 
 namespace clusterlib
 {
 
+/*
+ * Typedefs for the various event adapter types.
+ */
+typedef EventListenerAdapter<ClusterlibTimerEvent, TIMEREVENT>
+    ClusterlibTimerEventAdapter;
+typedef EventListenerAdapter<ZKWatcherEvent, ZKEVENT>
+    ZooKeeperEventAdapter;
+
+/**
+ * Class containing static variables for all string constants.
+ */
 class ClusterlibStrings
 {
   public:
@@ -126,16 +140,10 @@ class ClusterlibStrings
  * The actual factory class.
  */
 class Factory
-    : public virtual ZKEventListener,
-      public virtual ClusterlibStrings
+    : public virtual ClusterlibStrings,
+      public virtual ZKEventListener
 {
   public:
-    /*
-     * This type defines a Factory callback function
-     * that handles a particular event.
-     */
-    typedef EventHandlerWrapper<Factory> FactoryEventHandler;
-
     /*
      * Create a factory instance, connect it to
      * the specified cluster registry.
@@ -161,13 +169,13 @@ class Factory
                                 const string &group,
                                 const string &node,
                                 HealthChecker *checker,
-                                bool createReg = false);
+                                ServerFlags flags);
 
     /*
-     * This API must be provided because of inheritance from
-     * EventListener.
+     * Handle events received from ZooKeeper.
      */
-    void eventReceived(const ZKEventSource &zksrc, const ZKWatcherEvent &e);
+    void eventReceived(const ZKEventSource &source,
+                       const ZKWatcherEvent &event);
 
   private:
     /*
@@ -177,12 +185,38 @@ class Factory
     friend class FactoryOps;
 
     /*
+     * Add and remove clients.
+     */
+    void addClient(ClusterClient *clp);
+    void removeClient(ClusterClient *clp);
+
+    /*
+     * Dispatch all events. Reads from the
+     * event sources and sends events to
+     * the registered client for each event.
+     */
+    void dispatchEvents();
+
+    /*
+     * Dispatch timer, zk, and session events.
+     */
+    void dispatchTimerEvent(ClusterlibTimerEvent *te);
+    void dispatchZKEvent(ZKWatcherEvent *ze);
+    void dispatchSessionEvent(ZKWatcherEvent *ze);
+    void dispatchEndEvent();
+
+    /*
      * Manage interests in events.
      */
     void addInterests(const string &key, 
                       Notifyable *nrp,
                       const Event events);
     void removeInterests(const string &key, const Event events);
+
+    /*
+     * Retrieve a list of all (currently known) applications.
+     */
+    IdList getApplicationNames();
 
     /*
      * Retrieve (and potentially create) instances of
@@ -289,10 +323,17 @@ class Factory
     Node *createNode(const string &key, Group *grp);
 
   private:
+
     /*
      * The factory ops delegator.
      */
     FactoryOps *mp_ops;
+
+    /*
+     * The registry of attached clients (and servers).
+     */
+    ClusterClientList m_clients;
+    Mutex m_clLock;
 
     /*
      * The registry of cached data distributions.
@@ -319,9 +360,19 @@ class Factory
     Mutex m_nodeLock;
 
     /*
+     * Did we already fill the application map?
+     */
+    bool m_filledApplicationMap;
+
+    /*
+     * The ZooKeeper config object.
+     */
+    ZooKeeperConfig m_config;
+
+    /*
      * The ZooKeeper adapter object being used.
      */
-    ZooKeeperAdapter *mp_zk;
+    ZooKeeperAdapter m_zk;
 
     class InterestRecord
     {
@@ -374,9 +425,29 @@ class Factory
     Mutex m_notificationLock;
 
     /*
-     * Did we already fill the application map?
+     * The timer event source.
      */
-    bool m_filledApplicationMap;
+    ClusterlibTimerEventSource m_timerEventSrc;
+
+    /**
+     * The timer source adapter.
+     */
+    ClusterlibTimerEventAdapter m_timerEventAdapter;
+
+    /**
+     * The Zookeeper source adapter.
+     */
+    ZooKeeperEventAdapter m_zkEventAdapter;
+
+    /*
+     * Event adapter.
+     */
+    SynchronousEventAdapter<GenericEvent> m_eventAdapter;
+
+    /*
+     * Is the event loop terminating?
+     */
+    bool m_shutdown;
 };
 
 /*

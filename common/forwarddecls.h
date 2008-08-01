@@ -36,6 +36,14 @@ class Notifyable;
 class Shard;
 
 /*
+ * Objects attached to (and registered for)
+ * events in the event system.
+ */
+class EventPayload;
+class TimerPayload;
+class ZooKeeperPayload;
+
+/*
  * Vectors of pointers to these classes.
  */
 typedef vector<string>				IdList;
@@ -63,6 +71,20 @@ typedef map<string, FactoryOps *>		FactoryOpsMap;
 typedef map<string, Group *>			GroupMap;
 typedef map<string, HealthChecker *>		HealthCheckerMap;
 typedef map<string, Node *>	        	NodeMap;
+
+/*
+ * Type used for passing flags.
+ */
+typedef unsigned int ServerFlags;
+
+/*
+ * Values for ServerFlags. Can be combined by
+ * OR-ing together.
+ */
+#define SF_NONE		0		/* No flags. */
+#define SF_MANAGED	(1<<0)		/* A managed node? */
+#define SF_CREATEREG	(1<<1)		/* Create in cluster if
+                                         * it doesn't exist? */
 
 };	/* End of 'namespace clusterlib' */
 

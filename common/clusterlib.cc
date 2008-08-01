@@ -84,18 +84,39 @@ const string ClusterlibStrings::MASTER = "master";
  * Create the associated FactoryOps delegate object.
  */
 Factory::Factory(const string &registry)
-    : m_filledApplicationMap(false)
+    : m_filledApplicationMap(false),
+      m_config(registry, 3000),
+      m_zk(m_config, this, false),
+      m_timerEventAdapter(m_timerEventSrc),
+      m_zkEventAdapter(m_zk)
 {
     TRACE( CL_LOG, "Factory" );
 
+    /*
+     * Clear all the collections (lists, maps)
+     * so that they start out empty.
+     */
     m_dataDistributions.clear();
     m_applications.clear();
     m_groups.clear();
     m_nodes.clear();
+    m_clients.clear();
     m_notificationInterests.clear();
 
-    ZooKeeperConfig cfg(registry, 3000);
-    mp_zk = new ZooKeeperAdapter(cfg, this, true);
+    /*
+     * Create the delegate.
+     */
+    mp_ops = new FactoryOps(this);
+
+    /*
+     * Link up the event sources.
+     */
+    m_timerEventAdapter.addListener(&m_eventAdapter);
+    m_zkEventAdapter.addListener(&m_eventAdapter);
+
+    /*
+     * Connect to ZK (TBD).
+     */
 };
 
 /*
@@ -105,7 +126,6 @@ Factory::~Factory()
 {
     TRACE( CL_LOG, "~Factory" );
 
-    delete mp_zk;
     delete mp_ops;
 };
 
@@ -128,11 +148,16 @@ Factory::createServer(const string &app,
                       const string &group,
                       const string &node,
                       HealthChecker *checker,
-                      bool createReg)
+                      ServerFlags flags)
 {
     TRACE( CL_LOG, "createServer" );
 
-    return NULL;
+    return new ClusterServer(mp_ops,
+                             app,
+                             group,
+                             node,
+                             checker,
+                             flags);
 };
 
 /*
@@ -149,39 +174,247 @@ Factory::eventReceived(const ZKEventSource &zksrc, const ZKWatcherEvent &e)
 /**********************************************************************/
 
 /*
- * Manage interests in events.
+ * Add and remove clients.
  */
 void
-Factory::addInterests(const string &key, Notifyable *nrp, const Event events)
+Factory::addClient(ClusterClient *clp)
 {
-    TRACE( CL_LOG, "addInterests" );
+    TRACE( CL_LOG, "addClient" );
 
-    Locker l(&m_notificationLock);
-    InterestRecord *r = m_notificationInterests[key];
-
-    if (r == NULL) {
-        r = new InterestRecord(nrp, events);
-        m_notificationInterests[key] = r;
-    }
-    r->addInterests(events);
-};
+    Locker l(&m_clLock);
+    
+    m_clients.push_back(clp);
+}
 
 void
-Factory::removeInterests(const string &key, const Event events)
+Factory::removeClient(ClusterClient *clp)
 {
-    TRACE( CL_LOG, "removeInterests" );
+    TRACE( CL_LOG, "removeClient" );
 
-    Locker l(&m_notificationLock);
-    InterestRecord *r = m_notificationInterests[key];
+    Locker l(&m_clLock);
+    ClusterClientList::iterator i = find(m_clients.begin(),
+                                         m_clients.end(),
+                                         clp);
 
-    if (r != NULL) {
-        r->removeInterests(events);
-        if (r->getInterests() == 0) {
-            m_notificationInterests.erase(key);
-            delete r;
-        }
+    if (i == m_clients.end()) {
+        return;
     }
-};
+    m_clients.erase(i);
+}
+
+/*
+ * Dispatch events to all registered clients.
+ */
+void
+Factory::dispatchEvents()
+{
+    TRACE( CL_LOG, "dispatchEvents" );
+
+    unsigned int eventSeqId = 0;
+    
+    try {
+        for (m_shutdown = false;
+             m_shutdown == false;
+             ) 
+        {
+            GenericEvent ge;
+
+            LOG_INFO(CL_LOG,
+                     "[%d]: Asking for next event",
+                     eventSeqId);
+
+            /*
+             * Get the next event and send it off to the
+             * correct handler.
+             */
+            ge = m_eventAdapter.getNextEvent();
+            switch (ge.getType()) {
+              default:
+                LOG_FATAL(CL_LOG,
+                          "Illegal event with type %d",
+                          ge.getType());
+                ::abort();
+
+              case ILLEGALEVENT:
+                LOG_FATAL(CL_LOG, "Illegal event");
+                ::abort();
+
+              case TIMEREVENT:
+                  {
+                      ClusterlibTimerEvent *tp =
+                          (ClusterlibTimerEvent *) ge.getEvent();
+
+                      dispatchTimerEvent(tp);
+                      
+                      LOG_INFO(CL_LOG,
+                               "Processed timer event %d with data 0x%x "
+                               "triggered at %lld",
+                               tp->getID(),
+                               (unsigned int) tp->getUserData(),
+                               tp->getAlarmTime());
+
+                      delete tp;
+
+                      break;
+                  }
+              case ZKEVENT:
+                  {
+                      ZKWatcherEvent *zp =
+                          (ZKWatcherEvent *) ge.getEvent();
+
+                      LOG_INFO(CL_LOG,
+                               "Processing ZK event "
+                               "(type: %d, state: %d, context: 0x%x)",
+                               zp->getType(),
+                               zp->getState(),
+                               (unsigned int) zp->getContext());
+
+                      if (zp->getType() == SESSION_EVENT) {
+                          dispatchSessionEvent(zp);
+                      } else {
+                          dispatchZKEvent(zp);
+                      }
+
+                      break;
+                  }
+            }
+        }
+
+        /*
+         * After the event loop, we inform all
+         * registered clients that there will
+         * be no more events coming.
+         */
+        dispatchEndEvent();
+    } catch (ZooKeeperException &zke) {
+        LOG_ERROR( CL_LOG, "ZooKeeperException: %s", zke.what() );
+        throw ClusterException(zke.what());
+    } catch (ClusterException &ce) {
+        throw ClusterException(ce.what());
+    } catch (std::exception &stde) {
+        LOG_ERROR( CL_LOG, "Unknown exception: %s", stde.what() );
+        throw ClusterException(stde.what());
+    }
+}
+
+/*
+ * Dispatch a timer event.
+ */
+void
+Factory::dispatchTimerEvent(ClusterlibTimerEvent *te)
+{
+    TRACE( CL_LOG, "dispatchTimerEvent" );
+    
+    TimerPayload *tp = (TimerPayload *) te->getUserData();
+
+    LOG_INFO(CL_LOG,
+             "Got timer event %d with data 0x%x "
+             "triggered at %lld",
+             te->getID(),
+             (unsigned int) tp,
+             te->getAlarmTime());
+
+    /*
+     * Protect against NULL.
+     */
+    if (tp == NULL) {
+        LOG_WARN(CL_LOG,
+                 "Unexpected NULL timer event %d triggered "
+                 "at %lld",
+                 te->getID(),
+                 te->getAlarmTime());
+        return;
+    }
+
+    /*
+     * If cancelled then no need to deliver.
+     */
+    if (tp->cancelled()) {
+        delete tp;
+        return;
+    }
+
+    /*
+     * Deliver the event.
+     */
+    tp->getClient()->sendEvent(tp);
+}
+
+/*
+ * Dispatch a ZK event.
+ */
+void
+Factory::dispatchZKEvent(ZKWatcherEvent *zp)
+{
+    TRACE( CL_LOG, "dispatchZKEvent" );
+
+    /***********************************************************************/
+    /* NEEDS TO BE REIMPLEMENTED COMPLETELY!!!!                            */
+    /***********************************************************************/
+    
+    Payload *cp = (Payload *) zp->getContext();
+
+    if (cp == NULL) {
+        LOG_WARN(CL_LOG,
+                 "Unexpected NULL context ZK event");
+        return;
+    }
+
+    cp->getClient()->sendEvent(cp);
+}
+
+/*
+ * Dispatch a session event. These events
+ * are in fact handled directly, here.
+ */
+void
+Factory::dispatchSessionEvent(ZKWatcherEvent *ze)
+{
+    TRACE( CL_LOG, "dispatchSessionEvent" );
+
+    LOG_INFO(CL_LOG,
+             "Session event: (type: %d, state: %d)",
+             ze->getType(), ze->getState());
+
+    if ((ze->getState() == ASSOCIATING_STATE) ||
+        (ze->getState() == CONNECTING_STATE)) {
+        /*
+         * Not really clear what to do here.
+         * For now do nothing.
+         */
+    } else if (ze->getState() == CONNECTED_STATE) {
+        /*
+         * Rerun leadership protocol for all
+         * elections we participate in.
+         * (TBD)
+         */
+    } else if (ze->getState() == EXPIRED_SESSION_STATE) {
+        /*
+         * We give up on SESSION_EXPIRED.
+         */
+        m_shutdown = true;
+    } else {
+        LOG_WARN(CL_LOG,
+                 "Session event with unknown state "
+                 "(type: %d, state: %d)",
+                 ze->getType(), ze->getState());
+    }
+}
+
+/*
+ * Dispatch a final event to all registered clients
+ * to indicate that no more events will be sent
+ * following this one.
+ */
+void
+Factory::dispatchEndEvent()
+{
+    TRACE( CL_LOG, "dispatchEndEvent" );
+
+    /*
+     * TO BE IMPLEMENTED.
+     */
+}
 
 /*
  * Retrieve (and potentially create) instances of objects.
@@ -602,7 +835,7 @@ Factory::loadApplication(const string &name, const string &key)
         if (app != NULL) {
             return app;
         }
-        if (mp_zk->nodeExists(key, this, (void *) EN_APP_INTERESTS) == 
+        if (m_zk.nodeExists(key, this, (void *) EN_APP_INTERESTS) == 
             false) {
             return NULL;
         }
@@ -610,6 +843,7 @@ Factory::loadApplication(const string &name, const string &key)
         m_applications[key] = app;
     }
 
+#ifdef	REWRITE_FOR_NOTIFICATION_RECEIVER
     addInterests(key, app, EN_APP_INTERESTS);
     addInterests(key + PATHSEPARATOR + GROUPS,
                  app,
@@ -617,6 +851,7 @@ Factory::loadApplication(const string &name, const string &key)
     addInterests(key + PATHSEPARATOR + DISTRIBUTIONS,
                  app,
                  EN_DIST_CREATION | EN_DIST_DELETION);
+#endif
 
     return app;
 }
@@ -639,7 +874,7 @@ Factory::fillApplicationMap(ApplicationMap *amp)
     string appKey;
     Application *app;
 
-    mp_zk->getNodeChildren(children, appsKey, this, (void *) EN_APP_INTERESTS);
+    m_zk.getNodeChildren(children, appsKey, this, (void *) EN_APP_INTERESTS);
     for (i = children.begin(); i != children.end(); i++) {
         app = getApplication(*i);
         if (app == NULL) {
@@ -671,7 +906,7 @@ Factory::loadDistribution(const string &name,
         if (dist != NULL) {
             return dist;
         }
-        if (mp_zk->nodeExists(key, this, (void *) EN_DIST_INTERESTS) 
+        if (m_zk.nodeExists(key, this, (void *) EN_DIST_INTERESTS) 
             == false) {
             return NULL;
         }
@@ -679,6 +914,7 @@ Factory::loadDistribution(const string &name,
         m_dataDistributions[key] = dist;
     }
 
+#ifdef	REWRITE_FOR_NOTIFICATION_RECEIVER
     addInterests(key, dist, EN_DIST_INTERESTS);
     addInterests(key + PATHSEPARATOR + SHARDS,
                  dist,
@@ -686,6 +922,7 @@ Factory::loadDistribution(const string &name,
     addInterests(key + PATHSEPARATOR + MANUALOVERRIDES,
                  dist,
                  EN_DIST_CHANGE);
+#endif
 
     return dist;
 }
@@ -711,7 +948,7 @@ Factory::fillDataDistributionMap(DataDistributionMap *dmp,
     string distKey;
     DataDistribution *dist;
 
-    mp_zk->getNodeChildren(children, distsKey, this, (void *) EN_DIST_INTERESTS);
+    m_zk.getNodeChildren(children, distsKey, this, (void *) EN_DIST_INTERESTS);
     Locker l(app->getDistributionMapLock());
     for (i = children.begin(); i != children.end(); i++) {
         dist = getDistribution(*i, app);
@@ -731,9 +968,9 @@ Factory::loadShards(const string &key)
         key +
         PATHSEPARATOR +
         SHARDS;
-    return mp_zk->getNodeData(snode,
-                              this,
-                              (void *) EN_DIST_CHANGE);
+    return m_zk.getNodeData(snode,
+                            this,
+                            (void *) EN_DIST_CHANGE);
 }
 string
 Factory::loadManualOverrides(const string &key)
@@ -742,9 +979,9 @@ Factory::loadManualOverrides(const string &key)
         key +
         PATHSEPARATOR +
         MANUALOVERRIDES;
-    return mp_zk->getNodeData(monode,
-                              this,
-                              (void *) EN_DIST_CHANGE);
+    return m_zk.getNodeData(monode,
+                            this,
+                            (void *) EN_DIST_CHANGE);
 }
 
 Group *
@@ -766,7 +1003,7 @@ Factory::loadGroup(const string &name,
         if (grp != NULL) {
             return grp;
         }
-        if (mp_zk->nodeExists(key, this, (void *) EN_GRP_INTERESTS)
+        if (m_zk.nodeExists(key, this, (void *) EN_GRP_INTERESTS)
             == false) {
             return NULL;
         }
@@ -774,10 +1011,12 @@ Factory::loadGroup(const string &name,
         m_groups[key] = grp;
     }
 
+#ifdef	REWRITE_FOR_NOTIFICATION_RECEIVER
     addInterests(key, grp, EN_GRP_INTERESTS);
     addInterests(key + PATHSEPARATOR + NODES,
                  grp,
                  EN_GRP_MEMBERSHIP);
+#endif
 
     return NULL;
 }
@@ -797,7 +1036,7 @@ Factory::fillGroupMap(GroupMap *gmp, Application *app)
     string groupKey;
     Group *grp;
 
-    mp_zk->getNodeChildren(children, groupsKey, this, (void *) EN_GRP_INTERESTS);
+    m_zk.getNodeChildren(children, groupsKey, this, (void *) EN_GRP_INTERESTS);
     Locker l(app->getGroupMapLock());
     for (i = children.begin(); i != children.end(); i++) {
         grp = getGroup(*i, app);
@@ -829,7 +1068,7 @@ Factory::loadNode(const string &name,
         if (node != NULL) {
             return node;
         }
-        if (mp_zk->nodeExists(key, this, (void *) EN_NODE_INTERESTS)
+        if (m_zk.nodeExists(key, this, (void *) EN_NODE_INTERESTS)
             == false) {
             return NULL;
         }
@@ -837,6 +1076,7 @@ Factory::loadNode(const string &name,
         m_nodes[key] = node;
     }
 
+#ifdef	REWRITE_FOR_NOTIFICATION_RECEIVER
     addInterests(key, node, EN_NODE_INTERESTS);
     addInterests(key + PATHSEPARATOR + CLIENTSTATE,
                  node,
@@ -847,6 +1087,7 @@ Factory::loadNode(const string &name,
     addInterests(key + PATHSEPARATOR + MASTERSETSTATE,
                  node,
                  EN_NODE_MASTERSTATECHANGE);
+#endif
 
     return node;
 }
@@ -867,7 +1108,7 @@ Factory::fillNodeMap(NodeMap *nmp, Group *grp)
     Node *node;
     bool managed;
 
-    mp_zk->getNodeChildren(children, nodesKey, this, (void *) EN_NODE_INTERESTS);
+    m_zk.getNodeChildren(children, nodesKey, this, (void *) EN_NODE_INTERESTS);
     Locker l(grp->getNodeMapLock());
     for (i = children.begin(); i != children.end(); i++) {
         node = getNode(*i, grp, &managed);
