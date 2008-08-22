@@ -17,13 +17,14 @@
 namespace clusterlib
 {
 
-class ClusterClient
+class Client
 {
   public:
     /*
      * Retrieve an application.
      */
-    Application *getApplication(const string &appName)
+    Application *getApplication(const string &appName,
+                                bool create = false)
         throw(ClusterException);
 
   protected:
@@ -35,9 +36,10 @@ class ClusterClient
     /*
      * Constructor used by the factory.
      */
-    ClusterClient(FactoryOps *f)
+    Client(FactoryOps *f)
         : mp_f(f)
     {
+        m_eventThread.Create(*this, &Client::consumeEvents);
     }
 
     /*
@@ -48,16 +50,27 @@ class ClusterClient
         m_queue.put(pp);
     }
 
+    /*
+     * Make the destructor protected so it can only be invoked
+     * from derived classes.
+     */
+    virtual ~Client() {}
+
   private:
     /*
      * Make the default constructor private so
      * noone can call it.
      */
-    ClusterClient()
+    Client()
     {
-        throw ClusterException("Someone called the ClusterClient "
+        throw ClusterException("Someone called the Client "
                                "default constructor!");
     }
+
+    /*
+     * Consume events. This method runs in a separate thread.
+     */
+    void consumeEvents();
 
   private:
     /*
@@ -70,6 +83,11 @@ class ClusterClient
      * to this client.
      */
     PayloadQueue m_queue;
+
+    /*
+     * The thread handling the events.
+     */
+    CXXThread<Client> m_eventThread;
 };
 
 };	/* End of 'namespace clusterlib' */

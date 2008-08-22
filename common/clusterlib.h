@@ -37,7 +37,7 @@ using namespace clusterlib;
 #include "mutex.h"
 #include "thread.h"
 #include "event.h"
-#include "payload.h"
+//#include "payload.h"
 #include "command.h"
 #include "zkadapter.h"
 
@@ -51,7 +51,7 @@ using namespace zk;
 #include "group.h"
 #include "node.h"
 #include "datadistribution.h"
-#include "timer.h"
+//#include "timer.h"
 
 DEFINE_LOGGER( CL_LOG, "clusterlib" )
 
@@ -158,18 +158,18 @@ class Factory
     /*
      * Create a cluster client object.
      */
-    ClusterClient *createClient();
+    Client *createClient();
 
     /*
      * Create a cluster server object. Also
      * create the needed registration if createReg
      * is set to true.
      */
-    ClusterServer *createServer(const string &app,
-                                const string &group,
-                                const string &node,
-                                HealthChecker *checker,
-                                ServerFlags flags);
+    Server *createServer(const string &app,
+                         const string &group,
+                         const string &node,
+                         HealthChecker *checker,
+                         ServerFlags flags);
 
     /*
      * Handle events received from ZooKeeper.
@@ -187,8 +187,8 @@ class Factory
     /*
      * Add and remove clients.
      */
-    void addClient(ClusterClient *clp);
-    void removeClient(ClusterClient *clp);
+    void addClient(Client *clp);
+    void removeClient(Client *clp);
 
     /*
      * Dispatch all events. Reads from the
@@ -204,6 +204,11 @@ class Factory
     void dispatchZKEvent(ZKWatcherEvent *ze);
     void dispatchSessionEvent(ZKWatcherEvent *ze);
     void dispatchEndEvent();
+
+    /*
+     * Helper method for dispatchZKEvent().
+     */
+    ClusterlibKeyEventType translateZKToCLET(int type);
 
     /*
      * Manage interests in events.
@@ -223,29 +228,32 @@ class Factory
      * objects representing applications, groups, nodes,
      * and distributions.
      */
-    Application *getApplication(const string &name);
+    Application *getApplication(const string &name,
+                                bool create);
 
-    Group *getGroup(const string &name, Application *app);
+    Group *getGroup(const string &name,
+                    Application *app,
+                    bool create);
     Group *getGroup(const string &appName,
-                    const string &grpName);
+                    const string &grpName,
+                    bool create);
 
-    Node *getNode(const string &name, Group *grp, bool managed);
+    Node *getNode(const string &name,
+                  Group *grp,
+                  bool managed,
+                  bool create);
     Node *getNode(const string &appName,
                   const string &grpName,
                   const string &nodeName,
-                  bool managed);
+                  bool managed,
+                  bool create);
 
     DataDistribution *getDistribution(const string &name,
-                                      Application *app);
+                                      Application *app,
+                                      bool create);
     DataDistribution *getDistribution(const string &appName,
-                                      const string &distName);
-
-    Shard *createShard(DataDistribution *dp,
-                       const string &startRange,
-                       const string &endRange,
-                       const string &appName,
-                       const string &grpName,
-                       const string &nodeName);
+                                      const string &distName,
+                                      bool create);
 
     string createNodeKey(const string &appName,
                          const string &groupName,
@@ -315,10 +323,11 @@ class Factory
      * Create entities in ZooKeeper.
      */
     Application *createApplication(const string &key);
-    DataDistribution *createDistribution(const string &key,
-                                         const string &marshalledShards,
-                                         const string &marshalledManualOverrides,
-                                         Application *app);
+    DataDistribution *createDistribution(
+	const string &key,
+        const string &marshalledShards,
+        const string &marshalledManualOverrides,
+        Application *app);
     Group *createGroup(const string &key, Application *app);
     Node *createNode(const string &key, Group *grp);
 
@@ -332,7 +341,7 @@ class Factory
     /*
      * The registry of attached clients (and servers).
      */
-    ClusterClientList m_clients;
+    ClientList m_clients;
     Mutex m_clLock;
 
     /*
@@ -440,9 +449,14 @@ class Factory
     ZooKeeperEventAdapter m_zkEventAdapter;
 
     /*
-     * Event adapter.
+     * Synchronous event adapter.
      */
     SynchronousEventAdapter<GenericEvent> m_eventAdapter;
+
+    /*
+     * The thread running the synchronous event adapter.
+     */
+    CXXThread<Factory> m_eventThread;
 
     /*
      * Is the event loop terminating?
@@ -468,9 +482,10 @@ class FactoryOps
         mp_f->removeInterests(nrp->getKey(), events);
     }
 
-    Application *getApplication(const string &name)
+    Application *getApplication(const string &name,
+                                bool create = false)
     {
-        return mp_f->getApplication(name);
+        return mp_f->getApplication(name, create);
     }
     void fillApplicationMap(ApplicationMap *amp)
     {
@@ -479,13 +494,17 @@ class FactoryOps
         }
     }
 
-    Group *getGroup(const string &name, Application *app)
+    Group *getGroup(const string &name,
+                    Application *app,
+                    bool create = false)
     {
-        return mp_f->getGroup(name, app);
+        return mp_f->getGroup(name, app, create);
     }
-    Group *getGroup(const string &appName, const string &grpName)
+    Group *getGroup(const string &appName,
+                    const string &grpName,
+                    bool create = false)
     {
-        return mp_f->getGroup(appName, grpName);
+        return mp_f->getGroup(appName, grpName, create);
     }
     void fillGroupMap(GroupMap *gmp, Application *app)
     {
@@ -494,16 +513,24 @@ class FactoryOps
         }
     }
 
-    Node *getNode(const string &name, Group *grp, bool managed)
+    Node *getNode(const string &name, 
+                  Group *grp,
+                  bool managed = true,
+                  bool create = false)
     {
-        return mp_f->getNode(name, grp, managed);
+        return mp_f->getNode(name, grp, managed, create);
     }
     Node *getNode(const string &appName,
                   const string &grpName,
                   const string &nodeName,
-                  bool managed)
+                  bool managed = true,
+                  bool create = false)
     {
-        return mp_f->getNode(appName, grpName, nodeName, managed);
+        return mp_f->getNode(appName,
+                             grpName,
+                             nodeName,
+                             managed,
+                             create);
     }
     void fillNodeMap(NodeMap *nmp, Group *grp)
     {
@@ -513,14 +540,16 @@ class FactoryOps
     }
 
     DataDistribution *getDistribution(const string &name,
-                                      Application *app)
+                                      Application *app,
+                                      bool create = false)
     {
-        return mp_f->getDistribution(name, app);
+        return mp_f->getDistribution(name, app, create);
     }
     DataDistribution *getDistribution(const string &appName,
-                                      const string &distName)
+                                      const string &distName,
+                                      bool create = false)
     {
-        return mp_f->getDistribution(appName, distName);
+        return mp_f->getDistribution(appName, distName, create);
     }
     void fillDataDistributionMap(DataDistributionMap *dmp,
                                  Application *app)
@@ -536,21 +565,6 @@ class FactoryOps
     string loadManualOverrides(const string &key)
     {
         return mp_f->loadManualOverrides(key);
-    }
-
-    Shard *createShard(DataDistribution *dp,
-                       const string &beginRange,
-                       const string &endRange,
-                       const string &appName,
-                       const string &grpName,
-                       const string &nodeName)
-    {
-        return mp_f->createShard(dp,
-                                 beginRange,
-                                 endRange,
-                                 appName,
-                                 grpName,
-                                 nodeName);
     }
 
     string createNodeKey(const string &appName,

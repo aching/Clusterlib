@@ -4,8 +4,8 @@
  * Definition of a Command, used to handle an event.
  *
  * $Header:$
- * $Revision:$
- * $Date:$
+ * $Revision$
+ * $Date$
  */
 
 #ifndef	__COMMAND_H__
@@ -15,7 +15,7 @@ namespace clusterlib
 {
 
 /*
- * Interface for event handler command classes.
+ * Interface for user programs event handler command classes.
  */
 class Command
 {

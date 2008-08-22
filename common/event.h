@@ -636,7 +636,151 @@ class EventHandler
 /*
  * Generic types for delivering events.
  */
-typedef EventHandler<ClusterClient> ClusterClientEventHandler;
+typedef EventHandler<Client> ClientEventHandler;
+
+/*
+ * Common part of payload carried by all events.
+ */
+class Payload
+{
+  public:
+    /*
+     * Constructor.
+     */
+    Payload(ClientEventHandler *handler)
+        : mp_handler(handler)
+    {
+    }
+
+    /*
+     * Destructor.
+     */
+    virtual ~Payload() {}
+
+    /*
+     * Retrieve the payload elements.
+     */
+    Client *getClient()
+    { 
+        return mp_handler->getObject();
+    }
+    ClientEventHandler *getHandler() { return mp_handler; }
+
+  private:
+    /*
+     * The handler which will be invoked to handle the event.
+     */
+    ClientEventHandler *mp_handler;
+};
+
+/*
+ * Typedef for blocking queue of pointers to payload objects.
+ */
+typedef BlockingQueue<Payload *> PayloadQueue;
+
+enum ClusterlibKeyEventType
+{
+    CLET_ILLEGAL = -1,
+    CLET_NODE_EXISTS = 0,
+    CLET_DATA_CHANGED = 2,
+    CLET_NODE_CHILDREN = 3
+};
+
+/*
+ * Payload for delivering events from ZooKeeper to Clusterlib
+ * application.
+ */
+class ClusterlibPayload
+    : public virtual Payload
+{
+  public:
+    /*
+     * Constructor.
+     */
+    ClusterlibPayload(ClientEventHandler *handler,
+                      const string &key,
+                      ClusterlibKeyEventType clet)
+        : Payload(handler),
+          m_key(key),
+          m_clet(clet)
+    {
+    }
+
+    /*
+     * Destructor.
+     */
+    virtual ~ClusterlibPayload() {}
+
+    /*
+     * Retrieve fields.
+     */
+    string getKey() { return m_key; }
+    ClusterlibKeyEventType getCLET() { return m_clet; }
+
+  private:
+    /*
+     * The key for which the event happend.
+     */
+    string m_key;
+
+    /*
+     * The type of the event, so that we can use
+     * the same handler for multiple events and paths.
+     */
+    ClusterlibKeyEventType m_clet;
+};
+
+/*
+ * The payload for a timer event.
+ */
+class TimerPayload
+    : public virtual Payload
+{
+  public:
+    /*
+     * Constructor.
+     */
+    TimerPayload(int64_t ending,
+                 ClientEventHandler *handler)
+        : Payload(handler),
+          m_ending(ending),
+          m_cancelled(false)
+    {
+    };
+
+    /*
+     * Destructor.
+     */
+    virtual ~TimerPayload() {}
+
+    /*
+     * Retrieve the fields.
+     */
+    int64_t ending() { return m_ending; }
+    bool cancelled() { return m_cancelled; }
+
+    /*
+     * Cancel the event.
+     */
+    void cancel() { m_cancelled = true; }
+
+  private:
+    /*
+     * When is the timer ending?
+     */
+    int64_t m_ending;
+
+    /*
+     * Is this timer cancelled?
+     */
+    bool m_cancelled;
+};
+
+/**
+ * The types for timer events and timer event source.
+ */
+typedef TimerEvent<TimerPayload *> ClusterlibTimerEvent;
+typedef Timer<TimerPayload *> ClusterlibTimerEventSource;
  
 }   /* end of 'namespace clusterlib' */
 

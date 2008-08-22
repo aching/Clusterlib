@@ -23,11 +23,6 @@ class Group
 {
   public:
     /*
-     * Retrieve the name of this group.
-     */
-    const string getName() { return m_name; }
-
-    /*
      * Retrieve the application object for the application
      * that this group is part of.
      */
@@ -44,16 +39,19 @@ class Group
     NodeMap *getNodes() { return &m_nodes; }
 
     /*
-     * Deliver event notifications.
-     */
-    void deliverNotification(const Event e);
-
-    /*
      * Has the node map already been filled?
      */
     bool filledNodeMap() { return m_filledNodeMap; }
 
   protected:
+    /*
+     * Deliver event notifications. This method only
+     * updates the cached representation, it is not
+     * responsible to deliver events to all the
+     * registered EventHandler instances.
+     */
+    void deliverNotification(const Event e);
+
     /*
      * Friend declaration so that Factory can call the constructor.
      */
@@ -66,9 +64,8 @@ class Group
           const string &name,
           const string &key,
           FactoryOps *f)
-        : Notifyable(f, key),
+        : Notifyable(f, key, name),
           mp_app(app),
-          m_name(name),
           m_filledNodeMap(false)
     {
         m_nodes.clear();
@@ -84,12 +81,20 @@ class Group
      * Make the default constructor private so it cannot be called.
      */
     Group()
-        : Notifyable(NULL, "")
+        : Notifyable(NULL, "", "")
     {
         throw ClusterException("Someone called the Group default "
                                "constructor!");
     }
 
+    /*
+     * Make the destructor private also.
+     */
+    virtual ~Group() {};
+
+    /*
+     * Get the address of the lock for the node map.
+     */
     Mutex *getNodeMapLock() { return &m_nodeMapLock; }
 
   private:
@@ -97,11 +102,6 @@ class Group
      * The application object that contains this group.
      */
     Application *mp_app;
-
-    /*
-     * The name of this group.
-     */
-    const string m_name;
 
     /*
      * Map of all nodes within this group.

@@ -1,13 +1,13 @@
 /*
  * clusterclient.cc --
  *
- * Implementation of the ClusterClient class.
+ * Implementation of the Client class.
  *
- * =============================================================================
+ * ============================================================================
  * $Header:$
  * $Revision$
  * $Date$
- * =============================================================================
+ * ============================================================================
  */
 
 #include "clusterlib.h"
@@ -23,10 +23,13 @@ namespace clusterlib
  * cluster as needed.
  */
 Application *
-ClusterClient::getApplication(const string &appName)
+Client::getApplication(const string &appName,
+                       bool create)
     throw(ClusterException)
 {
-    Application *app = mp_f->getApplication(appName);
+    TRACE( CL_LOG, "getApplication" );
+
+    Application *app = mp_f->getApplication(appName, create);
 
     /*
      * If the application object is found,
@@ -40,8 +43,22 @@ ClusterClient::getApplication(const string &appName)
      * Could not find the application object.
      */
     throw ClusterException(string("") + 
-                           "Cannot find application " +
+                           "Cannot " +
+                           (create ? "find or create " : "find ") +
+                           "application " +
                            appName);
+}
+
+/*
+ * The following method runs in the event handling thread,
+ * invoking handlers for events as they come in.
+ */
+void
+Client::consumeEvents()
+{
+    TRACE( CL_LOG, "consumeEvents" );
+
+    /* TO BE WRITTEN */
 }
 
 };	/* End of 'namespace clusterlib' */

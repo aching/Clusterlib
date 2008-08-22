@@ -36,19 +36,19 @@ class HealthChecker
     virtual bool CheckHealth() = 0;
 
     /*
-     * Get/set the ClusterServer object that
+     * Get/set the Server object that
      * this health checker is associated
      * with.
      */
-    ClusterServer *getServer() { return mp_server; }
-    void setServer(ClusterServer *s) { mp_server = s; }
+    Server *getServer() { return mp_server; }
+    void setServer(Server *s) { mp_server = s; }
 
   private:
     /*
-     * Store the ClusterServer this health
+     * Store the Server this health
      * checker is associated with.
      */
-    ClusterServer *mp_server;
+    Server *mp_server;
 };
 
 };	/* End of 'namespace clusterlib' */

@@ -1,13 +1,13 @@
 /*
  * clusterserver.cc --
  *
- * Implementation of the ClusterServer class.
+ * Implementation of the Server class.
  *
- * =============================================================================
+ * ============================================================================
  * $Header:$
- * $Revision:$
- * $Date:$
- * =============================================================================
+ * $Revision$
+ * $Date$
+ * ============================================================================
  */
 
 #include "clusterlib.h"
@@ -21,13 +21,13 @@ namespace clusterlib
 /*
  * Constructor.
  */
-ClusterServer::ClusterServer(FactoryOps *f,
-                             const string &appName,
-                             const string &grpName,
-                             const string &nodeName,
-                             HealthChecker *healthChecker,
-                             ServerFlags flags)
-    : ClusterClient(f),
+Server::Server(FactoryOps *f,
+               const string &appName,
+               const string &grpName,
+               const string &nodeName,
+               HealthChecker *healthChecker,
+               ServerFlags flags)
+    : Client(f),
       mp_f(f),
       m_appName(appName),
       m_grpName(grpName),
@@ -35,10 +35,6 @@ ClusterServer::ClusterServer(FactoryOps *f,
       mp_healthChecker(healthChecker),
       m_flags(flags)
 {
-    m_key = mp_f->createNodeKey(m_appName,
-                                m_grpName,
-                                m_nodeName,
-                                (m_flags & SF_MANAGED) == SF_MANAGED);
     mp_node = mp_f->getNode(m_appName,
                             m_grpName,
                             m_nodeName,

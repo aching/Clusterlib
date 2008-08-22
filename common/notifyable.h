@@ -25,6 +25,7 @@ const int EN_APP_DELETION		(1<<1);
 const int EN_GRP_CREATION		(1<<5);
 const int EN_GRP_DELETION		(1<<6);
 const int EN_GRP_MEMBERSHIP		(1<<7);
+const int EN_GRP_LEADERSHIP		(1<<8);
 
 const int EN_NODE_CREATION		(1<<10);
 const int EN_NODE_DELETION		(1<<11);
@@ -36,16 +37,26 @@ const int EN_DIST_CREATION		(1<<20);
 const int EN_DIST_DELETION		(1<<21);
 const int EN_DIST_CHANGE		(1<<22);
 
-const int EN_APP_INTERESTS =    (EN_APP_CREATION | EN_APP_DELETION);
-const int EN_GRP_INTERESTS =	(EN_GRP_CREATION |
+const int EN_PROP_CHANGE		(1<<25);
+
+const int EN_TIMER_EXPIRED		(1<<30);
+
+const int EN_APP_INTERESTS =    (EN_PROP_CHANGE |
+                                 EN_APP_CREATION |
+                                 EN_APP_DELETION);
+const int EN_GRP_INTERESTS =	(EN_PROP_CHANGE |
+                                 EN_GRP_CREATION |
                                  EN_GRP_DELETION |
-                                 EN_GRP_MEMBERSHIP);
-const int EN_NODE_INTERESTS =	(EN_NODE_CREATION |
+                                 EN_GRP_MEMBERSHIP |
+                                 EN_GRP_LEADERSHIP);
+const int EN_NODE_INTERESTS =	(EN_PROP_CHANGE |
+                                 EN_NODE_CREATION |
                                  EN_NODE_DELETION |
                                  EN_NODE_HEALTHCHANGE |
                                  EN_NODE_CONNECTCHANGE |
                                  EN_NODE_MASTERSTATECHANGE);
-const int EN_DIST_INTERESTS =	(EN_DIST_CREATION |
+const int EN_DIST_INTERESTS =	(EN_PROP_CHANGE |
+                                 EN_DIST_CREATION |
                                  EN_DIST_DELETION |
                                  EN_DIST_CHANGE);
 
@@ -59,13 +70,13 @@ typedef int Event;
  */
 struct ClientEvent
 {
-    NotificationReceiver *mp_rp;
+    ClusterEventHandler *mp_rp;
     Event m_e;
 
     /*
      * Constructor.
      */
-    ClientEvent(NotificationReceiver *rp, Event e)
+    ClientEvent(ClusterEventHandler *rp, Event e)
     {
         m_e = e;
         mp_rp = rp;
@@ -78,82 +89,122 @@ struct ClientEvent
 typedef BlockingQueue<ClientEvent *> ClientEventQueue;
 
 /*
- * Interface for notification receiver. Must be derived
+ * Interface for event handler. Must be derived
  * to define specific behavior for handling events.
  */
-class NotificationReceiver
+class ClusterEventHandler
 {
   public:
     /*
      * Constructor.
      */
-    NotificationReceiver(const Event mask,
-                         ClusterClient *cl,
-                         Notifyable *np)
-        : m_mask(mask),
-          mp_notifyable(np),
-          mp_cl(cl)
+    ClusterEventHandler()
     {
     }
 
     /*
      * Destructor.
      */
-    virtual ~NotificationReceiver() {}
+    virtual ~ClusterEventHandler() {}
 
     /*
      * This must be implemented by subclasses.
      */
-    virtual void deliverNotification(const Event e) = 0;
-        
-    /*
-     * Is this event one we're interested in?
-     */
-    bool matchEvent(const Event e)
+    virtual void deliverNotification(const Event e,
+                                     Notifyable *np,
+                                     void *clientData)
+        = 0;
+};
+
+/*
+ * Class for recording interest in events.
+ */
+class ClusterEventInterest
+{
+  public:
+   /*
+    * Constructor.
+    */
+    ClusterEventInterest(ClusterEventHandler *handler,
+                         Event mask,
+                         void *clientData)
+        : m_mask(mask),
+          mp_handler(handler),
+          mp_data(clientData)
     {
-        return (m_mask & e) == 0 ? false : true;
     }
 
     /*
-     * Equality operator.
+     * Deliver the specific event.
      */
-    bool operator==(NotificationReceiver *other)
+    void deliverNotification(Event e, Notifyable *np)
     {
-        return ((long) this == (long) other) ? true : false;
+        mp_handler->deliverNotification(e, np, mp_data);
     }
 
     /*
-     * Get the object for which the event is being delivered.
+     * Get the handler object.
      */
-    Notifyable *getNotifyable() { return mp_notifyable; }
+    ClusterEventHandler *getHandler() { return mp_handler; }
 
     /*
-     * Get the client to which this notification receiver
-     * object belongs.
+     * Add/remove events to the set we're interested in.
      */
-    ClusterClient *getClient() { return mp_cl; }
+    Event addEvents(Event mask)
+    {
+        m_mask |= mask;
+        return m_mask;
+    }
+    Event removeEvents(Event mask)
+    {
+        m_mask &= (~(mask));
+        return m_mask;
+    }
+
+    /*
+     * Is the event one we're interested in?
+     */
+    bool matchEvent(Event e)
+    {
+        return ((m_mask & e) == 0) ? false : true;
+    }
+
+    /*
+     * Get the set of events this interest is for.
+     */
+    Event getEvents() { return m_mask; }
+
+    /*
+     * Set the clientData.
+     */
+    void *setClientData(void *newCLD)
+    {
+        void *oldCLD = mp_data;
+        mp_data = newCLD;
+        return oldCLD;
+    }
 
   private:
     /*
-     * The events that this receiver is interested in receiving.
+     * The events of interest.
      */
     Event m_mask;
 
     /*
-     * The notifyable object that the events are about.
+     * The handler to invoke.
      */
-    Notifyable *mp_notifyable;
+    ClusterEventHandler *mp_handler;
 
     /*
-     * The client to which we belong.
+     * Arbitrary data to pass to deliverNotification().
      */
-    ClusterClient *mp_cl;
+    void *mp_data;
 };
-
+    
 /*
- * A list of notification receivers.
+ * A list of EventHandler instances.
  */
-typedef vector<NotificationReceiver *> NotificationReceivers;
+typedef vector<ClusterEventInterest *> ClusterEventInterests;
 
 /*
  * Interface that must be derived by specific notifyable objects.
@@ -162,39 +213,20 @@ class Notifyable
 {
   public:
     /*
-     * Constructor.
+     * Compare two Notifyable instances.
      */
-    Notifyable(FactoryOps *f, const string &key)
-        : mp_f(f),
-          m_key(key)
+    bool operator==(Notifyable &other)
     {
-        m_receivers.clear();
-    };
-
-    /*
-     * Destructor.
-     */
-    virtual ~Notifyable() {};
-
-    /*
-     * Get the associated factory delegate object.
-     */
-    FactoryOps *getDelegate() { return mp_f; }
-
-    /*
-     * Return the string identifying the represented
-     * cluster object.
-     */
-    const string getKey() { return m_key; }
+        return (other.getKey() == getKey()) ? true : false;
+    }
 
     /*
      * Notify the notifyable object.
      */
-    virtual void notify(const Event e,
-                        const string &key)
+    virtual void notify(const Event e)
     {
-        NotificationReceivers::iterator i;
-        NotificationReceivers receivers;
+        ClusterEventInterests::iterator i;
+        ClusterEventInterests interests;
 
         /*
          * Update the cached object.
@@ -203,25 +235,85 @@ class Notifyable
 
         {
             /*
-             * Make a copy of the current notification reciever
+             * Make a copy of the current notification interests
              * list to protect against side effects. Suggested by
              * ruslanm@yahoo-inc.com, thanks!
              */
-            Locker l(getReceiversLock());
+            Locker l(getInterestsLock());
 
-            receivers = m_receivers;
+            interests = m_interests;
         }
 
         /*
          * Deliver the event to all interested "user-land" clients.
          */
-        for (i = receivers.begin(); i != receivers.end(); i++) {
+        for (i = interests.begin(); i != interests.end(); i++) {
             if ((*i)->matchEvent(e)) {
-                (*i)->deliverNotification(e);
+                (*i)->deliverNotification(e, this);
             }
         }
     };
 
+    /*
+     * Register an event handler for a set of events.
+     */
+    void registerInterest(ClusterEventHandler *cehp,
+                          Event mask,
+                          void *clientData)
+        throw(ClusterException)
+    {
+        ClusterEventInterests::iterator i;
+        Locker l(getInterestsLock());
+
+        for (i = m_interests.begin();
+             i != m_interests.end();
+             i++) {
+            if ((*i)->getHandler() == cehp) {
+                (*i)->addEvents(mask);
+                (*i)->setClientData(clientData);
+                return;
+            }
+        }
+        m_interests.push_back(new ClusterEventInterest(cehp,
+                                                       mask,
+                                                       clientData));
+    };
+
+    /*
+     * Unregister an event handler for a set of events.
+     */
+    void unregisterInterest(ClusterEventHandler *cehp, Event mask)
+        throw(ClusterException)
+    {
+        ClusterEventInterests::iterator i;
+        ClusterEventInterest *pi;
+        Locker l(getInterestsLock());
+
+        for (i = m_interests.begin();
+             i != m_interests.end();
+             i++) {
+            if ((*i)->getHandler() == cehp) {
+                if ((*i)->removeEvents(mask) == 0) {
+                    pi = (*i);
+                    m_interests.erase(i);
+                    delete pi;
+                }
+            }
+        }
+    }
+
+    /*
+     * Get the name of the Notifyable.
+     */
+    string getName() { return m_name; }
+
+    /*
+     * Return the string identifying the represented
+     * cluster object.
+     */
+    string getKey() { return m_key; }
+
+  protected:
     /*
      * This must be supplied by subclasses. Use it to
      * update the cached representation before the user
@@ -230,31 +322,54 @@ class Notifyable
     virtual void deliverNotification(const Event e) = 0;
 
     /*
-     * Register a receiver.
+     * Factory is a friend so it can call the below constructor.
      */
-    void registerNotificationReceiver(NotificationReceiver *unrp)
-    {
-        Locker l(getReceiversLock());
+    friend class Factory;
 
-        m_receivers.push_back(unrp);
+    /*
+     * Constructor.
+     */
+    Notifyable(FactoryOps *f,
+               const string &key,
+               const string &name)
+        : mp_f(f),
+          m_key(key),
+          m_name(name)
+    {
+        m_interests.clear();
     };
 
     /*
-     * Unregister a receiver.
+     * Get the associated factory delegate object.
      */
-    void unregisterNotificationReceiver(NotificationReceiver *unrp)
-    {
-        NotificationReceivers::iterator i;
-        Locker l(getReceiversLock());
+    FactoryOps *getDelegate() { return mp_f; }
 
-        if ((i = find(m_receivers.begin(), m_receivers.end(), unrp))
-            != m_receivers.end()) {
-            m_receivers.erase(i);
+    /*
+     * Destructor.
+     */
+    virtual ~Notifyable()
+    {
+        ClusterEventInterests::iterator i;
+        Locker l(getInterestsLock());
+
+        for (i = m_interests.begin();
+             i != m_interests.end();
+             i++) {
+            delete (*i);
         }
-    }
+        m_interests.clear();
+    };
 
   private:
-    Mutex *getReceiversLock() { return &m_receiversLock; }
+    /*
+     * Retrieve the handlers lock.
+     */
+    Mutex *getInterestsLock() { return &m_interestsLock; }
+
+    /*
+     * Default constructor.
+     */
+    Notifyable() {};
 
   private:
     /*
@@ -269,11 +384,16 @@ class Notifyable
     const string m_key;
 
     /*
+     * The name of the Notifyable.
+     */
+    const string m_name;
+
+    /*
      * The vector of notification receivers associated with
      * this notifyable.
      */
-    NotificationReceivers m_receivers;
-    Mutex m_receiversLock;
+    ClusterEventInterests m_interests;
+    Mutex m_interestsLock;
 };
 
 };	/* End of 'namespace clusterlib' */

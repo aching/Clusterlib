@@ -3,11 +3,11 @@
  *
  * Implementation of the Factory class.
  *
- * =============================================================================
+ * ============================================================================
  * $Header$
  * $Revision$
  * $Date$
- * =============================================================================
+ * ============================================================================
  */
 
 #include "clusterlib.h"
@@ -115,6 +115,11 @@ Factory::Factory(const string &registry)
     m_zkEventAdapter.addListener(&m_eventAdapter);
 
     /*
+     * Create the event dispatch thread.
+     */
+    m_eventThread.Create(*this, &Factory::dispatchEvents);
+
+    /*
      * Connect to ZK (TBD).
      */
 };
@@ -132,18 +137,18 @@ Factory::~Factory()
 /*
  * Create a client.
  */
-ClusterClient *
+Client *
 Factory::createClient()
 {
     TRACE( CL_LOG, "createClient" );
 
-    return new ClusterClient(mp_ops);
+    return new Client(mp_ops);
 };
 
 /*
  * Create a server.
  */
-ClusterServer *
+Server *
 Factory::createServer(const string &app,
                       const string &group,
                       const string &node,
@@ -152,12 +157,12 @@ Factory::createServer(const string &app,
 {
     TRACE( CL_LOG, "createServer" );
 
-    return new ClusterServer(mp_ops,
-                             app,
-                             group,
-                             node,
-                             checker,
-                             flags);
+    return new Server(mp_ops,
+                      app,
+                      group,
+                      node,
+                      checker,
+                      flags);
 };
 
 /*
@@ -177,7 +182,7 @@ Factory::eventReceived(const ZKEventSource &zksrc, const ZKWatcherEvent &e)
  * Add and remove clients.
  */
 void
-Factory::addClient(ClusterClient *clp)
+Factory::addClient(Client *clp)
 {
     TRACE( CL_LOG, "addClient" );
 
@@ -187,14 +192,14 @@ Factory::addClient(ClusterClient *clp)
 }
 
 void
-Factory::removeClient(ClusterClient *clp)
+Factory::removeClient(Client *clp)
 {
     TRACE( CL_LOG, "removeClient" );
 
     Locker l(&m_clLock);
-    ClusterClientList::iterator i = find(m_clients.begin(),
-                                         m_clients.end(),
-                                         clp);
+    ClientList::iterator i = find(m_clients.begin(),
+                                  m_clients.end(),
+                                  clp);
 
     if (i == m_clients.end()) {
         return;
@@ -221,7 +226,7 @@ Factory::dispatchEvents()
 
             LOG_INFO(CL_LOG,
                      "[%d]: Asking for next event",
-                     eventSeqId);
+                     eventSeqId++);
 
             /*
              * Get the next event and send it off to the
@@ -347,20 +352,62 @@ void
 Factory::dispatchZKEvent(ZKWatcherEvent *zp)
 {
     TRACE( CL_LOG, "dispatchZKEvent" );
-
-    /***********************************************************************/
-    /* NEEDS TO BE REIMPLEMENTED COMPLETELY!!!!                            */
-    /***********************************************************************/
     
-    Payload *cp = (Payload *) zp->getContext();
+    ClientEventHandler *cp =
+        (ClientEventHandler *) zp->getContext();
 
+    /*
+     * Protect against NULL context.
+     */
     if (cp == NULL) {
         LOG_WARN(CL_LOG,
                  "Unexpected NULL context ZK event");
         return;
     }
 
-    cp->getClient()->sendEvent(cp);
+    /*
+     * Send the event to the client interested in
+     * the event. Create a new payload to carry the
+     * info through the client's queue (because the
+     * event object we received will be recycled as
+     * soon as this call returns).
+     */
+    cp->getObject()->sendEvent(
+	new ClusterlibPayload(
+            cp,
+            zp->getPath(),
+            translateZKToCLET(zp->getType())));
+}
+
+/*
+ * Helper method to translate a ZK event type to a
+ * ClusterlibKeyEventType.
+ */
+ClusterlibKeyEventType
+Factory::translateZKToCLET(int type)
+{
+    if ((type == SESSION_EVENT) || (type == NOTWATCHING_EVENT)) {
+        LOG_FATAL( CL_LOG,
+                   "Should not happen: called translateZKToCLET() with "
+                   "illegal event type %d!",
+                   type );
+        ::abort();
+    }
+    if (type == CHANGED_EVENT) {
+        return CLET_DATA_CHANGED;
+    }
+    if (type == DELETED_EVENT) {
+        return CLET_NODE_EXISTS;
+    }
+    if (type == CHILD_EVENT) {
+        return CLET_NODE_CHILDREN;
+    }
+    if (type == CREATED_EVENT) {
+        return CLET_NODE_EXISTS;
+    }
+
+    /*NOTREACHED*/
+    return CLET_ILLEGAL;
 }
 
 /*
@@ -420,9 +467,10 @@ Factory::dispatchEndEvent()
  * Retrieve (and potentially create) instances of objects.
  */
 Application *
-Factory::getApplication(const string &name)
+Factory::getApplication(const string &name, bool create)
 {
     string key = createAppKey(name);
+    Application *app;
 
     {
         /*
@@ -430,17 +478,37 @@ Factory::getApplication(const string &name)
          * possible.
          */
         Locker l(&m_appLock);
-        Application *app = m_applications[key];
+        app = m_applications[key];
         if (app != NULL) {
             return app;
         }
     }
-    return loadApplication(name, key);
+
+    /*
+     * Try to load from the repository.
+     */
+    app = loadApplication(name, key);
+    if (app != NULL) {
+        return app;
+    }
+
+    /*
+     * If 'create' == true, create the application in the repository.
+     */
+    if (create == true) {
+        return createApplication(key);
+    }
+
+    /*
+     * Failure.
+     */
+    return NULL;
 }
 
 DataDistribution *
 Factory::getDistribution(const string &distName,
-                         Application *app)
+                         Application *app,
+                         bool create)
 {
     string key = createDistKey(app->getName(), distName);
 
@@ -459,38 +527,61 @@ Factory::getDistribution(const string &distName,
 
 Group *
 Factory::getGroup(const string &groupName,
-                  Application *app)
+                  Application *app,
+                  bool create)
 {
     string key = createGroupKey(app->getName(), groupName);
+    Group *grp;
 
     {
         /*
          * Scope the lock to the smallest extent possible.
          */
         Locker l(&m_grpLock);
-        Group *grp = m_groups[key];
+        grp = m_groups[key];
         if (grp != NULL) {
             return grp;
         }
     }
-    return loadGroup(groupName, key, app);
+
+    grp = loadGroup(groupName, key, app);
+    if (grp != NULL) {
+        return grp;
+    }
+
+    /*
+     * If 'create' == true, create the group in the repository.
+     */
+    if (create == true) {
+        return createGroup(key, app);
+    }
+
+    /*
+     * Failed.
+     */
+    return NULL;
 }
 Group *
 Factory::getGroup(const string &appName,
-                  const string &groupName)
+                  const string &groupName,
+                  bool create)
 {
-    Application *app = getApplication(appName);
+    Application *app = getApplication(appName, create);
 
-    return getGroup(groupName, app);
+    return getGroup(groupName, app, create);
 }
 
 Node *
-Factory::getNode(const string &nodeName, Group *grp, bool managed)
+Factory::getNode(const string &nodeName,
+                 Group *grp,
+                 bool managed,
+                 bool create)
 {
     string key = createNodeKey(grp->getApplication()->getName(),
                                grp->getName(),
                                nodeName,
                                managed);
+    Node *np;
 
     {
         /*
@@ -498,24 +589,41 @@ Factory::getNode(const string &nodeName, Group *grp, bool managed)
          * possible.
          */
         Locker l(&m_nodeLock);
-        Node *np = m_nodes[key];
+        np = m_nodes[key];
         if (np != NULL) {
             return np;
         }
     }
-    return loadNode(nodeName, key, grp);
+    np = loadNode(nodeName, key, grp);
+    if (np != NULL) {
+        return np;
+    }
+
+    /*
+     * If 'create' == true, create the node in the repository.
+     */
+    if (create == true) {
+        np = createNode(key, grp);
+    }
+
+    /*
+     * Failed.
+     */
+    return NULL;
 }
 Node *
 Factory::getNode(const string &appName,
                  const string &groupName,
                  const string &nodeName,
-                 bool managed)
+                 bool managed,
+                 bool create)
 {
-    Group *grp = getGroup(appName, groupName);
+    Group *grp = getGroup(appName, groupName, create);
 
-    return getNode(nodeName, grp, managed);
+    return getNode(nodeName, grp, managed, create);
 }
 
+#ifdef	NOTDEF
 /*
  * Return an object representing a shard.
  */
@@ -537,6 +645,7 @@ Factory::createShard(DataDistribution *dp,
 
     return new Shard(dp, np, lo, hi);
 }
+#endif
 
 /*
  * Key creation and recognition.
@@ -820,7 +929,8 @@ Factory::getDistKeyPrefix(vector<string> &components)
  * global cache.
  */
 Application *
-Factory::loadApplication(const string &name, const string &key)
+Factory::loadApplication(const string &name,
+                         const string &key)
 {
     TRACE( CL_LOG, "loadApplication");
 
@@ -835,14 +945,14 @@ Factory::loadApplication(const string &name, const string &key)
         if (app != NULL) {
             return app;
         }
-        if (m_zk.nodeExists(key, this, (void *) EN_APP_INTERESTS) == 
-            false) {
+        if (m_zk.nodeExists(key, this, NULL) == false) {
             return NULL;
         }
         app = new Application(name, key, mp_ops);
         m_applications[key] = app;
     }
 
+    
 #ifdef	REWRITE_FOR_NOTIFICATION_RECEIVER
     addInterests(key, app, EN_APP_INTERESTS);
     addInterests(key + PATHSEPARATOR + GROUPS,
@@ -876,7 +986,7 @@ Factory::fillApplicationMap(ApplicationMap *amp)
 
     m_zk.getNodeChildren(children, appsKey, this, (void *) EN_APP_INTERESTS);
     for (i = children.begin(); i != children.end(); i++) {
-        app = getApplication(*i);
+        app = getApplication(*i, false);
         if (app == NULL) {
             appKey = appsKey + PATHSEPARATOR + *i;
             app = loadApplication(*i, appKey);
@@ -906,8 +1016,7 @@ Factory::loadDistribution(const string &name,
         if (dist != NULL) {
             return dist;
         }
-        if (m_zk.nodeExists(key, this, (void *) EN_DIST_INTERESTS) 
-            == false) {
+        if (m_zk.nodeExists(key, this, NULL) == false) {
             return NULL;
         }
         dist = new DataDistribution(app, name, key, mp_ops);
@@ -951,7 +1060,7 @@ Factory::fillDataDistributionMap(DataDistributionMap *dmp,
     m_zk.getNodeChildren(children, distsKey, this, (void *) EN_DIST_INTERESTS);
     Locker l(app->getDistributionMapLock());
     for (i = children.begin(); i != children.end(); i++) {
-        dist = getDistribution(*i, app);
+        dist = getDistribution(*i, app, false);
         if (dist == NULL) {
             distKey = distsKey + PATHSEPARATOR + *i;
             dist = loadDistribution(*i, distKey, app);
@@ -1003,8 +1112,7 @@ Factory::loadGroup(const string &name,
         if (grp != NULL) {
             return grp;
         }
-        if (m_zk.nodeExists(key, this, (void *) EN_GRP_INTERESTS)
-            == false) {
+        if (m_zk.nodeExists(key, this, NULL) == false) {
             return NULL;
         }
         grp = new Group(app, name, key, mp_ops);
@@ -1039,7 +1147,7 @@ Factory::fillGroupMap(GroupMap *gmp, Application *app)
     m_zk.getNodeChildren(children, groupsKey, this, (void *) EN_GRP_INTERESTS);
     Locker l(app->getGroupMapLock());
     for (i = children.begin(); i != children.end(); i++) {
-        grp = getGroup(*i, app);
+        grp = getGroup(*i, app, false);
         if (grp == NULL) {
             groupKey = groupsKey + PATHSEPARATOR + *i;
             grp = loadGroup(*i, groupKey, app);
@@ -1068,8 +1176,7 @@ Factory::loadNode(const string &name,
         if (node != NULL) {
             return node;
         }
-        if (m_zk.nodeExists(key, this, (void *) EN_NODE_INTERESTS)
-            == false) {
+        if (m_zk.nodeExists(key, this, NULL) == false) {
             return NULL;
         }
         node = new Node(grp, name, key, mp_ops);
@@ -1106,12 +1213,11 @@ Factory::fillNodeMap(NodeMap *nmp, Group *grp)
         NODES;
     string nodeKey;
     Node *node;
-    bool managed;
 
     m_zk.getNodeChildren(children, nodesKey, this, (void *) EN_NODE_INTERESTS);
     Locker l(grp->getNodeMapLock());
     for (i = children.begin(); i != children.end(); i++) {
-        node = getNode(*i, grp, &managed);
+        node = getNode(*i, grp, true, false);
         if (node == NULL) {
             nodeKey = nodesKey + PATHSEPARATOR + *i;
             node = loadNode(*i, nodeKey, grp);

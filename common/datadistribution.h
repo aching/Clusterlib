@@ -15,8 +15,6 @@
 namespace clusterlib
 {
 
-typedef unsigned long long	HashRange;
-
 /*
  * Definition of class DataDistribution.
  */
@@ -28,32 +26,24 @@ class DataDistribution
      * Enum of hash functions to use.
      */
     enum HashFunctions {
-        DD_HF_USERDEF	= 0,
-        DD_HF_MD5	= 1,
-        DD_HF_JENKINS	= 2,
-        DD_HF_END	= 3
+        DD_HF_USERDEF	= -1,
+        DD_HF_MD5	= 0,
+        DD_HF_JENKINS	= 1,
+        DD_HF_END	= 2
     };
 
     /*
-     * Define the type of a hash function.
+     * Define the types associated with a hash function.
      */
+    typedef unsigned long long HashRange;
+    typedef int32_t            HashFunctionId;
     typedef HashRange (HashFunction)(const string &key);
-
-    /*
-     * Retrieve the name of this distribution.
-     */
-    const string getName() { return m_name; }
 
     /*
      * Retrieve the application object in which this
      * distribution is contained.
      */
     Application *getApplication() { return mp_app; }
-
-    /*
-     * Deliver an event notification.
-     */
-    void deliverNotification(const Event e);
 
     /*
      * Find node the work identified by the key
@@ -69,6 +59,13 @@ class DataDistribution
     HashRange hashWork(const string &key);
 
   protected:
+    /*
+     * Deliver event notifications. This method only updates
+     * the cached representation, it is not responsible to
+     * deliver the event to registered EventHandler instances.
+     */
+    void deliverNotification(const Event e);
+
     /*
      * Friend declaration of Factory so that it can call the
      * protected constructor.
@@ -86,10 +83,20 @@ class DataDistribution
 
   private:
     /*
+     * Forward declaration of class Shard.
+     */
+    class Shard;
+
+    /*
+     * A list of shards.
+     */
+    typedef vector<Shard *> ShardList;
+
+    /*
      * Make the default constructor private so it cannot be called.
      */
     DataDistribution()
-        : Notifyable(NULL, "")
+        : Notifyable(NULL, "", "")
     {
         throw ClusterException("Someone called the DataDistribution "
                                "default constructor!");
@@ -134,20 +141,83 @@ class DataDistribution
 
   private:
     /*
+     * Definition of class Shard.
+     */
+    class Shard
+    {
+      public:
+        /*
+         * Get the info out of the shard.
+         */
+        DataDistribution *getDistribution() { return mp_dist; }
+        Node *getNode() { return mp_node; }
+        HashRange beginRange() { return m_beginRange; }
+        HashRange endRange() { return m_endRange; }
+
+        /*
+         * Return the Node * if the work belongs to this shard,
+         * NULL otherwise.
+         */
+        Node *contains(HashRange hash);
+
+        /*
+         * Decide whether this piece of work belongs to
+         * this shard.
+         */
+        bool covers(const string &key);
+
+        /*
+         * Constructor.
+         */
+        Shard(DataDistribution *dist,
+              Node *node,
+              HashRange beginRange,
+              HashRange endRange)
+            : mp_dist(dist),
+              mp_node(node),
+              m_beginRange(beginRange),
+              m_endRange(endRange)
+        {
+        }
+
+        /*
+         * Reassign this shard to a different node.
+         */
+        void reassign(Node *newNode) { mp_node = newNode; }
+
+      private:
+        /*
+         * Make the default constructor private so it cannot be called.
+         */
+        Shard()
+        {
+            throw ClusterException("Someone called the Shard "
+                                   "default constructor!");
+        }
+
+      private:
+        /*
+         * The data distribution this shard belongs to.
+         */
+        DataDistribution *mp_dist;
+
+        /*
+         * The node that this shard is assigned to.
+         */
+        Node *mp_node;
+
+        /*
+         * The bounds for this shard. The range is beginRange <-> endRange.
+         */
+        HashRange m_beginRange;
+        HashRange m_endRange;
+    };
+
+    /*
      * The application object for the application that contains
      * this distribution.
      */
     Application *mp_app;
-
-    /*
-     * The name of this data distribution.
-     */
-    const string m_name;
-
-    /*
-     * The shards in this data distribution.
-     */
-    ShardList m_shards;
 
     /*
      * The manual overrides for this data distribution.
@@ -157,7 +227,7 @@ class DataDistribution
     /*
      * Which hash function to use.
      */
-    unsigned int m_hashFnIndex;
+    int m_hashFnIndex;
 
     /*
      * If using a user supplied hash function, store
@@ -172,80 +242,11 @@ class DataDistribution
      * hash functions.
      */
     static HashFunction *s_hashFunctions[];
-};
-
-/*
- * Definition of class Shard.
- */
-class Shard
-{
-  public:
-    /*
-     * Get the info out of the shard.
-     */
-    DataDistribution *getDistribution() { return mp_dist; }
-    Node *getNode() { return mp_node; }
-    HashRange beginRange() { return m_beginRange; }
-    HashRange endRange() { return m_endRange; }
 
     /*
-     * Return the Node * if the work belongs to this shard,
-     * NULL otherwise.
+     * The shards in this data distribution.
      */
-    Node *contains(HashRange hash);
-
-    /*
-     * Decide whether this piece of work belongs to
-     * this shard.
-     */
-    bool covers(const string &key);
-
-  protected:
-    /*
-     * Friend declaration for Factory so that it can call the
-     * protected constructor.
-     */
-    friend class Factory;
-
-    /*
-     * Constructor used by Factory.
-     */
-    Shard(DataDistribution *dist,
-          Node *node,
-          HashRange beginRange,
-          HashRange endRange);
-
-    /*
-     * Reassign this shard to a different node.
-     */
-    void reassign(Node *newNode) { mp_node = newNode; }
-
-  private:
-    /*
-     * Make the default constructor private so it cannot be called.
-     */
-    Shard()
-    {
-        throw ClusterException("Someone called the Shard "
-                               "default constructor!");
-    }
-
-  private:
-    /*
-     * The data distribution this shard belongs to.
-     */
-    DataDistribution *mp_dist;
-
-    /*
-     * The node that this shard is assigned to.
-     */
-    Node *mp_node;
-
-    /*
-     * The bounds for this shard. The range is beginRange <-> endRange.
-     */
-    HashRange m_beginRange;
-    HashRange m_endRange;
+    ShardList m_shards;
 };
 
 };	/* End of 'namespace clusterlib' */

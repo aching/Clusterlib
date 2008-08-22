@@ -5,8 +5,8 @@
  *
  * =============================================================================
  * $Header:$
- * $Revision:$
- * $Date:$
+ * $Revision$
+ * $Date$
  * =============================================================================
  */
 
@@ -22,7 +22,7 @@ namespace clusterlib
  * Constructor.
  */
 NotificationReceiver::NotificationReceiver(const Event mask,
-                                           ClusterClient *cl,
+                                           Client *cl,
                                            Notifyable *np)
     : m_mask(mask),
       mp_notifyable(np),

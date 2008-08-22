@@ -16,8 +16,8 @@
 namespace clusterlib
 {
 
-class ClusterServer
-    : public ClusterClient
+class Server
+    : public virtual Client
 {
   public:
     /*
@@ -26,9 +26,20 @@ class ClusterServer
     Node *getMyNode() { return mp_node; }
 
     /*
-     * Retrieve the key for that node object.
+     * Retrieve the names of the node,
+     * group, and application.
      */
-    string getMyKey() { return m_key; }
+    string getNodeName() { return m_nodeName; }
+    string getGroupName() { return m_grpName; }
+    string getAppName() { return m_appName; }
+
+    /*
+     * Is this server managed?
+     */
+    bool isManaged()
+    {
+        return (m_flags & SF_MANAGED) ? true : false;
+    }
 
   protected:
     /*
@@ -39,24 +50,28 @@ class ClusterServer
     /*
      * Constructor used by Factory.
      */
-    ClusterServer(FactoryOps *f,
-                  const string &app,
-                  const string &grp,
-                  const string &node,
-                  HealthChecker *checker,
-                  ServerFlags flags);
+    Server(FactoryOps *f,
+           const string &app,
+           const string &grp,
+           const string &node,
+           HealthChecker *checker,
+           ServerFlags flags);
 
   private:
     /*
      * Make the default constructor private so it
      * cannot be called.
      */
-    ClusterServer()
-        : ClusterClient(NULL)
+    Server() : Client(NULL)
     {
-        throw ClusterException("Someone called the ClusterServer "
+        throw ClusterException("Someone called the Server "
                                "default constructor!");
     }
+
+    /*
+     * Make the destructor private also.
+     */
+    ~Server() {}
 
   private:
     /*
@@ -81,11 +96,6 @@ class ClusterServer
      * Flags for this server.
      */
     ServerFlags m_flags;
-
-    /*
-     * The key of my node.
-     */
-    string m_key;
 
     /*
      * The node that represents "my node".

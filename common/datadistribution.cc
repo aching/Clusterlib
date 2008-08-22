@@ -14,7 +14,7 @@
 namespace clusterlib
 {
 
-static HashRange
+static DataDistribution::HashRange
 jenkinsHashImpl(const string &key)
 {
     // adapted from jenkin's one-at-a-time hash
@@ -32,7 +32,7 @@ jenkinsHashImpl(const string &key)
     return hash;
 };
 
-static HashRange
+static DataDistribution::HashRange
 md5HashImpl(const string &key)
 {
     return 0;
@@ -58,9 +58,8 @@ DataDistribution::DataDistribution(Application *app,
                                    const string &key,
                                    FactoryOps *f,
                                    HashFunction *fn)
-    : Notifyable(f, key),
+    : Notifyable(f, key, name),
       mp_app(app),
-      m_name(name),
       m_hashFnIndex(DD_HF_JENKINS),
       mp_hashFnPtr(fn)
 {
@@ -134,12 +133,14 @@ DataDistribution::unmarshallShards(const string &marshalledShards,
                                    *i +
                                    "\", expecting 5 components");
         }
-        nsp = getDelegate()->createShard(this,
-                                         shardComponents[0],
-                                         shardComponents[1],
-                                         shardComponents[2],
-                                         shardComponents[3],
-                                         shardComponents[4]);
+        nsp = new Shard(this,
+                        getDelegate()->getNode(shardComponents[2],
+                                               shardComponents[3],
+                                               shardComponents[4],
+                                               true,
+                                               false),
+                        atoll(shardComponents[0].c_str()),
+                        atoll(shardComponents[1].c_str()));
 
         if (nsp == NULL) {
             throw ClusterException("Could not create shard \"" +
@@ -319,11 +320,6 @@ DataDistribution::updateDistribution()
     for (si = m_shards.begin(); si != m_shards.end(); si++) {
         delete *si;
     }
-    for (mi = m_manualOverrides.begin();
-         mi != m_manualOverrides.end();
-         mi++) {
-        delete mi->second;
-    }
     m_shards.clear();
     m_manualOverrides.clear();
 
@@ -335,7 +331,7 @@ DataDistribution::updateDistribution()
  * Hash a key to a hash value using the current
  * hash function for this distribution.
  */
-HashRange
+DataDistribution::HashRange
 DataDistribution::hashWork(const string &key)
 {
     if (mp_hashFnPtr == NULL) {
@@ -395,28 +391,13 @@ DataDistribution::findCoveringNode(const string &key)
 };
 
 /*
- * Constructor for class Shard for use by Factory.
- */
-Shard::Shard(DataDistribution *dist,
-             Node *node,
-             HashRange beginRange,
-             HashRange endRange)
-    : mp_dist(dist),
-      mp_node(node),
-      m_beginRange(beginRange),
-      m_endRange(endRange)
-{
-    TRACE( CL_LOG, "Shard" );
-};
-
-/*
  * Return the Node * if the hash value given falls within
  * the range of this shard.
  */
 Node *
-Shard::contains(HashRange hash)
+DataDistribution::Shard::contains(HashRange hash)
 {
-    if ((hash >= beginRange()) && (hash <= endRange())) {
+    if ((hash >= m_beginRange) && (hash <= m_endRange)) {
         return mp_node;
     }
     return NULL;
@@ -427,11 +408,11 @@ Shard::contains(HashRange hash)
  * by this key.
  */
 bool
-Shard::covers(const string &key)
+DataDistribution::Shard::covers(const string &key)
 {
     HashRange hash = mp_dist->hashWork(key);
 
-    if ((hash >= beginRange()) && (hash <= endRange())) {
+    if ((hash >= m_beginRange) && (hash <= m_endRange)) {
         return true;
     }
     return false;

@@ -37,22 +37,19 @@ class Node
 {
   public:
     /*
-     * Retrieve the name of the node.
-     */
-    const string getName() { return m_name; }
-
-    /*
      * Retrieve the group object for the group that
      * this node is in.
      */
     Group *getGroup() { return mp_group; }
 
+  protected:
     /*
-     * Deliver event notifications.
+     * Deliver event notifications. This method only updates
+     * the cached representation, it is not responsible to
+     * deliver the event to registered EventHandler instances.
      */
     void deliverNotification(const Event e);
 
-  protected:
     /*
      * Friend declaration for Factory so that it will be able
      * to call the constructor.
@@ -66,9 +63,8 @@ class Node
          const string &name,
          const string &key,
          FactoryOps *f)
-        : Notifyable(f, key),
-          mp_group(group),
-          m_name(name)
+        : Notifyable(f, key, name),
+          mp_group(group)
     {
     }
 
@@ -77,22 +73,22 @@ class Node
      * Make the default constructor private so it cannot be called.
      */
     Node()
-        : Notifyable(NULL, "")
+        : Notifyable(NULL, "", "")
     {
         throw ClusterException("Someone called the Node default "
                                "constructor!");
     }
+
+    /*
+     * Make the destructor private also.
+     */
+    ~Node() {}
 
   private:
     /*
      * The group this node is in.
      */
     Group *mp_group;
-
-    /*
-     * The name of this node.
-     */
-    const string m_name;
 };
 
 };	/* End of 'namespace clusterlib' */

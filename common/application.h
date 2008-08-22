@@ -23,14 +23,15 @@ class Application
 {
   public:
     /*
-     * Retrieve the name of the application.
-     */
-    const string getName() { return m_name; }
-
-    /*
      * Retrieve a named group within an application.
      */
     Group *getGroup(const string &groupName)
+        throw(ClusterException);
+
+    /*
+     * Create a named group.
+     */
+    Group *createGroup(const string &groupName)
         throw(ClusterException);
 
     /*
@@ -46,15 +47,16 @@ class Application
         throw(ClusterException);
 
     /*
+     * Create a named data distribution.
+     */
+    DataDistribution *createDistribution(const string &distName)
+        throw(ClusterException);
+
+    /*
      * Retrieve a map of all data distributions within the
      * application (at the application level).
      */
     DataDistributionMap *getDistributions() { return &m_distributions; }
-
-    /*
-     * Deliver received event notifications.
-     */
-    void deliverNotification(const Event e);
 
     /*
      * Have the distribution and group maps been filled already?
@@ -63,6 +65,13 @@ class Application
     bool filledDataDistributionMap() { return m_filledDataDistributionMap; }
 
   protected:
+    /*
+     * Deliver received event notifications. This method only
+     * updates the cached representation, it is not responsible
+     * to deliver events to all registered EventHandler instances.
+     */
+    void deliverNotification(const Event e);
+
     /*
      * Friend declaration for factory so that it can call
      * the protected constructor.
@@ -73,8 +82,7 @@ class Application
      * Constructor used by Factory.
      */
     Application(const string &name, const string &key, FactoryOps *f)
-        : Notifyable(f, key),
-          m_name(name)
+        : Notifyable(f, key, name)
     {
         m_groups.clear();
         m_distributions.clear();
@@ -84,12 +92,14 @@ class Application
      * Did we already fill the group and/or distribution maps?
      */
     void setFilledGroupMap(bool v) { m_filledGroupMap = v; }
-
     void setFilledDataDistributionMap(bool v)
     {
         m_filledDataDistributionMap = v;
     }
 
+    /*
+     * Get locks associated with the various maps.
+     */
     Mutex *getGroupMapLock() { return &m_grpLock; }
     Mutex *getDistributionMapLock() { return &m_distLock; }
 
@@ -98,18 +108,18 @@ class Application
      * The default constructor is private so noone can call it.
      */
     Application()
-        : Notifyable(NULL, "")
+        : Notifyable(NULL, "", "")
     {
         throw ClusterException("Someone called the Application "
                                "default constructor!");
     }
 
-  private:
     /*
-     * The name of this application.
+     * Make the destructor private also.
      */
-    const string m_name;
+    ~Application() {};
 
+  private:
     /*
      * Map of all groups within this application.
      */

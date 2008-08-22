@@ -21,9 +21,9 @@ namespace clusterlib
  * Alphabetical order.
  */
 class Application;
-class ClusterClient;
+class Client;
+class ClusterEventHandler;
 class ClusterException;
-class ClusterServer;
 class DataDistribution;
 class Factory;
 class FactoryOps;
@@ -31,9 +31,9 @@ class Group;
 class HealthChecker;
 class Node;
 class NodeAddress;
-class NotificationReceiver;
 class Notifyable;
-class Shard;
+class Server;
+class TimerEventHandler;
 
 /*
  * Objects attached to (and registered for)
@@ -48,29 +48,28 @@ class ZooKeeperPayload;
  */
 typedef vector<string>				IdList;
 typedef vector<Application *>			ApplicationList;
+typedef vector<Client *>			ClientList;
 typedef vector<DataDistribution *>		DataDistributionList;
-typedef vector<ClusterClient *>			ClusterClientList;
-typedef vector<ClusterServer *>			ClusterServerList;
 typedef vector<Factory *>			FactoryList;
 typedef vector<FactoryOps *>			FactoryOpsList;
 typedef vector<Group *>				GroupList;
 typedef vector<HealthChecker *>			HealthCheckerList;
 typedef vector<Node *>				NodeList;
 typedef	vector<NodeAddress *>			NodeAddressList;
-typedef vector<Shard *>				ShardList;
+typedef vector<Server *>			ServerList;
     
 /*
  * Maps of pointers to these classes.
  */
 typedef map<string, Application *>		ApplicationMap;
-typedef map<string, ClusterClient *>		ClusterClientMap;
-typedef map<string, ClusterServer *>		ClusterServerMap;
+typedef map<string, Client *>			ClientMap;
 typedef map<string, DataDistribution *>		DataDistributionMap;
 typedef map<string, Factory *>			FactoryMap;
 typedef map<string, FactoryOps *>		FactoryOpsMap;
 typedef map<string, Group *>			GroupMap;
 typedef map<string, HealthChecker *>		HealthCheckerMap;
 typedef map<string, Node *>	        	NodeMap;
+typedef map<string, Server *>			ServerMap;
 
 /*
  * Type used for passing flags.
