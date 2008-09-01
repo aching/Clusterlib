@@ -54,11 +54,45 @@ Client::getApplication(const string &appName,
  * invoking handlers for events as they come in.
  */
 void
-Client::consumeEvents()
+Client::consumeClusterEvents()
 {
-    TRACE( CL_LOG, "consumeEvents" );
+    TRACE( CL_LOG, "consumeClusterEvents" );
 
     /* TO BE WRITTEN */
+
+#ifdef	VERY_VERBOSE_DEBUG
+    cerr << "Hello from consumeClusterEvents" 
+         << " this: "
+         << this
+         << ", thread: "
+         << pthread_self()
+         << endl;
+#endif
+}
+
+/*
+ * Register a timer handler.
+ */
+TimerId
+Client::registerTimer(TimerEventHandler *tp,
+                      uint64_t afterTime,
+                      ClientData data)
+    throw(ClusterException)
+{
+    return mp_f->registerTimer(tp, afterTime, data);
+}
+
+/*
+ * Cancel a timer event. Returns true if the event was successfully
+ * cancelled, false otherwise (if false is returned, its possible that
+ * the timer event may still be delivered, or it has already been
+ * delivered).
+ */
+bool
+Client::cancelTimer(TimerId id)
+    throw(ClusterException)
+{
+    return mp_f->cancelTimer(id);
 }
 
 };	/* End of 'namespace clusterlib' */

@@ -120,6 +120,11 @@ Factory::Factory(const string &registry)
     m_eventThread.Create(*this, &Factory::dispatchEvents);
 
     /*
+     * Create the timer handler thread.
+     */
+    m_timerHandlerThread.Create(*this, &Factory::consumeTimerEvents);
+
+    /*
      * Connect to ZK (TBD).
      */
 };
@@ -169,10 +174,17 @@ Factory::createServer(const string &app,
  * Handle events.
  */
 void
-Factory::eventReceived(const ZKEventSource &zksrc, const ZKWatcherEvent &e)
+Factory::eventReceived(const zk::ZKEventSource &zksrc,
+                       const zk::ZKWatcherEvent &e)
 {
     TRACE( CL_LOG, "eventReceived" );
+
+    LOG_FATAL( CL_LOG,
+               "Factory::eventReceived: Should not be called! Event type: %d",
+               e.getType() );
+    ::abort();
 };
+
 
 /**********************************************************************/
 /* Below this line are the private methods of class Factory.          */
@@ -216,7 +228,16 @@ Factory::dispatchEvents()
     TRACE( CL_LOG, "dispatchEvents" );
 
     unsigned int eventSeqId = 0;
-    
+    bool sentEndEvent = false;
+
+#ifdef	VERY_VERBOSE_DEBUG
+    cerr << "Hello from dispatchEvents, this: "
+         << this
+         << ", thread: "
+         << pthread_self()
+         << endl;
+#endif
+
     try {
         for (m_shutdown = false;
              m_shutdown == false;
@@ -233,6 +254,15 @@ Factory::dispatchEvents()
              * correct handler.
              */
             ge = m_eventAdapter.getNextEvent();
+
+#ifdef	VERY_VERBOSE_DEBUG
+            cerr << "["
+                 << eventSeqId
+                 << "] dispatchEvents() received event of type: "
+                 << ge.getType()
+                 << endl;
+#endif
+
             switch (ge.getType()) {
               default:
                 LOG_FATAL(CL_LOG,
@@ -249,23 +279,24 @@ Factory::dispatchEvents()
                       ClusterlibTimerEvent *tp =
                           (ClusterlibTimerEvent *) ge.getEvent();
 
-                      dispatchTimerEvent(tp);
-                      
-                      LOG_INFO(CL_LOG,
-                               "Processed timer event %d with data 0x%x "
-                               "triggered at %lld",
-                               tp->getID(),
-                               (unsigned int) tp->getUserData(),
-                               tp->getAlarmTime());
+#ifdef	VERY_VERBOSE_DEBUG
+                      cerr << "Dispatching timer event: "
+                           << tp
+                           << ", id: "
+                           << tp->getID()
+                           << ", alarm time: "
+                           << tp->getAlarmTime()
+                           << endl;
+#endif
 
-                      delete tp;
+                      dispatchTimerEvent(tp);
 
                       break;
                   }
               case ZKEVENT:
                   {
-                      ZKWatcherEvent *zp =
-                          (ZKWatcherEvent *) ge.getEvent();
+                      zk::ZKWatcherEvent *zp =
+                          (zk::ZKWatcherEvent *) ge.getEvent();
 
                       LOG_INFO(CL_LOG,
                                "Processing ZK event "
@@ -290,14 +321,23 @@ Factory::dispatchEvents()
          * registered clients that there will
          * be no more events coming.
          */
-        dispatchEndEvent();
-    } catch (ZooKeeperException &zke) {
+        sentEndEvent = dispatchEndEvent();
+    } catch (zk::ZooKeeperException &zke) {
         LOG_ERROR( CL_LOG, "ZooKeeperException: %s", zke.what() );
+        if (!sentEndEvent) {
+            dispatchEndEvent();
+        }
         throw ClusterException(zke.what());
     } catch (ClusterException &ce) {
+        if (!sentEndEvent) {
+            dispatchEndEvent();
+        }
         throw ClusterException(ce.what());
     } catch (std::exception &stde) {
         LOG_ERROR( CL_LOG, "Unknown exception: %s", stde.what() );
+        if (!sentEndEvent) {
+            dispatchEndEvent();
+        }
         throw ClusterException(stde.what());
     }
 }
@@ -312,44 +352,14 @@ Factory::dispatchTimerEvent(ClusterlibTimerEvent *te)
     
     TimerPayload *tp = (TimerPayload *) te->getUserData();
 
-    LOG_INFO(CL_LOG,
-             "Got timer event %d with data 0x%x "
-             "triggered at %lld",
-             te->getID(),
-             (unsigned int) tp,
-             te->getAlarmTime());
-
-    /*
-     * Protect against NULL.
-     */
-    if (tp == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Unexpected NULL timer event %d triggered "
-                 "at %lld",
-                 te->getID(),
-                 te->getAlarmTime());
-        return;
-    }
-
-    /*
-     * If cancelled then no need to deliver.
-     */
-    if (tp->cancelled()) {
-        delete tp;
-        return;
-    }
-
-    /*
-     * Deliver the event.
-     */
-    tp->getClient()->sendEvent(tp);
+    m_timerEventQueue.put(tp);
 }
 
 /*
  * Dispatch a ZK event.
  */
 void
-Factory::dispatchZKEvent(ZKWatcherEvent *zp)
+Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
 {
     TRACE( CL_LOG, "dispatchZKEvent" );
     
@@ -415,7 +425,7 @@ Factory::translateZKToCLET(int type)
  * are in fact handled directly, here.
  */
 void
-Factory::dispatchSessionEvent(ZKWatcherEvent *ze)
+Factory::dispatchSessionEvent(zk::ZKWatcherEvent *ze)
 {
     TRACE( CL_LOG, "dispatchSessionEvent" );
 
@@ -453,14 +463,89 @@ Factory::dispatchSessionEvent(ZKWatcherEvent *ze)
  * to indicate that no more events will be sent
  * following this one.
  */
-void
+bool
 Factory::dispatchEndEvent()
 {
     TRACE( CL_LOG, "dispatchEndEvent" );
 
     /*
-     * TO BE IMPLEMENTED.
+     * Send a terminate signal to the timer
+     * event handler thread.
      */
+    dispatchTimerEvent(NULL);
+
+    /*
+     * Send a terminate signal to all registered
+     * client-specific cluster event handler threads.
+     *
+     * TBD.
+     */
+
+    return true;
+}
+
+/*
+ * Consume timer events. Run the timer event handlers.
+ * This runs in a special thread owned by the factory.
+ */
+void
+Factory::consumeTimerEvents()
+{
+    TRACE( CL_LOG, "consumeTimerEvents" );
+
+    TimerPayload *pp;
+
+#ifdef	VERY_VERBOSE_DEBUG
+    cerr << "Hello from consumeTimerEvents, this: "
+         << this
+         << ", thread: "
+         << pthread_self()
+         << endl;
+#endif
+
+    try {
+        for (;;) {
+            pp = m_timerEventQueue.take();
+
+            /*
+             * If we received the terminate signal,
+             * then exit from the loop.
+             */
+            if (pp == NULL) {
+                LOG_INFO( CL_LOG,
+                          "Received terminate signal, finishing loop" );
+                return;
+            }
+
+            /*
+             * Dispatch the event to its handler, if the
+             * event hadn't been cancelled.
+             */
+            if (!pp->cancelled()) {
+                pp->getHandler()->handleTimerEvent(pp->getId(),
+                                                   pp->getData());
+            }
+
+            LOG_INFO( CL_LOG,
+                      "Serviced timer %d, handler 0x%x, client data 0x%x",
+                      pp->getId(), 
+                      (int) pp->getHandler(),
+                      (int) pp->getData() );
+
+            /*
+             * Deallocate the payload object.
+             */
+            delete pp;
+        }
+    } catch (zk::ZooKeeperException &zke) {
+        LOG_ERROR( CL_LOG, "ZooKeeperException: %s", zke.what() );
+        throw ClusterException(zke.what());
+    } catch (ClusterException &ce) {
+        throw ClusterException(ce.what());
+    } catch (std::exception &stde) {
+        LOG_ERROR( CL_LOG, "Unknown exception: %s", stde.what() );
+        throw ClusterException(stde.what());
+    }        
 }
 
 /*
@@ -1263,6 +1348,59 @@ Factory::createNode(const string &key, Group *grp)
     TRACE( CL_LOG, "createNode" );
 
     return NULL;
+}
+
+/*
+ * Register a timer handler.
+ */
+TimerId
+Factory::registerTimer(TimerEventHandler *handler,
+                       uint64_t afterTime,
+                       ClientData data)
+    throw(ClusterException)
+{
+    TimerPayload *pp = new TimerPayload(afterTime, handler, data);
+    TimerId id = m_timerEventSrc.scheduleAfter(afterTime, pp);
+    pp->updateTimerId(id);
+
+    Locker l(&m_timerRegistryLock);
+    m_timerRegistry[id] = pp;
+
+    return id;
+}
+
+/*
+ * Cancel a timer.
+ */
+bool
+Factory::cancelTimer(TimerId id)
+    throw(ClusterException)
+{
+    Locker l(&m_timerRegistryLock);
+    TimerPayload *pp = m_timerRegistry[id];
+
+    if (pp == NULL) {
+        return false;
+    }
+
+    pp->cancel();
+    if (m_timerEventSrc.cancelAlarm(id)) {
+        return true;
+    }
+    return false;
+}
+
+/*
+ * Forget a timer ID. Used when the event is finally
+ * delivered (whether or not it is cancelled).
+ */
+void
+Factory::forgetTimer(TimerId id)
+{
+    Locker l(&m_timerRegistryLock);
+
+    delete m_timerRegistry[id];
+    m_timerRegistry.erase(id);
 }
 
 };	/* End of 'namespace clusterlib' */

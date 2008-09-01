@@ -18,7 +18,20 @@ namespace clusterlib
 {
 
 /*
- * Alphabetical order.
+ * Random bits owned by the user program. Clusterlib just
+ * provides a way to attach these bits to events and cache
+ * objects.
+ */
+typedef void *ClientData;
+
+/*
+ * Some types that must be declared early, to be able to define
+ * maps and such.
+ */
+typedef int32_t TimerId;
+
+/*
+ * Alphabetical order of forward declared classes.
  */
 class Application;
 class Client;
@@ -41,7 +54,6 @@ class TimerEventHandler;
  */
 class EventPayload;
 class TimerPayload;
-class ZooKeeperPayload;
 
 /*
  * Vectors of pointers to these classes.
@@ -70,6 +82,7 @@ typedef map<string, Group *>			GroupMap;
 typedef map<string, HealthChecker *>		HealthCheckerMap;
 typedef map<string, Node *>	        	NodeMap;
 typedef map<string, Server *>			ServerMap;
+typedef map<TimerId, TimerPayload *>		TimerRegistry;
 
 /*
  * Type used for passing flags.

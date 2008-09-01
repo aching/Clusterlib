@@ -228,12 +228,12 @@ class ZKWatcherEvent
 /**
  * \brief The type definition of ZK event source.
  */
-typedef EventSource<ZKWatcherEvent> ZKEventSource;
+typedef clusterlib::EventSource<ZKWatcherEvent> ZKEventSource;
 
 /**
  * \brief The type definition of ZK event listener.
  */
-typedef EventListener<ZKWatcherEvent> ZKEventListener;
+typedef clusterlib::EventListener<ZKWatcherEvent> ZKEventListener;
 
 /**
  * \brief This is a helper class for handling events using a member function.
@@ -686,23 +686,23 @@ class ZooKeeperAdapter
         /**
          * The blocking queue of all events waiting to be processed by ZK adapter.
          */
-        BlockingQueue<ZKWatcherEvent> m_events;
+        clusterlib::BlockingQueue<ZKWatcherEvent> m_events;
         
         /**
          * The blocking queue of all events waiting to be processed by users
          * of ZK adapter.
          */
-        BlockingQueue<ZKWatcherEvent> m_userEvents;
+        clusterlib::BlockingQueue<ZKWatcherEvent> m_userEvents;
         
         /**
          * The thread that dispatches all events from {@link #m_events} queue.
          */
-        CXXThread<ZooKeeperAdapter> m_eventDispatcher;
+        clusterlib::CXXThread<ZooKeeperAdapter> m_eventDispatcher;
 
         /**
          * The thread that dispatches all events from {@link #m_userEvents} queue.
          */
-        CXXThread<ZooKeeperAdapter> m_userEventDispatcher;
+        clusterlib::CXXThread<ZooKeeperAdapter> m_userEventDispatcher;
                 
         /**
          * Whether {@link #m_eventDispatcher} is terminating.
@@ -722,7 +722,7 @@ class ZooKeeperAdapter
         /**
          * The lock used to synchronize access to {@link #m_state}.
          */
-        Lock m_stateLock;
+        clusterlib::Lock m_stateLock;
 
         /**
          * How much time left for the connect to succeed, in milliseconds.

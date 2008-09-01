@@ -28,6 +28,12 @@ using namespace boost;
 
 namespace clusterlib {
 
+/**********************************************************************/
+/*                                                                    */
+/* INTERNALS OF EVENT SYSTEM -- NOT INTENDED FOR USE BY CLIENTS       */
+/*                                                                    */
+/**********************************************************************/
+
 /*
  * Enum of the various types of events supported:
  */
@@ -275,6 +281,16 @@ class SynchronousEventAdapter
         
     void eventReceived(const EventSource<E> &source, const E &e)
     {
+#ifdef	VERY_VERBOSE_DEBUG
+        cerr << "Received event: "
+             << &e
+             << ", instance: "
+             << this
+             << ", thread: "
+             << pthread_self()
+             << endl;
+#endif
+
         m_queue.put( e );
     }
 
@@ -313,10 +329,237 @@ class SynchronousEventAdapter
     BlockingQueue<E> m_queue;
 };
 
-/**
- * This typedef defines the type of a timer Id.
+/***********************************************************************/
+/*                                                                     */
+/* Below are user level event handling definitions.                    */
+/*                                                                     */
+/***********************************************************************/
+
+/*---------------------------------------------------------------------*/
+/*                                                                     */
+/* PART A: CLUSTER EVENTS                                              */
+/*                                                                     */
+/*---------------------------------------------------------------------*/
+
+/*
+ * Various notification constants.
  */
-typedef int32_t TimerId;
+const int EN_APP_CREATION		(1<<0);
+const int EN_APP_DELETION		(1<<1);
+
+const int EN_GRP_CREATION		(1<<5);
+const int EN_GRP_DELETION		(1<<6);
+const int EN_GRP_MEMBERSHIP		(1<<7);
+const int EN_GRP_LEADERSHIP		(1<<8);
+
+const int EN_NODE_CREATION		(1<<10);
+const int EN_NODE_DELETION		(1<<11);
+const int EN_NODE_HEALTHCHANGE		(1<<12);
+const int EN_NODE_CONNECTCHANGE		(1<<13);
+const int EN_NODE_MASTERSTATECHANGE	(1<<14);
+
+const int EN_DIST_CREATION		(1<<20);
+const int EN_DIST_DELETION		(1<<21);
+const int EN_DIST_CHANGE		(1<<22);
+
+const int EN_PROP_CHANGE		(1<<25);
+
+const int EN_APP_INTERESTS =    (EN_PROP_CHANGE |
+                                 EN_APP_CREATION |
+                                 EN_APP_DELETION);
+const int EN_GRP_INTERESTS =	(EN_PROP_CHANGE |
+                                 EN_GRP_CREATION |
+                                 EN_GRP_DELETION |
+                                 EN_GRP_MEMBERSHIP |
+                                 EN_GRP_LEADERSHIP);
+const int EN_NODE_INTERESTS =	(EN_PROP_CHANGE |
+                                 EN_NODE_CREATION |
+                                 EN_NODE_DELETION |
+                                 EN_NODE_HEALTHCHANGE |
+                                 EN_NODE_CONNECTCHANGE |
+                                 EN_NODE_MASTERSTATECHANGE);
+const int EN_DIST_INTERESTS =	(EN_PROP_CHANGE |
+                                 EN_DIST_CREATION |
+                                 EN_DIST_DELETION |
+                                 EN_DIST_CHANGE);
+
+/*
+ * An event type.
+ */
+typedef int Event;
+
+/*
+ * Class for passing events+handler to clients.
+ */
+class ClientEvent
+{
+  public:
+    /*
+     * Constructor.
+     */
+    ClientEvent(ClusterEventHandler *rp,
+                Notifyable *np,
+                Event e)
+        : mp_rp(rp),
+          mp_np(np),
+          m_e(e)
+    {
+    }
+
+    /*
+     * Accessors.
+     */
+    ClusterEventHandler *getHandler() { return mp_rp; }
+    Notifyable *getNotifyable() { return mp_np; }
+    Event getEvent() { return m_e; }
+
+  private:
+    /*
+     * The event handler object.
+     */
+    ClusterEventHandler *mp_rp;
+
+    /*
+     * The Notifyable instance for which the event is
+     * being delivered.
+     */
+    Notifyable *mp_np;
+
+    /*
+     * The actual event.
+     */
+    Event m_e;
+
+};
+
+/*
+ * Typedef for client event delivery queue.
+ */
+typedef BlockingQueue<ClientEvent *> ClientEventQueue;
+
+/*
+ * Interface for event handler. Must be derived
+ * to define specific behavior for handling events.
+ */
+class ClusterEventHandler
+{
+  public:
+    /*
+     * Constructor.
+     */
+    ClusterEventHandler()
+    {
+    }
+
+    /*
+     * Destructor.
+     */
+    virtual ~ClusterEventHandler() {}
+
+    /*
+     * Handle the event -- this must be
+     * implemented by subclasses.
+     */
+    virtual void handleClusterEvent(Notifyable *np, Event e)
+        throw(ClusterException)
+        = 0;
+};
+
+/*
+ * Class for recording interest in events.
+ */
+class ClusterEventInterest
+{
+  public:
+   /*
+    * Constructor.
+    */
+    ClusterEventInterest(ClusterEventHandler *handler,
+                         Event mask,
+                         void *clientData)
+        : m_mask(mask),
+          mp_handler(handler),
+          mp_data(clientData)
+    {
+    }
+
+    /*
+     * Deliver the specific event.
+     */
+    void deliverNotification(Event e, Notifyable *np)
+    {
+        // mp_handler->deliverNotification(e, np, mp_data);
+    }
+
+    /*
+     * Get the handler object.
+     */
+    ClusterEventHandler *getHandler() { return mp_handler; }
+
+    /*
+     * Add/remove events to the set we're interested in.
+     */
+    Event addEvents(Event mask)
+    {
+        m_mask |= mask;
+        return m_mask;
+    }
+    Event removeEvents(Event mask)
+    {
+        m_mask &= (~(mask));
+        return m_mask;
+    }
+
+    /*
+     * Is the event one we're interested in?
+     */
+    bool matchEvent(Event e)
+    {
+        return ((m_mask & e) == 0) ? false : true;
+    }
+
+    /*
+     * Get the set of events this interest is for.
+     */
+    Event getEvents() { return m_mask; }
+
+    /*
+     * Set the clientData.
+     */
+    void *setClientData(void *newCLD)
+    {
+        void *oldCLD = mp_data;
+        mp_data = newCLD;
+        return oldCLD;
+    }
+
+  private:
+    /*
+     * The events of interest.
+     */
+    Event m_mask;
+
+    /*
+     * The handler to invoke.
+     */
+    ClusterEventHandler *mp_handler;
+
+    /*
+     * Arbitrary data to pass to deliverNotification().
+     */
+    void *mp_data;
+};
+    
+/*
+ * A list of EventHandler instances.
+ */
+typedef vector<ClusterEventInterest *> ClusterEventInterests;
+
+/*---------------------------------------------------------------------*/
+/*                                                                     */
+/* PART B: TIMER EVENTS                                                */
+/*                                                                     */
+/*---------------------------------------------------------------------*/
 
 /**
  * This class represents a timer event parametrized by the user's data type.
@@ -338,7 +581,16 @@ class TimerEvent
           m_alarmTime(alarmTime),
           m_userData(userData) 
     {
-    }     
+#ifdef	VERY_VERBOSE_DEBUG
+        cerr << "Created timer event: "
+             << this
+             << " with id: "
+             << id
+             << " and alarm time: "
+             << alarmTime
+             << endl;
+#endif
+    }
 
     /**
      * \brief Constructor.
@@ -475,7 +727,6 @@ class Timer
     /**
      * \brief Cancels the given timer event.
      * 
-     * 
      * @param eventID the ID of the event to be canceled
      * 
      * @return whether the event has been canceled
@@ -501,6 +752,14 @@ class Timer
      */
     void sendAlarms()
     {
+#ifdef	VERY_VERBOSE_DEBUG
+        cerr << "Hello from sendAlarms, this: "
+             << this
+             << ", thread: "
+             << pthread_self()
+             << endl;
+#endif
+
         //iterate until terminating
         while (!m_terminating) {
             m_lock.lock();
@@ -508,7 +767,7 @@ class Timer
             if (m_queue.empty()) {
                 //wait up to 100ms to get next event
                 m_lock.wait( 100 );
-            }     
+            }
             bool fire = false;
             if (!m_queue.empty()) {
                 //retrieve the event from the queue and send it
@@ -583,6 +842,16 @@ void EventSource<E>::fireEvent(const E &event)
 template<typename E>
 void EventSource<E>::fireEvent(EventListener<E> *listener, const E &event)
 {
+#ifdef	VERY_VERBOSE_DEBUG
+    cerr << "Sending event: "
+         << &event
+         << " to listener: "
+         << listener
+         << ", thread: "
+         << pthread_self()
+         << endl;
+#endif
+
     listener->eventReceived( *this, event );
 }
 
@@ -734,16 +1003,18 @@ class ClusterlibPayload
  * The payload for a timer event.
  */
 class TimerPayload
-    : public virtual Payload
 {
   public:
     /*
      * Constructor.
      */
     TimerPayload(int64_t ending,
-                 ClientEventHandler *handler)
-        : Payload(handler),
-          m_ending(ending),
+                 TimerEventHandler *handler,
+                 ClientData data)
+        : m_ending(ending),
+          mp_handler(handler),
+          mp_data(data),
+          m_id((TimerId) 0),
           m_cancelled(false)
     {
     };
@@ -756,7 +1027,10 @@ class TimerPayload
     /*
      * Retrieve the fields.
      */
-    int64_t ending() { return m_ending; }
+    int64_t getEnding() { return m_ending; }
+    TimerEventHandler *getHandler() { return mp_handler; }
+    ClientData getData() { return mp_data; }
+    TimerId getId() { return m_id; }
     bool cancelled() { return m_cancelled; }
 
     /*
@@ -764,11 +1038,31 @@ class TimerPayload
      */
     void cancel() { m_cancelled = true; }
 
+    /*
+     * Update the timer ID.
+     */
+    void updateTimerId(TimerId id) { m_id = id; }
+
   private:
     /*
      * When is the timer ending?
      */
     int64_t m_ending;
+
+    /*
+     * The event handler itself.
+     */
+    TimerEventHandler *mp_handler;
+
+    /*
+     * Client data associated with this event.
+     */
+    ClientData mp_data;
+
+    /*
+     * Timer ID for this timer.
+     */
+    TimerId m_id;
 
     /*
      * Is this timer cancelled?
@@ -781,7 +1075,36 @@ class TimerPayload
  */
 typedef TimerEvent<TimerPayload *> ClusterlibTimerEvent;
 typedef Timer<TimerPayload *> ClusterlibTimerEventSource;
- 
+typedef BlockingQueue<TimerPayload *> TimerEventQueue;
+
+/**
+ * This class must be subclassed to define
+ * timer event handlers that can be instantiated.
+ */
+class TimerEventHandler
+{
+  public:
+    /*
+     * Constructor.
+     */
+    TimerEventHandler()
+    {
+    }
+
+    /*
+     * Destructor.
+     */
+    virtual ~TimerEventHandler() {}
+
+    /*
+     * Handle the event -- this must be implemented by
+     * subclasses.
+     */
+    virtual void handleTimerEvent(TimerId id, ClientData data)
+        throw(ClusterException)
+        = 0;
+};
+
 }   /* end of 'namespace clusterlib' */
 
 #endif /* __EVENT_H__ */

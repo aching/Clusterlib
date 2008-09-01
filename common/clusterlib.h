@@ -29,19 +29,16 @@ using namespace std;
 
 #include "forwarddecls.h"
 
-using namespace clusterlib;
-
 #include "log.h"
 #include "clusterexception.h"
 #include "blockingqueue.h"
 #include "mutex.h"
 #include "thread.h"
 #include "event.h"
-//#include "payload.h"
 #include "command.h"
 #include "zkadapter.h"
 
-using namespace zk;
+// using namespace zk;
 
 #include "healthchecker.h"
 #include "notifyable.h"
@@ -51,7 +48,6 @@ using namespace zk;
 #include "group.h"
 #include "node.h"
 #include "datadistribution.h"
-//#include "timer.h"
 
 DEFINE_LOGGER( CL_LOG, "clusterlib" )
 
@@ -63,7 +59,7 @@ namespace clusterlib
  */
 typedef EventListenerAdapter<ClusterlibTimerEvent, TIMEREVENT>
     ClusterlibTimerEventAdapter;
-typedef EventListenerAdapter<ZKWatcherEvent, ZKEVENT>
+typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     ZooKeeperEventAdapter;
 
 /**
@@ -141,7 +137,7 @@ class ClusterlibStrings
  */
 class Factory
     : public virtual ClusterlibStrings,
-      public virtual ZKEventListener
+      public virtual zk::ZKEventListener
 {
   public:
     /*
@@ -172,10 +168,20 @@ class Factory
                          ServerFlags flags);
 
     /*
-     * Handle events received from ZooKeeper.
+     * Convenience function -- return the current time in ms
+     * from the unix epoch.
      */
-    void eventReceived(const ZKEventSource &source,
-                       const ZKWatcherEvent &event);
+    static int64_t getCurrentTimeMillis()
+    {
+        return Timer<int>::getCurrentTimeMillis();
+    }
+
+    /*
+     * Handle events received from ZooKeeper. Must provide
+     * and inherit from ZKEventListener so 
+     */
+    void eventReceived(const zk::ZKEventSource &source,
+                       const zk::ZKWatcherEvent &event);
 
   private:
     /*
@@ -191,6 +197,17 @@ class Factory
     void removeClient(Client *clp);
 
     /*
+     * Register/cancel a timer handler.
+     */
+    TimerId registerTimer(TimerEventHandler *handler,
+                          uint64_t afterTime,
+                          ClientData data)
+        throw(ClusterException);
+    bool cancelTimer(TimerId id)
+        throw(ClusterException);
+    void forgetTimer(TimerId id);
+    
+    /*
      * Dispatch all events. Reads from the
      * event sources and sends events to
      * the registered client for each event.
@@ -201,9 +218,15 @@ class Factory
      * Dispatch timer, zk, and session events.
      */
     void dispatchTimerEvent(ClusterlibTimerEvent *te);
-    void dispatchZKEvent(ZKWatcherEvent *ze);
-    void dispatchSessionEvent(ZKWatcherEvent *ze);
-    void dispatchEndEvent();
+    void dispatchZKEvent(zk::ZKWatcherEvent *ze);
+    void dispatchSessionEvent(zk::ZKWatcherEvent *ze);
+    bool dispatchEndEvent();
+
+    /*
+     * This method consumes timer events. It runs in a separate
+     * thread.
+     */
+    void consumeTimerEvents();
 
     /*
      * Helper method for dispatchZKEvent().
@@ -374,14 +397,20 @@ class Factory
     bool m_filledApplicationMap;
 
     /*
+     * The registry of timer handlers.
+     */
+    TimerRegistry m_timerRegistry;
+    Mutex m_timerRegistryLock;
+
+    /*
      * The ZooKeeper config object.
      */
-    ZooKeeperConfig m_config;
+    zk::ZooKeeperConfig m_config;
 
     /*
      * The ZooKeeper adapter object being used.
      */
-    ZooKeeperAdapter m_zk;
+    zk::ZooKeeperAdapter m_zk;
 
     class InterestRecord
     {
@@ -444,6 +473,16 @@ class Factory
     ClusterlibTimerEventAdapter m_timerEventAdapter;
 
     /**
+     * The queue of timer events.
+     */
+    TimerEventQueue m_timerEventQueue;
+
+    /**
+     * The timer event handler thread.
+     */
+    CXXThread<Factory> m_timerHandlerThread;
+
+    /**
      * The Zookeeper source adapter.
      */
     ZooKeeperEventAdapter m_zkEventAdapter;
@@ -473,6 +512,28 @@ class Factory
 class FactoryOps
 {
   public:
+    void addClient(Client *clp)
+    {
+        mp_f->addClient(clp);
+    }
+    void removeClient(Client *clp)
+    {
+        mp_f->removeClient(clp);
+    }
+
+    TimerId registerTimer(TimerEventHandler *handler,
+                          uint64_t afterTime,
+                          ClientData data)
+        throw(ClusterException)
+    {
+        return mp_f->registerTimer(handler, afterTime, data);
+    }
+    bool cancelTimer(TimerId id)
+        throw(ClusterException)
+    {
+        return mp_f->cancelTimer(id);
+    }
+
     void addInterests(Notifyable *nrp, Event events)
     {
         mp_f->addInterests(nrp->getKey(), nrp, events);

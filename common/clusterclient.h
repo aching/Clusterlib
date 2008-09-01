@@ -27,6 +27,21 @@ class Client
                                 bool create = false)
         throw(ClusterException);
 
+    /*
+     * Register a timer handler to be called after
+     * a specified delay.
+     */
+    TimerId registerTimer(TimerEventHandler *tp,
+                          uint64_t afterTime,
+                          ClientData data)
+        throw(ClusterException);
+
+    /*
+     * Cancel a previously registered timer.
+     */
+    bool cancelTimer(TimerId id)
+        throw(ClusterException);
+
   protected:
     /*
      * Make the factory a friend.
@@ -39,7 +54,12 @@ class Client
     Client(FactoryOps *f)
         : mp_f(f)
     {
-        m_eventThread.Create(*this, &Client::consumeEvents);
+        /*
+         * Create the thread to dispatch cluster events to
+         * specific user program handlers. The clusterlib cache
+         * object affected by the event already has been updated.
+         */
+        m_eventThread.Create(*this, &Client::consumeClusterEvents);
     }
 
     /*
@@ -68,9 +88,9 @@ class Client
     }
 
     /*
-     * Consume events. This method runs in a separate thread.
+     * Consume cluster events. This method runs in a separate thread.
      */
-    void consumeEvents();
+    void consumeClusterEvents();
 
   private:
     /*
