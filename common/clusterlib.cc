@@ -139,6 +139,7 @@ Factory::~Factory()
     delete mp_ops;
 };
 
+
 /*
  * Create a client.
  */
@@ -147,7 +148,10 @@ Factory::createClient()
 {
     TRACE( CL_LOG, "createClient" );
 
-    return new Client(mp_ops);
+    Client *cp = new Client(mp_ops);
+
+    addClient(cp);
+    return cp;
 };
 
 /*
@@ -162,12 +166,15 @@ Factory::createServer(const string &app,
 {
     TRACE( CL_LOG, "createServer" );
 
-    return new Server(mp_ops,
-                      app,
-                      group,
-                      node,
-                      checker,
-                      flags);
+    Server *sp = new Server(mp_ops,
+                            app,
+                            group,
+                            node,
+                            checker,
+                            flags);
+
+    addClient(sp);
+    return sp;
 };
 
 /*
@@ -229,6 +236,7 @@ Factory::dispatchEvents()
 
     unsigned int eventSeqId = 0;
     bool sentEndEvent = false;
+    GenericEvent ge;
 
 #ifdef	VERY_VERBOSE_DEBUG
     cerr << "Hello from dispatchEvents, this: "
@@ -243,11 +251,10 @@ Factory::dispatchEvents()
              m_shutdown == false;
              ) 
         {
-            GenericEvent ge;
-
             LOG_INFO(CL_LOG,
                      "[%d]: Asking for next event",
-                     eventSeqId++);
+                     eventSeqId);
+            eventSeqId++;
 
             /*
              * Get the next event and send it off to the
@@ -262,6 +269,10 @@ Factory::dispatchEvents()
                  << ge.getType()
                  << endl;
 #endif
+
+            LOG_INFO(CL_LOG,
+                     "[%d] dispatchEvent received event of type: %d",
+                     eventSeqId, ge.getType());
 
             switch (ge.getType()) {
               default:
@@ -350,7 +361,7 @@ Factory::dispatchTimerEvent(ClusterlibTimerEvent *te)
 {
     TRACE( CL_LOG, "dispatchTimerEvent" );
     
-    TimerPayload *tp = (TimerPayload *) te->getUserData();
+    TimerEventPayload *tp = (TimerEventPayload *) te->getUserData();
 
     m_timerEventQueue.put(tp);
 }
@@ -365,6 +376,8 @@ Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
     
     ClientEventHandler *cp =
         (ClientEventHandler *) zp->getContext();
+    ClusterEventPayload *cep, *cepp;
+    ClientList::iterator i;
 
     /*
      * Protect against NULL context.
@@ -375,6 +388,25 @@ Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
         return;
     }
 
+    /*
+     * Update the cache representation of the clusterlib
+     * repository object and get back a prototypical
+     * cluster event payload to send to clients.
+     */
+    cep = updateCachedObject(cp);
+
+    /*
+     * Now dispatch the event to all registered clients in
+     * case they have a registered handler for the event on
+     * the affected clusterlib repository object.
+     */
+    for (i = m_clients.begin(); i != m_clients.end(); i++) {
+        cepp = new ClusterEventPayload(*cep);
+        (*i)->sendEvent(cepp);
+    }
+    delete cep;
+
+#ifdef	NOTDEF
     /*
      * Send the event to the client interested in
      * the event. Create a new payload to carry the
@@ -387,37 +419,7 @@ Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
             cp,
             zp->getPath(),
             translateZKToCLET(zp->getType())));
-}
-
-/*
- * Helper method to translate a ZK event type to a
- * ClusterlibKeyEventType.
- */
-ClusterlibKeyEventType
-Factory::translateZKToCLET(int type)
-{
-    if ((type == SESSION_EVENT) || (type == NOTWATCHING_EVENT)) {
-        LOG_FATAL( CL_LOG,
-                   "Should not happen: called translateZKToCLET() with "
-                   "illegal event type %d!",
-                   type );
-        ::abort();
-    }
-    if (type == CHANGED_EVENT) {
-        return CLET_DATA_CHANGED;
-    }
-    if (type == DELETED_EVENT) {
-        return CLET_NODE_EXISTS;
-    }
-    if (type == CHILD_EVENT) {
-        return CLET_NODE_CHILDREN;
-    }
-    if (type == CREATED_EVENT) {
-        return CLET_NODE_EXISTS;
-    }
-
-    /*NOTREACHED*/
-    return CLET_ILLEGAL;
+#endif
 }
 
 /*
@@ -468,6 +470,8 @@ Factory::dispatchEndEvent()
 {
     TRACE( CL_LOG, "dispatchEndEvent" );
 
+    ClientList::iterator i;
+
     /*
      * Send a terminate signal to the timer
      * event handler thread.
@@ -477,9 +481,10 @@ Factory::dispatchEndEvent()
     /*
      * Send a terminate signal to all registered
      * client-specific cluster event handler threads.
-     *
-     * TBD.
      */
+    for (i = m_clients.begin(); i != m_clients.end(); i++) {
+        (*i)->sendEvent(NULL);
+    }
 
     return true;
 }
@@ -493,7 +498,7 @@ Factory::consumeTimerEvents()
 {
     TRACE( CL_LOG, "consumeTimerEvents" );
 
-    TimerPayload *pp;
+    TimerEventPayload *pp;
 
 #ifdef	VERY_VERBOSE_DEBUG
     cerr << "Hello from consumeTimerEvents, this: "
@@ -1359,7 +1364,8 @@ Factory::registerTimer(TimerEventHandler *handler,
                        ClientData data)
     throw(ClusterException)
 {
-    TimerPayload *pp = new TimerPayload(afterTime, handler, data);
+    TimerEventPayload *pp =
+        new TimerEventPayload(afterTime, handler, data);
     TimerId id = m_timerEventSrc.scheduleAfter(afterTime, pp);
     pp->updateTimerId(id);
 
@@ -1377,7 +1383,7 @@ Factory::cancelTimer(TimerId id)
     throw(ClusterException)
 {
     Locker l(&m_timerRegistryLock);
-    TimerPayload *pp = m_timerRegistry[id];
+    TimerEventPayload *pp = m_timerRegistry[id];
 
     if (pp == NULL) {
         return false;
@@ -1401,6 +1407,21 @@ Factory::forgetTimer(TimerId id)
 
     delete m_timerRegistry[id];
     m_timerRegistry.erase(id);
+}
+
+/*
+ * Update the cached representation of a clusterlib repository object and
+ * generate the prototypical cluster event payload to send to registered
+ * clients.
+ */
+ClusterEventPayload *
+Factory::updateCachedObject(ClientEventHandler *cp)
+    throw(ClusterException)
+{
+    /*
+     * TO BE WRITTEN
+     */
+    return NULL;
 }
 
 };	/* End of 'namespace clusterlib' */

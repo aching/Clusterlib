@@ -223,15 +223,18 @@ class Factory
     bool dispatchEndEvent();
 
     /*
+     * Helper method that updates the cached representation
+     * of a clusterlib repository object and generates the
+     * prototypical cluster event payload to send to clients.
+     */
+    ClusterEventPayload *updateCachedObject(ClientEventHandler *cp)
+        throw(ClusterException);
+
+    /*
      * This method consumes timer events. It runs in a separate
      * thread.
      */
     void consumeTimerEvents();
-
-    /*
-     * Helper method for dispatchZKEvent().
-     */
-    ClusterlibKeyEventType translateZKToCLET(int type);
 
     /*
      * Manage interests in events.

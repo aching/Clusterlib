@@ -36,6 +36,7 @@ typedef int32_t TimerId;
 class Application;
 class Client;
 class ClusterEventHandler;
+class ClusterEventPayload;
 class ClusterException;
 class DataDistribution;
 class Factory;
@@ -47,13 +48,7 @@ class NodeAddress;
 class Notifyable;
 class Server;
 class TimerEventHandler;
-
-/*
- * Objects attached to (and registered for)
- * events in the event system.
- */
-class EventPayload;
-class TimerPayload;
+class TimerEventPayload;
 
 /*
  * Vectors of pointers to these classes.
@@ -82,7 +77,7 @@ typedef map<string, Group *>			GroupMap;
 typedef map<string, HealthChecker *>		HealthCheckerMap;
 typedef map<string, Node *>	        	NodeMap;
 typedef map<string, Server *>			ServerMap;
-typedef map<TimerId, TimerPayload *>		TimerRegistry;
+typedef map<TimerId, TimerEventPayload *>	TimerRegistry;
 
 /*
  * Type used for passing flags.

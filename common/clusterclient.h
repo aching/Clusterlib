@@ -65,7 +65,8 @@ class Client
     /*
      * Send an event to this client.
      */
-    void sendEvent(Payload *pp)
+
+    void sendEvent(ClusterEventPayload *pp)
     {
         m_queue.put(pp);
     }
@@ -88,7 +89,8 @@ class Client
     }
 
     /*
-     * Consume cluster events. This method runs in a separate thread.
+     * Consume cluster events. This method runs in a separate thread,
+     * see m_eventThread below.
      */
     void consumeClusterEvents();
 
@@ -102,10 +104,10 @@ class Client
      * The blocking queue for delivering notifications
      * to this client.
      */
-    PayloadQueue m_queue;
+    ClusterEventPayloadQueue m_queue;
 
     /*
-     * The thread handling the events.
+     * The thread consuming the events.
      */
     CXXThread<Client> m_eventThread;
 };

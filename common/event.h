@@ -865,7 +865,7 @@ class EventHandler
     /*
      * Define the type of the member function to invoke.
      */
-    typedef void (T::*EventMethod)(void *data);
+    typedef ClusterEventPayload *(T::*EventMethod)(void *data);
 
     /*
      * Constructor.
@@ -908,109 +908,61 @@ class EventHandler
 typedef EventHandler<Client> ClientEventHandler;
 
 /*
- * Common part of payload carried by all events.
+ * Typedef for blocking queue of pointers to cluster event payload objects.
  */
-class Payload
+typedef BlockingQueue<ClusterEventPayload *> ClusterEventPayloadQueue;
+
+/*
+ * Payload for delivering events from ZooKeeper to clients of
+ * Clusterlib.
+ */
+class ClusterEventPayload
 {
   public:
     /*
      * Constructor.
      */
-    Payload(ClientEventHandler *handler)
-        : mp_handler(handler)
+    ClusterEventPayload(Notifyable *np, Event e)
+        : mp_np(np),
+          m_e(e)
     {
     }
 
     /*
      * Destructor.
      */
-    virtual ~Payload() {}
-
-    /*
-     * Retrieve the payload elements.
-     */
-    Client *getClient()
-    { 
-        return mp_handler->getObject();
-    }
-    ClientEventHandler *getHandler() { return mp_handler; }
-
-  private:
-    /*
-     * The handler which will be invoked to handle the event.
-     */
-    ClientEventHandler *mp_handler;
-};
-
-/*
- * Typedef for blocking queue of pointers to payload objects.
- */
-typedef BlockingQueue<Payload *> PayloadQueue;
-
-enum ClusterlibKeyEventType
-{
-    CLET_ILLEGAL = -1,
-    CLET_NODE_EXISTS = 0,
-    CLET_DATA_CHANGED = 2,
-    CLET_NODE_CHILDREN = 3
-};
-
-/*
- * Payload for delivering events from ZooKeeper to Clusterlib
- * application.
- */
-class ClusterlibPayload
-    : public virtual Payload
-{
-  public:
-    /*
-     * Constructor.
-     */
-    ClusterlibPayload(ClientEventHandler *handler,
-                      const string &key,
-                      ClusterlibKeyEventType clet)
-        : Payload(handler),
-          m_key(key),
-          m_clet(clet)
-    {
-    }
-
-    /*
-     * Destructor.
-     */
-    virtual ~ClusterlibPayload() {}
+    virtual ~ClusterEventPayload() {}
 
     /*
      * Retrieve fields.
      */
-    string getKey() { return m_key; }
-    ClusterlibKeyEventType getCLET() { return m_clet; }
+    Event getEvent() { return m_e; }
+    Notifyable *getTarget() { return mp_np; }
 
   private:
     /*
-     * The key for which the event happend.
+     * The target object clients are being notified about.
      */
-    string m_key;
+    Notifyable *mp_np;
 
     /*
-     * The type of the event, so that we can use
-     * the same handler for multiple events and paths.
+     * The event that clients are being notified about.
      */
-    ClusterlibKeyEventType m_clet;
+    Event m_e;
 };
 
 /*
  * The payload for a timer event.
  */
-class TimerPayload
+class TimerEventPayload
 {
   public:
     /*
      * Constructor.
      */
-    TimerPayload(int64_t ending,
-                 TimerEventHandler *handler,
-                 ClientData data)
+    TimerEventPayload(int64_t ending,
+                      TimerEventHandler *handler,
+                      ClientData data)
         : m_ending(ending),
           mp_handler(handler),
           mp_data(data),
@@ -1022,7 +974,7 @@ class TimerPayload
     /*
      * Destructor.
      */
-    virtual ~TimerPayload() {}
+    virtual ~TimerEventPayload() {}
 
     /*
      * Retrieve the fields.
@@ -1073,9 +1025,9 @@ class TimerPayload
 /**
  * The types for timer events and timer event source.
  */
-typedef TimerEvent<TimerPayload *> ClusterlibTimerEvent;
-typedef Timer<TimerPayload *> ClusterlibTimerEventSource;
-typedef BlockingQueue<TimerPayload *> TimerEventQueue;
+typedef TimerEvent<TimerEventPayload *>		ClusterlibTimerEvent;
+typedef Timer<TimerEventPayload *>		ClusterlibTimerEventSource;
+typedef BlockingQueue<TimerEventPayload *>	TimerEventQueue;
 
 /**
  * This class must be subclassed to define
