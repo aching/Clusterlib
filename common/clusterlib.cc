@@ -88,7 +88,9 @@ Factory::Factory(const string &registry)
       m_config(registry, 3000),
       m_zk(m_config, this, false),
       m_timerEventAdapter(m_timerEventSrc),
-      m_zkEventAdapter(m_zk)
+      m_zkEventAdapter(m_zk),
+      m_shutdown(false),
+      m_connected(false)
 {
     TRACE( CL_LOG, "Factory" );
 
@@ -101,7 +103,6 @@ Factory::Factory(const string &registry)
     m_groups.clear();
     m_nodes.clear();
     m_clients.clear();
-    m_notificationInterests.clear();
 
     /*
      * Create the delegate.
@@ -125,8 +126,19 @@ Factory::Factory(const string &registry)
     m_timerHandlerThread.Create(*this, &Factory::consumeTimerEvents);
 
     /*
-     * Connect to ZK (TBD).
+     * Connect to ZK.
      */
+    try {
+        m_zk.reconnect();
+        cerr << "Waiting for connect event from ZooKeeper" << endl;
+        if (m_eventSyncLock.lockedWait(3000) == true) {
+            LOG_ERROR(CL_LOG,
+                      "Did not receive connect event in time, aborting");
+        }
+        cerr << "After wait, m_connected == " << m_connected << endl;
+    } catch (zk::ZooKeeperException &e) {
+        throw ClusterException(e.what());
+    }
 };
 
 /*
@@ -148,10 +160,25 @@ Factory::createClient()
 {
     TRACE( CL_LOG, "createClient" );
 
-    Client *cp = new Client(mp_ops);
+    /*
+     * Ensure we're connected.
+     */
+    if (!m_connected) {
+        LOG_ERROR(CL_LOG,
+                  "Cannot create client when disconnected.");
+        return NULL;
+    }
 
-    addClient(cp);
-    return cp;
+    /*
+     * Create the new client and add it to the registry.
+     */
+    try {
+        Client *cp = new Client(mp_ops);
+        addClient(cp);
+        return cp;
+    } catch (ClusterException &e) {
+        return NULL;
+    }
 };
 
 /*
@@ -166,19 +193,35 @@ Factory::createServer(const string &app,
 {
     TRACE( CL_LOG, "createServer" );
 
-    Server *sp = new Server(mp_ops,
-                            app,
-                            group,
-                            node,
-                            checker,
-                            flags);
+    /*
+     * Ensure we're connected.
+     */
+    if (!m_connected) {
+        LOG_ERROR(CL_LOG,
+                  "Cannot create server when disconnected.");
+        return NULL;
+    }
 
-    addClient(sp);
-    return sp;
+    /*
+     * Create the new server and add it to the registry.
+     */
+    try {
+        Server *sp = new Server(mp_ops,
+                                app,
+                                group,
+                                node,
+                                checker,
+                                flags);
+        addClient(sp);
+        return sp;
+    } catch (ClusterException &e) {
+        return NULL;
+    }
 };
 
 /*
- * Handle events.
+ * Handle events. Must be given to satisfy the interface but
+ * not used.
  */
 void
 Factory::eventReceived(const zk::ZKEventSource &zksrc,
@@ -186,10 +229,10 @@ Factory::eventReceived(const zk::ZKEventSource &zksrc,
 {
     TRACE( CL_LOG, "eventReceived" );
 
-    LOG_FATAL( CL_LOG,
-               "Factory::eventReceived: Should not be called! Event type: %d",
-               e.getType() );
-    ::abort();
+    /*
+     * Do nothing with this event, the callback will enqueue
+     * it to the event handling thread.
+     */
 };
 
 
@@ -238,11 +281,11 @@ Factory::dispatchEvents()
     bool sentEndEvent = false;
     GenericEvent ge;
 
-#ifdef	VERY_VERBOSE_DEBUG
+#ifdef	VERY_VERY_VERBOSE
     cerr << "Hello from dispatchEvents, this: "
          << this
          << ", thread: "
-         << pthread_self()
+         << self
          << endl;
 #endif
 
@@ -262,9 +305,11 @@ Factory::dispatchEvents()
              */
             ge = m_eventAdapter.getNextEvent();
 
-#ifdef	VERY_VERBOSE_DEBUG
+#ifdef	VERY_VERY_VERBOSE
             cerr << "["
                  << eventSeqId
+                 << ", "
+                 << self
                  << "] dispatchEvents() received event of type: "
                  << ge.getType()
                  << endl;
@@ -290,7 +335,7 @@ Factory::dispatchEvents()
                       ClusterlibTimerEvent *tp =
                           (ClusterlibTimerEvent *) ge.getEvent();
 
-#ifdef	VERY_VERBOSE_DEBUG
+#ifdef	VERY_VERY_VERBOSE
                       cerr << "Dispatching timer event: "
                            << tp
                            << ", id: "
@@ -360,7 +405,11 @@ void
 Factory::dispatchTimerEvent(ClusterlibTimerEvent *te)
 {
     TRACE( CL_LOG, "dispatchTimerEvent" );
-    
+
+#ifdef	VERY_VERY_VERBOSE    
+    cerr << "Dispatching timer event" << endl;
+#endif
+
     TimerEventPayload *tp = (TimerEventPayload *) te->getUserData();
 
     m_timerEventQueue.put(tp);
@@ -400,26 +449,15 @@ Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
      * case they have a registered handler for the event on
      * the affected clusterlib repository object.
      */
-    for (i = m_clients.begin(); i != m_clients.end(); i++) {
-        cepp = new ClusterEventPayload(*cep);
-        (*i)->sendEvent(cepp);
+    {
+        Locker l(&m_clLock);
+
+        for (i = m_clients.begin(); i != m_clients.end(); i++) {
+            cepp = new ClusterEventPayload(*cep);
+            (*i)->sendEvent(cepp);
+        }
     }
     delete cep;
-
-#ifdef	NOTDEF
-    /*
-     * Send the event to the client interested in
-     * the event. Create a new payload to carry the
-     * info through the client's queue (because the
-     * event object we received will be recycled as
-     * soon as this call returns).
-     */
-    cp->getObject()->sendEvent(
-	new ClusterlibPayload(
-            cp,
-            zp->getPath(),
-            translateZKToCLET(zp->getType())));
-#endif
 }
 
 /*
@@ -435,24 +473,56 @@ Factory::dispatchSessionEvent(zk::ZKWatcherEvent *ze)
              "Session event: (type: %d, state: %d)",
              ze->getType(), ze->getState());
 
+#ifdef	VERY_VERY_VERBOSE
+    cerr << "Session event: "
+         << "(type: " << ze->getType() 
+         << ", state: " << ze->getState()
+         << ")"
+         << endl;
+#endif
+
     if ((ze->getState() == ASSOCIATING_STATE) ||
         (ze->getState() == CONNECTING_STATE)) {
         /*
          * Not really clear what to do here.
          * For now do nothing.
          */
+#ifdef	VERY_VERY_VERBOSE
+        cerr << "Do nothing." << endl;
+#endif
     } else if (ze->getState() == CONNECTED_STATE) {
         /*
-         * Rerun leadership protocol for all
-         * elections we participate in.
-         * (TBD)
+         * Mark as connected.
          */
+#ifdef	VERY_VERY_VERBOSE
+        cerr << "Marked connected." << endl;
+#endif
+        m_connected = true;
+
+        /*
+         * Notify anyone waiting that this factory is
+         * now connected.
+         */
+        m_eventSyncLock.lockedNotify();
     } else if (ze->getState() == EXPIRED_SESSION_STATE) {
         /*
          * We give up on SESSION_EXPIRED.
          */
+#ifdef	VERY_VERY_VERBOSE
+        cerr << "Giving up." << endl;
+#endif
         m_shutdown = true;
+        m_connected = false;
+
+        /*
+         * Notify anyone waiting that this factory is
+         * now disconnected.
+         */
+        m_eventSyncLock.lockedNotify();
     } else {
+#ifdef	VERY_VERY_VERBOSE
+        cerr << "No idea what to do with state: " << ze->getState() << endl;
+#endif
         LOG_WARN(CL_LOG,
                  "Session event with unknown state "
                  "(type: %d, state: %d)",
@@ -500,7 +570,7 @@ Factory::consumeTimerEvents()
 
     TimerEventPayload *pp;
 
-#ifdef	VERY_VERBOSE_DEBUG
+#ifdef	VERY_VERY_VERBOSE
     cerr << "Hello from consumeTimerEvents, this: "
          << this
          << ", thread: "
@@ -658,6 +728,10 @@ Factory::getGroup(const string &appName,
 {
     Application *app = getApplication(appName, create);
 
+    if (app == NULL) {
+        return NULL;
+    }
+
     return getGroup(groupName, app, create);
 }
 
@@ -710,32 +784,12 @@ Factory::getNode(const string &appName,
 {
     Group *grp = getGroup(appName, groupName, create);
 
+    if (grp == NULL) {
+        return NULL;
+    }
+
     return getNode(nodeName, grp, managed, create);
 }
-
-#ifdef	NOTDEF
-/*
- * Return an object representing a shard.
- */
-Shard *
-Factory::createShard(DataDistribution *dp,
-                     const string &startRange,
-                     const string &endRange,
-                     const string &appName,
-                     const string &grpName,
-                     const string &nodeName)
-{
-    Node *np = getNode(appName, grpName, nodeName, true);
-    unsigned long long lo = atoll(startRange.c_str());
-    unsigned long long hi = atoll(endRange.c_str());
-
-    /*
-     * TODO: Check np for NULL.
-     */
-
-    return new Shard(dp, np, lo, hi);
-}
-#endif
 
 /*
  * Key creation and recognition.
@@ -1043,7 +1097,7 @@ Factory::loadApplication(const string &name,
     }
 
     
-#ifdef	REWRITE_FOR_NOTIFICATION_RECEIVER
+#ifdef	NOTDEF
     addInterests(key, app, EN_APP_INTERESTS);
     addInterests(key + PATHSEPARATOR + GROUPS,
                  app,
@@ -1113,7 +1167,7 @@ Factory::loadDistribution(const string &name,
         m_dataDistributions[key] = dist;
     }
 
-#ifdef	REWRITE_FOR_NOTIFICATION_RECEIVER
+#ifdef	NOTDEF
     addInterests(key, dist, EN_DIST_INTERESTS);
     addInterests(key + PATHSEPARATOR + SHARDS,
                  dist,
@@ -1209,7 +1263,7 @@ Factory::loadGroup(const string &name,
         m_groups[key] = grp;
     }
 
-#ifdef	REWRITE_FOR_NOTIFICATION_RECEIVER
+#ifdef	NOTDEF
     addInterests(key, grp, EN_GRP_INTERESTS);
     addInterests(key + PATHSEPARATOR + NODES,
                  grp,
@@ -1273,7 +1327,7 @@ Factory::loadNode(const string &name,
         m_nodes[key] = node;
     }
 
-#ifdef	REWRITE_FOR_NOTIFICATION_RECEIVER
+#ifdef	NOTDEF
     addInterests(key, node, EN_NODE_INTERESTS);
     addInterests(key + PATHSEPARATOR + CLIENTSTATE,
                  node,

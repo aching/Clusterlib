@@ -122,6 +122,7 @@ DataDistribution::unmarshallShards(const string &marshalledShards,
     vector<string> components;
     vector<string> shardComponents;
     vector<string>::iterator i;
+    Node *np;
     Shard *nsp;
     Application *app = NULL;
 
@@ -133,15 +134,21 @@ DataDistribution::unmarshallShards(const string &marshalledShards,
                                    *i +
                                    "\", expecting 5 components");
         }
+        np = getDelegate()->getNode(shardComponents[2],
+                                    shardComponents[3],
+                                    shardComponents[4],
+                                    true,
+                                    false);
+        if (np == NULL) {
+            throw ClusterException("Could not create shard \"" +
+                                   *i +
+                                   "\"");
+        }
+
         nsp = new Shard(this,
-                        getDelegate()->getNode(shardComponents[2],
-                                               shardComponents[3],
-                                               shardComponents[4],
-                                               true,
-                                               false),
+                        np,
                         atoll(shardComponents[0].c_str()),
                         atoll(shardComponents[1].c_str()));
-
         if (nsp == NULL) {
             throw ClusterException("Could not create shard \"" +
                                    *i +

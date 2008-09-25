@@ -20,24 +20,29 @@ class Mutex
 {
     friend class Cond;
   public:
-    Mutex() {
+    Mutex()
+    {
         pthread_mutexattr_init( &m_mutexAttr );
         pthread_mutexattr_settype( &m_mutexAttr, PTHREAD_MUTEX_RECURSIVE_NP );
         pthread_mutex_init( &mutex, &m_mutexAttr );
     }
-    ~Mutex() {
+    ~Mutex()
+    {
         pthread_mutex_destroy(&mutex);
         pthread_mutexattr_destroy( &m_mutexAttr );
     }
     void Acquire() { Lock(); }
     void Release() { Unlock(); }
-    void Lock() {
+    void Lock()
+    {
         pthread_mutex_lock(&mutex);
     }
-    int  TryLock() {
+    int  TryLock()
+    {
         return pthread_mutex_trylock(&mutex);
     }
-    void Unlock() {
+    void Unlock()
+    {
         pthread_mutex_unlock(&mutex);
     }
   private:
@@ -47,10 +52,13 @@ class Mutex
 
 class AutoLock {
   public:
-    AutoLock(Mutex& mutex) : _mutex(mutex) {
+    AutoLock(Mutex& mutex)
+        : _mutex(mutex)
+    {
         mutex.Lock();
     }
-    ~AutoLock() {
+    ~AutoLock()
+    {
         _mutex.Unlock();
     }
   private:
@@ -60,7 +68,8 @@ class AutoLock {
 class Cond
 {
   public:
-    Cond() {
+    Cond()
+    {
         static pthread_condattr_t attr;
         static bool inited = false;
         if(!inited) {
@@ -69,15 +78,18 @@ class Cond
         }
         pthread_cond_init(&_cond, &attr);
     }
-    ~Cond() {
+    ~Cond()
+    {
         pthread_cond_destroy(&_cond);
     }
 
-    void Wait(Mutex& mutex) {
+    void Wait(Mutex& mutex)
+    {
         pthread_cond_wait(&_cond, &mutex.mutex);
     }
 
-    bool Wait(Mutex& mutex, long long int timeout) {
+    bool Wait(Mutex& mutex, long long int timeout)
+    {
         struct timeval now;
         gettimeofday( &now, NULL );
         struct timespec abstime;
@@ -85,14 +97,17 @@ class Cond
         microSecs += timeout * 1000;
         abstime.tv_sec = microSecs / 1000000LL;
         abstime.tv_nsec = (microSecs % 1000000LL) * 1000;
-        if (pthread_cond_timedwait(&_cond, &mutex.mutex, &abstime) == ETIMEDOUT) {
+        if (pthread_cond_timedwait(&_cond, &mutex.mutex, &abstime) == 
+            ETIMEDOUT)
+        {
             return false;
         } else {
             return true;
         }
     }
     
-    void Signal() {
+    void Signal()
+    {
         pthread_cond_signal(&_cond);
     }
 
@@ -105,39 +120,67 @@ class Cond
  */
 class Lock
 {
-    public:
+  public:
+    void lock()
+    {
+        m_mutex.Lock();
+    }
         
-        void lock() {
-            m_mutex.Lock();
-        }
+    void unlock()
+    {
+        m_mutex.Unlock();
+    }
         
-        void unlock() {
-            m_mutex.Unlock();
-        }
-        
-        void wait() {
-            m_cond.Wait( m_mutex );
-        }
+    void wait()
+    {
+        m_cond.Wait( m_mutex );
+    }
 
-        bool wait(long long int timeout) {
-            return m_cond.Wait( m_mutex, timeout );
-        }
+    bool wait(long long int timeout)
+    {
+        return m_cond.Wait( m_mutex, timeout );
+    }
         
-        void notify() {
-            m_cond.Signal();
-        }
+    void notify()
+    {
+        m_cond.Signal();
+    }
 
-    private:
+    void lockedWait()
+    {
+        m_mutex.Lock();
+        m_cond.Wait(m_mutex);
+        m_mutex.Unlock();
+    }
+
+    bool lockedWait(long long int timeout)
+    {
+        bool res;
+
+        m_mutex.Lock();
+        res = m_cond.Wait(m_mutex, timeout);
+        m_mutex.Unlock();
+
+        return res;
+    }
+
+    void lockedNotify()
+    {
+        m_mutex.Lock();
+        m_cond.Signal();
+        m_mutex.Unlock();
+    }
+
+  private:
+    /**
+     * The mutex.
+     */
+    Mutex m_mutex;
         
-        /**
-         * The mutex.
-         */
-        Mutex m_mutex;
-        
-        /**
-         * The condition associated with this lock's mutex.
-         */
-        Cond m_cond;         
+    /**
+     * The condition associated with this lock's mutex.
+     */
+    Cond m_cond;         
 };
 
 /*

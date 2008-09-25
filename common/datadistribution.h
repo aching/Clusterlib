@@ -153,6 +153,9 @@ class DataDistribution
         Node *getNode() { return mp_node; }
         HashRange beginRange() { return m_beginRange; }
         HashRange endRange() { return m_endRange; }
+        bool isInstantiated() { return m_instantiated; }
+        string getNodeKey() { return m_nodeKey; }
+            
 
         /*
          * Return the Node * if the work belongs to this shard,
@@ -176,14 +179,46 @@ class DataDistribution
             : mp_dist(dist),
               mp_node(node),
               m_beginRange(beginRange),
-              m_endRange(endRange)
+              m_endRange(endRange),
+              m_instantiated(true)
+        {
+        }
+
+        /*
+         * Constructor.
+         */
+        Shard(DataDistribution *dist,
+              string nodeKey,
+              HashRange beginRange,
+              HashRange endRange)
+            : mp_dist(dist),
+              mp_node(NULL),
+              m_beginRange(beginRange),
+              m_endRange(endRange),
+              m_instantiated(false),
+              m_nodeKey(nodeKey)
         {
         }
 
         /*
          * Reassign this shard to a different node.
          */
-        void reassign(Node *newNode) { mp_node = newNode; }
+        void reassign(Node *newNode) 
+        {
+            m_instantiated = true;
+            mp_node = newNode;
+            if (mp_node == NULL) {
+                m_nodeKey = "";
+            } else {
+                m_nodeKey = mp_node->getKey();
+            }
+        }
+        void reassign(const string nodeKey)
+        {
+            m_instantiated = false;
+            mp_node = NULL;
+            m_nodeKey = nodeKey;
+        }
 
       private:
         /*
@@ -211,6 +246,16 @@ class DataDistribution
          */
         HashRange m_beginRange;
         HashRange m_endRange;
+
+        /*
+         * Does this shard have a pointer to its node?
+         */
+        bool m_instantiated;
+
+        /*
+         * The key of the node -- used in case the pointer is not available.
+         */
+        string m_nodeKey;
     };
 
     /*

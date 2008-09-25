@@ -177,8 +177,15 @@ class Factory
     }
 
     /*
+     * Is the factory connected to ZooKeeper?
+     */
+    bool isConnected() { return m_connected; }
+
+    /*
      * Handle events received from ZooKeeper. Must provide
-     * and inherit from ZKEventListener so 
+     * and inherit from ZKEventListener so that Factory can
+     * be used as an event sink. Not used, just a place holder
+     * and the real event processing happens in the callback.
      */
     void eventReceived(const zk::ZKEventSource &source,
                        const zk::ZKWatcherEvent &event);
@@ -235,14 +242,6 @@ class Factory
      * thread.
      */
     void consumeTimerEvents();
-
-    /*
-     * Manage interests in events.
-     */
-    void addInterests(const string &key, 
-                      Notifyable *nrp,
-                      const Event events);
-    void removeInterests(const string &key, const Event events);
 
     /*
      * Retrieve a list of all (currently known) applications.
@@ -415,56 +414,6 @@ class Factory
      */
     zk::ZooKeeperAdapter m_zk;
 
-    class InterestRecord
-    {
-      public:
-        /*
-         * Constructor.
-         */
-        InterestRecord(Notifyable *nrp, Event e)
-            : mp_nrp(nrp),
-              m_e(e)
-        {
-        };
-
-        /*
-         * Retrieve the elements of the record.
-         */
-        Event getInterests() { return m_e; }
-        Notifyable *getNotifyable() { return mp_nrp; }
-
-        /*
-         * Manage the selection of which notifications
-         * are delivered.
-         */
-        void addInterests(Event e)
-        {
-            m_e |= e;
-        }
-        void removeInterests(Event e)
-        {
-            m_e &= (~(e));
-        }
-
-      private:
-        /*
-         * The notifyable object to deliver events to.
-         */
-        Notifyable *mp_nrp;
-
-        /*
-         * The events of interest.
-         */
-        Event m_e;
-    };
-    typedef map<string, InterestRecord *> NotificationInterestsMap;
-
-    /*
-     * Map from keys to notification interests records.
-     */
-    NotificationInterestsMap m_notificationInterests;
-    Mutex m_notificationLock;
-
     /*
      * The timer event source.
      */
@@ -504,6 +453,16 @@ class Factory
      * Is the event loop terminating?
      */
     bool m_shutdown;
+
+    /*
+     * Is the factory connected to ZooKeeper?
+     */
+    volatile bool m_connected;
+
+    /*
+     * Lock for event synchronization.
+     */
+    Lock m_eventSyncLock;
 };
 
 /*
@@ -535,15 +494,6 @@ class FactoryOps
         throw(ClusterException)
     {
         return mp_f->cancelTimer(id);
-    }
-
-    void addInterests(Notifyable *nrp, Event events)
-    {
-        mp_f->addInterests(nrp->getKey(), nrp, events);
-    }
-    void removeInterests(Notifyable *nrp, Event events)
-    {
-        mp_f->removeInterests(nrp->getKey(), events);
     }
 
     Application *getApplication(const string &name,

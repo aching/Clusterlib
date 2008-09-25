@@ -39,6 +39,9 @@ Server::Server(FactoryOps *f,
                             m_grpName,
                             m_nodeName,
                             (m_flags & SF_MANAGED) == SF_MANAGED);
+    if (mp_node == NULL) {
+        throw ClusterException("Could not find or create node!");
+    }
 };
 
 };	/* End of 'namespace clusterlib' */
