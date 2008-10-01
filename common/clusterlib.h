@@ -280,6 +280,14 @@ class Factory
                                       const string &distName,
                                       bool create);
 
+    Application *getApplicationFromKey(const string &key,
+                                       bool create);
+    DataDistribution *getDistributionFromKey(const string &key,
+                                             bool create);
+    Group *getGroupFromKey(const string &key,
+                           bool create);
+    Node *getNodeFromKey(const string &key, bool create);
+
     string createNodeKey(const string &appName,
                          const string &groupName,
                          const string &nodeName,
@@ -313,6 +321,11 @@ class Factory
     bool hasDistKeyPrefix(vector<string> &components);
     string getDistKeyPrefix(const string &key);
     string getDistKeyPrefix(vector<string> &components);
+
+    string appNameFromKey(const string &key);
+    string distNameFromKey(const string &key);
+    string groupNameFromKey(const string &key);
+    string nodeNameFromKey(const string &key);
 
     /*
      * Load entities from ZooKeeper.
@@ -581,6 +594,27 @@ class FactoryOps
         return mp_f->loadManualOverrides(key);
     }
 
+    Application *getApplicationFromKey(const string &key,
+                                       bool create = false)
+    {
+        return mp_f->getApplicationFromKey(key, create);
+    }
+    DataDistribution *getDistributionFromKey(const string &key,
+                                             bool create = false)
+    {
+        return mp_f->getDistributionFromKey(key, create);
+    }
+    Group *getGroupFromKey(const string &key,
+                           bool create = false)
+    {
+        return mp_f->getGroupFromKey(key, create);
+    }
+    Node *getNodeFromKey(const string &key,
+                         bool create = false)
+    {
+        return mp_f->getNodeFromKey(key, create);
+    }
+
     string createNodeKey(const string &appName,
                          const string &groupName,
                          const string &nodeName,
@@ -638,7 +672,24 @@ class FactoryOps
     {
         return mp_f->hasDistKeyPrefix(key);
     }
-    
+
+    string appNameFromKey(const string &key)
+    {
+        return mp_f->appNameFromKey(key);
+    }
+    string distNameFromKey(const string &key)
+    {
+        return mp_f->distNameFromKey(key);
+    }
+    string groupNameFromKey(const string &key)
+    {
+        return mp_f->groupNameFromKey(key);
+    }
+    string nodeNameFromKey(const string &key)
+    {
+        return mp_f->nodeNameFromKey(key);
+    }
+
   private:
     /*
      * Friend declaration for Factory so it can call

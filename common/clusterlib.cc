@@ -633,35 +633,19 @@ Factory::getApplication(const string &name, bool create)
     Application *app;
 
     {
-        /*
-         * Scope the lock to the smallest extent
-         * possible.
-         */
         Locker l(&m_appLock);
         app = m_applications[key];
         if (app != NULL) {
             return app;
         }
     }
-
-    /*
-     * Try to load from the repository.
-     */
     app = loadApplication(name, key);
     if (app != NULL) {
         return app;
     }
-
-    /*
-     * If 'create' == true, create the application in the repository.
-     */
     if (create == true) {
         return createApplication(key);
     }
-
-    /*
-     * Failure.
-     */
     return NULL;
 }
 
@@ -670,19 +654,26 @@ Factory::getDistribution(const string &distName,
                          Application *app,
                          bool create)
 {
+    if (app == NULL) {
+        return NULL;
+    }
     string key = createDistKey(app->getName(), distName);
 
     {
-        /*
-         * Scope the lock to the smallest extent possible.
-         */
         Locker l(&m_ddLock);
         DataDistribution *dist = m_dataDistributions[key];
         if (dist != NULL) {
             return dist;
         }
     }
-    return loadDistribution(distName, key, app);
+    DataDistribution *dist = loadDistribution(distName, key, app);
+    if (dist != NULL) {
+        return dist;
+    }
+    if (create == true) {
+        return createDistribution(key, "", "", app);
+    }
+    return NULL;
 }
 
 Group *
@@ -690,35 +681,26 @@ Factory::getGroup(const string &groupName,
                   Application *app,
                   bool create)
 {
+    if (app == NULL) {
+        return NULL;
+    }
     string key = createGroupKey(app->getName(), groupName);
     Group *grp;
 
     {
-        /*
-         * Scope the lock to the smallest extent possible.
-         */
         Locker l(&m_grpLock);
         grp = m_groups[key];
         if (grp != NULL) {
             return grp;
         }
     }
-
     grp = loadGroup(groupName, key, app);
     if (grp != NULL) {
         return grp;
     }
-
-    /*
-     * If 'create' == true, create the group in the repository.
-     */
     if (create == true) {
         return createGroup(key, app);
     }
-
-    /*
-     * Failed.
-     */
     return NULL;
 }
 Group *
@@ -726,13 +708,9 @@ Factory::getGroup(const string &appName,
                   const string &groupName,
                   bool create)
 {
-    Application *app = getApplication(appName, create);
-
-    if (app == NULL) {
-        return NULL;
-    }
-
-    return getGroup(groupName, app, create);
+    return getGroup(groupName,
+                    getApplication(appName, create),
+                    create);
 }
 
 Node *
@@ -741,17 +719,20 @@ Factory::getNode(const string &nodeName,
                  bool managed,
                  bool create)
 {
-    string key = createNodeKey(grp->getApplication()->getName(),
+    if (grp == NULL) {
+        return NULL;
+    }
+    Application *app = grp->getApplication();
+    if (app == NULL) {
+        return NULL;
+    }
+    string key = createNodeKey(app->getName(),
                                grp->getName(),
                                nodeName,
                                managed);
     Node *np;
 
     {
-        /*
-         * Scope the lock to the smallest extent
-         * possible.
-         */
         Locker l(&m_nodeLock);
         np = m_nodes[key];
         if (np != NULL) {
@@ -762,17 +743,9 @@ Factory::getNode(const string &nodeName,
     if (np != NULL) {
         return np;
     }
-
-    /*
-     * If 'create' == true, create the node in the repository.
-     */
     if (create == true) {
         np = createNode(key, grp);
     }
-
-    /*
-     * Failed.
-     */
     return NULL;
 }
 Node *
@@ -782,14 +755,69 @@ Factory::getNode(const string &appName,
                  bool managed,
                  bool create)
 {
-    Group *grp = getGroup(appName, groupName, create);
-
-    if (grp == NULL) {
-        return NULL;
-    }
-
-    return getNode(nodeName, grp, managed, create);
+    return getNode(nodeName,
+                   getGroup(appName, groupName, create),
+                   managed,
+                   create);
 }
+
+/*
+ * Get (& potentially load) cache objects given a key.
+ */
+Application *
+Factory::getApplicationFromKey(const string &key, bool create)
+{
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    if (hasAppKeyPrefix(components)) {
+        return getApplication(components[3], create);
+    }
+    return NULL;
+}
+DataDistribution *
+Factory::getDistributionFromKey(const string &key, bool create)
+{
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    if (hasDistKeyPrefix(components)) {
+        return getDistribution(components[5],
+                               getApplication(components[3], false),
+                               create);
+    }
+    return NULL;
+}
+Group *
+Factory::getGroupFromKey(const string &key, bool create)
+{
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    if (hasGroupKeyPrefix(components)) {
+        return getGroup(components[5],
+                        getApplication(components[3], false),
+                        create);
+    }
+    return NULL;
+}
+Node *
+Factory::getNodeFromKey(const string &key, bool create)
+{
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    if (hasNodeKeyPrefix(components)) {
+        return getNode(components[7],
+                       getGroup(components[3],
+                                components[5],
+                                false),
+                       (components[6] == "nodes") ? true : false,
+                       create);
+    }
+    return NULL;
+}
+
 
 /*
  * Key creation and recognition.
@@ -840,7 +868,6 @@ Factory::createAppKey(const string &appName)
         appName
         ;
 
-
     return res;
 }
 
@@ -875,14 +902,14 @@ Factory::hasNodeKeyPrefix(const string &key, bool *managedP)
 bool
 Factory::hasNodeKeyPrefix(vector<string> &components, bool *managedP)
 {
-    if ((components.size() < 9) ||
+    if ((components.size() < 8) ||
         (hasGroupKeyPrefix(components) == false) ||
-        ((components[7] != NODES) &&
-         (components[7] != UNMANAGEDNODES))) {
+        ((components[6] != NODES) &&
+         (components[6] != UNMANAGEDNODES))) {
         return false;
     }
     if (managedP != NULL) {
-        *managedP = ((components[7] == NODES) ? true : false);
+        *managedP = ((components[6] == NODES) ? true : false);
     }
     return true;
 }
@@ -903,9 +930,9 @@ Factory::getNodeKeyPrefix(vector<string> &components)
     return
         getGroupKeyPrefix(components) +
         PATHSEPARATOR +
-        components[7] +
+        NODES +
         PATHSEPARATOR +
-        components[8];
+        components[7];
 }
 
 bool
@@ -914,7 +941,7 @@ Factory::isGroupKey(const string &key)
     vector<string> components;
 
     split(components, key, is_any_of(PATHSEPARATOR));
-    if ((components.size() != 7) ||
+    if ((components.size() != 8) ||
         (hasGroupKeyPrefix(components) == false)) {
         return false;
     }
@@ -931,7 +958,7 @@ Factory::hasGroupKeyPrefix(const string &key)
 bool
 Factory::hasGroupKeyPrefix(vector<string> &components)
 {
-    if ((components.size() < 7) ||
+    if ((components.size() < 8) ||
         (hasAppKeyPrefix(components) == false) ||
         (components[5] != GROUPS)) {
         return false;
@@ -957,7 +984,7 @@ Factory::getGroupKeyPrefix(vector<string> &components)
         PATHSEPARATOR +
         GROUPS +
         PATHSEPARATOR +
-        components[6];
+        components[5];
 }
 
 bool
@@ -966,7 +993,7 @@ Factory::isAppKey(const string &key)
     vector<string> components;
 
     split(components, key, is_any_of(PATHSEPARATOR));
-    if ((components.size() != 5) ||
+    if ((components.size() != 4) ||
         (hasAppKeyPrefix(components) == false)) {
         return false;
     }
@@ -983,10 +1010,10 @@ Factory::hasAppKeyPrefix(const string &key)
 bool
 Factory::hasAppKeyPrefix(vector<string> &components)
 {
-    if ((components.size() < 5) ||
-        (components[1] != CLUSTERLIB) ||
-        (components[2] != VERSION) ||
-        (components[3] != APPLICATIONS)) {
+    if ((components.size() < 4) ||
+        (components[0] != CLUSTERLIB) ||
+        (components[1] != VERSION) ||
+        (components[2] != APPLICATIONS)) {
         return false;
     }
     return true;
@@ -1007,13 +1034,13 @@ Factory::getAppKeyPrefix(vector<string> &components)
 {
     return
         ROOTNODE +
-        components[1] +
+        CLUSTERLIB +
         PATHSEPARATOR +
-        components[2] +
+        VERSION +
         PATHSEPARATOR +
-        components[3] +
+        APPLICATIONS +
         PATHSEPARATOR +
-        components[4];
+        components[3];
 }
 
 bool
@@ -1022,7 +1049,7 @@ Factory::isDistKey(const string &key)
     vector<string> components;
 
     split(components, key, is_any_of(PATHSEPARATOR));
-    if ((components.size() != 7) ||
+    if ((components.size() != 6) ||
         (hasDistKeyPrefix(components) == false)) {
         return false;
     }
@@ -1039,9 +1066,9 @@ Factory::hasDistKeyPrefix(const string &key)
 bool
 Factory::hasDistKeyPrefix(vector<string> &components)
 {
-    if ((components.size() < 7) ||
+    if ((components.size() < 6) ||
         (hasAppKeyPrefix(components) == false) ||
-        (components[5] != DISTRIBUTIONS)) {
+        (components[4] != DISTRIBUTIONS)) {
         return false;
     }
     return true;
@@ -1065,7 +1092,56 @@ Factory::getDistKeyPrefix(vector<string> &components)
         PATHSEPARATOR +
         DISTRIBUTIONS +
         PATHSEPARATOR +
-        components[6];
+        components[5];
+}
+
+string
+Factory::appNameFromKey(const string &key)
+{
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    if ((components.size() != 4) ||
+        (hasAppKeyPrefix(components) == false)) {
+        return "";
+    }
+    return components[3];
+}
+string
+Factory::distNameFromKey(const string &key)
+{
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    if ((components.size() != 6) ||
+        (hasDistKeyPrefix(components) == false)) {
+        return "";
+    }
+    return components[5];
+}
+string
+Factory::groupNameFromKey(const string &key)
+{
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    if ((components.size() != 6) ||
+        (hasGroupKeyPrefix(components) == false)) {
+        return "";
+    }
+    return components[5];
+}
+string
+Factory::nodeNameFromKey(const string &key)
+{
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    if ((components.size() != 8) ||
+        (hasDistKeyPrefix(components) == false)) {
+        return "";
+    }
+    return components[7];
 }
 
 /*
@@ -1096,7 +1172,6 @@ Factory::loadApplication(const string &name,
         m_applications[key] = app;
     }
 
-    
 #ifdef	NOTDEF
     addInterests(key, app, EN_APP_INTERESTS);
     addInterests(key + PATHSEPARATOR + GROUPS,
@@ -1126,16 +1201,14 @@ Factory::fillApplicationMap(ApplicationMap *amp)
         PATHSEPARATOR +
         APPLICATIONS;
     string appKey;
-    Application *app;
 
+    /*
+     * TBD -- lock the applications map!!!
+     */
     m_zk.getNodeChildren(children, appsKey, this, (void *) EN_APP_INTERESTS);
     for (i = children.begin(); i != children.end(); i++) {
-        app = getApplication(*i, false);
-        if (app == NULL) {
-            appKey = appsKey + PATHSEPARATOR + *i;
-            app = loadApplication(*i, appKey);
-            (*amp)[appKey] = app;
-        }
+        appKey = appsKey + PATHSEPARATOR + *i;
+        (*amp)[appKey] = getApplicationFromKey(appKey, false);
     }
     setFilledApplicationMap(true);
 }
@@ -1199,17 +1272,12 @@ Factory::fillDataDistributionMap(DataDistributionMap *dmp,
         PATHSEPARATOR +
         DISTRIBUTIONS;
     string distKey;
-    DataDistribution *dist;
 
     m_zk.getNodeChildren(children, distsKey, this, (void *) EN_DIST_INTERESTS);
     Locker l(app->getDistributionMapLock());
     for (i = children.begin(); i != children.end(); i++) {
-        dist = getDistribution(*i, app, false);
-        if (dist == NULL) {
-            distKey = distsKey + PATHSEPARATOR + *i;
-            dist = loadDistribution(*i, distKey, app);
-            (*dmp)[distKey] = dist;
-        }
+        distKey = distsKey + PATHSEPARATOR + *i;
+        (*dmp)[distKey] = getDistribution(*i, app, false);
     }
     app->setFilledDataDistributionMap(true);
 }
@@ -1286,17 +1354,12 @@ Factory::fillGroupMap(GroupMap *gmp, Application *app)
         PATHSEPARATOR +
         GROUPS;
     string groupKey;
-    Group *grp;
 
     m_zk.getNodeChildren(children, groupsKey, this, (void *) EN_GRP_INTERESTS);
     Locker l(app->getGroupMapLock());
     for (i = children.begin(); i != children.end(); i++) {
-        grp = getGroup(*i, app, false);
-        if (grp == NULL) {
-            groupKey = groupsKey + PATHSEPARATOR + *i;
-            grp = loadGroup(*i, groupKey, app);
-            (*gmp)[groupKey] = grp;
-        }
+        groupKey = groupsKey + PATHSEPARATOR + *i;
+        (*gmp)[groupKey] = getGroup(*i, app, false);
     }
     app->setFilledGroupMap(true);
 }
@@ -1356,17 +1419,12 @@ Factory::fillNodeMap(NodeMap *nmp, Group *grp)
         PATHSEPARATOR +
         NODES;
     string nodeKey;
-    Node *node;
 
     m_zk.getNodeChildren(children, nodesKey, this, (void *) EN_NODE_INTERESTS);
     Locker l(grp->getNodeMapLock());
     for (i = children.begin(); i != children.end(); i++) {
-        node = getNode(*i, grp, true, false);
-        if (node == NULL) {
-            nodeKey = nodesKey + PATHSEPARATOR + *i;
-            node = loadNode(*i, nodeKey, grp);
-            (*nmp)[nodeKey] = node;
-        }
+        nodeKey = nodesKey + PATHSEPARATOR + *i;
+        (*nmp)[nodeKey] = getNode(*i, grp, true, false);
     }
     grp->setFilledNodeMap(true);
 }

@@ -1,9 +1,9 @@
 /* 
- * =============================================================================
+ * ============================================================================
  * $Header$
  * $Revision$
  * $Date$
- * =============================================================================
+ * ============================================================================
  */
 
 #define LOG_LEVEL LOG_WARN
@@ -13,6 +13,16 @@
 
 namespace clusterlib
 {
+
+/*
+ * Constants for identifying the various parts of a shard
+ * specification.
+ */
+const int DataDistribution::SC_LOWBOUND_IDX	= 0;
+const int DataDistribution::SC_HIBOUND_IDX	= 1;
+const int DataDistribution::SC_APPNAME_IDX	= 2;
+const int DataDistribution::SC_GROUPNAME_IDX	= 3;
+const int DataDistribution::SC_NODENAME_IDX	= 4;
 
 static DataDistribution::HashRange
 jenkinsHashImpl(const string &key)
@@ -101,9 +111,9 @@ DataDistribution::unmarshall(const string &marshalledData)
      */
     split( components, marshalledData, is_any_of( "\n" ) ); 
     if (components.size() != 2) {
-        throw ClusterException("Invalid data. Expecting 2 top level components");
+        throw ClusterException("Invalid data. Expecting 2 top "
+                               "level components");
     }
-    
     unmarshallShards(components[0], m_shards);
     unmarshallOverrides(components[1], m_manualOverrides);
 };
@@ -122,9 +132,7 @@ DataDistribution::unmarshallShards(const string &marshalledShards,
     vector<string> components;
     vector<string> shardComponents;
     vector<string>::iterator i;
-    Node *np;
     Shard *nsp;
-    Application *app = NULL;
 
     split(components, marshalledShards, is_any_of(";"));
     for (i = components.begin(); i != components.end(); i++) {
@@ -134,41 +142,23 @@ DataDistribution::unmarshallShards(const string &marshalledShards,
                                    *i +
                                    "\", expecting 5 components");
         }
-        np = getDelegate()->getNode(shardComponents[2],
-                                    shardComponents[3],
-                                    shardComponents[4],
-                                    true,
-                                    false);
-        if (np == NULL) {
-            throw ClusterException("Could not create shard \"" +
-                                   *i +
-                                   "\"");
-        }
 
+        /*
+         * Resolve the node lazily -- only load it if we're actually
+         * asked to access it via this shard.
+         */
         nsp = new Shard(this,
-                        np,
-                        atoll(shardComponents[0].c_str()),
-                        atoll(shardComponents[1].c_str()));
+                        getDelegate()
+			   ->createNodeKey(shardComponents[SC_APPNAME_IDX],
+                                           shardComponents[SC_GROUPNAME_IDX],
+                                           shardComponents[SC_NODENAME_IDX],
+                                           true),
+                        atoll(shardComponents[SC_LOWBOUND_IDX].c_str()),
+                        atoll(shardComponents[SC_HIBOUND_IDX].c_str()));
         if (nsp == NULL) {
             throw ClusterException("Could not create shard \"" +
                                    *i +
                                    "\"");
-        }
-                                   
-        /*
-         * Ensure that all shards point to the same application.
-         */
-        if (app == NULL) {
-            app = nsp->getNode()->getGroup()->getApplication();
-            if (app != mp_app) {
-                throw ClusterException("Distribution spanning multiple "
-                                       "applications, unsupported");
-            }
-        } else {
-            if (app != nsp->getNode()->getGroup()->getApplication()) {
-                throw ClusterException("Distribution spanning multiple "
-                                       "applications, unsupported!");
-            }
         }
 
         /*
@@ -259,19 +249,29 @@ DataDistribution::marshallShards()
     ShardList::iterator i;
     char buf[1024];
     Node *np;
-    Group *gp;
+    const char *nodeName;
+    const char *groupName;
+    const char *appName = getApplication()->getName().c_str();
 
     for (i = m_shards.begin(); i != m_shards.end(); i++) {
         np = (*i)->getNode();
-        gp = np->getGroup();
+        if (np != NULL) {
+            nodeName = np->getName().c_str();
+            groupName = np->getGroup()->getName().c_str();
+        } else {
+            nodeName =
+                getDelegate()->nodeNameFromKey((*i)->getNodeKey()).c_str();
+            groupName = 
+                getDelegate()->groupNameFromKey((*i)->getNodeKey()).c_str();
+        }
         snprintf(buf,
                  1024,
                  "%lld,%lld,%s,%s,%s;",
                  (*i)->beginRange(),
                  (*i)->endRange(),
-                 getApplication()->getName().c_str(),
-                 gp->getName().c_str(),
-                 np->getName().c_str());
+                 appName,
+                 groupName,
+                 nodeName);            
         res += buf;
     }
     return res;
@@ -398,6 +398,25 @@ DataDistribution::findCoveringNode(const string &key)
 };
 
 /*
+ * Retrieve -- or load -- the node of this shard.
+ */
+Node *
+DataDistribution::Shard::getNode()
+{
+    /*
+     * If the node is already loaded, return it.
+     */
+    if (mp_node != NULL) {
+        return mp_node;
+    }
+    /*
+     * Otherwise load and return the node from the key.
+     */
+    mp_node = mp_dist->getDelegate()->getNodeFromKey(m_nodeKey, false);
+    return mp_node;
+}
+
+/*
  * Return the Node * if the hash value given falls within
  * the range of this shard.
  */
@@ -405,7 +424,7 @@ Node *
 DataDistribution::Shard::contains(HashRange hash)
 {
     if ((hash >= m_beginRange) && (hash <= m_endRange)) {
-        return mp_node;
+        return getNode();
     }
     return NULL;
 };

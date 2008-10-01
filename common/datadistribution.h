@@ -33,6 +33,15 @@ class DataDistribution
     };
 
     /*
+     * Constants for identifying the various parts of a shard definition.
+     */
+    static const int SC_LOWBOUND_IDX;
+    static const int SC_HIBOUND_IDX;
+    static const int SC_APPNAME_IDX;
+    static const int SC_GROUPNAME_IDX;
+    static const int SC_NODENAME_IDX;
+
+    /*
      * Define the types associated with a hash function.
      */
     typedef unsigned long long HashRange;
@@ -150,12 +159,14 @@ class DataDistribution
          * Get the info out of the shard.
          */
         DataDistribution *getDistribution() { return mp_dist; }
-        Node *getNode() { return mp_node; }
         HashRange beginRange() { return m_beginRange; }
         HashRange endRange() { return m_endRange; }
-        bool isInstantiated() { return m_instantiated; }
         string getNodeKey() { return m_nodeKey; }
-            
+
+        /*
+         * Get the node, load it if it's not yet loaded.
+         */
+        Node *getNode();
 
         /*
          * Return the Node * if the work belongs to this shard,
@@ -180,7 +191,7 @@ class DataDistribution
               mp_node(node),
               m_beginRange(beginRange),
               m_endRange(endRange),
-              m_instantiated(true)
+              m_nodeKey(string(""))
         {
         }
 
@@ -195,7 +206,6 @@ class DataDistribution
               mp_node(NULL),
               m_beginRange(beginRange),
               m_endRange(endRange),
-              m_instantiated(false),
               m_nodeKey(nodeKey)
         {
         }
@@ -205,7 +215,6 @@ class DataDistribution
          */
         void reassign(Node *newNode) 
         {
-            m_instantiated = true;
             mp_node = newNode;
             if (mp_node == NULL) {
                 m_nodeKey = "";
@@ -215,7 +224,6 @@ class DataDistribution
         }
         void reassign(const string nodeKey)
         {
-            m_instantiated = false;
             mp_node = NULL;
             m_nodeKey = nodeKey;
         }
@@ -246,11 +254,6 @@ class DataDistribution
          */
         HashRange m_beginRange;
         HashRange m_endRange;
-
-        /*
-         * Does this shard have a pointer to its node?
-         */
-        bool m_instantiated;
 
         /*
          * The key of the node -- used in case the pointer is not available.
