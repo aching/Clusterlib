@@ -66,13 +66,6 @@ class Application
 
   protected:
     /*
-     * Deliver received event notifications. This method only
-     * updates the cached representation, it is not responsible
-     * to deliver events to all registered EventHandler instances.
-     */
-    void deliverNotification(const Event e);
-
-    /*
      * Friend declaration for factory so that it can call
      * the protected constructor.
      */
@@ -86,6 +79,8 @@ class Application
     {
         m_groups.clear();
         m_distributions.clear();
+
+        updateCachedRepresentation();
     }
 
     /*
@@ -102,6 +97,11 @@ class Application
      */
     Mutex *getGroupMapLock() { return &m_grpLock; }
     Mutex *getDistributionMapLock() { return &m_distLock; }
+
+    /*
+     * Update the cached representation.
+     */
+    virtual void updateCachedRepresentation() throw(ClusterException);
 
   private:
     /*

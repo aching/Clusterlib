@@ -38,11 +38,6 @@ class Notifyable
         ClusterEventInterests::iterator i;
         ClusterEventInterests interests;
 
-        /*
-         * Update the cached object.
-         */
-        deliverNotification(e);
-
         {
             /*
              * Make a copy of the current notification interests
@@ -125,13 +120,6 @@ class Notifyable
 
   protected:
     /*
-     * This must be supplied by subclasses. Use it to
-     * update the cached representation before the user
-     * defined notification receivers are called.
-     */
-    virtual void deliverNotification(const Event e) = 0;
-
-    /*
      * Factory is a friend so it can call the below constructor.
      */
     friend class Factory;
@@ -170,6 +158,14 @@ class Notifyable
         m_interests.clear();
     };
 
+    /*
+     * Update the cached representation -- must be provided
+     * by subclasses.
+     */
+    virtual void updateCachedRepresentation()
+        throw(ClusterException)
+        = 0;
+
   private:
     /*
      * Retrieve the handlers lock.
@@ -179,7 +175,11 @@ class Notifyable
     /*
      * Default constructor.
      */
-    Notifyable() {};
+    Notifyable() 
+    {
+        throw ClusterException("Someone called the Notifyable "
+                               "default constructor!");
+    };
 
   private:
     /*

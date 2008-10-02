@@ -44,13 +44,6 @@ class Node
 
   protected:
     /*
-     * Deliver event notifications. This method only updates
-     * the cached representation, it is not responsible to
-     * deliver the event to registered EventHandler instances.
-     */
-    void deliverNotification(const Event e);
-
-    /*
      * Friend declaration for Factory so that it will be able
      * to call the constructor.
      */
@@ -67,6 +60,11 @@ class Node
           mp_group(group)
     {
     }
+
+    /*
+     * Update the cached representation of this node.
+     */
+    virtual void updateCachedRepresentation() throw(ClusterException);
 
   private:
     /*

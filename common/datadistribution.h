@@ -1,8 +1,8 @@
 /*
  * datadistribution.h --
  *
- * Definition of class DataDistribution; it represents a data distribution (mapping
- * from a key to a node) in clusterlib.
+ * Definition of class DataDistribution; it represents a data
+ * distribution (mapping from a key to a node) in clusterlib.
  *
  * $Header:$
  * $Revision$
@@ -69,13 +69,6 @@ class DataDistribution
 
   protected:
     /*
-     * Deliver event notifications. This method only updates
-     * the cached representation, it is not responsible to
-     * deliver the event to registered EventHandler instances.
-     */
-    void deliverNotification(const Event e);
-
-    /*
      * Friend declaration of Factory so that it can call the
      * protected constructor.
      */
@@ -89,6 +82,11 @@ class DataDistribution
                      const string &key,
                      FactoryOps *f,
                      HashFunction *fn = NULL);
+
+    /*
+     * Update the distribution.
+     */
+    void updateCachedRepresentation() throw(ClusterException);
 
   private:
     /*
@@ -142,11 +140,6 @@ class DataDistribution
      * Marshall manual overrides into a string.
      */
     string marshallOverrides();
-
-    /*
-     * Update the distribution.
-     */
-    void updateDistribution() throw(ClusterException);
 
   private:
     /*

@@ -3,11 +3,11 @@
  *
  * Implementation of the Node class.
  *
- * =============================================================================
+ * ============================================================================
  * $Header:$
- * $Revision:$
- * $Date:$
- * =============================================================================
+ * $Revision$
+ * $Date$
+ * ============================================================================
  */
 
 #include "clusterlib.h"
@@ -19,13 +19,11 @@ namespace clusterlib
 {
 
 /*
- * Deliver notification to the Notifyable object first,
- * before calling user supplied notification receivers.
- * This gives the object a chance to update its cached
- * representation.
+ * Update the cached representation of this node.
  */
 void
-Node::deliverNotification(const Event event)
+Node::updateCachedRepresentation()
+    throw(ClusterException)
 {
 };
 

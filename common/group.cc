@@ -5,8 +5,8 @@
  *
  * =============================================================================
  * $Header:$
- * $Revision:$
- * $Date:$
+ * $Revision$
+ * $Date$
  * =============================================================================
  */
 
@@ -61,13 +61,11 @@ Group::getNode(const string &nodeName)
 };
 
 /*
- * Deliver notification to the Notifyable object first,
- * before calling user supplied notification receivers.
- * This gives the object a chance to update its cached
- * representation.
+ * Update the cached representation of this group.
  */
 void
-Group::deliverNotification(const Event event)
+Group::updateCachedRepresentation()
+    throw(ClusterException)
 {
 };
 

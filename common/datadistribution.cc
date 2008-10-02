@@ -10,6 +10,7 @@
 #define MODULE_NAME "DataDistribution"
 
 #include "clusterlib.h"
+#include <boost/regex.hpp>
 
 namespace clusterlib
 {
@@ -92,7 +93,7 @@ DataDistribution::DataDistribution(Application *app,
     /*
      * Read the data distribution from ZK.
      */
-    updateDistribution();
+    updateCachedRepresentation();
 };
 
 /*
@@ -314,10 +315,10 @@ DataDistribution::marshallOverrides()
  * Update the data distribution from the cluster.
  */
 void
-DataDistribution::updateDistribution()
+DataDistribution::updateCachedRepresentation()
     throw(ClusterException)
 {
-    TRACE( CL_LOG, "updateDistribution" );
+    TRACE( CL_LOG, "updateCachedRepresentation" );
 
     string shards = getDelegate()->loadShards(getKey());
     string overrides = getDelegate()->loadManualOverrides(getKey());
@@ -348,18 +349,6 @@ DataDistribution::hashWork(const string &key)
 };
 
 /*
- * Deliver a notification. Use this to update the cached
- * representation of the distribution.
- */
-void
-DataDistribution::deliverNotification(const Event e)
-{
-    TRACE( CL_LOG, "deliverNotification" );
-
-    updateDistribution();
-}
-
-/*
  * Return the node responsible for handling the work
  * represented by the given key.
  */
@@ -368,23 +357,27 @@ DataDistribution::findCoveringNode(const string &key)
 {
     TRACE( CL_LOG, "findCoveringNode" );
 
-#ifdef	USING_MANUAL_OVERRIDES
+#ifdef	ENABLING_MANUAL_OVERRIDES
     /*
-     * This section is compiled only when clusterlib
-     * is configured to support manual overrides to
-     * select nodes responsible for key-designated work.
+     * Search the manual overrides for a match.
      */
     NodeMap::iterator j;
+    cmatch what;
 
     for (j = m_manualOverrides.begin();
          j != m_manualOverrides.end();
          j++) {
-        if (find_regex(key, (*j)->first) != (*j)->first.end()) {
-            return (*j)->second;
+        regex expression((*j).first);
+
+        if (regex_match(key.c_str(), what, expression)) {
+            return (*j).second;
         }
     }
-#endif	/* USING_MANUAL_OVERRIDES */
+#endif
 
+    /*
+     * Use the shard mapping.
+     */
     HashRange hash = hashWork(key);
     ShardList::iterator i;
 

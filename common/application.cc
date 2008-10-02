@@ -108,16 +108,12 @@ Application::getDistribution(const string &distName)
 }
 
 /*
- * Deliver notification to the Notifyable object first,
- * before calling user supplied notification receivers.
- * This gives the object a chance to update its cached
- * representation.
+ * Update the cached representation of a clusterlib application.
  */
 void
-Application::deliverNotification(const Event event)
+Application::updateCachedRepresentation()
+    throw(ClusterException)
 {
 }
 
 };	/* End of 'namespace clusterlib' */
-
- 

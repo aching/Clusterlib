@@ -45,14 +45,6 @@ class Group
 
   protected:
     /*
-     * Deliver event notifications. This method only
-     * updates the cached representation, it is not
-     * responsible to deliver events to all the
-     * registered EventHandler instances.
-     */
-    void deliverNotification(const Event e);
-
-    /*
      * Friend declaration so that Factory can call the constructor.
      */
     friend class Factory;
@@ -69,12 +61,19 @@ class Group
           m_filledNodeMap(false)
     {
         m_nodes.clear();
+
+        updateCachedRepresentation();
     }
 
     /*
      * Set the filled flag for the node map.
      */
     void setFilledNodeMap(bool v) { m_filledNodeMap = v; }
+
+    /*
+     * Update the cached representation of this group.
+     */
+    virtual void updateCachedRepresentation() throw(ClusterException);
 
   private:
     /*
