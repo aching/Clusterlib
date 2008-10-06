@@ -380,22 +380,8 @@ DataDistribution::map(HashRange hash)
 {
     TRACE( CL_LOG, "map" );
 
-    /*
-     * Use the shard mapping. This is a linear search; better efficiency
-     * can for sure be obtained by doing a binary search or some other
-     * faster algorithm that relies on the shards being sorted in
-     * increasing hash range order.
-     */
-    ShardList::iterator i;
-
-    for (i = m_shards.begin(); i != m_shards.end(); i++) {
-        if ((*i)->contains(hash)) {
-            return (*i)->getNode();
-        }
-    }
-
-    return NULL;
-};
+    return m_shards[getShardIndex(hash)].getNode();
+}
 
 /*
  * Compute the hash range for this key.
@@ -448,8 +434,62 @@ bool
 DataDistribution::isCovered()
     throw(ClusterException)
 {
+    TRACE( CL_LOG, "isCovered" );
+
     return true;
 }
+
+/*
+ * Assign new shards.
+ */
+void
+DataDistribution::setShards(vector<unsigned long long> &upperBounds)
+    throw(ClusterException)
+{
+    TRACE( CL_LOG, "setShards" );
+}
+
+/*
+ * Get the shard index for a hash value or key.
+ */
+uint32_t
+DataDistribution::getShardIndex(const string &key)
+    throw(ClusterException)
+{
+    TRACE( CL_LOG, "getShardIndex" );
+
+    return getShardIndex(hashWork(key));
+}
+uint32_t
+DataDistribution::getShardIndex(HashRange hash)
+    throw(ClusterException)
+{
+    TRACE( CL_LOG, "getShardIndex" );
+
+    /*
+     * Use the shard mapping. This is a linear search; better efficiency
+     * can for sure be obtained by doing a binary search or some other
+     * faster algorithm that relies on the shards being sorted in
+     * increasing hash range order.
+     */
+    ShardList::iterator i;
+    unsigned int j;
+
+    for (i = m_shards.begin(), j = 0; i != m_shards.end(); j++, i++) {
+        if ((*i)->contains(hash)) {
+            return j;
+        }
+    }
+
+    throw ClusterException(string("") +
+                           "Hash for \"" +
+                           key +
+                           "\" is unasigned!");                           
+};
+
+/*
+ * Retrieve the shard details for a given shard index.
+ */
 
 /*
  * Retrieve -- or load -- the node of this shard.
