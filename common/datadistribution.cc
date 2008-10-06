@@ -380,7 +380,7 @@ DataDistribution::map(HashRange hash)
 {
     TRACE( CL_LOG, "map" );
 
-    return m_shards[getShardIndex(hash)].getNode();
+    return m_shards[getShardIndex(hash)]->getNode();
 }
 
 /*
@@ -481,10 +481,12 @@ DataDistribution::getShardIndex(HashRange hash)
         }
     }
 
-    throw ClusterException(string("") +
-                           "Hash for \"" +
-                           key +
-                           "\" is unasigned!");                           
+    char buf[1024];
+    snprintf(buf,
+             1000,
+             "There is no shard assigned to cover hash value %lld!",
+             hash);
+    throw ClusterException(buf);
 };
 
 /*

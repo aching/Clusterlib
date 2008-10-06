@@ -109,8 +109,10 @@ class DataDistribution
     /*
      * Get the shard index for a work item, or for a hash value.
      */
-    uint32_t getShardIndex(const string &workItem);
-    uint32_t getShardIndex(HashRange v);
+    uint32_t getShardIndex(const string &workItem)
+        throw(ClusterException);
+    uint32_t getShardIndex(HashRange v)
+        throw(ClusterException);
 
     /*
      * Get all info out of a shard.
