@@ -55,17 +55,111 @@ class DataDistribution
     Application *getApplication() { return mp_app; }
 
     /*
-     * Find node the work identified by the key
-     * belongs to. Body given below, because it
-     * needs access to operations defined on
-     * class Shard.
+     * Find node the work identified by the key or
+     * hash value belongs to.
      */
-    Node *findCoveringNode(const string &key);
+    Node *map(const string &key) throw(ClusterException);
+    Node *map(HashRange hash) throw(ClusterException);
 
     /*
-     * Hash a key to a hash range value.
+     * Hash a key.
      */
     HashRange hashWork(const string &key);
+
+    /*
+     * Return the manual override string that matches this
+     * key if one exists (returns the first one found, in
+     * an unspecified order) or the empty string if none.
+     */
+    string matchesManualOverride(const string &key)
+        throw(ClusterException);
+
+    /*
+     * Return the number of shards in this data distribution.
+     */
+    uint32_t getShardCount() { return m_shards.size(); }
+
+    /*
+     * Is the distribution covered (at the time of checking)?
+     */
+    bool isCovered() throw(ClusterException);
+
+    /*
+     * Get/set the hash function to use.
+     */
+    HashFunctionId getHashFunctionIndex() { return m_hashFnIndex; }
+    void setHashFunctionIndex(HashFunctionId idx) { m_hashFnIndex = idx; }
+    void setHashFunction(HashFunction *fn)
+    {
+        if (fn == NULL) {
+            m_hashFnIndex = DD_HF_JENKINS;
+            mp_hashFnPtr = s_hashFunctions[DD_HF_JENKINS];
+        } else {
+            m_hashFnIndex = DD_HF_USERDEF;
+            mp_hashFnPtr = fn;
+        }
+    }
+
+    /*
+     * Assign new shards.
+     */
+    void setShards(vector<unsigned long long> &upperBounds)
+        throw(ClusterException);
+
+    /*
+     * Get the shard index for a work item, or for a hash value.
+     */
+    uint32_t getShardIndex(const string &workItem);
+    uint32_t getShardIndex(HashRange v);
+
+    /*
+     * Get all info out of a shard.
+     */
+    Notifyable *getShardDetails(uint32_t shardIndex,
+                                unsigned long long *low = NULL,
+                                unsigned long long *hi = NULL,
+                                bool *isForwarded = NULL)
+        throw(ClusterException);
+
+    /*
+     * Assign a node to a shard.
+     */
+    void assignNodeToShard(uint32_t shardIndex,
+                           Node *np)
+        throw(ClusterException);
+
+    /*
+     * Forward a shard to a different data distribution.
+     */
+    void forwardShard(uint32_t shardIndex,
+                      DataDistribution *dp)
+        throw(ClusterException);
+
+    /*
+     * Set a manual override for a node.
+     */
+    void setManualOverride(const string &pattern,
+                           Node *np)
+        throw(ClusterException);
+
+    /*
+     * Set a manual override for a distribution.
+     */
+    void forwardManualOverride(const string &pattern,
+                               DataDistribution *dp)
+        throw(ClusterException);
+
+    /*
+     * Remove a manual override.
+     */
+    void removeManualOverride(const string &pattern)
+        throw(ClusterException);
+
+    /*
+     * Is this data distribution modified, i.e. does it need
+     * to be published to the clusterlib repository?
+     */
+    bool isModified() { return m_modified; }
 
   protected:
     /*
@@ -288,6 +382,11 @@ class DataDistribution
      * The shards in this data distribution.
      */
     ShardList m_shards;
+
+    /*
+     * Is this data distribution modified?
+     */
+    bool m_modified;
 };
 
 };	/* End of 'namespace clusterlib' */

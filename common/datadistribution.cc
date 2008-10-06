@@ -72,7 +72,8 @@ DataDistribution::DataDistribution(Application *app,
     : Notifyable(f, key, name),
       mp_app(app),
       m_hashFnIndex(DD_HF_JENKINS),
-      mp_hashFnPtr(fn)
+      mp_hashFnPtr(fn),
+      m_modified(false)
 {
     TRACE( CL_LOG, "DataDistribution" );
 
@@ -336,26 +337,14 @@ DataDistribution::updateCachedRepresentation()
 };
 
 /*
- * Hash a key to a hash value using the current
+ * Hash a key to a node using the current
  * hash function for this distribution.
  */
-DataDistribution::HashRange
-DataDistribution::hashWork(const string &key)
-{
-    if (mp_hashFnPtr == NULL) {
-        mp_hashFnPtr = s_hashFunctions[DD_HF_JENKINS];
-    }
-    return (*mp_hashFnPtr)(key);
-};
-
-/*
- * Return the node responsible for handling the work
- * represented by the given key.
- */
 Node *
-DataDistribution::findCoveringNode(const string &key)
+DataDistribution::map(const string &key)
+    throw(ClusterException)
 {
-    TRACE( CL_LOG, "findCoveringNode" );
+    TRACE( CL_LOG, "map" );
 
 #ifdef	ENABLING_MANUAL_OVERRIDES
     /*
@@ -379,6 +368,24 @@ DataDistribution::findCoveringNode(const string &key)
      * Use the shard mapping.
      */
     HashRange hash = hashWork(key);
+    return map(hash);
+};
+
+/*
+ * Given a hash value, retrieve the node to which it is mapped.
+ */
+Node *
+DataDistribution::map(HashRange hash)
+    throw(ClusterException)
+{
+    TRACE( CL_LOG, "map" );
+
+    /*
+     * Use the shard mapping. This is a linear search; better efficiency
+     * can for sure be obtained by doing a binary search or some other
+     * faster algorithm that relies on the shards being sorted in
+     * increasing hash range order.
+     */
     ShardList::iterator i;
 
     for (i = m_shards.begin(); i != m_shards.end(); i++) {
@@ -389,6 +396,60 @@ DataDistribution::findCoveringNode(const string &key)
 
     return NULL;
 };
+
+/*
+ * Compute the hash range for this key.
+ */
+DataDistribution::HashRange
+DataDistribution::hashWork(const string &key)
+{
+    if (mp_hashFnPtr == NULL) {
+        mp_hashFnPtr = s_hashFunctions[DD_HF_JENKINS];
+    }
+    return (*mp_hashFnPtr)(key);
+};
+
+/*
+ * Returns the manual override item that matches this
+ * key if one exists (the first one found, in an
+ * unspecified order) or the empty string if none.
+ */
+string
+DataDistribution::matchesManualOverride(const string &key)
+    throw(ClusterException)
+{
+    TRACE( CL_LOG, "matchesManualOverrides" );
+
+#ifdef	ENABLING_MANUAL_OVERRIDES
+    /*
+     * Search the manual overrides for a match.
+     */
+    NodeMap::iterator j;
+    cmatch what;
+
+    for (j = m_manualOverrides.begin();
+         j != m_manualOverrides.end();
+         j++) {
+        regex expression((*j).first);
+
+        if (regex_match(key.c_str(), what, expression)) {
+            return (*j).first;
+        }
+    }
+#endif
+
+    return string("");
+}
+
+/*
+ * Is the distribution covered?
+ */
+bool
+DataDistribution::isCovered()
+    throw(ClusterException)
+{
+    return true;
+}
 
 /*
  * Retrieve -- or load -- the node of this shard.
