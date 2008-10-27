@@ -1,7 +1,11 @@
 
 METASOURCES = AUTO
-bin_PROGRAMS = example
+bin_PROGRAMS = example example2
 example_LDADD = \
+	$(top_builddir)/common/libcluster.a \
+	@LOG4CXX@ \
+	@ZOOKEEPER@
+example2_LDADD = \
 	$(top_builddir)/common/libcluster.a \
 	@LOG4CXX@ \
 	@ZOOKEEPER@
@@ -14,5 +18,7 @@ INCLUDES = \
 
 example_SOURCES = \
 	example.cc
+example2_SOURCES = \
+	example2.cc
 
 @makefile_inc@
