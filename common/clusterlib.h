@@ -204,6 +204,31 @@ class Factory
     void removeClient(Client *clp);
 
     /*
+     * Clean up clients
+     */
+    void removeAllClients();
+
+    /*
+     * Clean up data distributions
+     */
+    void removeAllDataDistributions();
+
+    /*
+     * Clean up applications
+     */
+    void removeAllApplications();
+
+    /*
+     * Clean up groups
+     */
+    void removeAllGroups();
+
+    /*
+     * Clean up nodes
+     */
+    void removeAllNodes();
+
+    /*
      * Register/cancel a timer handler.
      */
     TimerId registerTimer(TimerEventHandler *handler,
@@ -360,14 +385,21 @@ class Factory
     /*
      * Create entities in ZooKeeper.
      */
-    Application *createApplication(const string &key);
+    Application *createApplication(const string &name, 
+				   const string &key);
     DataDistribution *createDistribution(
+	const string &name,
 	const string &key,
         const string &marshalledShards,
         const string &marshalledManualOverrides,
         Application *app);
-    Group *createGroup(const string &key, Application *app);
-    Node *createNode(const string &key, Group *grp);
+    Group *createGroup(
+	const string &name, 
+	const string &key, 
+	Application *app);
+    Node *createNode(const string &name,
+		     const string &key, 
+		     Group *grp);
 
   private:
 

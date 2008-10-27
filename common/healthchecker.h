@@ -33,7 +33,7 @@ class HealthChecker
     /*
      * Must be supplied by sub-classes.
      */
-    virtual bool CheckHealth() = 0;
+    virtual bool checkHealth() = 0;
 
     /*
      * Get/set the Server object that

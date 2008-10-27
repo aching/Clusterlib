@@ -25,13 +25,8 @@ class Application
     /*
      * Retrieve a named group within an application.
      */
-    Group *getGroup(const string &groupName)
-        throw(ClusterException);
-
-    /*
-     * Create a named group.
-     */
-    Group *createGroup(const string &groupName)
+    Group *getGroup(const string &groupName,
+		    bool create = false)
         throw(ClusterException);
 
     /*
@@ -43,13 +38,8 @@ class Application
      * Retrieve a named data distribution within an
      * application.
      */
-    DataDistribution *getDistribution(const string &distName)
-        throw(ClusterException);
-
-    /*
-     * Create a named data distribution.
-     */
-    DataDistribution *createDistribution(const string &distName)
+    DataDistribution *getDistribution(const string &distName,
+				      bool create = false)
         throw(ClusterException);
 
     /*

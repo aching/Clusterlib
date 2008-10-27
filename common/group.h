@@ -31,7 +31,8 @@ class Group
     /*
      * Retrieve a node with a given name in this group.
      */
-    Node *getNode(const string &nodeName) throw(ClusterException);
+    Node *getNode(const string &nodeName, 
+		  bool create = false) throw(ClusterException);
 
     /*
      * Retrieve the map of nodes in this group.

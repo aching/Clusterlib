@@ -24,7 +24,8 @@ namespace clusterlib
  * cache.
  */
 Node *
-Group::getNode(const string &nodeName)
+Group::getNode(const string &nodeName, 
+	       bool create)
     throw(ClusterException)
 {
     Node *np;
@@ -47,7 +48,7 @@ Group::getNode(const string &nodeName)
      * node from the cluster, cache it,
      * and return the object.
      */
-    np = getDelegate()->getNode(nodeName, this, true);
+    np = getDelegate()->getNode(nodeName, this, true, create);
     if (np != NULL) {
         Locker l2(getNodeMapLock());
 
@@ -58,7 +59,7 @@ Group::getNode(const string &nodeName)
     throw ClusterException(string("") +
                            "Cannot find node object " +
                            nodeName);
-};
+}
 
 /*
  * Update the cached representation of this group.
@@ -67,6 +68,6 @@ void
 Group::updateCachedRepresentation()
     throw(ClusterException)
 {
-};
+}
 
 };	/* End of 'namespace clusterlib' */

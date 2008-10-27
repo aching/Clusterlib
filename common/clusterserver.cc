@@ -38,10 +38,13 @@ Server::Server(FactoryOps *f,
     mp_node = mp_f->getNode(m_appName,
                             m_grpName,
                             m_nodeName,
-                            (m_flags & SF_MANAGED) == SF_MANAGED);
+                            (m_flags & SF_MANAGED) == SF_MANAGED,
+                            (m_flags & SF_CREATEREG) == SF_CREATEREG);
     if (mp_node == NULL) {
         throw ClusterException("Could not find or create node!");
     }
+
+//    m_checkerThread.Create(*this, &mp_healthChecker->checkHealth);
 };
 
 };	/* End of 'namespace clusterlib' */

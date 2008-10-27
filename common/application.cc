@@ -24,7 +24,8 @@ namespace clusterlib
  * yet in the cache.
  */
 Group *
-Application::getGroup(const string &groupName)
+Application::getGroup(const string &groupName,
+		      bool create)
     throw(ClusterException)
 {
     Group *grp;
@@ -47,7 +48,7 @@ Application::getGroup(const string &groupName)
      * group from the cluster, cache it,
      * and return the object.
      */
-    grp = getDelegate()->getGroup(groupName, this);
+    grp = getDelegate()->getGroup(groupName, this, create);
     if (grp != NULL) {
         Locker l2(getGroupMapLock());
 
@@ -69,7 +70,8 @@ Application::getGroup(const string &groupName)
  * the cache.
  */
 DataDistribution *
-Application::getDistribution(const string &distName)
+Application::getDistribution(const string &distName,
+			     bool create)
     throw(ClusterException)
 {
     DataDistribution *dist;
@@ -91,7 +93,7 @@ Application::getDistribution(const string &distName)
      * If it's not yet cached, load the distribution
      * from the cluster, cache it, and return it.
      */
-    dist = getDelegate()->getDistribution(distName, this);
+    dist = getDelegate()->getDistribution(distName, this, create);
     if (dist != NULL) {
         Locker l2(getDistributionMapLock());
         

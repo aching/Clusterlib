@@ -148,6 +148,12 @@ Factory::~Factory()
 {
     TRACE( CL_LOG, "~Factory" );
 
+    removeAllClients();
+    removeAllDataDistributions();
+    removeAllApplications();
+    removeAllGroups();
+    removeAllNodes();
+
     delete mp_ops;
 };
 
@@ -177,6 +183,8 @@ Factory::createClient()
         addClient(cp);
         return cp;
     } catch (ClusterException &e) {
+	LOG_WARN(CL_LOG, "Couldn't create client because: %s", 
+		 e.what());
         return NULL;
     }
 };
@@ -215,6 +223,9 @@ Factory::createServer(const string &app,
         addClient(sp);
         return sp;
     } catch (ClusterException &e) {
+	LOG_WARN(CL_LOG, "Couldn't create server with app %s, "
+		 "group %s, node %s because: %s", 
+		 app.c_str(), group.c_str(), node.c_str(), e.what());
         return NULL;
     }
 };
@@ -268,6 +279,72 @@ Factory::removeClient(Client *clp)
     }
     m_clients.erase(i);
 }
+
+void
+Factory::removeAllClients()
+{
+    TRACE( CL_LOG, "removeAllClients" );
+
+    Locker l(&m_clLock);
+    ClientList::iterator it = m_clients.begin();
+    for (; it != m_clients.end(); it++) {
+	delete *it;
+    }
+    m_clients.clear();
+}
+
+void
+Factory::removeAllDataDistributions()
+{
+    TRACE( CL_LOG, "removeAllDataDistributions" );
+
+    Locker l(&m_ddLock);
+    DataDistributionMap::iterator it = m_dataDistributions.begin();
+    for (; it != m_dataDistributions.end(); it++) {
+	delete it->second;
+    }
+    m_dataDistributions.clear();
+}
+
+void
+Factory::removeAllApplications()
+{
+    TRACE( CL_LOG, "removeAllApplications" );
+
+    Locker l(&m_appLock);
+    ApplicationMap::iterator it = m_applications.begin();
+    for (; it != m_applications.end(); it++) {
+	delete it->second;
+    }
+    m_applications.clear();
+}
+
+void
+Factory::removeAllGroups()
+{
+    TRACE( CL_LOG, "removeAllGroups" );
+
+    Locker l(&m_grpLock);
+    GroupMap::iterator it = m_groups.begin();
+    for (; it != m_groups.end(); it++) {
+	delete it->second;
+    }
+    m_groups.clear();
+}
+
+void
+Factory::removeAllNodes()
+{
+    TRACE( CL_LOG, "removeAllNodes" );
+
+    Locker l(&m_nodeLock);
+    NodeMap::iterator it = m_nodes.begin();
+    for (; it != m_nodes.end(); it++) {
+	delete it->second;
+    }
+    m_nodes.clear();
+}
+
 
 /*
  * Dispatch events to all registered clients.
@@ -644,7 +721,7 @@ Factory::getApplication(const string &name, bool create)
         return app;
     }
     if (create == true) {
-        return createApplication(key);
+        return createApplication(name, key);
     }
     return NULL;
 }
@@ -671,7 +748,7 @@ Factory::getDistribution(const string &distName,
         return dist;
     }
     if (create == true) {
-        return createDistribution(key, "", "", app);
+        return createDistribution(distName, key, "", "", app);
     }
     return NULL;
 }
@@ -699,7 +776,7 @@ Factory::getGroup(const string &groupName,
         return grp;
     }
     if (create == true) {
-        return createGroup(key, app);
+        return createGroup(groupName, key, app);
     }
     return NULL;
 }
@@ -744,10 +821,11 @@ Factory::getNode(const string &nodeName,
         return np;
     }
     if (create == true) {
-        np = createNode(key, grp);
+        return createNode(nodeName, key, grp);
     }
     return NULL;
 }
+
 Node *
 Factory::getNode(const string &appName,
                  const string &groupName,
@@ -1338,7 +1416,7 @@ Factory::loadGroup(const string &name,
                  EN_GRP_MEMBERSHIP);
 #endif
 
-    return NULL;
+    return grp;
 }
 void
 Factory::fillGroupMap(GroupMap *gmp, Application *app)
@@ -1433,38 +1511,215 @@ Factory::fillNodeMap(NodeMap *nmp, Group *grp)
  * Entity creation in ZooKeeper.
  */
 Application *
-Factory::createApplication(const string &key)
+Factory::createApplication(const string &name, const string &key)
 {
     TRACE( CL_LOG, "createApplication" );
 
-    return NULL;
+    vector<string> zkNodes;
+    zkNodes.push_back(key);
+    zkNodes.push_back(key + PATHSEPARATOR + GROUPS);
+    zkNodes.push_back(key + PATHSEPARATOR + DISTRIBUTIONS);
+    zkNodes.push_back(key + PATHSEPARATOR + PROPERTIES);
+    
+    for (vector<string>::iterator zkNodesIt = zkNodes.begin();
+	 zkNodesIt != zkNodes.end(); zkNodesIt++) {
+	try {
+	    if (!m_zk.nodeExists(*zkNodesIt)) {
+		m_zk.createNode(*zkNodesIt, "",
+				0, true);
+	    }
+	    m_zk.getNodeData(*zkNodesIt,
+			     this,
+			     (void *) EN_APP_CREATION);
+	} catch (std::exception &se) {
+	    throw ClusterException(se.what());
+	}
+    }
+
+    Application *app;
+    {
+	/*                                                                
+	 * Scope the lock to the shortest sequence possible.
+	 */
+	Locker l(&m_appLock);
+	
+	app = m_applications[key];
+	if (app != NULL) {
+	    LOG_WARN(CL_LOG,
+		     "Tried to create an app that exists!");
+	}
+	if (m_zk.nodeExists(key, this, NULL) == false) {
+	    throw ClusterException("The app " + key + 
+				   " should have been created!");
+	}
+	app = new Application(name, key, mp_ops);
+	m_applications[key] = app;
+    }
+    
+    return app;
 }
 
 DataDistribution *
-Factory::createDistribution(const string &key,
+Factory::createDistribution(const string &name,
+			    const string &key,
                             const string &marshalledShards,
                             const string &marshalledManualOverrides,
                             Application *app)
 {
     TRACE( CL_LOG, "createDataDistribution" );
 
-    return NULL;
+    vector<string> zkNodes;
+    zkNodes.push_back(key);
+    zkNodes.push_back(key + PATHSEPARATOR + SHARDS);
+    zkNodes.push_back(key + PATHSEPARATOR + GOLDENSHARDS);
+    zkNodes.push_back(key + PATHSEPARATOR + MANUALOVERRIDES);
+    zkNodes.push_back(key + PATHSEPARATOR + PROPERTIES);
+    
+    for (vector<string>::iterator zkNodesIt = zkNodes.begin();
+	 zkNodesIt != zkNodes.end(); zkNodesIt++) {
+	try {
+	    if (!m_zk.nodeExists(*zkNodesIt)) {
+		m_zk.createNode(*zkNodesIt, "",
+				0, true);
+	    }
+	    m_zk.getNodeData(*zkNodesIt,
+			     this,
+			     (void *) EN_APP_CREATION);
+	} catch (std::exception &se) {
+	    throw ClusterException(se.what());
+	}
+    }
+
+    DataDistribution *dd;
+    {
+	/*                                                                
+	 * Scope the lock to the shortest sequence possible.
+	 */
+	Locker l(&m_ddLock);
+	
+	dd = m_dataDistributions[key];
+	if (dd != NULL) {
+	    LOG_WARN(CL_LOG,
+		     "Tried to create a data distribution that exists!");
+	}
+	if (m_zk.nodeExists(key, this, NULL) == false) {
+	    throw ClusterException("The app " + key + 
+				   " should have been created!");
+	}
+	dd = new DataDistribution(app, name, key, mp_ops);
+	m_dataDistributions[key] = dd;
+    }
+    
+    return dd;
 }
 
 Group *
-Factory::createGroup(const string &key, Application *app)
+Factory::createGroup(const string &name, 
+		     const string &key, 
+		     Application *app)
 {
     TRACE( CL_LOG, "createGroup" );
 
-    return NULL;
+    vector<string> zkNodes;
+    zkNodes.push_back(key);
+    zkNodes.push_back(key + PATHSEPARATOR + PROPERTIES);
+    
+    for (vector<string>::iterator zkNodesIt = zkNodes.begin();
+	 zkNodesIt != zkNodes.end(); zkNodesIt++) {
+	try {
+	    if (!m_zk.nodeExists(*zkNodesIt)) {
+		m_zk.createNode(*zkNodesIt, "",
+				0, true);
+	    }
+	    m_zk.getNodeData(*zkNodesIt,
+			     this,
+			     (void *) EN_GRP_CREATION);
+	} catch (std::exception &se) {
+	    throw ClusterException(se.what());
+	}
+    }
+
+    Group *grp;
+    {
+	/*                                                                
+	 * Scope the lock to the shortest sequence possible.
+	 */
+	Locker l(&m_grpLock);
+	
+	grp = m_groups[key];
+	if (grp != NULL) {
+	    LOG_WARN(CL_LOG,
+		     "Tried to create a group that exists!");
+	}
+	if (m_zk.nodeExists(key, this, NULL) == false) {
+	    throw ClusterException("The group " + key + 
+				   " should have been created!");
+	}
+	grp = new Group(app, name, key, mp_ops);
+	m_groups[key] = grp;
+    }
+    
+    return grp;
 }
 
 Node *
-Factory::createNode(const string &key, Group *grp)
+Factory::createNode(const string &name,
+		    const string &key, 
+		    Group *grp)
 {
     TRACE( CL_LOG, "createNode" );
 
-    return NULL;
+    vector<string> zkNodes;
+    zkNodes.push_back(key);
+    zkNodes.push_back(key + PATHSEPARATOR + ADDRESS);
+    zkNodes.push_back(key + PATHSEPARATOR + CLIENTSTATE);
+    zkNodes.push_back(key + PATHSEPARATOR + CLIENTSTATEDESC);
+    zkNodes.push_back(key + PATHSEPARATOR + LASTCONNECTED);
+    zkNodes.push_back(key + PATHSEPARATOR + MASTERSETSTATE);
+    zkNodes.push_back(key + PATHSEPARATOR + CLIENTVERSION);
+    zkNodes.push_back(key + PATHSEPARATOR + PROPERTIES);
+    
+    for (vector<string>::iterator zkNodesIt = zkNodes.begin();
+	 zkNodesIt != zkNodes.end(); zkNodesIt++) {
+	try {
+	    if (!m_zk.nodeExists(*zkNodesIt)) {
+		m_zk.createNode(*zkNodesIt, "",
+				0, true);
+	    }
+	    m_zk.getNodeData(*zkNodesIt,
+			     this,
+			     (void *) EN_NODE_CREATION);
+	} catch (std::exception &se) {
+	    throw ClusterException(se.what());
+	}
+    }
+    
+
+    Node *node;
+    {
+	/*                                                                
+	 * Scope the lock to the shortest sequence possible.
+	 */
+	Locker l(&m_nodeLock);
+	
+	node = m_nodes[key];
+	if (node != NULL) {
+	    LOG_WARN(CL_LOG,
+		     "Tried to create a node that exists!");
+	}
+	try {
+	    if (m_zk.nodeExists(key, this, NULL) == false) {
+		throw ClusterException("The node " + key + 
+				       " should have been created!");
+	    }
+	} catch (std::exception &se) {
+	    throw ClusterException(se.what());
+	}
+	node = new Node(grp, name, key, mp_ops);
+	m_nodes[key] = node;
+    }
+    
+    return node;
 }
 
 /*

@@ -136,6 +136,11 @@ DataDistribution::unmarshallShards(const string &marshalledShards,
     vector<string>::iterator i;
     Shard *nsp;
 
+    /* No shards defined */
+    if (marshalledShards.empty()) {
+	return;
+    }
+
     split(components, marshalledShards, is_any_of(";"));
     for (i = components.begin(); i != components.end(); i++) {
         split(shardComponents, *i, is_any_of(","));
@@ -186,6 +191,11 @@ DataDistribution::unmarshallOverrides(const string &marshalledOverrides,
     vector<string>::iterator i;
     Node *np;
     Application *app = NULL;
+
+    /* No manual overrides defined */
+    if (marshalledOverrides.empty()) {
+	return;
+    }
 
     split(components, marshalledOverrides, is_any_of(";"));
     for (i = components.begin(); i != components.end(); i++) {

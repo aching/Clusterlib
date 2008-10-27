@@ -101,6 +101,11 @@ class Server
      * The node that represents "my node".
      */
     Node *mp_node;
+
+    /*
+     * The thread running the health checker.
+     */
+    CXXThread<HealthChecker> m_checkerThread;
 };
 
 };	/* End of 'namespace clusterlib' */
