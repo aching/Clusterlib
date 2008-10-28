@@ -1521,9 +1521,9 @@ Factory::createApplication(const string &name, const string &key)
     zkNodes.push_back(key + PATHSEPARATOR + DISTRIBUTIONS);
     zkNodes.push_back(key + PATHSEPARATOR + PROPERTIES);
     
-    for (vector<string>::iterator zkNodesIt = zkNodes.begin();
-	 zkNodesIt != zkNodes.end(); zkNodesIt++) {
-	try {
+    try {
+	for (vector<string>::iterator zkNodesIt = zkNodes.begin();
+	     zkNodesIt != zkNodes.end(); zkNodesIt++) {
 	    if (!m_zk.nodeExists(*zkNodesIt)) {
 		m_zk.createNode(*zkNodesIt, "",
 				0, true);
@@ -1531,9 +1531,20 @@ Factory::createApplication(const string &name, const string &key)
 	    m_zk.getNodeData(*zkNodesIt,
 			     this,
 			     (void *) EN_APP_CREATION);
-	} catch (std::exception &se) {
-	    throw ClusterException(se.what());
 	}
+    } catch (zk::ZooKeeperException &e) {
+	throw ClusterException(e.what());
+    }
+
+    /*
+     * Ready protocol
+     */
+    try {
+	m_zk.setNodeData(key, "ready", 0);
+    } catch (zk::ZooKeeperException &e) {
+	LOG_WARN(CL_LOG,
+		 "Tried to set node %s to \"ready\" state failed: %s",
+		 key.c_str(), e.what());
     }
 
     Application *app;
@@ -1574,10 +1585,10 @@ Factory::createDistribution(const string &name,
     zkNodes.push_back(key + PATHSEPARATOR + GOLDENSHARDS);
     zkNodes.push_back(key + PATHSEPARATOR + MANUALOVERRIDES);
     zkNodes.push_back(key + PATHSEPARATOR + PROPERTIES);
-    
-    for (vector<string>::iterator zkNodesIt = zkNodes.begin();
-	 zkNodesIt != zkNodes.end(); zkNodesIt++) {
-	try {
+
+    try {    
+	for (vector<string>::iterator zkNodesIt = zkNodes.begin();
+	     zkNodesIt != zkNodes.end(); zkNodesIt++) {
 	    if (!m_zk.nodeExists(*zkNodesIt)) {
 		m_zk.createNode(*zkNodesIt, "",
 				0, true);
@@ -1585,9 +1596,20 @@ Factory::createDistribution(const string &name,
 	    m_zk.getNodeData(*zkNodesIt,
 			     this,
 			     (void *) EN_APP_CREATION);
-	} catch (std::exception &se) {
-	    throw ClusterException(se.what());
 	}
+    } catch (zk::ZooKeeperException &e) {
+	throw ClusterException(e.what());
+    }
+
+    /*
+     * Ready protocol
+     */
+    try {
+	m_zk.setNodeData(key, "ready", 0);
+    } catch (zk::ZooKeeperException &e) {
+	LOG_WARN(CL_LOG,
+		 "Tried to set node %s to \"ready\" state failed: %s",
+		 key.c_str(), e.what());
     }
 
     DataDistribution *dd;
@@ -1624,9 +1646,9 @@ Factory::createGroup(const string &name,
     zkNodes.push_back(key);
     zkNodes.push_back(key + PATHSEPARATOR + PROPERTIES);
     
-    for (vector<string>::iterator zkNodesIt = zkNodes.begin();
-	 zkNodesIt != zkNodes.end(); zkNodesIt++) {
-	try {
+    try {
+	for (vector<string>::iterator zkNodesIt = zkNodes.begin();
+	     zkNodesIt != zkNodes.end(); zkNodesIt++) {
 	    if (!m_zk.nodeExists(*zkNodesIt)) {
 		m_zk.createNode(*zkNodesIt, "",
 				0, true);
@@ -1634,9 +1656,20 @@ Factory::createGroup(const string &name,
 	    m_zk.getNodeData(*zkNodesIt,
 			     this,
 			     (void *) EN_GRP_CREATION);
-	} catch (std::exception &se) {
-	    throw ClusterException(se.what());
 	}
+    } catch (zk::ZooKeeperException &e) {
+	throw ClusterException(e.what());
+    }
+
+    /*
+     * Ready protocol
+     */
+    try {
+	m_zk.setNodeData(key, "ready", 0);
+    } catch (zk::ZooKeeperException &e) {
+	LOG_WARN(CL_LOG,
+		 "Tried to set node %s to \"ready\" state failed: %s",
+		 key.c_str(), e.what());
     }
 
     Group *grp;
@@ -1678,10 +1711,10 @@ Factory::createNode(const string &name,
     zkNodes.push_back(key + PATHSEPARATOR + MASTERSETSTATE);
     zkNodes.push_back(key + PATHSEPARATOR + CLIENTVERSION);
     zkNodes.push_back(key + PATHSEPARATOR + PROPERTIES);
-    
-    for (vector<string>::iterator zkNodesIt = zkNodes.begin();
-	 zkNodesIt != zkNodes.end(); zkNodesIt++) {
-	try {
+
+    try {    
+	for (vector<string>::iterator zkNodesIt = zkNodes.begin();
+	     zkNodesIt != zkNodes.end(); zkNodesIt++) {
 	    if (!m_zk.nodeExists(*zkNodesIt)) {
 		m_zk.createNode(*zkNodesIt, "",
 				0, true);
@@ -1689,11 +1722,21 @@ Factory::createNode(const string &name,
 	    m_zk.getNodeData(*zkNodesIt,
 			     this,
 			     (void *) EN_NODE_CREATION);
-	} catch (std::exception &se) {
-	    throw ClusterException(se.what());
 	}
+    } catch (zk::ZooKeeperException &e) {
+	throw ClusterException(e.what());
     }
-    
+
+    /*
+     * Ready protocol
+     */
+    try {
+	m_zk.setNodeData(key, "ready", 0);
+    } catch (zk::ZooKeeperException &e) {
+	LOG_WARN(CL_LOG,
+		 "Tried to set node %s to \"ready\" state failed: %s",
+		 key.c_str(), e.what());
+    }
 
     Node *node;
     {
