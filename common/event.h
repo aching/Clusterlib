@@ -429,7 +429,6 @@ class ClientEvent
      * The actual event.
      */
     Event m_e;
-
 };
 
 /*
@@ -865,7 +864,8 @@ class EventHandler
     /*
      * Define the type of the member function to invoke.
      */
-    typedef ClusterEventPayload *(T::*EventMethod)(void *data);
+    typedef Event (T::*EventMethod)(Notifyable *np,
+                                    const string &path);
 
     /*
      * Constructor.
@@ -879,9 +879,9 @@ class EventHandler
     /*
      * Deliver the event.
      */
-    void deliver(void *data)
+    Event deliver(Notifyable *np, const string &path)
     {
-        ((*mp_obj).*m_handler)(data);
+        return ((*mp_obj).*m_handler)(np, path);
     };
 
     /*
@@ -903,9 +903,10 @@ class EventHandler
 };
 
 /*
- * Generic types for delivering events.
+ * Generic types for delivering events. Events are
+ * delivered to a Factory object.
  */
-typedef EventHandler<Client> ClientEventHandler;
+typedef EventHandler<Factory> FactoryEventHandler;
 
 /*
  * Typedef for blocking queue of pointers to cluster event payload objects.

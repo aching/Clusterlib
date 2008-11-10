@@ -16,6 +16,150 @@ namespace clusterlib
 {
 
 /*
+ * Base class for Shard, also used directly for manual overrides.
+ */
+class ManualOverride
+{
+  public:
+    /*
+     * Get info out.
+     */
+    DataDistribution *getDistribution() { return mp_dist; }
+    string getKey() { return m_key; }
+    bool isForwarded() { return m_isForwarded; }
+    Notifyable *getNotifyable() { return mp_notifyable; }
+    Notifyable *loadNotifyable() throw(ClusterException);
+
+    /*
+     * Reassign this shard to a different Notifyable
+     */
+    void reassign(Notifyable *np)
+        throw(ClusterException)
+    {
+        mp_notifyable = np;
+        if (mp_notifyable == NULL) {
+            m_key = "";
+        } else {
+            m_key = np->getKey();
+        }
+        determineForwarding();
+    }
+    void reassign(const string &key)
+        throw(ClusterException)
+    {
+        mp_notifyable = NULL;
+        m_key = key;
+        determineForwarding();
+    }
+
+    /*
+     * Constructor.
+     */
+    ManualOverride(DataDistribution *dp,
+                   Notifyable *np,
+                   const string &key)
+        : mp_dist(dp),
+          mp_notifyable(np),
+          m_key(key)
+    {
+        if (mp_notifyable != NULL) {
+            m_key = mp_notifyable->getKey();
+        }
+        determineForwarding();
+    }
+
+  private:
+    /*
+     * Determine whether this is a forwarding or final reference.
+     */
+    void determineForwarding() throw(ClusterException);
+
+  private:
+    /*
+     * The data distribution this shard belongs to.
+     */
+    DataDistribution *mp_dist;
+
+    /*
+     * The Notifyable that this data distribution element is assigned to.
+     */
+    Notifyable *mp_notifyable;
+
+    /*
+     * The key of the Notifyable -- used in case the
+     * pointer is not available.
+     */
+    string m_key;
+
+    /*
+     * Is this element forwarded? If yes, then the Notifyable denotes
+     * a DataDistribution, otherwise it is a Node.
+     */
+    bool m_isForwarded;
+};
+
+/*
+ * Definition of class Shard.
+ */
+class Shard
+    : public virtual ManualOverride
+{
+  public:
+    /*
+     * Get the info out of the shard.
+     */
+    HashRange beginRange() { return m_beginRange; }
+    HashRange endRange() { return m_endRange; }
+
+    /*
+     * Assign fields into the shard.
+     */
+    void setBeginRange(HashRange br) { m_beginRange = br; }
+    void setEndRange(HashRange er) { m_endRange = er; }
+
+    /*
+     * Decide whether this piece of work belongs to
+     * this shard.
+     */
+
+    bool covers(const string &key);
+    bool covers(HashRange hash);
+
+    /*
+     * Constructor.
+     */
+    Shard(DataDistribution *dist,
+          Notifyable *notifyable,
+          HashRange beginRange,
+          HashRange endRange)
+        : ManualOverride(dist, notifyable, string("")),
+          m_beginRange(beginRange),
+          m_endRange(endRange)
+    {
+    }
+
+    /*
+     * Constructor.
+     */
+    Shard(DataDistribution *dist,
+          const string &key,
+          HashRange beginRange,
+          HashRange endRange)
+        : ManualOverride(dist, NULL, key),
+          m_beginRange(beginRange),
+          m_endRange(endRange)
+    {
+    }
+
+  private:
+    /*
+     * The bounds for this shard. The range is beginRange <-> endRange.
+     */
+    HashRange m_beginRange;
+    HashRange m_endRange;
+};
+
+/*
  * Definition of class DataDistribution.
  */
 class DataDistribution
@@ -42,24 +186,16 @@ class DataDistribution
     static const int SC_NODENAME_IDX;
 
     /*
-     * Define the types associated with a hash function.
-     */
-    typedef unsigned long long HashRange;
-    typedef int32_t            HashFunctionId;
-    typedef HashRange (HashFunction)(const string &key);
-
-    /*
      * Retrieve the application object in which this
      * distribution is contained.
      */
     Application *getApplication() { return mp_app; }
 
     /*
-     * Find node the work identified by the key or
-     * hash value belongs to.
+     * Find the Node that the key maps to (recursively
+     * following forwards).
      */
     Node *map(const string &key) throw(ClusterException);
-    Node *map(HashRange hash) throw(ClusterException);
 
     /*
      * Hash a key.
@@ -103,7 +239,7 @@ class DataDistribution
     /*
      * Assign new shards.
      */
-    void setShards(vector<unsigned long long> &upperBounds)
+    void setShards(vector<HashRange> &upperBounds)
         throw(ClusterException);
 
     /*
@@ -118,43 +254,34 @@ class DataDistribution
      * Get all info out of a shard.
      */
     Notifyable *getShardDetails(uint32_t shardIndex,
-                                unsigned long long *low = NULL,
-                                unsigned long long *hi = NULL,
+                                HashRange *low = NULL,
+                                HashRange *hi = NULL,
                                 bool *isForwarded = NULL)
         throw(ClusterException);
 
     /*
-     * Assign a node to a shard.
+     * Reassign a shard to a different notifyable.
      */
-    void assignNodeToShard(uint32_t shardIndex,
-                           Node *np)
+    void reassignShard(uint32_t shardIndex, Notifyable *ntp)
+        throw(ClusterException);
+    void reassignShard(uint32_t shardIndex, const string &key)
         throw(ClusterException);
 
     /*
-     * Forward a shard to a different data distribution.
+     * Assign - or reassign - a manual override to a different
+     * notifyable.
      */
-    void forwardShard(uint32_t shardIndex,
-                      DataDistribution *dp)
+    void reassignManualOverride(const string &pattern,
+                                Notifyable *ntp)
         throw(ClusterException);
-
-    /*
-     * Set a manual override for a node.
-     */
-    void setManualOverride(const string &pattern,
-                           Node *np)
-        throw(ClusterException);
-
-    /*
-     * Set a manual override for a distribution.
-     */
-    void forwardManualOverride(const string &pattern,
-                               DataDistribution *dp)
+    void reassignManualOverride(const string &pattern,
+                                const string &key)
         throw(ClusterException);
 
     /*
      * Remove a manual override.
      */
-    void removeManualOverride(const string &pattern)
+    bool removeManualOverride(const string &pattern)
         throw(ClusterException);
 
     /*
@@ -162,6 +289,19 @@ class DataDistribution
      * to be published to the clusterlib repository?
      */
     bool isModified() { return m_modified; }
+    void setModified(bool v) { m_modified = v; }
+
+    /*
+     *  Publish any changes to the clusterlib repository.
+     */
+    void publish() throw(ClusterException);
+
+    /*
+     * Retrieve the current version number of the
+     * data distribution.
+     */
+    uint32_t getVersionNumber() { return m_versionNumber; }
+    void incrementVersionNumber() { m_versionNumber++; }
 
   protected:
     /*
@@ -169,6 +309,12 @@ class DataDistribution
      * protected constructor.
      */
     friend class Factory;
+
+    /*
+     * Shard and ManualOverride need access to getDelegate().
+     */
+    friend class Shard;
+    friend class ManualOverride;
 
     /*
      * Constructor used by Factory.
@@ -185,16 +331,6 @@ class DataDistribution
     void updateCachedRepresentation() throw(ClusterException);
 
   private:
-    /*
-     * Forward declaration of class Shard.
-     */
-    class Shard;
-
-    /*
-     * A list of shards.
-     */
-    typedef vector<Shard *> ShardList;
-
     /*
      * Make the default constructor private so it cannot be called.
      */
@@ -219,7 +355,8 @@ class DataDistribution
     /*
      * Unmarshall a stringified sequence of manual overrides.
      */
-    void unmarshallOverrides(const string &marshalledOverrides, NodeMap &m)
+    void unmarshallOverrides(const string &marshalledOverrides, 
+                             ManualOverridesMap &m)
         throw(ClusterException);
 
     /*
@@ -237,119 +374,14 @@ class DataDistribution
      */
     string marshallOverrides();
 
-  private:
     /*
-     * Definition of class Shard.
+     * Retrieve a pointer to the shards lock and
+     * manual overrides lock.
      */
-    class Shard
-    {
-      public:
-        /*
-         * Get the info out of the shard.
-         */
-        DataDistribution *getDistribution() { return mp_dist; }
-        HashRange beginRange() { return m_beginRange; }
-        HashRange endRange() { return m_endRange; }
-        string getNodeKey() { return m_nodeKey; }
+    Mutex *getShardsLock() { return &m_shardsLock; }
+    Mutex *getManualOverridesLock() { return &m_manualOverridesLock; }
 
-        /*
-         * Get the node, load it if it's not yet loaded.
-         */
-        Node *getNode();
-
-        /*
-         * Return the Node * if the work belongs to this shard,
-         * NULL otherwise.
-         */
-        Node *contains(HashRange hash);
-
-        /*
-         * Decide whether this piece of work belongs to
-         * this shard.
-         */
-        bool covers(const string &key);
-
-        /*
-         * Constructor.
-         */
-        Shard(DataDistribution *dist,
-              Node *node,
-              HashRange beginRange,
-              HashRange endRange)
-            : mp_dist(dist),
-              mp_node(node),
-              m_beginRange(beginRange),
-              m_endRange(endRange),
-              m_nodeKey(string(""))
-        {
-        }
-
-        /*
-         * Constructor.
-         */
-        Shard(DataDistribution *dist,
-              string nodeKey,
-              HashRange beginRange,
-              HashRange endRange)
-            : mp_dist(dist),
-              mp_node(NULL),
-              m_beginRange(beginRange),
-              m_endRange(endRange),
-              m_nodeKey(nodeKey)
-        {
-        }
-
-        /*
-         * Reassign this shard to a different node.
-         */
-        void reassign(Node *newNode) 
-        {
-            mp_node = newNode;
-            if (mp_node == NULL) {
-                m_nodeKey = "";
-            } else {
-                m_nodeKey = mp_node->getKey();
-            }
-        }
-        void reassign(const string nodeKey)
-        {
-            mp_node = NULL;
-            m_nodeKey = nodeKey;
-        }
-
-      private:
-        /*
-         * Make the default constructor private so it cannot be called.
-         */
-        Shard()
-        {
-            throw ClusterException("Someone called the Shard "
-                                   "default constructor!");
-        }
-
-      private:
-        /*
-         * The data distribution this shard belongs to.
-         */
-        DataDistribution *mp_dist;
-
-        /*
-         * The node that this shard is assigned to.
-         */
-        Node *mp_node;
-
-        /*
-         * The bounds for this shard. The range is beginRange <-> endRange.
-         */
-        HashRange m_beginRange;
-        HashRange m_endRange;
-
-        /*
-         * The key of the node -- used in case the pointer is not available.
-         */
-        string m_nodeKey;
-    };
-
+  private:
     /*
      * The application object for the application that contains
      * this distribution.
@@ -359,7 +391,8 @@ class DataDistribution
     /*
      * The manual overrides for this data distribution.
      */
-    NodeMap m_manualOverrides;
+    ManualOverridesMap m_manualOverrides;
+    Mutex m_manualOverridesLock;
 
     /*
      * Which hash function to use.
@@ -384,11 +417,17 @@ class DataDistribution
      * The shards in this data distribution.
      */
     ShardList m_shards;
+    Mutex m_shardsLock;
 
     /*
      * Is this data distribution modified?
      */
     bool m_modified;
+
+    /*
+     * The version number of this data distribution.
+     */
+    uint32_t m_versionNumber;
 };
 
 };	/* End of 'namespace clusterlib' */

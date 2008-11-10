@@ -250,7 +250,8 @@ class Factory
      * Dispatch timer, zk, and session events.
      */
     void dispatchTimerEvent(ClusterlibTimerEvent *te);
-    void dispatchZKEvent(zk::ZKWatcherEvent *ze);
+    void dispatchZKEvent(zk::ZKWatcherEvent *ze) 
+        throw(ClusterException);
     void dispatchSessionEvent(zk::ZKWatcherEvent *ze);
     bool dispatchEndEvent();
 
@@ -259,7 +260,8 @@ class Factory
      * of a clusterlib repository object and generates the
      * prototypical cluster event payload to send to clients.
      */
-    ClusterEventPayload *updateCachedObject(ClientEventHandler *cp)
+    ClusterEventPayload *updateCachedObject(FactoryEventHandler *cp,
+                                            zk::ZKWatcherEvent *zp)
         throw(ClusterException);
 
     /*
@@ -304,6 +306,15 @@ class Factory
     DataDistribution *getDistribution(const string &appName,
                                       const string &distName,
                                       bool create);
+
+    void updateDistribution(const string &key,
+                            const string &shards,
+                            const string &manualOverrides,
+                            uint32_t versionNumber);
+    void updateNodeClientState(const string &key,
+                               const string &cs);
+    void updateNodeMasterState(const string &key,
+                               const string &ms);
 
     Application *getApplicationFromKey(const string &key,
                                        bool create);
@@ -394,7 +405,7 @@ class Factory
         const string &marshalledManualOverrides,
         Application *app);
     Group *createGroup(
-	const string &name, 
+	const string &name,
 	const string &key, 
 	Application *app);
     Node *createNode(const string &name,
@@ -626,6 +637,27 @@ class FactoryOps
         return mp_f->loadManualOverrides(key);
     }
 
+    void updateDistribution(const string &key,
+                            const string &shards,
+                            const string &manualOverrides,
+                            uint32_t versionNumber)
+    {
+        mp_f->updateDistribution(key,
+                                 shards,
+                                 manualOverrides,
+                                 versionNumber);
+    }
+    void updateNodeClientState(const string &key,
+                               const string &cs)
+    {
+        mp_f->updateNodeClientState(key, cs);
+    }
+    void updateNodeMasterState(const string &key,
+                               const string &ms)
+    {
+        mp_f->updateNodeMasterState(key, ms);
+    }
+
     Application *getApplicationFromKey(const string &key,
                                        bool create = false)
     {
@@ -646,7 +678,7 @@ class FactoryOps
     {
         return mp_f->getNodeFromKey(key, create);
     }
-
+    
     string createNodeKey(const string &appName,
                          const string &groupName,
                          const string &nodeName,

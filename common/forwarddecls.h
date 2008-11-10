@@ -18,6 +18,13 @@ namespace clusterlib
 {
 
 /*
+ * Define the types associated with a hash function.
+ */
+typedef unsigned long long HashRange;
+typedef int32_t            HashFunctionId;
+typedef HashRange (HashFunction)(const string &key);
+
+/*
  * Random bits owned by the user program. Clusterlib just
  * provides a way to attach these bits to events and cache
  * objects.
@@ -43,10 +50,12 @@ class Factory;
 class FactoryOps;
 class Group;
 class HealthChecker;
+class ManualOverride;
 class Node;
 class NodeAddress;
 class Notifyable;
 class Server;
+class Shard;
 class TimerEventHandler;
 class TimerEventPayload;
 
@@ -64,6 +73,7 @@ typedef vector<HealthChecker *>			HealthCheckerList;
 typedef vector<Node *>				NodeList;
 typedef	vector<NodeAddress *>			NodeAddressList;
 typedef vector<Server *>			ServerList;
+typedef vector<Shard *>				ShardList;
     
 /*
  * Maps of pointers to these classes.
@@ -75,6 +85,7 @@ typedef map<string, Factory *>			FactoryMap;
 typedef map<string, FactoryOps *>		FactoryOpsMap;
 typedef map<string, Group *>			GroupMap;
 typedef map<string, HealthChecker *>		HealthCheckerMap;
+typedef map<string, ManualOverride *>		ManualOverridesMap;
 typedef map<string, Node *>	        	NodeMap;
 typedef map<string, Server *>			ServerMap;
 typedef map<TimerId, TimerEventPayload *>	TimerRegistry;

@@ -431,6 +431,18 @@ Factory::dispatchEvents()
                       zk::ZKWatcherEvent *zp =
                           (zk::ZKWatcherEvent *) ge.getEvent();
 
+#ifdef	VERY_VERY_VERBOSE
+                      cerr << "Processing ZK event "
+                           << "(type: "
+                           << zp->getType(),
+                           << ", state: "
+                           << zp->getState(),
+                           << ", context: "
+                           << (unsigned int) zp->getContext()
+                           << ")"
+                           << endl;
+#endif
+
                       LOG_INFO(CL_LOG,
                                "Processing ZK event "
                                "(type: %d, state: %d, context: 0x%x)",
@@ -497,11 +509,12 @@ Factory::dispatchTimerEvent(ClusterlibTimerEvent *te)
  */
 void
 Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
+    throw(ClusterException)
 {
     TRACE( CL_LOG, "dispatchZKEvent" );
     
-    ClientEventHandler *cp =
-        (ClientEventHandler *) zp->getContext();
+    FactoryEventHandler *cp =
+        (FactoryEventHandler *) zp->getContext();
     ClusterEventPayload *cep, *cepp;
     ClientList::iterator i;
 
@@ -509,9 +522,8 @@ Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
      * Protect against NULL context.
      */
     if (cp == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Unexpected NULL context ZK event");
-        return;
+        throw ClusterException(string("") +
+                               "Unexpected NULL event context!");
     }
 
     /*
@@ -519,7 +531,7 @@ Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
      * repository object and get back a prototypical
      * cluster event payload to send to clients.
      */
-    cep = updateCachedObject(cp);
+    cep = updateCachedObject(cp, zp);
 
     /*
      * Now dispatch the event to all registered clients in
@@ -837,6 +849,38 @@ Factory::getNode(const string &appName,
                    getGroup(appName, groupName, create),
                    managed,
                    create);
+}
+
+/*
+ * Update the fields of a distribution in the clusterlib repository.
+ */
+void
+Factory::updateDistribution(const string &key,
+                            const string &shards,
+                            const string &manualOverrides,
+                            uint32_t versionNumber)
+{
+    /* TO BE IMPLEMENTED */
+}
+
+/*
+ * Update the client state field of a node.
+ */
+void
+Factory::updateNodeClientState(const string &key,
+                               const string &cs)
+{
+    /* TO BE IMPLEMENTED */
+}
+
+/*
+ * Update the master state field of a node.
+ */
+void
+Factory::updateNodeMasterState(const string &key,
+                               const string &ms)
+{
+    /* TO BE IMPLEMENTED */
 }
 
 /*
@@ -1825,13 +1869,53 @@ Factory::forgetTimer(TimerId id)
  * clients.
  */
 ClusterEventPayload *
-Factory::updateCachedObject(ClientEventHandler *cp)
+Factory::updateCachedObject(FactoryEventHandler *cp,
+                            zk::ZKWatcherEvent *ep)
     throw(ClusterException)
 {
+    TRACE( CL_LOG, "updateCachedObject" );
+
+    if (ep == NULL) {
+        throw ClusterException(string("") +
+                               "NULL watcher event!");
+    }
+
+    const string path = ep->getPath();
+    vector<string> components;
+    Notifyable *np;
+
+    split(components, path, is_any_of(PATHSEPARATOR));
+    if (hasNodeKeyPrefix(components)) {
+        np = getNode(components[7],
+                     getGroup(components[3],
+                              components[5],
+                              false),
+                     false,
+                     false);
+    } else if (hasDistKeyPrefix(components)) {
+        np = getDistribution(components[5],
+                             getApplication(components[3], false),
+                             false);
+    } else if (hasAppKeyPrefix(components)) {
+        np = getApplication(components[3], false);
+    } else if (hasGroupKeyPrefix(components)) {
+        np = getGroup(components[5],
+                      getApplication(components[3], false),
+                      false);
+    } else {
+        throw ClusterException(string("") +
+                               "Unknown event key: " +
+                               path);
+    }
+
     /*
-     * TO BE WRITTEN
+     * Invoke the object handler. It will update the cache. It
+     * should also return the kind of user-level event that this
+     * event represents.
      */
-    return NULL;
+    Event e = cp->deliver(np, path);
+
+    return new ClusterEventPayload(np, e);
 }
 
 };	/* End of 'namespace clusterlib' */
