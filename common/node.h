@@ -64,7 +64,7 @@ class Node
     /*
      * Update the cached representation of this node.
      */
-    virtual void updateCachedRepresentation() throw(ClusterException);
+    virtual void updateCachedRepresentation();
 
   private:
     /*

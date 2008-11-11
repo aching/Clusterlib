@@ -460,7 +460,6 @@ class ClusterEventHandler
      * implemented by subclasses.
      */
     virtual void handleClusterEvent(Notifyable *np, Event e)
-        throw(ClusterException)
         = 0;
 };
 
@@ -1054,7 +1053,6 @@ class TimerEventHandler
      * subclasses.
      */
     virtual void handleTimerEvent(TimerId id, ClientData data)
-        throw(ClusterException)
         = 0;
 };
 

@@ -26,7 +26,6 @@ namespace clusterlib
 Group *
 Application::getGroup(const string &groupName,
 		      bool create)
-    throw(ClusterException)
 {
     Group *grp;
 
@@ -72,7 +71,6 @@ Application::getGroup(const string &groupName,
 DataDistribution *
 Application::getDistribution(const string &distName,
 			     bool create)
-    throw(ClusterException)
 {
     DataDistribution *dist;
 
@@ -114,7 +112,6 @@ Application::getDistribution(const string &distName,
  */
 void
 Application::updateCachedRepresentation()
-    throw(ClusterException)
 {
 }
 

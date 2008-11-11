@@ -26,8 +26,7 @@ class Application
      * Retrieve a named group within an application.
      */
     Group *getGroup(const string &groupName,
-		    bool create = false)
-        throw(ClusterException);
+		    bool create = false);
 
     /*
      * Retrieve a map of all groups within the application.
@@ -39,8 +38,7 @@ class Application
      * application.
      */
     DataDistribution *getDistribution(const string &distName,
-				      bool create = false)
-        throw(ClusterException);
+				      bool create = false);
 
     /*
      * Retrieve a map of all data distributions within the
@@ -91,7 +89,7 @@ class Application
     /*
      * Update the cached representation.
      */
-    virtual void updateCachedRepresentation() throw(ClusterException);
+    virtual void updateCachedRepresentation();
 
   private:
     /*

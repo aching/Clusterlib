@@ -509,7 +509,6 @@ Factory::dispatchTimerEvent(ClusterlibTimerEvent *te)
  */
 void
 Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "dispatchZKEvent" );
     
@@ -1816,7 +1815,6 @@ TimerId
 Factory::registerTimer(TimerEventHandler *handler,
                        uint64_t afterTime,
                        ClientData data)
-    throw(ClusterException)
 {
     TimerEventPayload *pp =
         new TimerEventPayload(afterTime, handler, data);
@@ -1834,7 +1832,6 @@ Factory::registerTimer(TimerEventHandler *handler,
  */
 bool
 Factory::cancelTimer(TimerId id)
-    throw(ClusterException)
 {
     Locker l(&m_timerRegistryLock);
     TimerEventPayload *pp = m_timerRegistry[id];
@@ -1871,7 +1868,6 @@ Factory::forgetTimer(TimerId id)
 ClusterEventPayload *
 Factory::updateCachedObject(FactoryEventHandler *cp,
                             zk::ZKWatcherEvent *ep)
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "updateCachedObject" );
 

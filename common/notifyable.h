@@ -65,7 +65,6 @@ class Notifyable
     void registerInterest(ClusterEventHandler *cehp,
                           Event mask,
                           void *clientData)
-        throw(ClusterException)
     {
         ClusterEventInterests::iterator i;
         Locker l(getInterestsLock());
@@ -88,7 +87,6 @@ class Notifyable
      * Unregister an event handler for a set of events.
      */
     void unregisterInterest(ClusterEventHandler *cehp, Event mask)
-        throw(ClusterException)
     {
         ClusterEventInterests::iterator i;
         ClusterEventInterest *pi;
@@ -163,7 +161,6 @@ class Notifyable
      * by subclasses.
      */
     virtual void updateCachedRepresentation()
-        throw(ClusterException)
         = 0;
 
   private:

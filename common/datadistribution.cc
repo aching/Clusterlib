@@ -103,7 +103,6 @@ DataDistribution::DataDistribution(Application *app,
  */
 void
 DataDistribution::unmarshall(const string &marshalledData)
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "unmarshall" );
 
@@ -134,7 +133,6 @@ DataDistribution::unmarshall(const string &marshalledData)
 void
 DataDistribution::unmarshallShards(const string &marshalledShards,
                                    ShardList &l)
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "unmarshallShards" );
 
@@ -189,7 +187,6 @@ DataDistribution::unmarshallShards(const string &marshalledShards,
 void
 DataDistribution::unmarshallOverrides(const string &marshalledOverrides,
                                       ManualOverridesMap &m)
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "unmarshallOverrides" );
 
@@ -414,7 +411,6 @@ DataDistribution::marshallOverrides()
  */
 void
 DataDistribution::updateCachedRepresentation()
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "updateCachedRepresentation" );
 
@@ -456,7 +452,6 @@ DataDistribution::updateCachedRepresentation()
  */
 Node *
 DataDistribution::map(const string &key)
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "map" );
 
@@ -526,7 +521,6 @@ DataDistribution::hashWork(const string &key)
  */
 string
 DataDistribution::matchesManualOverride(const string &key)
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "matchesManualOverrides" );
 
@@ -558,7 +552,6 @@ DataDistribution::matchesManualOverride(const string &key)
  */
 bool
 DataDistribution::isCovered()
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "isCovered" );
 
@@ -585,7 +578,6 @@ DataDistribution::isCovered()
  */
 void
 DataDistribution::setShards(vector<HashRange> &upperBounds)
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "setShards" );
 
@@ -635,7 +627,6 @@ DataDistribution::setShards(vector<HashRange> &upperBounds)
  */
 uint32_t
 DataDistribution::getShardIndex(const string &key)
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "getShardIndex" );
 
@@ -643,7 +634,6 @@ DataDistribution::getShardIndex(const string &key)
 }
 uint32_t
 DataDistribution::getShardIndex(HashRange hash)
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "getShardIndex" );
 
@@ -679,7 +669,6 @@ DataDistribution::getShardDetails(uint32_t shardIndex,
                                   HashRange *lowP,
                                   HashRange *hiP,
                                   bool *isForwardedP)
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "getShardDetails" );
 
@@ -715,7 +704,6 @@ DataDistribution::getShardDetails(uint32_t shardIndex,
  */
 void
 DataDistribution::reassignShard(uint32_t shardIndex, Notifyable *ntp)
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "reassignShard" );
 
@@ -731,7 +719,6 @@ DataDistribution::reassignShard(uint32_t shardIndex, Notifyable *ntp)
 }
 void
 DataDistribution::reassignShard(uint32_t shardIndex, const string &key)
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "reassignShard" );
 
@@ -752,7 +739,6 @@ DataDistribution::reassignShard(uint32_t shardIndex, const string &key)
 void
 DataDistribution::reassignManualOverride(const string &pattern,
                                          Notifyable *ntp)
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "reassignManualOverride" );
 
@@ -770,7 +756,6 @@ DataDistribution::reassignManualOverride(const string &pattern,
 void
 DataDistribution::reassignManualOverride(const string &pattern,
                                          const string &key)
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "reassignManualOverride" );
 
@@ -791,7 +776,6 @@ DataDistribution::reassignManualOverride(const string &pattern,
  */
 void
 DataDistribution::publish()
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "publish" );
 
@@ -824,7 +808,6 @@ DataDistribution::publish()
  */
 Notifyable *
 ManualOverride::loadNotifyable()
-    throw(ClusterException)
 {
     /*
      * If the notifyable is already loaded, return it.
@@ -847,7 +830,6 @@ ManualOverride::loadNotifyable()
 }
 void
 ManualOverride::determineForwarding()
-    throw(ClusterException)
 {
     if (m_key == "") {
         m_isForwarded = false;

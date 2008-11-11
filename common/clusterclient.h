@@ -24,8 +24,7 @@ class Client
      * Retrieve an application.
      */
     Application *getApplication(const string &appName,
-                                bool create = false)
-        throw(ClusterException);
+                                bool create = false);
 
     /*
      * Register a timer handler to be called after
@@ -33,14 +32,12 @@ class Client
      */
     TimerId registerTimer(TimerEventHandler *tp,
                           uint64_t afterTime,
-                          ClientData data)
-        throw(ClusterException);
+                          ClientData data);
 
     /*
      * Cancel a previously registered timer.
      */
-    bool cancelTimer(TimerId id)
-        throw(ClusterException);
+    bool cancelTimer(TimerId id);
 
   protected:
     /*

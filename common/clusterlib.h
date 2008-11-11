@@ -233,10 +233,8 @@ class Factory
      */
     TimerId registerTimer(TimerEventHandler *handler,
                           uint64_t afterTime,
-                          ClientData data)
-        throw(ClusterException);
-    bool cancelTimer(TimerId id)
-        throw(ClusterException);
+                          ClientData data);
+    bool cancelTimer(TimerId id);
     void forgetTimer(TimerId id);
     
     /*
@@ -250,8 +248,7 @@ class Factory
      * Dispatch timer, zk, and session events.
      */
     void dispatchTimerEvent(ClusterlibTimerEvent *te);
-    void dispatchZKEvent(zk::ZKWatcherEvent *ze) 
-        throw(ClusterException);
+    void dispatchZKEvent(zk::ZKWatcherEvent *ze);
     void dispatchSessionEvent(zk::ZKWatcherEvent *ze);
     bool dispatchEndEvent();
 
@@ -261,8 +258,7 @@ class Factory
      * prototypical cluster event payload to send to clients.
      */
     ClusterEventPayload *updateCachedObject(FactoryEventHandler *cp,
-                                            zk::ZKWatcherEvent *zp)
-        throw(ClusterException);
+                                            zk::ZKWatcherEvent *zp);
 
     /*
      * This method consumes timer events. It runs in a separate
@@ -542,12 +538,10 @@ class FactoryOps
     TimerId registerTimer(TimerEventHandler *handler,
                           uint64_t afterTime,
                           ClientData data)
-        throw(ClusterException)
     {
         return mp_f->registerTimer(handler, afterTime, data);
     }
     bool cancelTimer(TimerId id)
-        throw(ClusterException)
     {
         return mp_f->cancelTimer(id);
     }

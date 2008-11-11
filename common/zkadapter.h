@@ -28,8 +28,8 @@ class ZooKeeperException :
          * 
          * @param msg the detailed message associated with this exception
          */
-        ZooKeeperException(const string &msg) : 
-            m_message(msg), m_zkErrorCode(0) 
+	ZooKeeperException(const string &msg) throw()
+            : m_message(msg), m_zkErrorCode(0) 
         {}
 
         /**
@@ -38,8 +38,8 @@ class ZooKeeperException :
          * @param msg the detailed message associated with this exception
          * @param errorCode the ZK error code associated with this exception
          */
-        ZooKeeperException(const string &msg, int errorCode) : 
-            m_zkErrorCode(errorCode) 
+        ZooKeeperException(const string &msg, int errorCode) throw()
+            : m_zkErrorCode(errorCode) 
         {
             char tmp[100];
             sprintf( tmp, " (ZK error code: %d)", errorCode );
@@ -54,7 +54,8 @@ class ZooKeeperException :
         /**
          * \brief Returns detailed description of the exception.
          */
-        const char *what() const throw() {
+        const char *what() const throw()
+        {
             return m_message.c_str();
         }
         
@@ -335,8 +336,7 @@ class ZooKeeperAdapter
          */
         ZooKeeperAdapter(ZooKeeperConfig config, 
                          ZKEventListener *listener = NULL,
-                         bool establishConnection = false) 
-            throw(ZooKeeperException);
+                         bool establishConnection = false);
 
         /**
          * \brief Destructor.
@@ -357,7 +357,7 @@ class ZooKeeperAdapter
          * 
          * @throw ZooKeeperException if cannot establish connection to the ZK
          */
-        void reconnect() throw(ZooKeeperException);
+	void reconnect();
         
         /**
          * \brief Disconnects from the ZK and unregisters {@link #mp_zkHandle}.
@@ -380,8 +380,7 @@ class ZooKeeperAdapter
         bool createNode(const string &path, 
                         const string &value = "", 
                         int flags = 0, 
-                        bool createAncestors = true) 
-            throw(ZooKeeperException);
+                        bool createAncestors = true);
                   
         /**
          * \brief Creates a new sequence node using the give path as the prefix.
@@ -401,8 +400,7 @@ class ZooKeeperAdapter
         int64_t createSequence(const string &path, 
                                const string &value = "", 
                                int flags = 0, 
-                               bool createAncestors = true) 
-            throw(ZooKeeperException);
+                               bool createAncestors = true);
         
         /**
          * \brief Deletes a node identified by the given path.
@@ -417,8 +415,9 @@ class ZooKeeperAdapter
          * @return true if the node has been deleted; false otherwise
          * @throw ZooKeeperException if the operation has failed
          */
-        bool deleteNode(const string &path, bool recursive = false, int version = -1) 
-            throw(ZooKeeperException);
+	bool deleteNode(const string &path,
+                        bool recursive = false,
+                        int version = -1);
         
         /**
          * \brief Checks whether the given node exists or not.
@@ -438,8 +437,7 @@ class ZooKeeperAdapter
         bool nodeExists(const string &path, 
                         ZKEventListener *listener = NULL, 
                         void *context = NULL,
-                        Stat *stat = NULL) 
-            throw(ZooKeeperException);
+                        Stat *stat = NULL);
 
         /**
          * \brief Retrieves list of all children of the given node.
@@ -458,8 +456,7 @@ class ZooKeeperAdapter
         void getNodeChildren(vector<string> &children,
                              const string &path, 
                              ZKEventListener *listener = NULL, 
-                             void *context = NULL) 
-            throw(ZooKeeperException);
+                             void *context = NULL);
                 
         /**
          * \brief Gets the given node's data.
@@ -479,8 +476,7 @@ class ZooKeeperAdapter
         string getNodeData(const string &path, 
                            ZKEventListener *listener = NULL, 
                            void *context = NULL,
-                           Stat *stat = NULL) 
-            throw(ZooKeeperException);
+                           Stat *stat = NULL);
         
         /**
          * \brief Sets the given node's data.
@@ -493,8 +489,7 @@ class ZooKeeperAdapter
          * 
          * @throw ZooKeeperException if the operation has failed
          */
-        void setNodeData(const string &path, const string &value, int version = -1) 
-            throw(ZooKeeperException);
+        void setNodeData(const string &path, const string &value, int version = -1);
         
         /**
          * \brief Validates the given path to a node in ZK.
@@ -504,7 +499,7 @@ class ZooKeeperAdapter
          * @throw ZooKeeperException if the given path is not valid
          *        (for instance it doesn't start with "/")
          */
-        static void validatePath(const string &path) throw(ZooKeeperException);
+        static void validatePath(const string &path);
 
         /**
          * Returns the current state of this adapter.
@@ -548,8 +543,7 @@ class ZooKeeperAdapter
                         const string &value, 
                         int flags, 
                         bool createAncestors,
-                        string &createdPath) 
-            throw(ZooKeeperException);
+                        string &createdPath);
         
         /**
          * Handles an asynchronous event received from the ZK.
@@ -620,8 +614,7 @@ class ZooKeeperAdapter
          * 
          * @throw ZooKeeperException if unable to connect within the given timeout
          */
-        void waitUntilConnected() 
-            throw(ZooKeeperException);
+        void waitUntilConnected();
                                       
         /**
          * Verifies whether the connection is established,
@@ -630,7 +623,7 @@ class ZooKeeperAdapter
          * @throw ZooKeeperConnection if this client is disconnected
          *        and auto-reconnect failed or was not allowed
          */
-        void verifyConnection() throw(ZooKeeperException);
+        void verifyConnection();
 
         /**
          * Returns the remaining connect timeout. The timeout resets

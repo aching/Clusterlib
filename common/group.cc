@@ -26,7 +26,6 @@ namespace clusterlib
 Node *
 Group::getNode(const string &nodeName, 
 	       bool create)
-    throw(ClusterException)
 {
     Node *np;
 
@@ -66,7 +65,6 @@ Group::getNode(const string &nodeName,
  */
 void
 Group::updateCachedRepresentation()
-    throw(ClusterException)
 {
 }
 

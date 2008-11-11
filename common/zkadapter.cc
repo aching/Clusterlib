@@ -133,7 +133,6 @@ void zkWatcher(zhandle_t *zh, int type, int state, const char *path)
 ZooKeeperAdapter::ZooKeeperAdapter(ZooKeeperConfig config, 
                                    ZKEventListener *listener,
                                    bool establishConnection) 
-    throw(ZooKeeperException)
     : m_zkConfig(config),
       mp_zkHandle(NULL), 
       m_terminating(false),
@@ -180,7 +179,7 @@ ZooKeeperAdapter::~ZooKeeperAdapter()
 }
 
 void
-ZooKeeperAdapter::validatePath(const string &path) throw(ZooKeeperException)
+ZooKeeperAdapter::validatePath(const string &path)
 {
     TRACE( LOG, "validatePath" );
     
@@ -222,7 +221,7 @@ ZooKeeperAdapter::disconnect()
 }
 
 void
-ZooKeeperAdapter::reconnect() throw(ZooKeeperException)
+ZooKeeperAdapter::reconnect()
 {
     TRACE( LOG, "reconnect" );
     
@@ -422,7 +421,6 @@ ZooKeeperAdapter::setState(AdapterState newState)
 //is called from one place only
 void
 ZooKeeperAdapter::waitUntilConnected() 
-  throw(ZooKeeperException)
 {
     TRACE( LOG, "waitUntilConnected" );    
     long long int timeout = getRemainingConnectTimeout();
@@ -467,7 +465,7 @@ ZooKeeperAdapter::waitUntilConnected()
 }
 
 void
-ZooKeeperAdapter::verifyConnection() throw(ZooKeeperException)
+ZooKeeperAdapter::verifyConnection()
 {
     TRACE( LOG, "verifyConnection" );
 
@@ -512,7 +510,6 @@ ZooKeeperAdapter::createNode(const string &path,
                              int flags, 
                              bool createAncestors,
                              string &returnPath) 
-    throw(ZooKeeperException) 
 {
     TRACE( LOG, "createNode (internal)" );
     validatePath( path );
@@ -578,7 +575,6 @@ ZooKeeperAdapter::createNode(const string &path,
                              const string &value,
                              int flags,
                              bool createAncestors) 
-        throw(ZooKeeperException) 
 {
     TRACE( LOG, "createNode" );
 
@@ -591,7 +587,6 @@ ZooKeeperAdapter::createSequence(const string &path,
                                  const string &value,
                                  int flags,
                                  bool createAncestors) 
-    throw(ZooKeeperException)
 {
     TRACE( LOG, "createSequence" );
 
@@ -629,7 +624,6 @@ bool
 ZooKeeperAdapter::deleteNode(const string &path,
                              bool recursive,
                              int version)
-    throw(ZooKeeperException)
 {
     TRACE( LOG, "deleteNode" );
 
@@ -672,7 +666,6 @@ bool
 ZooKeeperAdapter::nodeExists(const string &path,
                              ZKEventListener *listener,
                              void *context, Stat *stat)
-    throw(ZooKeeperException)
 {
     TRACE( LOG, "nodeExists" );
 
@@ -724,7 +717,6 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
                                   const string &path, 
                                   ZKEventListener *listener,
                                   void *context)
-    throw (ZooKeeperException)
 {
     TRACE( LOG, "getNodeChildren" );
 
@@ -778,7 +770,6 @@ string
 ZooKeeperAdapter::getNodeData(const string &path,
                               ZKEventListener *listener,
                               void *context, Stat *stat)
-    throw(ZooKeeperException)
 {
     TRACE( LOG, "getNodeData" );
 
@@ -830,7 +821,6 @@ void
 ZooKeeperAdapter::setNodeData(const string &path,
                               const string &value,
                               int version)
-    throw(ZooKeeperException)
 {
     TRACE( LOG, "setNodeData" );
 

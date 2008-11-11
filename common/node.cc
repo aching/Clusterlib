@@ -23,7 +23,6 @@ namespace clusterlib
  */
 void
 Node::updateCachedRepresentation()
-    throw(ClusterException)
 {
 };
 

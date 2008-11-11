@@ -21,7 +21,7 @@ class ClusterException
         /**
          * Constructor.
          */
-        ClusterException(const string &msg) : m_message(msg) {}
+        ClusterException(const string &msg) throw() : m_message(msg) {}
         
         /**
          * Destructor.
@@ -31,7 +31,8 @@ class ClusterException
         /**
          * Returns detailed description of the exception.
          */
-        const char *what() const throw() {
+        const char *what() const throw() 
+	{
             return m_message.c_str();
         }
 

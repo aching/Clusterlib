@@ -25,7 +25,6 @@ namespace clusterlib
 Application *
 Client::getApplication(const string &appName,
                        bool create)
-    throw(ClusterException)
 {
     TRACE( CL_LOG, "getApplication" );
 
@@ -77,7 +76,6 @@ TimerId
 Client::registerTimer(TimerEventHandler *tp,
                       uint64_t afterTime,
                       ClientData data)
-    throw(ClusterException)
 {
     return mp_f->registerTimer(tp, afterTime, data);
 }
@@ -90,7 +88,6 @@ Client::registerTimer(TimerEventHandler *tp,
  */
 bool
 Client::cancelTimer(TimerId id)
-    throw(ClusterException)
 {
     return mp_f->cancelTimer(id);
 }

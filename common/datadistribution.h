@@ -28,13 +28,12 @@ class ManualOverride
     string getKey() { return m_key; }
     bool isForwarded() { return m_isForwarded; }
     Notifyable *getNotifyable() { return mp_notifyable; }
-    Notifyable *loadNotifyable() throw(ClusterException);
+    Notifyable *loadNotifyable();
 
     /*
      * Reassign this shard to a different Notifyable
      */
     void reassign(Notifyable *np)
-        throw(ClusterException)
     {
         mp_notifyable = np;
         if (mp_notifyable == NULL) {
@@ -45,7 +44,6 @@ class ManualOverride
         determineForwarding();
     }
     void reassign(const string &key)
-        throw(ClusterException)
     {
         mp_notifyable = NULL;
         m_key = key;
@@ -72,7 +70,7 @@ class ManualOverride
     /*
      * Determine whether this is a forwarding or final reference.
      */
-    void determineForwarding() throw(ClusterException);
+    void determineForwarding();
 
   private:
     /*
@@ -195,7 +193,7 @@ class DataDistribution
      * Find the Node that the key maps to (recursively
      * following forwards).
      */
-    Node *map(const string &key) throw(ClusterException);
+    Node *map(const string &key);
 
     /*
      * Hash a key.
@@ -207,8 +205,7 @@ class DataDistribution
      * key if one exists (returns the first one found, in
      * an unspecified order) or the empty string if none.
      */
-    string matchesManualOverride(const string &key)
-        throw(ClusterException);
+    string matchesManualOverride(const string &key);
 
     /*
      * Return the number of shards in this data distribution.
@@ -218,7 +215,7 @@ class DataDistribution
     /*
      * Is the distribution covered (at the time of checking)?
      */
-    bool isCovered() throw(ClusterException);
+    bool isCovered();
 
     /*
      * Get/set the hash function to use.
@@ -239,16 +236,13 @@ class DataDistribution
     /*
      * Assign new shards.
      */
-    void setShards(vector<HashRange> &upperBounds)
-        throw(ClusterException);
+    void setShards(vector<HashRange> &upperBounds);
 
     /*
      * Get the shard index for a work item, or for a hash value.
      */
-    uint32_t getShardIndex(const string &workItem)
-        throw(ClusterException);
-    uint32_t getShardIndex(HashRange v)
-        throw(ClusterException);
+    uint32_t getShardIndex(const string &workItem);
+    uint32_t getShardIndex(HashRange v);
 
     /*
      * Get all info out of a shard.
@@ -256,33 +250,27 @@ class DataDistribution
     Notifyable *getShardDetails(uint32_t shardIndex,
                                 HashRange *low = NULL,
                                 HashRange *hi = NULL,
-                                bool *isForwarded = NULL)
-        throw(ClusterException);
+                                bool *isForwarded = NULL);
 
     /*
      * Reassign a shard to a different notifyable.
      */
-    void reassignShard(uint32_t shardIndex, Notifyable *ntp)
-        throw(ClusterException);
-    void reassignShard(uint32_t shardIndex, const string &key)
-        throw(ClusterException);
+    void reassignShard(uint32_t shardIndex, Notifyable *ntp);
+    void reassignShard(uint32_t shardIndex, const string &key);
 
     /*
      * Assign - or reassign - a manual override to a different
      * notifyable.
      */
     void reassignManualOverride(const string &pattern,
-                                Notifyable *ntp)
-        throw(ClusterException);
+                                Notifyable *ntp);
     void reassignManualOverride(const string &pattern,
-                                const string &key)
-        throw(ClusterException);
+                                const string &key);
 
     /*
      * Remove a manual override.
      */
-    bool removeManualOverride(const string &pattern)
-        throw(ClusterException);
+    bool removeManualOverride(const string &pattern);
 
     /*
      * Is this data distribution modified, i.e. does it need
@@ -294,7 +282,7 @@ class DataDistribution
     /*
      *  Publish any changes to the clusterlib repository.
      */
-    void publish() throw(ClusterException);
+    void publish();
 
     /*
      * Retrieve the current version number of the
@@ -328,7 +316,7 @@ class DataDistribution
     /*
      * Update the distribution.
      */
-    void updateCachedRepresentation() throw(ClusterException);
+    void updateCachedRepresentation();
 
   private:
     /*
@@ -344,20 +332,18 @@ class DataDistribution
     /*
      * Unmarshall a string into this data distribution.
      */
-    void unmarshall(const string &marshalledDist) throw(ClusterException);
+    void unmarshall(const string &marshalledDist);
 
     /*
      * Unmarshall a stringified sequence of shards.
      */
-    void unmarshallShards(const string &marshalledShards, ShardList &l)
-        throw(ClusterException);
+    void unmarshallShards(const string &marshalledShards, ShardList &l);
 
     /*
      * Unmarshall a stringified sequence of manual overrides.
      */
     void unmarshallOverrides(const string &marshalledOverrides, 
-                             ManualOverridesMap &m)
-        throw(ClusterException);
+                             ManualOverridesMap &m);
 
     /*
      * Marshall a data distribution into a string.

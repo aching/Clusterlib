@@ -32,7 +32,7 @@ class Group
      * Retrieve a node with a given name in this group.
      */
     Node *getNode(const string &nodeName, 
-		  bool create = false) throw(ClusterException);
+		  bool create = false);
 
     /*
      * Retrieve the map of nodes in this group.
@@ -74,7 +74,7 @@ class Group
     /*
      * Update the cached representation of this group.
      */
-    virtual void updateCachedRepresentation() throw(ClusterException);
+    virtual void updateCachedRepresentation();
 
   private:
     /*
