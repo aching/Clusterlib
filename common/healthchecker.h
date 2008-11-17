@@ -14,6 +14,61 @@
 namespace clusterlib
 {
 
+/**
+ * \brief Represents a health report of a cluster node.
+ */
+class HealthReport {
+    public:
+        
+        /**
+         * \brief All possible health states of a cluster node.
+         */
+        enum HealthState {
+            HS_HEALTHY = 0,
+            HS_UNHEALTHY
+        };
+        
+        /**
+         * \brief Constructs a health report.
+         * 
+         * @param healthState the health state
+         * @param desc the optional description of the health state
+         */
+        HealthReport(HealthState healthState, const string &desc = "") : 
+            m_healthState(healthState), m_stateDescription(desc)
+        {}
+        
+        /**
+         * \brief Returns current health state.
+         * 
+         * @return current health state
+         */
+        HealthState getHealthState() const {
+            return m_healthState;
+        }
+        
+        /**
+         * \brief Returns the current health state's description, if any.
+         * 
+         * @return health state's descrription
+         */
+        const string getStateDescription() const {
+            return m_stateDescription;
+        }
+        
+    private:
+        
+        /**
+         * Whether healthy or not.
+         */
+        HealthState m_healthState;
+        
+        /**
+         * Provides more detailed description of {@link m_healthState}.
+         */
+        string m_stateDescription;
+};
+
 class HealthChecker
 {
   public:
@@ -33,7 +88,7 @@ class HealthChecker
     /*
      * Must be supplied by sub-classes.
      */
-    virtual bool checkHealth() = 0;
+    virtual HealthReport checkHealth() = 0;
 
     /*
      * Get/set the Server object that

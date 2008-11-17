@@ -41,6 +41,36 @@ class Server
         return (m_flags & SF_MANAGED) ? true : false;
     }
 
+
+    /**
+     * \brief Registers a function that checks internal health of
+     * the caller application. 
+     * The given function will be called asynchronously by the cluster API
+     * and will provide feedback back to the cluster.
+     * 
+     * @param healthChecker the callback to be used when checking for
+     *                      health; if <code>NULL</code> the health
+     *                      monitoring is disabled
+     * @param checkFrequency how often to execute the given callback,
+     *                       in seconds
+     */
+    void registerHealthChecker(HealthChecker *healthChecker);
+    
+    /**
+     * \brief Retrieve the current number of seconds to wait till running
+     * the health check again.
+     */
+    int getHeartBeatPeriod();
+    int getUnhealthyHeartBeatPeriod();
+
+    /**
+     * \brief Enables or disables the health checking and 
+     * notifies the worker thread.
+     * 
+     * @param enabled whether to enable the health checking
+     */
+    void enableHealthChecking(bool enabled);
+
   protected:
     /*
      * Make the Factory class a friend.
@@ -57,6 +87,19 @@ class Server
            HealthChecker *checker,
            ServerFlags flags);
 
+    /**
+     * Get the heart beat checking multiple.
+     */
+    double getHeartBeatMultiple();
+    int64_t getHeartBeatTimeout() {
+	return (int64_t) (getHeartBeatMultiple() * getHeartBeatPeriod());
+    }
+    
+        /**
+         * Get the heart beat check period.
+         */
+    int getHeartBeatCheckPeriod();
+    
   private:
     /*
      * Make the default constructor private so it
@@ -71,7 +114,25 @@ class Server
     /*
      * Make the destructor private also.
      */
-    ~Server() {}
+    ~Server();
+
+    /*
+     * Periodically checks the health of the server.
+     */
+    void checkHealth();
+
+    /*
+     * Sets the server node health
+     */
+    void setNodeHealth(bool healthy);
+
+    /**
+     * \brief Called to signal whenever this cluster's node state *
+     has changed according to {@link #mp_healthChecker}.
+     * 
+     * @param report the new health report
+     */
+    void setHealthy(const HealthReport &report);
 
   private:
     /*
@@ -86,11 +147,52 @@ class Server
     string m_grpName;
     string m_nodeName;
 
+#if 0 // AC - Ifdef'ed out until event system ready
+    /**
+     * The bomb handler.
+     */
+    TimeBombHandler m_bombHandler;
+#endif
+
+    /**
+     * How often to call {@link #mpHealthChecker->checkHealth}, in seconds.
+     */
+    volatile int m_checkFrequencyHealthy;
+    volatile int m_checkFrequencyUnhealthy;
+    volatile double m_heartBeatMultiple;
+    volatile int m_heartBeatCheckPeriod;
+
+    /*
+     * Whether the checkHealth thread should terminate
+     */
+    volatile bool m_healthCheckerTerminating;
+
+    /**
+     * Whether the health checking is enabled.
+     */
+    volatile bool m_healthCheckingEnabled;
+
     /*
      * The object implementing health checking
      * for this "server".
      */
     HealthChecker *mp_healthChecker;
+
+    /*
+     * The thread running the health checker.
+     */
+    CXXThread<Server> m_checkerThread;
+
+    /*
+     * Protects healthChecker thread variables 
+     */
+    Mutex m_mutex;
+
+    /*
+     * Conditional variable for communicating with the healthChecker
+     * thread
+     */
+    Cond m_cond;
 
     /*
      * Flags for this server.
@@ -101,11 +203,6 @@ class Server
      * The node that represents "my node".
      */
     Node *mp_node;
-
-    /*
-     * The thread running the health checker.
-     */
-    CXXThread<HealthChecker> m_checkerThread;
 };
 
 };	/* End of 'namespace clusterlib' */

@@ -309,6 +309,9 @@ class Factory
                             uint32_t versionNumber);
     void updateNodeClientState(const string &key,
                                const string &cs);
+    void updateNodeServerStateDesc(const string &key,
+				   const string &ss,
+				   const string &sd);
     void updateNodeMasterState(const string &key,
                                const string &ms);
 
@@ -645,6 +648,12 @@ class FactoryOps
                                const string &cs)
     {
         mp_f->updateNodeClientState(key, cs);
+    }
+    void updateNodeServerStateDesc(const string &key,
+				   const string &ss,
+				   const string &sd)
+    {
+        mp_f->updateNodeServerStateDesc(key, ss, sd);
     }
     void updateNodeMasterState(const string &key,
                                const string &ms)

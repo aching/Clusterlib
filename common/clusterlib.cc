@@ -499,9 +499,12 @@ Factory::dispatchTimerEvent(ClusterlibTimerEvent *te)
     cerr << "Dispatching timer event" << endl;
 #endif
 
-    TimerEventPayload *tp = (TimerEventPayload *) te->getUserData();
-
-    m_timerEventQueue.put(tp);
+    if (te == NULL) {
+	m_timerEventQueue.put(NULL);
+    } else {
+	TimerEventPayload *tp = (TimerEventPayload *) te->getUserData();
+	m_timerEventQueue.put(tp);
+    }
 }
 
 /*
@@ -521,6 +524,7 @@ Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
      * Protect against NULL context.
      */
     if (cp == NULL) {
+	return; // AC - This is causing me problems
         throw ClusterException(string("") +
                                "Unexpected NULL event context!");
     }
@@ -870,6 +874,45 @@ Factory::updateNodeClientState(const string &key,
                                const string &cs)
 {
     /* TO BE IMPLEMENTED */
+}
+
+/* 
+ * Update the server state and description fields of a node 
+ */
+void
+Factory::updateNodeServerStateDesc(const string &key,
+				   const string &ss,
+				   const string &sd)
+{
+    TRACE( CL_LOG, "updateNodeServerStateDesc" );
+    LOG_DEBUG( CL_LOG, "State: %s, description: %s", ss.c_str(), sd.c_str() );
+
+    vector<string> zkNodeKeys, zkNodeValues;
+    zkNodeKeys.push_back(key + PATHSEPARATOR + CLIENTSTATEDESC);
+    zkNodeValues.push_back(sd);
+    zkNodeKeys.push_back(key + PATHSEPARATOR + CLIENTSTATE);
+    zkNodeValues.push_back(ss);
+        
+    try {
+	if (zkNodeKeys.size() != zkNodeValues.size()) {
+	    throw ClusterException("Keys and values don't match");
+	}
+	uint32_t i;
+	for (i = 0; i < zkNodeKeys.size(); i++) {
+	    if (!m_zk.nodeExists(zkNodeKeys[i])) {
+		m_zk.createNode(zkNodeKeys[i], zkNodeValues[i],
+				0, true);
+	    }
+	    else {
+		m_zk.setNodeData(zkNodeKeys[i], zkNodeValues[i]);
+	    }
+	    m_zk.getNodeData(zkNodeKeys[i],
+			     this,
+			     (void *) EN_NODE_HEALTHCHANGE);
+	}
+    } catch (zk::ZooKeeperException &e) {
+	throw ClusterException(e.what());
+    }
 }
 
 /*
