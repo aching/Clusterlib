@@ -48,6 +48,7 @@ using namespace std;
 #include "group.h"
 #include "node.h"
 #include "datadistribution.h"
+#include "properties.h"
 
 DEFINE_LOGGER( CL_LOG, "clusterlib" )
 
@@ -112,14 +113,34 @@ class ClusterlibStrings
     static const string BARRIERS;
     static const string TRANSACTIONS;
 
-    /*
-     * Strings used as values of ZK nodes (or parts of values).
-     */
     static const string BIDPREFIX;
     static const string INFLUX;
     static const string HEALTHY;
     static const string UNHEALTHY;
 
+    /*
+     * Names of predefined properties.
+     */
+    static const string HEARTBEATMULTIPLE;
+    static const string HEARTBEATCHECKPERIOD;
+    static const string HEARTBEATHEALTHY;
+    static const string HEARTBEATUNHEALTHY;
+    static const string TIMEOUTUNHEALTHYYTOR;
+    static const string TIMEOUTUNHEALTHYRTOD;
+    static const string TIMEOUTDISCONNECTYTOR;
+    static const string TIMEOUTDISCONNECTRTOD;
+    static const string NODESTATEGREEN;
+    static const string NODEBOUNCYPERIOD;
+    static const string NODEBOUNCYNEVENTS;
+    static const string NODEMOVEBACKPERIOD;
+    static const string CLUSTERUNMANAGED;
+    static const string CLUSTERDOWN;
+    static const string CLUSTERFLUXPERIOD;
+    static const string CLUSTERFLUXNEVENTS;
+    static const string HISTORYSIZE;
+    static const string LEADERFAILLIMIT;
+    static const string SERVERBIN;
+    
     /*
      * Names associated with the special clusterlib master
      * application.
@@ -214,6 +235,11 @@ class Factory
     void removeAllDataDistributions();
 
     /*
+     * Clean up properties maps
+     */
+    void removeAllProperties();
+
+    /*
      * Clean up applications
      */
     void removeAllApplications();
@@ -303,10 +329,16 @@ class Factory
                                       const string &distName,
                                       bool create);
 
+    Properties *getProperties(const string &key,
+			      bool create);
+
     void updateDistribution(const string &key,
                             const string &shards,
                             const string &manualOverrides,
                             uint32_t versionNumber);
+    void updateProperties(const string &key,
+			  const string &properties,
+			  int32_t versionNumber);
     void updateNodeClientState(const string &key,
                                const string &cs);
     void updateNodeServerStateDesc(const string &key,
@@ -332,6 +364,7 @@ class Factory
     string createAppKey(const string &appName);
     string createDistKey(const string &appName,
                          const string &distName);
+    string createPropertiesKey(const string &notifyableKey);
 
     bool isNodeKey(const string &key, bool *managedP = NULL);
     bool hasNodeKeyPrefix(const string &key, bool *managedP = NULL);
@@ -362,6 +395,8 @@ class Factory
     string groupNameFromKey(const string &key);
     string nodeNameFromKey(const string &key);
 
+    string removeObjectFromKey(const string &key);
+
     /*
      * Load entities from ZooKeeper.
      */
@@ -370,6 +405,7 @@ class Factory
     DataDistribution *loadDistribution(const string &name,
                                        const string &key,
                                        Application *app);
+    Properties* loadProperties(const string &key);
     Group *loadGroup(const string &name,
                      const string &key,
                      Application *app);
@@ -385,6 +421,7 @@ class Factory
 
     string loadShards(const string &key);
     string loadManualOverrides(const string &key);
+    string loadKeyValMap(const string &key, int &version);
 
     /*
      * Did we already fill the application map?
@@ -403,6 +440,8 @@ class Factory
         const string &marshalledShards,
         const string &marshalledManualOverrides,
         Application *app);
+    Properties *createProperties(
+	const string &key);
     Group *createGroup(
 	const string &name,
 	const string &key, 
@@ -423,6 +462,12 @@ class Factory
      */
     ClientList m_clients;
     Mutex m_clLock;
+
+    /*
+     * The registry of cached properties maps.
+     */
+    PropertiesMap m_properties;
+    Mutex m_propLock;
 
     /*
      * The registry of cached data distributions.
@@ -618,6 +663,12 @@ class FactoryOps
     {
         return mp_f->getDistribution(appName, distName, create);
     }
+    
+    Properties *getProperties(const string &key, bool create = false)
+    {
+	return mp_f->getProperties(key, create);
+    }
+
     void fillDataDistributionMap(DataDistributionMap *dmp,
                                  Application *app)
     {
@@ -633,6 +684,9 @@ class FactoryOps
     {
         return mp_f->loadManualOverrides(key);
     }
+    string loadKeyValMap(const string &key, int32_t &version) {
+	return mp_f->loadKeyValMap(key, version);
+    }
 
     void updateDistribution(const string &key,
                             const string &shards,
@@ -644,6 +698,15 @@ class FactoryOps
                                  manualOverrides,
                                  versionNumber);
     }
+    void updateProperties(const string &key,
+			  const string &properties,
+			  int32_t versionNumber)
+    {
+	mp_f->updateProperties(key,
+			       properties,
+			       versionNumber);
+    }	
+
     void updateNodeClientState(const string &key,
                                const string &cs)
     {
@@ -706,6 +769,10 @@ class FactoryOps
     {
         return mp_f->createDistKey(appName, distName);
     }
+    string createPropertiesKey(const string &propertiesKey)
+    {
+	return mp_f->createPropertiesKey(propertiesKey);
+    }
 
     bool isNodeKey(const string &key, bool *managedP = NULL)
     {
@@ -755,6 +822,11 @@ class FactoryOps
     string nodeNameFromKey(const string &key)
     {
         return mp_f->nodeNameFromKey(key);
+    }
+
+    string removeObjectFromKey(const string &key)
+    {
+	return mp_f->removeObjectFromKey(key);
     }
 
   private:

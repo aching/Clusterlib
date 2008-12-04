@@ -46,6 +46,7 @@ class ClusterEventHandler;
 class ClusterEventPayload;
 class ClusterException;
 class DataDistribution;
+class Properties;
 class Factory;
 class FactoryOps;
 class Group;
@@ -88,6 +89,8 @@ typedef map<string, HealthChecker *>		HealthCheckerMap;
 typedef map<string, ManualOverride *>		ManualOverridesMap;
 typedef map<string, Node *>	        	NodeMap;
 typedef map<string, Server *>			ServerMap;
+typedef map<string, string>                     KeyValMap;
+typedef map<string, Properties *>	      	PropertiesMap;
 typedef map<TimerId, TimerEventPayload *>	TimerRegistry;
 
 /*

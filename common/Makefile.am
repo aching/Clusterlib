@@ -18,6 +18,8 @@ libcluster_a_SOURCES = \
 	clusterlib.cc \
 	clusterserver.cc \
 	datadistribution.cc \
+	properties.cc \
+	notifyable.cc \
 	event.cc \
 	group.cc \
 	log.cc \

@@ -72,6 +72,30 @@ const string ClusterlibStrings::HEALTHY = "healthy";
 const string ClusterlibStrings::UNHEALTHY = "unhealthy";
 
 /*
+ * All strings that are used as propreties.
+ */
+
+const string ClusterlibStrings::HEARTBEATMULTIPLE = "heartBeatMultiple";
+const string ClusterlibStrings::HEARTBEATCHECKPERIOD= "heartBeatCheckPeriod";
+const string ClusterlibStrings::HEARTBEATHEALTHY = "heartBeatHealthy";
+const string ClusterlibStrings::HEARTBEATUNHEALTHY = "heatBeatUnhealthy";
+const string ClusterlibStrings::TIMEOUTUNHEALTHYYTOR = "timeOutUnhealthyYToR";
+const string ClusterlibStrings::TIMEOUTUNHEALTHYRTOD = "timeOutUnhealthyRToR";
+const string ClusterlibStrings::TIMEOUTDISCONNECTYTOR = "timeOutDisconnectYToR";
+const string ClusterlibStrings::TIMEOUTDISCONNECTRTOD = "timeOutDisconnectRToR";
+const string ClusterlibStrings::NODESTATEGREEN = "nodeStateGreen";
+const string ClusterlibStrings::NODEBOUNCYPERIOD = "nodeBouncyPeriod";
+const string ClusterlibStrings::NODEBOUNCYNEVENTS = "nodeBouncyEvents";
+const string ClusterlibStrings::NODEMOVEBACKPERIOD = "nodeMoveBackPeriod";
+const string ClusterlibStrings::CLUSTERUNMANAGED = "clusterUnmanaged";
+const string ClusterlibStrings::CLUSTERDOWN = "clusterDown";
+const string ClusterlibStrings::CLUSTERFLUXPERIOD = "clusterFluxPeriod";
+const string ClusterlibStrings::CLUSTERFLUXNEVENTS = "clusterFluxNEvents";
+const string ClusterlibStrings::HISTORYSIZE = "historySize";
+const string ClusterlibStrings::LEADERFAILLIMIT = "leaderFailLimit";
+const string ClusterlibStrings::SERVERBIN = "serverBin";
+
+/*
  * Names associated with the special clusterlib master application.
  */
 const string ClusterlibStrings::MASTER = "master";
@@ -150,6 +174,7 @@ Factory::~Factory()
 
     removeAllClients();
     removeAllDataDistributions();
+    removeAllProperties();
     removeAllApplications();
     removeAllGroups();
     removeAllNodes();
@@ -230,6 +255,7 @@ Factory::createServer(const string &app,
     }
 };
 
+
 /*
  * Handle events. Must be given to satisfy the interface but
  * not used.
@@ -304,6 +330,19 @@ Factory::removeAllDataDistributions()
 	delete it->second;
     }
     m_dataDistributions.clear();
+}
+
+void
+Factory::removeAllProperties()
+{
+    TRACE( CL_LOG, "removeAllProperties" );
+
+    Locker l(&m_propLock);
+    PropertiesMap::iterator it = m_properties.begin();
+    for (; it != m_properties.end(); it++) {
+	delete it->second;
+    }
+    m_properties.clear();
 }
 
 void
@@ -768,6 +807,31 @@ Factory::getDistribution(const string &distName,
     return NULL;
 }
 
+Properties *
+Factory::getProperties(const string &key,
+		       bool create)
+{
+    if (key.empty()) {
+        return NULL;
+    }
+
+    {
+        Locker l(&m_propLock);
+        Properties *prop = m_properties[key];
+        if (prop != NULL) {
+            return prop;
+        }
+    }
+    Properties *prop = loadProperties(key);
+    if (prop != NULL) {
+        return prop;
+    }
+    if (create == true) {
+        return createProperties(key);
+    }
+    return NULL;
+}
+
 Group *
 Factory::getGroup(const string &groupName,
                   Application *app,
@@ -795,6 +859,7 @@ Factory::getGroup(const string &groupName,
     }
     return NULL;
 }
+
 Group *
 Factory::getGroup(const string &appName,
                   const string &groupName,
@@ -841,6 +906,7 @@ Factory::getNode(const string &nodeName,
     return NULL;
 }
 
+
 Node *
 Factory::getNode(const string &appName,
                  const string &groupName,
@@ -864,6 +930,31 @@ Factory::updateDistribution(const string &key,
                             uint32_t versionNumber)
 {
     /* TO BE IMPLEMENTED */
+}
+
+/*
+ * Update the properties of a notifyable object in the clusterlib repository
+ */
+void
+Factory::updateProperties(const string &key,
+			  const string &properties,
+			  int32_t versionNumber)
+{
+    TRACE( CL_LOG, "updateProperties" );
+    
+    try {
+	if (!m_zk.nodeExists(key)) {
+	    m_zk.createNode(key, properties, 0, true);
+	}
+	else {
+	    m_zk.setNodeData(key, properties, versionNumber);
+	}
+	m_zk.getNodeData(key,
+			 this,
+			 (void *) EN_PROP_CHANGE);
+    } catch (zk::ZooKeeperException &e) {
+	throw ClusterException(e.what());
+    }
 }
 
 /*
@@ -1046,6 +1137,18 @@ Factory::createDistKey(const string &appName,
         PATHSEPARATOR +
         distName
         ;
+
+    return res;
+}
+
+string
+Factory::createPropertiesKey(const string &notifyableKey)
+{
+    string res =
+	notifyableKey +
+        PATHSEPARATOR +
+        PROPERTIES
+	;
 
     return res;
 }
@@ -1309,6 +1412,39 @@ Factory::nodeNameFromKey(const string &key)
 }
 
 /*
+ * Remove the name from the key such that it is removed at most once
+ * and deepest in the namespace.  Does not remove the CLUSTERLIB,
+ * VERSION, APPLICATIONS, PROPERTIES, or the application name.
+ */
+string 
+Factory::removeObjectFromKey(const string &key)
+{
+    string res;
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    /* Remove the object name and its base name that is not PROPERTIES */
+    if (static_cast<int32_t>(components.size()) > 4) {
+	components.erase(components.begin() + 
+			 static_cast<int32_t>(components.size()) - 2);
+	components.erase(components.begin() + 
+			 static_cast<int32_t>(components.size()) - 2);
+    }
+	 
+    for (vector<string>::const_iterator it = components.begin();
+	 it != components.end(); it++) {
+	res.append(*it);
+	if (it + 1 != components.end()) {
+	    res.append(PATHSEPARATOR);
+	}
+    }
+
+    cerr << "Changed key " << key << " to " << res << endl;
+
+    return res;
+}
+
+/*
  * Entity loading from ZooKeeper. Also add it to the
  * global cache.
  */
@@ -1457,6 +1593,7 @@ Factory::loadShards(const string &key)
                             this,
                             (void *) EN_DIST_CHANGE);
 }
+
 string
 Factory::loadManualOverrides(const string &key)
 {
@@ -1467,6 +1604,53 @@ Factory::loadManualOverrides(const string &key)
     return m_zk.getNodeData(monode,
                             this,
                             (void *) EN_DIST_CHANGE);
+}
+
+Properties *
+Factory::loadProperties(const string &key)
+{
+    TRACE( CL_LOG, "Properties" );
+
+    Properties *prop;
+
+    {
+        /*
+         * Scope the lock to the shortest sequence possible.
+         */
+        Locker l(&m_propLock);
+
+        prop = m_properties[key];
+        if (prop != NULL) {
+            return prop;
+        }
+        if (m_zk.nodeExists(key, this, NULL) == false) {
+            return NULL;
+        }
+	m_zk.getNodeData(key,
+			 this,
+			 (void *) EN_PROP_CHANGE);
+	prop = new Properties(key, mp_ops);
+        m_properties[key] = prop;
+    }
+
+#ifdef	NOTDEF
+    addInterests(key, dist, EN_PROP_INTERESTS);
+#endif
+
+    return prop;
+}
+
+string
+Factory::loadKeyValMap(const string &key, int &versionNumber)
+{
+    Stat stat;
+    string kvnode = m_zk.getNodeData(key,
+				     this,
+				     (void *) EN_PROP_CHANGE,
+				     &stat);
+    versionNumber = stat.version;
+
+    return kvnode;
 }
 
 Group *
@@ -1719,6 +1903,45 @@ Factory::createDistribution(const string &name,
     }
     
     return dd;
+}
+
+Properties *
+Factory::createProperties(const string &key) 
+{
+    TRACE( CL_LOG, "createProperties" );
+
+    try {
+	if (!m_zk.nodeExists(key)) {
+	    m_zk.createNode(key, "", 0, true);
+	}
+	m_zk.getNodeData(key,
+			 this,
+			 (void *) EN_PROP_CREATION);
+    } catch (zk::ZooKeeperException &e) {
+	throw ClusterException(e.what());
+    }
+    
+    Properties *prop;
+    {
+	/*                                                                
+	 * Scope the lock to the shortest sequence possible.
+	 */
+	Locker l(&m_propLock);
+	
+	prop = m_properties[key];
+	if (prop != NULL) {
+	    LOG_WARN(CL_LOG,
+		     "Tried to create properties that exists!");
+	}
+	if (m_zk.nodeExists(key, this, NULL) == false) {
+	    throw ClusterException("The group " + key + 
+				   " should have been created!");
+	}
+	prop = new Properties(key, mp_ops);
+    }
+    
+    return prop;
+
 }
 
 Group *

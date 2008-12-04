@@ -116,6 +116,11 @@ class Notifyable
      */
     string getKey() { return m_key; }
 
+    /*
+     * Get the properties for this node
+     */
+    Properties *getProperties(bool create = false);
+
   protected:
     /*
      * Factory is a friend so it can call the below constructor.
@@ -129,8 +134,8 @@ class Notifyable
                const string &key,
                const string &name)
         : mp_f(f),
-          m_key(key),
-          m_name(name)
+	  m_key(key),
+	  m_name(name)
     {
         m_interests.clear();
     };
@@ -162,6 +167,11 @@ class Notifyable
      */
     virtual void updateCachedRepresentation()
         = 0;
+
+    /*
+     * Get the address of the lock for the node map.
+     */
+    Mutex *getPropertiesMapLock() { return &m_propLock; }
 
   private:
     /*
@@ -201,6 +211,12 @@ class Notifyable
      */
     ClusterEventInterests m_interests;
     Mutex m_interestsLock;
+
+    /*
+     * Map of all properties within this object.
+     */
+    PropertiesMap m_properties;
+    Mutex m_propLock;
 };
 
 };	/* End of 'namespace clusterlib' */

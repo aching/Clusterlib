@@ -362,7 +362,8 @@ const int EN_DIST_CREATION		(1<<20);
 const int EN_DIST_DELETION		(1<<21);
 const int EN_DIST_CHANGE		(1<<22);
 
-const int EN_PROP_CHANGE		(1<<25);
+const int EN_PROP_CREATION		(1<<25);
+const int EN_PROP_CHANGE		(1<<26);
 
 const int EN_APP_INTERESTS =    (EN_PROP_CHANGE |
                                  EN_APP_CREATION |
