@@ -30,44 +30,48 @@ Properties::updateCachedRepresentation()
 
     {
 	Locker l(getKeyValMapLock());
-	m_keyValMap.clear();
-	unmarshall(keyValMap);
-	m_keyValMapVersion = version;
+	/* Only update if this is a newer version */
+	if (version > getKeyValVersion()) {
+	    m_keyValMap.clear();
+	    unmarshall(keyValMap);
+	    m_keyValMapVersion = version;
+	}
     }
 }
-    
+
 void 
-Properties::setProperties(const vector<string> &keys, 
-			  const vector<string> &values)
+Properties::setProperty(const string &name, 
+			const string &value)
 {
-    if (keys.size() != values.size()) {
-	throw ClusterException("keys and values are not the same size");
-    }
+    m_keyValMap[name] = value;
+}
+
+void
+Properties::publish()
+{
+    TRACE( CL_LOG, "publish" );
+
+    Locker k(getKeyValMapLock());
+    string marshalledKeyValMap = marshall();
     
-    {
-	Locker l1(getKeyValMapLock());
-	for (uint32_t i = 0; i < keys.size(); i++) {
-	    m_keyValMap[keys[i]] = values[i];
-	}
+    LOG_INFO( CL_LOG,  
+	      "Tried to set node %s to %s with version %d\n",
+	      getKey().c_str(), marshalledKeyValMap.c_str(), 
+	      getKeyValVersion());
 	
-	string marshalledKeyValMap = marshall();
-	
-	fprintf(stderr, 
-		"Tried to set node %s to %s with version %d\n",
-		getKey().c_str(), marshalledKeyValMap.c_str(), 
-		getKeyValVersion());
-	
-	getDelegate()->updateProperties(getKey(),
-					marshalledKeyValMap,
-					getKeyValVersion());    
-    }
+    getDelegate()->updateProperties(getKey(),
+				    marshalledKeyValMap,
+				    getKeyValVersion());
+    
+    /* Since we should have the lock, the data should be identical to
+     * the zk data.  When the lock is released, clusterlib events will
+     * try to push this change again.  */
+    setKeyValVersion(getKeyValVersion() + 1);
 }
 
 string 
 Properties::getProperty(const string &name)
 {
-    updateCachedRepresentation();
-
     map<string, string>::const_iterator i = m_keyValMap.find(name);    
     if (i != m_keyValMap.end()) {
 	return i->second;

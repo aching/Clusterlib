@@ -927,9 +927,48 @@ void
 Factory::updateDistribution(const string &key,
                             const string &shards,
                             const string &manualOverrides,
-                            uint32_t versionNumber)
+                            int32_t shardsVersion,
+			    int32_t manualOverridesVersion)
 {
-    /* TO BE IMPLEMENTED */
+    TRACE( CL_LOG, "updateDistribution" );
+    
+    string snode = 
+	key +
+        PATHSEPARATOR +
+	SHARDS;
+
+    string monode =
+        key +
+        PATHSEPARATOR +
+        MANUALOVERRIDES;
+
+    try {
+	if (!m_zk.nodeExists(snode)) {
+	    m_zk.createNode(snode, shards, 0, true);
+	}
+	else {
+	    m_zk.setNodeData(snode, shards, shardsVersion);
+	}
+	m_zk.getNodeData(snode,
+			 this,
+			 (void *) EN_DIST_CHANGE);
+    } catch (zk::ZooKeeperException &e) {
+	throw ClusterException(e.what());
+    }
+
+    try {
+	if (!m_zk.nodeExists(monode)) {
+	    m_zk.createNode(monode, manualOverrides, 0, true);
+	}
+	else {
+	    m_zk.setNodeData(monode, manualOverrides, manualOverridesVersion);
+	}
+	m_zk.getNodeData(monode,
+			 this,
+			 (void *) EN_DIST_CHANGE);
+    } catch (zk::ZooKeeperException &e) {
+	throw ClusterException(e.what());
+    }
 }
 
 /*
@@ -1583,27 +1622,39 @@ Factory::fillDataDistributionMap(DataDistributionMap *dmp,
 }
 
 string
-Factory::loadShards(const string &key)
+Factory::loadShards(const string &key, int32_t &version)
 {
+    Stat stat;
     string snode =
         key +
         PATHSEPARATOR +
         SHARDS;
-    return m_zk.getNodeData(snode,
-                            this,
-                            (void *) EN_DIST_CHANGE);
+
+    string res = m_zk.getNodeData(snode,
+				  this,
+				  (void *) EN_DIST_CHANGE,
+				  &stat);
+    version = stat.version;
+    
+    return res;
 }
 
 string
-Factory::loadManualOverrides(const string &key)
+Factory::loadManualOverrides(const string &key, int32_t &version)
 {
+    Stat stat;
     string monode =
         key +
         PATHSEPARATOR +
         MANUALOVERRIDES;
-    return m_zk.getNodeData(monode,
-                            this,
-                            (void *) EN_DIST_CHANGE);
+
+    string res = m_zk.getNodeData(monode,
+				  this,
+				  (void *) EN_DIST_CHANGE,
+				  &stat);
+    version = stat.version;
+    
+    return res;
 }
 
 Properties *
@@ -1641,14 +1692,14 @@ Factory::loadProperties(const string &key)
 }
 
 string
-Factory::loadKeyValMap(const string &key, int &versionNumber)
+Factory::loadKeyValMap(const string &key, int32_t &version)
 {
     Stat stat;
     string kvnode = m_zk.getNodeData(key,
 				     this,
 				     (void *) EN_PROP_CHANGE,
 				     &stat);
-    versionNumber = stat.version;
+    version = stat.version;
 
     return kvnode;
 }
@@ -1865,7 +1916,7 @@ Factory::createDistribution(const string &name,
 	    }
 	    m_zk.getNodeData(*zkNodesIt,
 			     this,
-			     (void *) EN_APP_CREATION);
+			     (void *) EN_DIST_CREATION);
 	}
     } catch (zk::ZooKeeperException &e) {
 	throw ClusterException(e.what());
@@ -1898,6 +1949,7 @@ Factory::createDistribution(const string &name,
 	    throw ClusterException("The app " + key + 
 				   " should have been created!");
 	}
+
 	dd = new DataDistribution(app, name, key, mp_ops);
 	m_dataDistributions[key] = dd;
     }

@@ -335,7 +335,8 @@ class Factory
     void updateDistribution(const string &key,
                             const string &shards,
                             const string &manualOverrides,
-                            uint32_t versionNumber);
+			    int32_t shardsVersion,
+                            int32_t manualOverridesVersion);
     void updateProperties(const string &key,
 			  const string &properties,
 			  int32_t versionNumber);
@@ -419,9 +420,9 @@ class Factory
     void fillDataDistributionMap(DataDistributionMap *dmp,
                                  Application *app);
 
-    string loadShards(const string &key);
-    string loadManualOverrides(const string &key);
-    string loadKeyValMap(const string &key, int &version);
+    string loadShards(const string &key, int32_t &version);
+    string loadManualOverrides(const string &key, int32_t &version);
+    string loadKeyValMap(const string &key, int32_t &version);
 
     /*
      * Did we already fill the application map?
@@ -676,13 +677,13 @@ class FactoryOps
             mp_f->fillDataDistributionMap(dmp, app);
         }
     }
-    string loadShards(const string &key)
+    string loadShards(const string &key, int32_t &version)
     {
-        return mp_f->loadShards(key);
+        return mp_f->loadShards(key, version);
     }
-    string loadManualOverrides(const string &key)
+    string loadManualOverrides(const string &key, int32_t &version)
     {
-        return mp_f->loadManualOverrides(key);
+        return mp_f->loadManualOverrides(key, version);
     }
     string loadKeyValMap(const string &key, int32_t &version) {
 	return mp_f->loadKeyValMap(key, version);
@@ -691,12 +692,14 @@ class FactoryOps
     void updateDistribution(const string &key,
                             const string &shards,
                             const string &manualOverrides,
-                            uint32_t versionNumber)
+			    int32_t shardsVersion,
+                            int32_t manualOverridesVersion)
     {
         mp_f->updateDistribution(key,
                                  shards,
                                  manualOverrides,
-                                 versionNumber);
+                                 shardsVersion,
+				 manualOverridesVersion);
     }
     void updateProperties(const string &key,
 			  const string &properties,

@@ -77,7 +77,8 @@ DataDistribution::DataDistribution(Application *app,
       mp_app(app),
       m_hashFnIndex(DD_HF_JENKINS),
       mp_hashFnPtr(fn),
-      m_modified(false)
+      m_shardsVersion(-2),
+      m_manualOverridesVersion(-2)
 {
     TRACE( CL_LOG, "DataDistribution" );
     
@@ -122,8 +123,6 @@ DataDistribution::unmarshall(const string &marshalledData)
 
     unmarshallShards(components[0], m_shards);
     unmarshallOverrides(components[1], m_manualOverrides);
-
-    setModified(false);
 };
 
 /*
@@ -150,9 +149,14 @@ DataDistribution::unmarshallShards(const string &marshalledShards,
     for (i = components.begin(); i != components.end(); i++) {
         split(shardComponents, *i, is_any_of(","));
         if (shardComponents.size() != 5) {
+	    stringstream s;
+	    s << shardComponents.size();
+	    cerr << "shardComponents = " << shardComponents[0] << endl;
             throw ClusterException("Malformed shard \"" +
                                    *i +
-                                   "\", expecting 5 components");
+                                   "\", expecting 5 components " +
+				   "and instead got " + s.str().c_str());
+
         }
 
         /*
@@ -309,10 +313,10 @@ DataDistribution::marshallShards()
                 nodeName = np->getName().c_str();
                 groupName = np->getGroup()->getName().c_str();
             } else {
-                nodeName =
-                    getDelegate()->nodeNameFromKey((*i)->getKey()).c_str();
-                groupName = 
-                    getDelegate()->groupNameFromKey((*i)->getKey()).c_str();
+                nodeName = getDelegate()->nodeNameFromKey(
+		    (*i)->getKey()).c_str();
+                groupName = getDelegate()->groupNameFromKey(
+		    (*i)->getKey()).c_str();
             }
             snprintf(buf,
                      1024,
@@ -324,6 +328,10 @@ DataDistribution::marshallShards()
                      nodeName);
         }        
         res += buf;
+    }
+    /* Remove the final ; */
+    if (!res.empty()) {
+	res.erase(res.size() - 1, 1);
     }
     return res;
 };
@@ -414,37 +422,42 @@ DataDistribution::updateCachedRepresentation()
 {
     TRACE( CL_LOG, "updateCachedRepresentation" );
 
-    string shards = getDelegate()->loadShards(getKey());
-    string overrides = getDelegate()->loadManualOverrides(getKey());
+    int shardsVersion, overridesVersion;
+    string shards = getDelegate()->loadShards(getKey(), 
+					      shardsVersion);
+    string overrides = getDelegate()->loadManualOverrides(getKey(), 
+							  overridesVersion);
     ShardList::iterator si;
     ManualOverridesMap::iterator mi;
 
     {
         Locker l(getShardsLock());
-        for (si = m_shards.begin(); si != m_shards.end(); si++) {
-            delete *si;
-        }
-        m_shards.clear();
+	/* Only update if this is a newer version **/
+	if (shardsVersion > getShardsVersion()) {
+	    for (si = m_shards.begin(); si != m_shards.end(); si++) {
+		delete *si;
+	    }
+	    m_shards.clear();
+	    unmarshallShards(shards, m_shards);
+	    setShardsVersion(shardsVersion);
+	}
     }
 
     {
         Locker o(getManualOverridesLock());
-        for (mi = m_manualOverrides.begin();
-             mi != m_manualOverrides.end();
-             mi++) {
-            delete (*mi).second;
-        }
-        m_manualOverrides.clear();
+	/* Only update if this is a newer version **/
+	if (overridesVersion > getManualOverridesVersion()) {
+	    for (mi = m_manualOverrides.begin();
+		 mi != m_manualOverrides.end();
+		 mi++) {
+		delete (*mi).second;
+	    }
+	    m_manualOverrides.clear();
+	    unmarshallOverrides(overrides, m_manualOverrides);    
+	    setManualOverridesVersion(overridesVersion);
+	}
     }
-
-    Locker s(getShardsLock());
-    Locker m(getManualOverridesLock());
-
-    unmarshallShards(shards, m_shards);
-    unmarshallOverrides(overrides, m_manualOverrides);    
-
-    setModified(false);
-};
+}
 
 /*
  * Hash a key to a node using the current
@@ -618,8 +631,6 @@ DataDistribution::setShards(vector<HashRange> &upperBounds)
         (*i)->setEndRange(*j);
         s = (*j) + 1;
     }
-
-    setModified(true);
 }
 
 /*
@@ -714,8 +725,6 @@ DataDistribution::reassignShard(uint32_t shardIndex, Notifyable *ntp)
                                "Shard index out of range in reassignShard");
     }
     m_shards[shardIndex]->reassign(ntp);
-
-    setModified(true);
 }
 void
 DataDistribution::reassignShard(uint32_t shardIndex, const string &key)
@@ -729,8 +738,6 @@ DataDistribution::reassignShard(uint32_t shardIndex, const string &key)
                                "Shard index out of range in reassignShard");
     }
     m_shards[shardIndex]->reassign(key);
-
-    setModified(true);
 }
 
 /*
@@ -750,9 +757,8 @@ DataDistribution::reassignManualOverride(const string &pattern,
             new ManualOverride(this, ntp, "");
     }
     mo->reassign(ntp);
-
-    setModified(true);
 }
+
 void
 DataDistribution::reassignManualOverride(const string &pattern,
                                          const string &key)
@@ -767,8 +773,6 @@ DataDistribution::reassignManualOverride(const string &pattern,
             new ManualOverride(this, NULL, "");
     }
     mo->reassign(key);
-
-    setModified(true);
 }
 
 /*
@@ -782,21 +786,30 @@ DataDistribution::publish()
     Locker s(getShardsLock());
     Locker m(getManualOverridesLock());
 
-    if (!isModified()) {
-        return;
-    }
-
-    incrementVersionNumber();
-
     string marshalledShards = marshallShards();
     string marshalledOverrides = marshallOverrides();
+
+    LOG_INFO( CL_LOG,  
+	      "Tried to set data distribution for node %s to (%s, %s) "
+	      "with versions (%d, %d)\n",
+	      getKey().c_str(), 
+	      marshalledShards.c_str(),
+	      marshalledOverrides.c_str(),
+	      getShardsVersion(),
+	      getManualOverridesVersion());
 
     getDelegate()->updateDistribution(getKey(), 
                                       marshalledShards,
                                       marshalledOverrides,
-                                      getVersionNumber());
+                                      getShardsVersion(),
+				      getManualOverridesVersion());
 
-    setModified(false);
+    /* Since we should have the lock, the data should be identical to
+     * the zk data.  When the lock is released, clusterlib events will
+     * try to push this change again.  */
+    setShardsVersion(getShardsVersion() + 1);
+    setManualOverridesVersion(getManualOverridesVersion() + 1);
+
 }
 /**********************************************************************/
 /* Implementation of Shard and ManualOverride classes.                */

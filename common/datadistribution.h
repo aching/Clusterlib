@@ -233,6 +233,31 @@ class DataDistribution
         }
     }
 
+    /** 
+     * \brief Get the data distribution locks.
+     *
+     * Guarantees that the this object's members will not be modified by
+     * any process that does not own the lock (including the internal
+     * clusterlib event system).
+     */
+    void acquireLock()
+    {
+	getShardsLock()->Acquire();
+	getManualOverridesLock()->Acquire();
+    }
+
+    /** 
+     * \brief Releases the data distribution locks.
+     *
+     * Releases the lock so that other processes that do not own the
+     * lock (including the internal clusterlib event system).
+     */
+    void releaseLock()
+    {
+	getShardsLock()->Release();
+	getManualOverridesLock()->Release();
+    }
+        
     /*
      * Assign new shards.
      */
@@ -273,23 +298,9 @@ class DataDistribution
     bool removeManualOverride(const string &pattern);
 
     /*
-     * Is this data distribution modified, i.e. does it need
-     * to be published to the clusterlib repository?
-     */
-    bool isModified() { return m_modified; }
-    void setModified(bool v) { m_modified = v; }
-
-    /*
      *  Publish any changes to the clusterlib repository.
      */
     void publish();
-
-    /*
-     * Retrieve the current version number of the
-     * data distribution.
-     */
-    uint32_t getVersionNumber() { return m_versionNumber; }
-    void incrementVersionNumber() { m_versionNumber++; }
 
   protected:
     /*
@@ -317,6 +328,34 @@ class DataDistribution
      * Update the distribution.
      */
     void updateCachedRepresentation();
+
+    /*
+     * Retrieve the current version number of the
+     * shards in this data distribution.
+     */
+    int32_t getShardsVersion() 
+    {
+	return m_shardsVersion; 
+    }
+
+    void setShardsVersion(int32_t version) 
+    { 
+	m_shardsVersion = version; 
+    }
+
+    /*
+     * Retrieve the current version number of the
+     * manualoverrides in this data distribution.
+     */
+    int32_t getManualOverridesVersion() 
+    {
+	return m_manualOverridesVersion; 
+    }
+
+    void setManualOverridesVersion(int32_t version) 
+    {
+	m_manualOverridesVersion = version; 
+    }
 
   private:
     /*
@@ -406,14 +445,16 @@ class DataDistribution
     Mutex m_shardsLock;
 
     /*
-     * Is this data distribution modified?
+     * The version number of the shards
      */
-    bool m_modified;
+    int32_t m_shardsVersion;
 
     /*
-     * The version number of this data distribution.
+     * The version number of the overrides
      */
-    uint32_t m_versionNumber;
+    int32_t m_manualOverridesVersion;
+
+
 };
 
 };	/* End of 'namespace clusterlib' */
