@@ -1,6 +1,8 @@
 /*
- * example2.cc -- example program using clusterlib (currently used
- * to ensure that clusterlib can be linked into an application).
+ * example2.cc -- example program using clusterlib (currently used to
+ * ensure that clusterlib can be linked into an application).  Does
+ * some simply properties checking and data distribution
+ * instantiation.
  */
 
 #include "clusterlib.h"
@@ -29,25 +31,61 @@ main(int ac, char **av)
 	clusterlib::Group *grp1 = app0->getGroup("bar-clients");
 	cerr << "grp1 = " << grp1 << endl;
 	
-	clusterlib::Node *node0 = grp0->getNode("zopc", true);
+	clusterlib::Node *node0 = grp0->getNode("zopc-0", true);
 	cerr << "node0 = " << node0 << endl;
 
-        clusterlib::Node *node1 = grp0->getNode("zopc");
+        clusterlib::Node *node1 = grp0->getNode("zopc-0");
 	cerr << "node1 = " << node1 << endl;
 
-#if 0
+	MyHealthChecker check;
+	
+	clusterlib::Server *s0 = f->createServer("foo",
+						 "bar-servers",
+						 "zops-0",
+						 &check,
+						 SF_CREATEREG | SF_MANAGED);
+        cerr << "server = " << s0 << endl;
+
+	clusterlib::Server *s1 = f->createServer("foo",
+						 "bar-servers",
+						 "zops-1",
+						 &check,
+						 SF_CREATEREG | SF_MANAGED);
+
+        cerr << "server = " << s1 << endl;
+
+	clusterlib::Server *s2 = f->createServer("foo",
+			    "bar-servers",
+			    "zops-2",
+			    &check,
+			    SF_CREATEREG | SF_MANAGED);
+
+        cerr << "server = " << s2 << endl;
+
 	clusterlib::DataDistribution *dst = 
 	    app0->getDistribution("dist", true);
+	cerr << "dist name = " << dst->getName() << endl;
+	cerr << "dist key = " << dst->getKey() << endl;
 
+	vector<clusterlib::HashRange> shards;
+	shards.push_back(100);
+	shards.push_back(1000);
+	shards.push_back(10000);
+
+	dst->acquireLock();
+	dst->setShards(shards);
+	dst->reassignShard(0, dynamic_cast<clusterlib::Notifyable *>(s0));
+	dst->reassignShard(1, dynamic_cast<clusterlib::Notifyable *>(s1));
+	dst->reassignShard(2, dynamic_cast<clusterlib::Notifyable *>(s2));
+	dst->publish();
+	dst->releaseLock();
 
         clusterlib::Application *app1 = dst->getApplication();
         if (app0 != app1) {
             throw
                 clusterlib::ClusterException("app->dist->app non-equivalence");
         }
-#else
-	clusterlib::Application *app1 ;
-#endif
+
         clusterlib::Group *grp2 = node0->getGroup();
         if (grp1 != grp2) {
             throw
@@ -60,49 +98,39 @@ main(int ac, char **av)
                clusterlib::ClusterException("app->group->app non-equivalence");
         }
 
-	MyHealthChecker check;
-	
-	clusterlib::Server *s = f->createServer("foo",
-						"bar-servers",
-						"zops",
-						&check,
-						SF_CREATEREG | SF_MANAGED);
-        cerr << "server = " << s << endl;
-
 	clusterlib::Properties *prop0 = app1->getProperties();
-	
-	string test = prop0->getProperty("test");
-	cerr << "test = " << test << " and should be [blank] " << endl;
+	prop0->acquireLock();
 
-	vector<string> keys;
-	keys.push_back("test");
-	keys.push_back("weird");
-	vector<string> values;
-	values.push_back("passed");
-	values.push_back("yessir");
-	prop0->setProperties(keys, values);
+	string test = prop0->getProperty("test");
+	cerr << "(app1) test (test) = " << test
+	     << " and should be empty (if this is the first time running) "
+	     << endl;
+
+	prop0->setProperty("test", "passed");
+	prop0->setProperty("weird", "yessir");
+	prop0->publish();
+	prop0->releaseLock();
 
 	string test2 = prop0->getProperty("test");
-	cerr << "test2 = " << test2 << " and should be passed " << endl;
+	cerr << "(app1) test2 (test) = " << test2
+	     << " and should be passed " << endl;
 
 	clusterlib::Properties *prop1 = app0->getProperties();
 	string test3 = prop1->getProperty("test");
-	cerr << "test3 = " << test3 << " and should be passed " << endl;
+	cerr << "(app0) test3 (test) = " << test3
+	     << " and should be passed " << endl;
 	
-	keys.clear();
-	keys.push_back("avery");
-	keys.push_back("test");
-	values.clear();
-	values.push_back("ching");
-	values.push_back("good");
-
-	prop0->setProperties(keys, values);
+	prop0->acquireLock();
+	prop0->setProperty("avery", "ching");
+	prop0->setProperty("test", "good");
+	prop0->publish();
+	prop0->releaseLock();
 
 	test3 = prop1->getProperty("test");
-	cerr << "(app) test3 (test) = " << test3 
+	cerr << "(app0) test3 (test) = " << test3 
 	     << " and should be good " << endl;
 	test3 = prop1->getProperty("avery");
-	cerr << "(app) test3 (avery) = " << test3 
+	cerr << "(app0) test3 (avery) = " << test3 
 	     << " and should be ching " << endl;
 
 	clusterlib::Properties *prop2 = node0->getProperties();
@@ -110,22 +138,18 @@ main(int ac, char **av)
 	cerr << "(node) test3 (test) = " << test3 
 	     << " and should be good " << endl;
 
-	keys.clear();
-	keys.push_back("test");
-	values.clear();
-	values.push_back("node");
+	prop2->acquireLock();
+	prop2->setProperty("test", "node");
+	prop2->publish();
+	prop2->releaseLock();
 
-	prop2->setProperties(keys, values);
-
-	prop2->getProperty("test");
+	test3 = prop2->getProperty("test");
 	cerr << "(node) test3 (test) = " << test3 
 	     << " and should be node " << endl;
 
 	test3 = prop1->getProperty("test");
 	cerr << "(app) test3 (test) = " << test3 
 	     << " and should be good " << endl;
-
-
 
 	for (int i = 5; i > 0; i--) {
 	    cerr << "Sleeping for " << i << " more seconds..." << endl;
