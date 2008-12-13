@@ -115,6 +115,17 @@ void zkWatcher(zhandle_t *zh, int type, int state, const char *path)
     LOG_INFO( LOG,
               "Received a ZK event - type: %d, state: %d, path: '%s'",
               type, state, sPath.c_str() );
+
+    //#ifdef	VERY_VERY_VERBOSE
+    cerr << "Received a ZK event - type: "
+         << type
+         << ", state: "
+         << state
+         << ", path: "
+         << sPath.c_str()
+         << endl;
+    //#endif
+
     ZooKeeperAdapter *zka = (ZooKeeperAdapter *)zoo_get_context(zh);
     if (zka != NULL) {
         zka->enqueueEvent( type, state, sPath );
@@ -123,6 +134,7 @@ void zkWatcher(zhandle_t *zh, int type, int state, const char *path)
                    "Skipping ZK event (type: %d, state: %d, path: '%s'), "
                    "because ZK passed no context",
                    type, state, sPath.c_str() );
+        cerr << "No context!" << endl;
     }
 }
 

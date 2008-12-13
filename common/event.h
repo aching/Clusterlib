@@ -43,7 +43,9 @@ enum EventTypes {
     ZKEVENT = 1
 };
 
-//forward declaration of EventSource
+/*
+ * Forward declaration of EventSource.
+ */
 template<typename E>
 class EventSource;
 
@@ -342,47 +344,24 @@ class SynchronousEventAdapter
 /*---------------------------------------------------------------------*/
 
 /*
- * Various notification constants.
+ * Various event notification constants.
  */
-const int EN_APP_CREATION		(1<<0);
-const int EN_APP_DELETION		(1<<1);
+const int EN_NO_EVENT =			0;
 
-const int EN_GRP_CREATION		(1<<5);
-const int EN_GRP_DELETION		(1<<6);
-const int EN_GRP_MEMBERSHIP		(1<<7);
-const int EN_GRP_LEADERSHIP		(1<<8);
+const int EN_NOTIFYABLE_CREATED =	(1<<0);
+const int EN_NOTIFYABLE_DELETED =	(1<<1);
+const int EN_NOTIFYABLE_READY =		(1<<2);
 
-const int EN_NODE_CREATION		(1<<10);
-const int EN_NODE_DELETION		(1<<11);
-const int EN_NODE_HEALTHCHANGE		(1<<12);
-const int EN_NODE_CONNECTCHANGE		(1<<13);
-const int EN_NODE_MASTERSTATECHANGE	(1<<14);
+const int EN_GRP_MEMBERSHIP =		(1<<7);
+const int EN_GRP_LEADERSHIP =		(1<<8);
 
-const int EN_DIST_CREATION		(1<<20);
-const int EN_DIST_DELETION		(1<<21);
-const int EN_DIST_CHANGE		(1<<22);
+const int EN_NODE_HEALTHCHANGE =	(1<<12);
+const int EN_NODE_CONNECTCHANGE =	(1<<13);
+const int EN_NODE_MASTERSTATECHANGE =	(1<<14);
 
-const int EN_PROP_CREATION		(1<<25);
-const int EN_PROP_CHANGE		(1<<26);
+const int EN_DIST_CHANGE =		(1<<22);
 
-const int EN_APP_INTERESTS =    (EN_PROP_CHANGE |
-                                 EN_APP_CREATION |
-                                 EN_APP_DELETION);
-const int EN_GRP_INTERESTS =	(EN_PROP_CHANGE |
-                                 EN_GRP_CREATION |
-                                 EN_GRP_DELETION |
-                                 EN_GRP_MEMBERSHIP |
-                                 EN_GRP_LEADERSHIP);
-const int EN_NODE_INTERESTS =	(EN_PROP_CHANGE |
-                                 EN_NODE_CREATION |
-                                 EN_NODE_DELETION |
-                                 EN_NODE_HEALTHCHANGE |
-                                 EN_NODE_CONNECTCHANGE |
-                                 EN_NODE_MASTERSTATECHANGE);
-const int EN_DIST_INTERESTS =	(EN_PROP_CHANGE |
-                                 EN_DIST_CREATION |
-                                 EN_DIST_DELETION |
-                                 EN_DIST_CHANGE);
+const int EN_PROP_CHANGE =		(1<<25);
 
 /*
  * An event type.
@@ -865,6 +844,7 @@ class EventHandler
      * Define the type of the member function to invoke.
      */
     typedef Event (T::*EventMethod)(Notifyable *np,
+                                    int etype,
                                     const string &path);
 
     /*
@@ -879,9 +859,11 @@ class EventHandler
     /*
      * Deliver the event.
      */
-    Event deliver(Notifyable *np, const string &path)
+    Event deliver(Notifyable *np, 
+                  int etype,
+                  const string &path)
     {
-        return ((*mp_obj).*m_handler)(np, path);
+        return ((*mp_obj).*m_handler)(np, etype, path);
     };
 
     /*

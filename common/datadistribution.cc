@@ -121,8 +121,8 @@ DataDistribution::unmarshall(const string &marshalledData)
     Locker s(getShardsLock());
     Locker m(getManualOverridesLock());
 
-    unmarshallShards(components[0], m_shards);
-    unmarshallOverrides(components[1], m_manualOverrides);
+    unmarshallShards(components[0]);
+    unmarshallOverrides(components[1]);
 };
 
 /*
@@ -130,8 +130,7 @@ DataDistribution::unmarshall(const string &marshalledData)
  * is stringified to "begin,end,appname,groupname,nodename;"
  */
 void
-DataDistribution::unmarshallShards(const string &marshalledShards,
-                                   ShardList &l)
+DataDistribution::unmarshallShards(const string &marshalledShards)
 {
     TRACE( CL_LOG, "unmarshallShards" );
 
@@ -180,8 +179,8 @@ DataDistribution::unmarshallShards(const string &marshalledShards,
         /*
          * Add the shard to our cache.
          */
-        l.push_back(nsp);
-    }        
+        m_shards.push_back(nsp);
+    }
 };
 
 /*
@@ -189,8 +188,7 @@ DataDistribution::unmarshallShards(const string &marshalledShards,
  * Each override is stringified to "pattern,appname,groupname,nodename;".
  */
 void
-DataDistribution::unmarshallOverrides(const string &marshalledOverrides,
-                                      ManualOverridesMap &m)
+DataDistribution::unmarshallOverrides(const string &marshalledOverrides)
 {
     TRACE( CL_LOG, "unmarshallOverrides" );
 
@@ -198,7 +196,7 @@ DataDistribution::unmarshallOverrides(const string &marshalledOverrides,
     vector<string> moComponents;
     vector<string>::iterator i;
     Node *np;
-    Application *app = NULL;
+    DataDistribution *dp;
 
     /* No manual overrides defined */
     if (marshalledOverrides.empty()) {
@@ -208,42 +206,47 @@ DataDistribution::unmarshallOverrides(const string &marshalledOverrides,
     split(components, marshalledOverrides, is_any_of(";"));
     for (i = components.begin(); i != components.end(); i++) {
         split(moComponents, *i, is_any_of(","));
-        if (moComponents.size() != 4) {
+        if (moComponents.size() == 4) {
+            np = getDelegate()->getNode(moComponents[1],
+                                        moComponents[2],
+                                        moComponents[3],
+                                        true);
+            if (np == NULL) {
+                throw ClusterException("Could not find node for manual "
+                                       "override \"" +
+                                       *i +
+                                       "\"");
+            }
+
+            /*
+             * Add the manual override to our cache.
+             */
+            m_manualOverrides[moComponents[0]] 
+                = new ManualOverride(this,
+                                     np,
+                                     np->getKey());
+        } else if (moComponents.size() == 3) {
+            dp = getDelegate()->getDistribution(moComponents[1],
+                                                moComponents[2]);
+            if (dp == NULL) {
+                throw ClusterException("Could not find distribution for "
+                                       "manual override \"" +
+                                       *i +
+                                       "\"");
+            }
+
+            /*
+             * Add the manual override to our cache.
+             */
+            m_manualOverrides[moComponents[0]]
+                = new ManualOverride(this,
+                                     dp,
+                                     dp->getKey());
+        } else {
             throw ClusterException("Malformed manual override \"" +
                                    *i +
-                                   "\", expecting 4 components");
+                                   "\", expecting 3 or 4 components");
         }
-        np = getDelegate()->getNode(moComponents[1],
-                                    moComponents[2],
-                                    moComponents[3],
-                                    true);
-        if (np == NULL) {
-            throw ClusterException("Could not find node for manual "
-                                   "override \"" +
-                                   *i +
-                                   "\"");
-        }
-
-        /*
-         * Ensure that all manual overrides point to the same
-         * application to handle the work.
-         */
-        if (app == NULL) {
-            app = np->getGroup()->getApplication();
-        } else {
-            if (app != np->getGroup()->getApplication()) {
-                throw ClusterException("Distribution manual overrides "
-                                       "spanning multiple applications, "
-                                       "unsupported!");
-            }
-        }
-
-        /*
-         * Add the manual override to our cache.
-         */
-        m[moComponents[0]] = new ManualOverride(this,
-                                                np,
-                                                np->getKey());
     }                                   
 };
 
@@ -422,29 +425,36 @@ DataDistribution::updateCachedRepresentation()
 {
     TRACE( CL_LOG, "updateCachedRepresentation" );
 
+    /*
+     * Must lock before asking the repository for the values
+     * to ensure that we don't lose intermediate values or
+     * values installed after this update.
+     */
+
+    Locker s(getShardsLock());
+    Locker m(getManualOverridesLock());
+
     int shardsVersion, overridesVersion;
-    string shards = getDelegate()->loadShards(getKey(), 
-					      shardsVersion);
-    string overrides = getDelegate()->loadManualOverrides(getKey(), 
-							  overridesVersion);
+    string shards = getDelegate()->loadShards(getKey(),
+                                              shardsVersion);
+    string overrides = getDelegate()->loadManualOverrides(getKey(),
+                                                          overridesVersion);
     ShardList::iterator si;
     ManualOverridesMap::iterator mi;
 
     {
-        Locker l(getShardsLock());
 	/* Only update if this is a newer version **/
 	if (shardsVersion > getShardsVersion()) {
 	    for (si = m_shards.begin(); si != m_shards.end(); si++) {
 		delete *si;
 	    }
 	    m_shards.clear();
-	    unmarshallShards(shards, m_shards);
+	    unmarshallShards(shards);
 	    setShardsVersion(shardsVersion);
 	}
     }
 
     {
-        Locker o(getManualOverridesLock());
 	/* Only update if this is a newer version **/
 	if (overridesVersion > getManualOverridesVersion()) {
 	    for (mi = m_manualOverrides.begin();
@@ -453,7 +463,7 @@ DataDistribution::updateCachedRepresentation()
 		delete (*mi).second;
 	    }
 	    m_manualOverrides.clear();
-	    unmarshallOverrides(overrides, m_manualOverrides);    
+	    unmarshallOverrides(overrides);
 	    setManualOverridesVersion(overridesVersion);
 	}
     }

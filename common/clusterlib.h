@@ -37,9 +37,6 @@ using namespace std;
 #include "event.h"
 #include "command.h"
 #include "zkadapter.h"
-
-// using namespace zk;
-
 #include "healthchecker.h"
 #include "notifyable.h"
 #include "clusterclient.h"
@@ -100,7 +97,7 @@ class ClusterlibStrings
     static const string MASTERSETSTATE;
     static const string SUPPORTEDVERSIONS;
 
-    static const string ELECTIONS;
+    static const string LEADERSHIP;
     static const string BIDS;
     static const string CURRENTLEADER;
 
@@ -414,21 +411,9 @@ class Factory
                    const string &key,
                    Group *grp);
 
-    void fillApplicationMap(ApplicationMap *amp);
-    void fillGroupMap(GroupMap *gmp, Application *app);
-    void fillNodeMap(NodeMap *nmp, Group *grp);
-    void fillDataDistributionMap(DataDistributionMap *dmp,
-                                 Application *app);
-
     string loadShards(const string &key, int32_t &version);
     string loadManualOverrides(const string &key, int32_t &version);
     string loadKeyValMap(const string &key, int32_t &version);
-
-    /*
-     * Did we already fill the application map?
-     */
-    bool filledApplicationMap() { return m_filledApplicationMap; }
-    void setFilledApplicationMap(bool v) { m_filledApplicationMap = v; }
 
     /*
      * Create entities in ZooKeeper.
@@ -450,6 +435,59 @@ class Factory
     Node *createNode(const string &name,
 		     const string &key, 
 		     Group *grp);
+
+    /*
+     * Implement ready protocol for notifyables.
+     */
+    bool establishNotifyableReady(Notifyable *np);
+    Event handleNotifyableReady(Notifyable *np,
+                                int etype,
+                                const string &path);
+
+    /*
+     * Handle existence events on notifyables.
+     */
+    Event handleNotifyableExists(Notifyable *np,
+                                 int etype,
+                                 const string &path);
+
+    /*
+     * Handle changes in the set of groups in
+     * an application.
+     */
+    Event handleGroupsChange(Notifyable *np,
+                             int etype,
+                             const string &path);
+
+    /*
+     * Handle changes in the set of distributions
+     * in an application.
+     */
+    Event handleDistributionsChange(Notifyable *np,
+                                    int etype,
+                                    const string &path);
+
+    /*
+     * Handle changes in a property list.
+     */
+    Event handlePropertiesChange(Notifyable *np,
+                                 int etype,
+                                 const string &path);
+
+    /*
+     * Handle changes in shards of a distribution.
+     */
+    Event handleShardsChange(Notifyable *np,
+                             int etype,
+                             const string &path);
+
+    /*
+     * Handle changes in manual overrides in
+     * a distribution.
+     */
+    Event handleManualOverridesChange(Notifyable *np,
+                                      int etype,
+                                      const string &path);
 
   private:
 
@@ -493,11 +531,6 @@ class Factory
      */
     NodeMap m_nodes;
     Mutex m_nodeLock;
-
-    /*
-     * Did we already fill the application map?
-     */
-    bool m_filledApplicationMap;
 
     /*
      * The registry of timer handlers.
@@ -564,6 +597,17 @@ class Factory
      * Lock for event synchronization.
      */
     Lock m_eventSyncLock;
+
+    /*
+     * Handlers for event delivery.
+     */
+    FactoryEventHandler m_notifyableReadyHandler;
+    FactoryEventHandler m_notifyableExistsHandler;
+    FactoryEventHandler m_groupsChangeHandler;
+    FactoryEventHandler m_distributionsChangeHandler;
+    FactoryEventHandler m_propertiesChangeHandler;
+    FactoryEventHandler m_shardsChangeHandler;
+    FactoryEventHandler m_manualOverridesChangeHandler;
 };
 
 /*
@@ -600,12 +644,6 @@ class FactoryOps
     {
         return mp_f->getApplication(name, create);
     }
-    void fillApplicationMap(ApplicationMap *amp)
-    {
-        if (mp_f->filledApplicationMap() == false) {
-            mp_f->fillApplicationMap(amp);
-        }
-    }
 
     Group *getGroup(const string &name,
                     Application *app,
@@ -618,12 +656,6 @@ class FactoryOps
                     bool create = false)
     {
         return mp_f->getGroup(appName, grpName, create);
-    }
-    void fillGroupMap(GroupMap *gmp, Application *app)
-    {
-        if (app->filledGroupMap() == false) {
-            mp_f->fillGroupMap(gmp, app);
-        }
     }
 
     Node *getNode(const string &name, 
@@ -645,12 +677,6 @@ class FactoryOps
                              managed,
                              create);
     }
-    void fillNodeMap(NodeMap *nmp, Group *grp)
-    {
-        if (grp->filledNodeMap() == false) {
-            mp_f->fillNodeMap(nmp, grp);
-        }
-    }
 
     DataDistribution *getDistribution(const string &name,
                                       Application *app,
@@ -670,13 +696,6 @@ class FactoryOps
 	return mp_f->getProperties(key, create);
     }
 
-    void fillDataDistributionMap(DataDistributionMap *dmp,
-                                 Application *app)
-    {
-        if (app->filledDataDistributionMap() == false) {
-            mp_f->fillDataDistributionMap(dmp, app);
-        }
-    }
     string loadShards(const string &key, int32_t &version)
     {
         return mp_f->loadShards(key, version);
@@ -830,6 +849,14 @@ class FactoryOps
     string removeObjectFromKey(const string &key)
     {
 	return mp_f->removeObjectFromKey(key);
+    }
+
+    /*
+     * Establish the ready protocol.
+     */
+    bool establishNotifyableReady(Notifyable *np)
+    {
+        return mp_f->establishNotifyableReady(np);
     }
 
   private:

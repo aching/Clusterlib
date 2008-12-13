@@ -33,31 +33,7 @@ class Notifyable
     /*
      * Notify the notifyable object.
      */
-    virtual void notify(const Event e)
-    {
-        ClusterEventInterests::iterator i;
-        ClusterEventInterests interests;
-
-        {
-            /*
-             * Make a copy of the current notification interests
-             * list to protect against side effects. Suggested by
-             * ruslanm@yahoo-inc.com, thanks!
-             */
-            Locker l(getInterestsLock());
-
-            interests = m_interests;
-        }
-
-        /*
-         * Deliver the event to all interested "user-land" clients.
-         */
-        for (i = interests.begin(); i != interests.end(); i++) {
-            if ((*i)->matchEvent(e)) {
-                (*i)->deliverNotification(e, this);
-            }
-        }
-    };
+    virtual void notify(const Event e);
 
     /*
      * Register an event handler for a set of events.
@@ -117,6 +93,12 @@ class Notifyable
     string getKey() { return m_key; }
 
     /*
+     * Is this notifyable "ready"? (according to the
+     * ready protocol)
+     */
+    bool isReady() { return m_ready; }
+
+    /*
      * Get the properties for this node
      */
     Properties *getProperties(bool create = false);
@@ -132,13 +114,12 @@ class Notifyable
      */
     Notifyable(FactoryOps *f,
                const string &key,
-               const string &name)
-        : mp_f(f),
-	  m_key(key),
-	  m_name(name)
-    {
-        m_interests.clear();
-    };
+               const string &name);
+
+    /*
+     * Set the "ready" state of this notifyable.
+     */
+    void setReady(bool v) { m_ready = v; }
 
     /*
      * Get the associated factory delegate object.
@@ -148,18 +129,7 @@ class Notifyable
     /*
      * Destructor.
      */
-    virtual ~Notifyable()
-    {
-        ClusterEventInterests::iterator i;
-        Locker l(getInterestsLock());
-
-        for (i = m_interests.begin();
-             i != m_interests.end();
-             i++) {
-            delete (*i);
-        }
-        m_interests.clear();
-    };
+    virtual ~Notifyable();
 
     /*
      * Update the cached representation -- must be provided
@@ -211,6 +181,12 @@ class Notifyable
      */
     ClusterEventInterests m_interests;
     Mutex m_interestsLock;
+
+    /*
+     * Is this notifyable "ready" according to the ready
+     * protocol?
+     */
+    bool m_ready;
 
     /*
      * Map of all properties within this object.

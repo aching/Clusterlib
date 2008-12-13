@@ -376,13 +376,12 @@ class DataDistribution
     /*
      * Unmarshall a stringified sequence of shards.
      */
-    void unmarshallShards(const string &marshalledShards, ShardList &l);
+    void unmarshallShards(const string &marshalledShards);
 
     /*
      * Unmarshall a stringified sequence of manual overrides.
      */
-    void unmarshallOverrides(const string &marshalledOverrides, 
-                             ManualOverridesMap &m);
+    void unmarshallOverrides(const string &marshalledOverrides);
 
     /*
      * Marshall a data distribution into a string.

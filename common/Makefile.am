@@ -24,6 +24,7 @@ libcluster_a_SOURCES = \
 	group.cc \
 	log.cc \
 	node.cc \
+	notifyable.cc \
 	thread.cc \
 	zkadapter.cc
 AM_CXXFLAGS = -Wall @CDXCORE_CXXFLAGS@

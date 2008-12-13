@@ -1,5 +1,5 @@
 /*
- * group.cc --
+ * notifyable.cc
  *
  * Implementation of the notification classes outlined methods.
  *
@@ -17,19 +17,67 @@
 
 namespace clusterlib
 {
-#if 0
+
 /*
  * Constructor.
  */
-NotificationReceiver::NotificationReceiver(const Event mask,
-                                           Client *cl,
-                                           Notifyable *np)
-    : m_mask(mask),
-      mp_notifyable(np),
-      mp_queue(cl->getQueue())
+Notifyable::Notifyable(FactoryOps *f,
+                       const string &key,
+                       const string &name)
+    : mp_f(f),
+      m_key(key),
+      m_name(name),
+      m_ready(false)
 {
-}
-#endif
+    m_interests.clear();
+    mp_f->establishNotifyableReady(this);
+};
+
+/*
+ * Destructor.
+ */
+Notifyable::~Notifyable()
+{
+    ClusterEventInterests::iterator i;
+    Locker l(getInterestsLock());
+
+    for (i = m_interests.begin();
+         i != m_interests.end();
+         i++) {
+        delete (*i);
+    }
+    m_interests.clear();
+};
+
+/*
+ * Notification mechanism.
+ */
+void
+Notifyable::notify(const Event e)
+{
+    ClusterEventInterests::iterator i;
+    ClusterEventInterests interests;
+
+    {
+        /*
+         * Make a copy of the current notification interests
+         * list to protect against side effects. Suggested by
+         * ruslanm@yahoo-inc.com, thanks!
+         */
+        Locker l(getInterestsLock());
+
+        interests = m_interests;
+    }
+
+    /*
+     * Deliver the event to all interested "user-land" clients.
+     */
+    for (i = interests.begin(); i != interests.end(); i++) {
+        if ((*i)->matchEvent(e)) {
+            (*i)->deliverNotification(e, this);
+        }
+    }
+};
 
 Properties *
 Notifyable::getProperties(bool create)
@@ -72,7 +120,7 @@ Notifyable::getProperties(bool create)
                            "Cannot find properties object " +
                            propertiesName);
 
-}
+};
 
 };	/* End of 'namespace clusterlib' */
 
