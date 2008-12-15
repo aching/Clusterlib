@@ -69,9 +69,12 @@ Properties::publish()
     setKeyValVersion(getKeyValVersion() + 1);
 }
 
+
 string 
 Properties::getProperty(const string &name)
 {
+    Locker(getKeyValMapLock());
+
     map<string, string>::const_iterator i = m_keyValMap.find(name);    
     if (i != m_keyValMap.end()) {
 	return i->second;
@@ -86,7 +89,7 @@ Properties::getProperty(const string &name)
     if (prop == NULL) {
 	return string();
     }
-
+    
     return prop->getProperty(name);
 }
         
@@ -95,13 +98,9 @@ Properties::marshall() const
 {
     string res;
     for (KeyValMap::const_iterator i = m_keyValMap.begin();
-         i != m_keyValMap.end();
-         ++i)
-    {
-	if (res.length() > 0) {
-            res.append( ";" );
-        }
+         i != m_keyValMap.end(); ++i) {
         res.append( i->first ).append( "=" ).append( i->second );
+	res.append( ";" );
     }
     return res;
 }
@@ -116,14 +115,21 @@ Properties::unmarshall(const string &marshalledKeyValMap)
     }
     KeyValMap keyValMap;
     for (vector<string>::iterator i = nameValueList.begin();
-         i != nameValueList.end();
-         ++i)
-    {
+         i != nameValueList.end() - 1; ++i) {
         if (*i != "") {
             vector<string> pair;
             split( pair, *i, is_any_of( "=" ) );
             if (pair.size() != 2) {
-                return false;
+		stringstream s;
+		s << pair.size();
+		LOG_WARN( CL_LOG,
+			  "key-val pair (%d component(s)) = %s", 
+			  pair.size(),
+			  i->c_str());
+		throw ClusterException("Malformed property \"" +
+				       *i +
+				       "\", expecting 2 components " +
+				       "and instead got " + s.str().c_str());
             }
             keyValMap[pair[0]] = pair[1];
         }

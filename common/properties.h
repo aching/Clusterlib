@@ -52,7 +52,9 @@ class Properties
      * In most cases, the calling process should hold the lock prior
      * to calling this function to prevent another process or the
      * internal clusterlib events sytem from modifying this object
-     * data while it is being accessed.
+     * data while it is being accessed.  If the calling process is
+     * only reading, this procedure will implicitly hold the lock to
+     * provide consistent results to the user.
      *
      * @param name the property name
      * @return the value of the given propery or an empty string

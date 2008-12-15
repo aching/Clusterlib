@@ -26,7 +26,9 @@ main(int ac, char **av)
         cerr << "client = " << c << endl;
         clusterlib::Application *app0 = c->getApplication("foo", true);
         cerr << "app0 = " << app0 << endl;
-	clusterlib::Group *grp0 = app0->getGroup("bar-clients", true);
+	clusterlib::Group *grp0 = app0->getGroup("bar-servers", true);
+	cerr << "grp0 = " << grp0 << endl;
+	grp0 = app0->getGroup("bar-clients", true);
 	cerr << "grp0 = " << grp0 << endl;
 	clusterlib::Group *grp1 = app0->getGroup("bar-clients");
 	cerr << "grp1 = " << grp1 << endl;

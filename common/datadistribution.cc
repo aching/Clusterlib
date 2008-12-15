@@ -145,17 +145,19 @@ DataDistribution::unmarshallShards(const string &marshalledShards)
     }
 
     split(components, marshalledShards, is_any_of(";"));
-    for (i = components.begin(); i != components.end(); i++) {
+    for (i = components.begin(); i != components.end() - 1; i++) {
         split(shardComponents, *i, is_any_of(","));
         if (shardComponents.size() != 5) {
 	    stringstream s;
 	    s << shardComponents.size();
-	    cerr << "shardComponents = " << shardComponents[0] << endl;
+	    LOG_WARN( CL_LOG,
+		      "shardComponents (%d component(s)) = %s", 
+		      shardComponents.size(),
+		      i->c_str());
             throw ClusterException("Malformed shard \"" +
                                    *i +
                                    "\", expecting 5 components " +
 				   "and instead got " + s.str().c_str());
-
         }
 
         /*
@@ -331,10 +333,6 @@ DataDistribution::marshallShards()
                      nodeName);
         }        
         res += buf;
-    }
-    /* Remove the final ; */
-    if (!res.empty()) {
-	res.erase(res.size() - 1, 1);
     }
     return res;
 };
