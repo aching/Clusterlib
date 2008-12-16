@@ -1,6 +1,12 @@
 This directory contains MPI-enabled cppunit tests for checking
-clusterlib.  Building from the top-level code path will create the
+clusterlib.  
+
+- Building:
+
+Building from the top-level code path or this path will create the
 executable 'test' in this directory.
+
+- Running:
 
 Some tests will be single process and others will use multiple
 processes.  In order to run the single process test, do:
@@ -16,3 +22,63 @@ Each of the processes writes output to its own file (i.e. 0.out,
 1.out, etc.).  Additionally, process 0 will display the overall
 results to stdout.
 
+There are 2 ways to add tests.  You can add tests to an already
+existing test fixture or create your own test fixture.
+
+- Adding tests to a test fixture:
+
+Tests that can be added to any test fixture.  In this example, we use
+ClusterlibProperties.  
+
+1.  Simply add a new function (i.e. void foo()) in
+ClusterlibProperties.  Use macros CPPUNIT_ASSERT or CPPUNIT_FAIL to
+denote success or failure.
+
+2.  Add line in between macros as so.  Note that this does not
+determine test order.
+
+CPPUNIT_TEST_SUITE(ClusterlibProperties ); 
+CPPUNIT_TEST( foo );
+CPPUNIT_TEST_SUITE_END();
+
+- Creating your own test fixture:
+
+This will involve creating a fixture class, implementing basic setUp()
+and tearDown() functions, and changing Makefile.am.
+
+1.  For example, we add a new test fixture FooTest.  Create a new
+class FooTest that inherits from MPITestFixture.  Implement the
+virtual functions void setUp() and void tearDown().  setUp() is called
+once before all tests for this fixture begin and tearDown() is called
+once after all tests have completed.
+
+2.  After the class, add the line 
+CPPUNIT_TEST_SUITE_REGISTRATION( ClusterlibProperties );
+
+The test fixture will be enabled and run.
+
+3.  Setup the test suite.  I.e.
+
+CPPUNIT_TEST_SUITE( FooTest );
+CPPUNIT_TEST( test1 );
+CPPUNIT_TEST( test2 );
+CPPUNIT_TEST_SUITE_END();
+
+- Handling ordering and synchronization for multiple processes
+
+There are some basic MPI-based primitives that can be used in each test.
+MPITestFixture.h describes each one.
+
+1.  barrier() - Synchronize all processes.
+
+2.  getSize() - How many processes are available?
+
+3.  getRank() - Depending on how many processes are available, what is my rank?
+                The result will be n, where 0 <= n < getSize().
+
+4.  waitsForOrder(int procFirst, int procNext) 
+              - This primitive can be used to have procNext wait until 
+		procFirst notifies it to begin.
+
+Other primitives can be added as well upon request.  Test
+testGetProperties1() is an example that uses many of these primitives.
