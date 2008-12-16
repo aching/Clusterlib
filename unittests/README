@@ -1,0 +1,18 @@
+This directory contains MPI-enabled cppunit tests for checking
+clusterlib.  Building from the top-level code path will create the
+executable 'test' in this directory.
+
+Some tests will be single process and others will use multiple
+processes.  In order to run the single process test, do:
+
+./test
+
+In order to run multiple processes, you will use either mpiexec or
+mpirun.  One example would be:
+
+mpiexec -n 2 ./test
+
+Each of the processes writes output to its own file (i.e. 0.out,
+1.out, etc.).  Additionally, process 0 will display the overall
+results to stdout.
+

@@ -137,6 +137,37 @@ AC_SUBST(BOOST_LIB_PATH)
 AC_SUBST(BOOST_INCLUDES)
 AC_SUBST(BOOST_LIB)
 
+### MPICH ###
+
+AC_MSG_CHECKING(location of MPICH headers and libraries)
+AC_ARG_WITH(mpich_root,
+  [ --with-mpich-root   location of MPICH libraries and headers.],
+  [ case "${withval}" in
+      yes|no)
+        AC_ERROR(Option --with-mpich-root requires a path argument.)
+        ;;
+    esac ],
+  [
+      with_mpich_root="/usr/releng/external/mpich2/mpich2-latest"
+  ]
+)
+AC_MSG_RESULT($with_mpich_root)
+
+MPICH_PATH="${with_mpich_root}"
+MPICH_LIB_PATH="$MPICH_PATH/install/lib"
+MPICH_INCLUDES="$MPICH_PATH/install/include"
+MPICH_LIB="$MPICH_LIB_PATH/libmpichcxx.a $MPICH_LIB_PATH/libmpich.a"
+
+AC_CHECK_LIB(mpich, main, [MPICH="-L${MPICH_LIB_PATH} -lmpichcxx -lmpich"],,["-L${MPICH_LIB_PATH}"])
+if test -z "${MPICH}"; then
+  AC_ERROR("... invalid MPICH library!")
+fi
+
+AC_SUBST(MPICH)
+AC_SUBST(MPICH_PATH)
+AC_SUBST(MPICH_LIB_PATH)
+AC_SUBST(MPICH_INCLUDES)
+AC_SUBST(MPICH_LIB)
 
 ### ZooKeeper ###
 
@@ -378,4 +409,10 @@ AC_SUBST(LIBNSL)
 makefile_inc="$srcdir/Makefile.inc"
 AC_SUBST_FILE(makefile_inc)
 
-AC_OUTPUT(Manifest Makefile common/Makefile example/Makefile)
+AC_OUTPUT(
+Manifest
+Makefile
+common/Makefile
+example/Makefile
+unittests/Makefile
+)
