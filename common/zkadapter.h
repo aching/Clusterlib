@@ -238,7 +238,10 @@ typedef clusterlib::EventListener<ZKWatcherEvent> ZKEventListener;
 
 /**
  * \brief This is a helper class for handling events using a member function.
+ * 
+ * This is currently unused.
  */
+#ifdef NOTDEF
 template<class T>
 class EventHandlerWrapper
 {
@@ -260,7 +263,7 @@ class EventHandlerWrapper
     /*
      * Call the embedded method.
      */
-    void handleEvent(const ZKWatcherEvent &watcherEvent)
+    void handleZKEvent(const ZKWatcherEvent &watcherEvent)
     {
         (m_obj.*m_handler)(watcherEvent);
     }
@@ -276,6 +279,7 @@ class EventHandlerWrapper
      */
     EventHandler m_handler;
 };
+#endif
            
 /**
  * \brief This is a wrapper around ZK C synchrounous API.
@@ -548,15 +552,19 @@ class ZooKeeperAdapter
         /**
          * Handles an asynchronous event received from the ZK.
          */
-        void handleEvent(int type, int state, const string &path);
+        void handleAsyncEvent(int type, 
+			      int state, 
+			      const string &path);
         
         /**
          * Handles an asynchronous event received from the ZK.
          * This method iterates over all listeners and passes the event 
          * to each of them.
          */
-        void handleEvent(int type, int state, const string &path, 
-                         const Listener2Context &listeners);        
+        void handleEventInContext(int type, 
+				  int state, 
+				  const string &path, 
+				  const Listener2Context &listeners);        
         
         /**
          * \brief Enqueues the given event in {@link #m_events} queue.

@@ -129,7 +129,7 @@ class EventSource
      * 
      * @param event the event to be propagated to all listeners
      */
-    void fireEvent(const E &event);
+    void fireEventToAllListeners(const E &event);
         
     /**
      * \brief Sends an event to the given listener.
@@ -263,7 +263,7 @@ class EventListenerAdapter
     {
         AbstractEventWrapper *wrapper = new EventWrapper<E>(e);
         GenericEvent event(type, wrapper);
-        fireEvent( event );
+        fireEventToAllListeners( event );
     }
 };        
 
@@ -764,7 +764,7 @@ class Timer
                 }
                 m_lock.unlock();
                 if (fire) {
-                    fireEvent( event );
+                    fireEventToAllListeners( event );
                 }
             } else {
                 m_lock.unlock();
@@ -807,7 +807,7 @@ class Timer
 };
 
 template<typename E>
-void EventSource<E>::fireEvent(const E &event)
+void EventSource<E>::fireEventToAllListeners(const E &event)
 {
     for (typename EventListeners::iterator i = m_listeners.begin(); 
          i != m_listeners.end(); 

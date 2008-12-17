@@ -261,7 +261,9 @@ ZooKeeperAdapter::reconnect()
 }
 
 void
-ZooKeeperAdapter::handleEvent(int type, int state, const string &path)
+ZooKeeperAdapter::handleAsyncEvent(int type, 
+				   int state, 
+				   const string &path)
 {
     TRACE( LOG, "handleEvent" );
     LOG_TRACE( LOG, 
@@ -291,24 +293,24 @@ ZooKeeperAdapter::handleEvent(int type, int state, const string &path)
         m_zkContextsMutex.Release();
     }
     
-    handleEvent( type, state, path, context );
+    handleEventInContext( type, state, path, context );
     if (!context2.empty()) {
-        handleEvent( type, state, path, context2 );
+        handleEventInContext( type, state, path, context2 );
     }
 }
 
 void
-ZooKeeperAdapter::handleEvent(int type,
-                              int state,
-                              const string &path,
-                              const Listener2Context &listeners)
+ZooKeeperAdapter::handleEventInContext(int type,
+				       int state,
+				       const string &path,
+				       const Listener2Context &listeners)
 {
-    TRACE( LOG, "handleEvents" );
+    TRACE( LOG, "handleEventInContext" );
 
     if (listeners.empty()) {
         //propagate with empty context
         ZKWatcherEvent event(type, state, path);
-        fireEvent( event );
+        fireEventToAllListeners( event );
     } else {
         for (Listener2Context::const_iterator i = listeners.begin();
              i != listeners.end();
@@ -317,7 +319,7 @@ ZooKeeperAdapter::handleEvent(int type,
             if (i->first != NULL) {
                 fireEvent( i->first, event );
             } else {
-                fireEvent( event );
+                fireEventToAllListeners( event );
             }
         }
     }
@@ -373,9 +375,9 @@ ZooKeeperAdapter::processUserEvents()
         ZKWatcherEvent source = m_userEvents.take( 100, &timedOut );
         if (!timedOut) {
             try {
-                handleEvent( source.getType(),
-                             source.getState(),
-                             source.getPath() );
+                handleAsyncEvent( source.getType(),
+				  source.getState(),
+				  source.getPath() );
             } catch (std::exception &e) {
                 LOG_ERROR( LOG, 
                            "Unable to process event (type: %d, state: %d, "
@@ -396,6 +398,12 @@ ZooKeeperAdapter::registerContext(WatchableMethod method,
                                   ContextType context)
 {
     TRACE( LOG, "registerContext" );
+
+    if (context == NULL) {
+	LOG_ERROR ( LOG, 
+		  "registerContext must have a valid context" );
+	throw ZooKeeperException("registerContext must have a valid context");
+    }
 
     m_zkContexts[method][path][listener] = context;
 }

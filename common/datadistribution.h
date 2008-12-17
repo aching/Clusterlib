@@ -325,6 +325,21 @@ class DataDistribution
                      HashFunction *fn = NULL);
 
     /*
+     * Destructor to clean up shards and manual overrides
+     */
+    ~DataDistribution() 
+    {
+	for (ManualOverridesMap::iterator moIt = m_manualOverrides.begin(); 
+	     moIt != m_manualOverrides.end(); moIt++) {
+	    delete moIt->second;
+	}
+	for (ShardList::iterator sIt = m_shards.begin(); 
+	     sIt != m_shards.end(); sIt++) {
+	    delete *sIt;
+	}
+    }
+
+    /*
      * Update the distribution.
      */
     void updateCachedRepresentation();

@@ -57,8 +57,8 @@ Client::consumeClusterEvents()
 {
     TRACE( CL_LOG, "consumeClusterEvents" );
 
-    /* TO BE WRITTEN */
-
+    ClusterEventPayload *cp;
+    
 #ifdef	VERY_VERBOSE_DEBUG
     cerr << "Hello from consumeClusterEvents" 
          << " this: "
@@ -67,6 +67,16 @@ Client::consumeClusterEvents()
          << pthread_self()
          << endl;
 #endif
+
+    for (;;) {
+	cp = m_queue.take();
+	if (cp == NULL) {
+	    return;
+	}
+	
+	cp->getTarget()->notify(cp->getEvent());
+	delete cp;
+    }
 }
 
 /*

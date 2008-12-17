@@ -39,8 +39,10 @@ int main(int argc, char* argv[]) {
     if (MPI::COMM_WORLD.Get_rank() == 0) {
 	successArr = new int[MPI::COMM_WORLD.Get_size()];
     }
+
     MPI::COMM_WORLD.Gather(
 	&wasSuccessful, 1, MPI::INT, successArr, 1, MPI::INT, 0);
+
     if (MPI::COMM_WORLD.Get_rank() == 0) {
 	for (int i = 0; i < MPI::COMM_WORLD.Get_size(); i++) {
 	    if (successArr[i] == 0) {

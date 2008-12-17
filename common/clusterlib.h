@@ -388,6 +388,9 @@ class Factory
     string getDistKeyPrefix(const string &key);
     string getDistKeyPrefix(vector<string> &components);
 
+    bool hasPropertiesKeyPrefix(const string &key);
+    bool hasPropertiesKeyPrefix(vector<string> &components);
+
     string appNameFromKey(const string &key);
     string distNameFromKey(const string &key);
     string groupNameFromKey(const string &key);
@@ -828,7 +831,10 @@ class FactoryOps
     {
         return mp_f->hasDistKeyPrefix(key);
     }
-
+    bool hasPropertiesKeyPrefix(const string &key)
+    {
+        return mp_f->hasPropertiesKeyPrefix(key);
+    }
     string appNameFromKey(const string &key)
     {
         return mp_f->appNameFromKey(key);

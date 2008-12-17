@@ -18,7 +18,6 @@ class ClusterlibProperties : public MPITestFixture {
     /* Runs prior to all tests */
     virtual void setUp() 
     {
-	barrier();
 	_factory = new clusterlib::Factory("localhost:2181");
 	CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
@@ -36,11 +35,11 @@ class ClusterlibProperties : public MPITestFixture {
     {
 	cout << "delete called " << endl;
 	delete _factory;
-	barrier();
     }
 
     void testGetProperties1()
     {
+	barrier();
 	/* Do not run if there less than 2 processes */
 	if (getSize() >= 2) {
 	    if (getRank() == 0) { 

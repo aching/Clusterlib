@@ -175,11 +175,12 @@ Factory::Factory(const string &registry)
     try {
         m_zk.reconnect();
         LOG_WARN( CL_LOG, "Waiting for connect event from ZooKeeper" );
-        if (m_eventSyncLock.lockedWait(3000) == true) {
-            LOG_ERROR(CL_LOG,
-                      "Did not receive connect event in time, aborting");
+        if (m_eventSyncLock.lockedWait(3000) == false) {
+	    throw ClusterException(
+		"Did not receive connect event in time, aborting");
         }
-        LOG_WARN( CL_LOG, "After wait, m_connected == " );
+        LOG_WARN( CL_LOG, "After wait, m_connected == %d",
+		  static_cast<int>(m_connected));
     } catch (zk::ZooKeeperException &e) {
         m_zk.disconnect();
         throw ClusterException(e.what());
@@ -489,7 +490,7 @@ Factory::dispatchEvents()
                           (zk::ZKWatcherEvent *) ge.getEvent();
 
                       LOG_WARN( CL_LOG,
-                                "Processing ZK even (type: %d, state: %d, context: 0x%x)",
+                                "Processing ZK event (type: %d, state: %d, context: 0x%x)",
                                 zp->getType(),
                                 zp->getState(),
                                 (unsigned int) zp->getContext() );
@@ -1027,7 +1028,7 @@ Factory::updateProperties(const string &key,
 	}
 	m_zk.getNodeData(key,
 			 this,
-			 (void *) NULL);	/* PROVIDE HANDLER */
+			 &m_propertiesChangeHandler);
     } catch (zk::ZooKeeperException &e) {
 	throw ClusterException(e.what());
     }
@@ -1276,6 +1277,25 @@ Factory::getNodeKeyPrefix(vector<string> &components)
         NODES +
         PATHSEPARATOR +
         components[7];
+}
+
+bool
+Factory::hasPropertiesKeyPrefix(const string &key)
+{
+    vector<string> components;
+
+    split(components, key, is_any_of(PATHSEPARATOR));
+    return hasPropertiesKeyPrefix(components);
+}
+bool
+Factory::hasPropertiesKeyPrefix(vector<string> &components)
+{
+    if ((components.size() < 4) ||
+        (hasAppKeyPrefix(components) == false) ||
+        (components[components.size() - 2] != PROPERTIES)) {
+        return false;
+    }
+    return true;
 }
 
 bool
@@ -1678,7 +1698,7 @@ Factory::loadProperties(const string &key)
         }
 	m_zk.getNodeData(key,
 			 this,
-			 (void *) NULL);	/* PROVIDE HANDLER */
+			 &m_propertiesChangeHandler);
 	prop = new Properties(key, mp_ops);
         m_properties[key] = prop;
     }
@@ -1692,7 +1712,7 @@ Factory::loadKeyValMap(const string &key, int32_t &version)
     Stat stat;
     string kvnode = m_zk.getNodeData(key,
 				     this,
-				     (void *) NULL,	/* PROVIDE HANDLER */
+				     &m_propertiesChangeHandler,
 				     &stat);
     version = stat.version;
 
@@ -1925,12 +1945,12 @@ Factory::createProperties(const string &key)
     TRACE( CL_LOG, "createProperties" );
 
     try {
-	if (!m_zk.nodeExists(key)) {
+	if (!m_zk.nodeExists(key, this, &m_notifyableExistsHandler)) {
 	    m_zk.createNode(key, "", 0, true);
 	}
 	m_zk.getNodeData(key,
 			 this,
-			 (void *) NULL);	/* PROVIDE HANDLER */
+			 &m_propertiesChangeHandler);
     } catch (zk::ZooKeeperException &e) {
 	throw ClusterException(e.what());
     }
@@ -2172,6 +2192,9 @@ Factory::updateCachedObject(FactoryEventHandler *cp,
         np = getGroup(components[5],
                       getApplication(components[3], false),
                       false);
+    } else if (hasPropertiesKeyPrefix(components)) {
+	np = getProperties(path,
+			   false);
     } else {
         throw ClusterException(string("") +
                                "Unknown event key: " +
@@ -2312,6 +2335,52 @@ Factory::handlePropertiesChange(Notifyable *np,
                                 const string &path)
 {
     TRACE( CL_LOG, "handlePropertiesChange" );
+
+    /*
+     * If there's no notifyable, punt.
+     */
+    if (np == NULL) {
+        LOG_WARN( CL_LOG,
+                  "Punting on event: %d on %s",
+                  etype,
+                  path.c_str() );
+        return EN_NO_EVENT;
+    }
+
+    LOG_WARN( CL_LOG,
+              "Got exists event: %d on properties: \"%s\"",
+              etype,
+              np->getKey().c_str() );
+
+    /*
+     * Re-establish interest in the existence of this notifyable.
+     */
+    (void) m_zk.nodeExists(path, this, &m_notifyableExistsHandler);
+
+    /*
+     * Now decide what to do with the event.
+     */
+    if (etype == DELETED_EVENT) {
+	LOG_WARN( CL_LOG,
+		  "Deleted event for path: %s",
+		  path.c_str() );
+	np->setReady(false);
+	return EN_NOTIFYABLE_DELETED;
+    }
+    else if (etype == CREATED_EVENT) {
+	LOG_WARN( CL_LOG,
+		  "Created event for path: %s",
+		  path.c_str() );
+	establishNotifyableReady(np);
+	return EN_NOTIFYABLE_CREATED;
+    }
+    else if (etype == CHANGED_EVENT) {
+	LOG_WARN( CL_LOG,
+		  "Changed event for path: %s",
+		  path.c_str() );
+	np->updateCachedRepresentation();
+	return EN_PROP_CHANGE;
+    }
 
     return EN_NO_EVENT;
 }
