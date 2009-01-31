@@ -7,6 +7,14 @@ common		Common files that are used both on client and server
 client          Files that are only for client use
 server          Files that are only for server use
 
+Environment:
+
+Add the following early in your path:
+
+/usr/releng/tools/automake/1.9.4/bin
+/usr/releng/tools/autoconf/2.59/bin
+/usr/releng/external/cppunit-1.12.0/bin
+
 Building:
 
 % make -f Makefile.cvs
