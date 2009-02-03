@@ -28,8 +28,10 @@ class ZooKeeperException :
          * 
          * @param msg the detailed message associated with this exception
          */
-	ZooKeeperException(const string &msg) throw()
-            : m_message(msg), m_zkErrorCode(0) 
+	ZooKeeperException(const string &msg,
+                           bool connected = true)
+            throw()
+            : m_message(msg), m_zkErrorCode(0), m_connected(connected)
         {}
 
         /**
@@ -38,14 +40,17 @@ class ZooKeeperException :
          * @param msg the detailed message associated with this exception
          * @param errorCode the ZK error code associated with this exception
          */
-        ZooKeeperException(const string &msg, int errorCode) throw()
-            : m_zkErrorCode(errorCode) 
+        ZooKeeperException(const string &msg,
+                           int errorCode,
+                           bool connected = true)
+            throw()
+            : m_zkErrorCode(errorCode), m_connected(connected) 
         {
             char tmp[100];
             sprintf( tmp, " (ZK error code: %d)", errorCode );
             m_message = msg + tmp;
         }
-                
+        
         /**
          * \brief Destructor.
          */
@@ -66,6 +71,14 @@ class ZooKeeperException :
             return m_zkErrorCode;
         }
 
+	/**
+         * \brief Returns whether the cause of the exception is that
+         * the ZooKeeper connection is disconnected.
+         */
+	bool isConnected() {
+	    return m_connected;
+        }
+
     private:
         
         /**
@@ -77,7 +90,11 @@ class ZooKeeperException :
          * The optional error code received from ZK.
          */
         int m_zkErrorCode;
-        
+
+	/**
+         * Whether the ZooKeeper connection is open.
+         */
+	bool m_connected;        
 };
     
 /**
@@ -503,7 +520,7 @@ class ZooKeeperAdapter
          * @throw ZooKeeperException if the given path is not valid
          *        (for instance it doesn't start with "/")
          */
-        static void validatePath(const string &path);
+	void validatePath(const string &path);
 
         /**
          * Returns the current state of this adapter.

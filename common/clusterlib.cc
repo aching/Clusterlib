@@ -15,6 +15,36 @@
 #define LOG_LEVEL LOG_WARN
 #define MODULE_NAME "ClusterLib"
 
+/*
+ * Macro for safely executing calls to ZooKeeper.
+ *
+ * NOTE: If your call needs to return a value, please use
+ * SAFE_CALL_ZK((var = call()), "some message %s", false, true)
+ */
+#define SAFE_CALL_ZK(_action, _message, _node, _warning, _once) \
+{ \
+    bool done = false; \
+    while (!done) { \
+	try { \
+	    _action ; done = true; \
+	} catch (zk::ZooKeeperException &ze) { \
+	    if (!ze.isConnected()) { \
+		reestablishConnectionAndState(ze.what()); \
+	    } else if (_warning) { \
+		LOG_WARN( CL_LOG, _message, _node, ze.what() ); \
+		if (_once) { \
+		    /* \
+		     * Only warn once. \
+		     */ \
+		    done = true; \
+                } \
+	    } else { \
+		throw ClusterException(ze.what()); \
+	    } \
+	} \
+    } \
+}
+
 namespace clusterlib
 {
 
@@ -75,25 +105,25 @@ const string ClusterlibStrings::UNHEALTHY = "unhealthy";
  * All strings that are used as propreties.
  */
 
-const string ClusterlibStrings::HEARTBEATMULTIPLE = "heartBeatMultiple";
-const string ClusterlibStrings::HEARTBEATCHECKPERIOD= "heartBeatCheckPeriod";
-const string ClusterlibStrings::HEARTBEATHEALTHY = "heartBeatHealthy";
-const string ClusterlibStrings::HEARTBEATUNHEALTHY = "heatBeatUnhealthy";
-const string ClusterlibStrings::TIMEOUTUNHEALTHYYTOR = "timeOutUnhealthyYToR";
-const string ClusterlibStrings::TIMEOUTUNHEALTHYRTOD = "timeOutUnhealthyRToR";
-const string ClusterlibStrings::TIMEOUTDISCONNECTYTOR = "timeOutDisconnectYToR";
-const string ClusterlibStrings::TIMEOUTDISCONNECTRTOD = "timeOutDisconnectRToR";
-const string ClusterlibStrings::NODESTATEGREEN = "nodeStateGreen";
-const string ClusterlibStrings::NODEBOUNCYPERIOD = "nodeBouncyPeriod";
-const string ClusterlibStrings::NODEBOUNCYNEVENTS = "nodeBouncyEvents";
-const string ClusterlibStrings::NODEMOVEBACKPERIOD = "nodeMoveBackPeriod";
-const string ClusterlibStrings::CLUSTERUNMANAGED = "clusterUnmanaged";
-const string ClusterlibStrings::CLUSTERDOWN = "clusterDown";
-const string ClusterlibStrings::CLUSTERFLUXPERIOD = "clusterFluxPeriod";
-const string ClusterlibStrings::CLUSTERFLUXNEVENTS = "clusterFluxNEvents";
-const string ClusterlibStrings::HISTORYSIZE = "historySize";
-const string ClusterlibStrings::LEADERFAILLIMIT = "leaderFailLimit";
-const string ClusterlibStrings::SERVERBIN = "serverBin";
+const string ClusterlibStrings::HEARTBEATMULTIPLE = "heartBeat.multiple";
+const string ClusterlibStrings::HEARTBEATCHECKPERIOD= "heartBeat.checkPeriod";
+const string ClusterlibStrings::HEARTBEATHEALTHY = "heartBeat.healthy";
+const string ClusterlibStrings::HEARTBEATUNHEALTHY = "heatBeat.unhealthy";
+const string ClusterlibStrings::TIMEOUTUNHEALTHYYTOR = "timeOut.unhealthyYToR";
+const string ClusterlibStrings::TIMEOUTUNHEALTHYRTOD = "timeOut.unhealthyRToR";
+const string ClusterlibStrings::TIMEOUTDISCONNECTYTOR = "timeOut.disconnectYToR";
+const string ClusterlibStrings::TIMEOUTDISCONNECTRTOD = "timeOut.disconnectRToR";
+const string ClusterlibStrings::NODESTATEGREEN = "node.state.green";
+const string ClusterlibStrings::NODEBOUNCYPERIOD = "nodeBouncy.period";
+const string ClusterlibStrings::NODEBOUNCYNEVENTS = "nodeBouncy.nEvents";
+const string ClusterlibStrings::NODEMOVEBACKPERIOD = "nodeMoveBack.period";
+const string ClusterlibStrings::CLUSTERUNMANAGED = "cluster.unmanaged";
+const string ClusterlibStrings::CLUSTERDOWN = "cluster.down";
+const string ClusterlibStrings::CLUSTERFLUXPERIOD = "cluster.fluxPeriod";
+const string ClusterlibStrings::CLUSTERFLUXNEVENTS = "cluster.fluxNEvents";
+const string ClusterlibStrings::HISTORYSIZE = "history.size";
+const string ClusterlibStrings::LEADERFAILLIMIT = "leader.failLimit";
+const string ClusterlibStrings::SERVERBIN = "server.bin";
 
 /*
  * Names associated with the special clusterlib master application.
@@ -120,21 +150,33 @@ Factory::Factory(const string &registry)
       m_notifyableExistsHandler(
 	  this,
           &Factory::handleNotifyableExists),
+      m_propertiesChangeHandler(
+	  this,
+          &Factory::handlePropertiesChange),
+      m_applicationsChangeHandler(
+          this,
+          &Factory::handleApplicationsChange),
       m_groupsChangeHandler(
 	  this,
           &Factory::handleGroupsChange),
       m_distributionsChangeHandler(
 	  this,
           &Factory::handleDistributionsChange),
-      m_propertiesChangeHandler(
-	  this,
-          &Factory::handlePropertiesChange),
       m_shardsChangeHandler(
 	  this,
           &Factory::handleShardsChange),
       m_manualOverridesChangeHandler(
 	  this,
-          &Factory::handleManualOverridesChange)
+          &Factory::handleManualOverridesChange),
+      m_nodesChangeHandler(
+	  this,
+          &Factory::handleNodesChange),
+      m_nodeClientStateChangeHandler(
+	  this,
+          &Factory::handleClientStateChange),
+      m_nodeMasterSetStateChangeHandler(
+	  this,
+          &Factory::handleMasterSetStateChange)
 {
     TRACE( CL_LOG, "Factory" );
 
@@ -203,7 +245,13 @@ Factory::~Factory()
 
     delete mp_ops;
 
-    m_zk.disconnect();
+    try {
+        m_zk.disconnect();
+    } catch (zk::ZooKeeperException &e) {
+        LOG_WARN( CL_LOG,
+                  "Got exception during disconnect: %s",
+                  e.what() );
+    }
 };
 
 
@@ -343,6 +391,9 @@ Factory::removeAllClients()
     m_clients.clear();
 }
 
+/*
+ * Methods to clean up storage used by a Factory.
+ */
 void
 Factory::removeAllDataDistributions()
 {
@@ -355,7 +406,6 @@ Factory::removeAllDataDistributions()
     }
     m_dataDistributions.clear();
 }
-
 void
 Factory::removeAllProperties()
 {
@@ -368,7 +418,6 @@ Factory::removeAllProperties()
     }
     m_properties.clear();
 }
-
 void
 Factory::removeAllApplications()
 {
@@ -381,7 +430,6 @@ Factory::removeAllApplications()
     }
     m_applications.clear();
 }
-
 void
 Factory::removeAllGroups()
 {
@@ -394,7 +442,6 @@ Factory::removeAllGroups()
     }
     m_groups.clear();
 }
-
 void
 Factory::removeAllNodes()
 {
@@ -407,7 +454,6 @@ Factory::removeAllNodes()
     }
     m_nodes.clear();
 }
-
 
 /*
  * Dispatch events to all registered clients.
@@ -783,7 +829,8 @@ Factory::consumeTimerEvents()
 }
 
 /*
- * Retrieve (and potentially create) instances of objects.
+ * Methods to retrieve entities (or create them) from the
+ * Factory's cache.
  */
 Application *
 Factory::getApplication(const string &name, bool create)
@@ -807,7 +854,6 @@ Factory::getApplication(const string &name, bool create)
     }
     return NULL;
 }
-
 DataDistribution *
 Factory::getDistribution(const string &distName,
                          Application *app,
@@ -834,7 +880,6 @@ Factory::getDistribution(const string &distName,
     }
     return NULL;
 }
-
 DataDistribution *
 Factory::getDistribution(const string &distName,
                          const string &appName,
@@ -844,7 +889,6 @@ Factory::getDistribution(const string &distName,
                            getApplication(appName, false),
                            create);
 }
-
 Properties *
 Factory::getProperties(const string &key,
 		       bool create)
@@ -869,7 +913,6 @@ Factory::getProperties(const string &key,
     }
     return NULL;
 }
-
 Group *
 Factory::getGroup(const string &groupName,
                   Application *app,
@@ -897,7 +940,6 @@ Factory::getGroup(const string &groupName,
     }
     return NULL;
 }
-
 Group *
 Factory::getGroup(const string &appName,
                   const string &groupName,
@@ -907,7 +949,6 @@ Factory::getGroup(const string &appName,
                     getApplication(appName, create),
                     create);
 }
-
 Node *
 Factory::getNode(const string &nodeName,
                  Group *grp,
@@ -943,8 +984,6 @@ Factory::getNode(const string &nodeName,
     }
     return NULL;
 }
-
-
 Node *
 Factory::getNode(const string &appName,
                  const string &groupName,
@@ -974,39 +1013,70 @@ Factory::updateDistribution(const string &key,
 	key +
         PATHSEPARATOR +
 	SHARDS;
-
     string monode =
         key +
         PATHSEPARATOR +
         MANUALOVERRIDES;
+    bool exists = false;
 
-    try {
-	if (!m_zk.nodeExists(snode)) {
-	    m_zk.createNode(snode, shards, 0, true);
-	}
-	else {
-	    m_zk.setNodeData(snode, shards, shardsVersion);
-	}
-	m_zk.getNodeData(snode,
-			 this,
-			 (void *) NULL);	/* PROVIDE HANDLER */
-    } catch (zk::ZooKeeperException &e) {
-	throw ClusterException(e.what());
+    /*
+     * Update the shards.
+     */
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(snode)),
+                 "Could not determine whether node %s exists: %s",
+                 snode.c_str(),
+                 true,
+                 true);
+    if (!exists) {
+        SAFE_CALL_ZK(m_zk.createNode(snode,shards,0,true),
+                     "Creation of %s failed: %s",
+                     snode.c_str(),
+                     true,
+                     true);
     }
+    SAFE_CALL_ZK(m_zk.setNodeData(snode, shards, shardsVersion),
+                 "Setting of %s failed: %s",
+                 snode.c_str(),
+                 false,
+                 true);
+    SAFE_CALL_ZK(m_zk.getNodeData(snode, this, &m_shardsChangeHandler),
+                 "Reestablishing watch on value of %s failed: %s",
+                 snode.c_str(),
+                 true,
+                 true);
 
-    try {
-	if (!m_zk.nodeExists(monode)) {
-	    m_zk.createNode(monode, manualOverrides, 0, true);
-	}
-	else {
-	    m_zk.setNodeData(monode, manualOverrides, manualOverridesVersion);
-	}
-	m_zk.getNodeData(monode,
-			 this,
-			 (void *) NULL);	/* PROVIDE HANDLER */
-    } catch (zk::ZooKeeperException &e) {
-	throw ClusterException(e.what());
+    /*
+     * Update the manual overrides.
+     */
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(monode)),
+                 "Could not determine whether node %s exists: %s",
+                 monode.c_str(),
+                 true,
+                 true);
+    if (!exists) {
+        SAFE_CALL_ZK(m_zk.createNode(monode,
+                                     manualOverrides,
+                                     0,
+                                     true),
+                     "Creation of %s failed: %s",
+                     monode.c_str(),
+                     true,
+                     true);
     }
+    SAFE_CALL_ZK(m_zk.setNodeData(monode,
+                                  manualOverrides,
+                                  manualOverridesVersion),
+                 "Setting of %s failed: %s",
+                 monode.c_str(),
+                 false,
+                 true);
+    SAFE_CALL_ZK(m_zk.getNodeData(monode,
+                                  this,
+                                  &m_manualOverridesChangeHandler),
+                 "Reestablishing watch on value of %s failed: %s",
+                 monode.c_str(),
+                 false,
+                 true);
 }
 
 /*
@@ -1019,19 +1089,32 @@ Factory::updateProperties(const string &key,
 {
     TRACE( CL_LOG, "updateProperties" );
     
-    try {
-	if (!m_zk.nodeExists(key)) {
-	    m_zk.createNode(key, properties, 0, true);
-	}
-	else {
-	    m_zk.setNodeData(key, properties, versionNumber);
-	}
-	m_zk.getNodeData(key,
-			 this,
-			 &m_propertiesChangeHandler);
-    } catch (zk::ZooKeeperException &e) {
-	throw ClusterException(e.what());
+    bool exists = false;
+
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(key)),
+                 "Could not determine whether node %s exists: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    if (!exists) {
+        SAFE_CALL_ZK(m_zk.createNode(key, properties, 0, true),
+                     "Creation of %s failed: %s",
+                     key.c_str(),
+                     true,
+                     true);
     }
+    SAFE_CALL_ZK(m_zk.setNodeData(key, properties, versionNumber),
+                 "Setting of %s failed: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    SAFE_CALL_ZK(m_zk.getNodeData(key,
+                                  this,
+                                  &m_propertiesChangeHandler),
+                 "Reestablishing watch on value of %s failed: %s",
+                 key.c_str(),
+                 false,
+                 true);
 }
 
 /*
@@ -1041,56 +1124,110 @@ void
 Factory::updateNodeClientState(const string &key,
                                const string &cs)
 {
-    /* TO BE IMPLEMENTED */
+    TRACE( CL_LOG, "updateNodeClientState" );
+
+    string csKey = key + PATHSEPARATOR + CLIENTSTATE;
+    bool exists = false;
+
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(key)),
+                 "Could not determine whether node %s exists: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    if (!exists) {
+        SAFE_CALL_ZK(m_zk.createNode(csKey, cs, 0, true),
+                     "Creation of %s failed: %s",
+                     csKey.c_str(),
+                     true,
+                     true);
+    }
+    SAFE_CALL_ZK(m_zk.setNodeData(csKey, cs),
+                 "Setting of %s failed: %s",
+                 csKey.c_str(),
+                 false,
+                 true);
+    SAFE_CALL_ZK(m_zk.getNodeData(csKey,
+                                  this,
+                                  &m_nodeClientStateChangeHandler),
+                 "Reestablishing watch on value of %s failed: %s",
+                 csKey.c_str(),
+                 false,
+                 true);
 }
 
-/* 
- * Update the server state and description fields of a node 
+/*
+ * Update the client state description field for
+ * a node.
  */
 void
-Factory::updateNodeServerStateDesc(const string &key,
-				   const string &ss,
-				   const string &sd)
+Factory::updateNodeClientStateDesc(const string &key,
+                                   const string &desc)
 {
-    TRACE( CL_LOG, "updateNodeServerStateDesc" );
-    LOG_DEBUG( CL_LOG, "State: %s, description: %s", ss.c_str(), sd.c_str() );
+    TRACE( CL_LOG, "updateNodeClientStateDesc" );
 
-    vector<string> zkNodeKeys, zkNodeValues;
-    zkNodeKeys.push_back(key + PATHSEPARATOR + CLIENTSTATEDESC);
-    zkNodeValues.push_back(sd);
-    zkNodeKeys.push_back(key + PATHSEPARATOR + CLIENTSTATE);
-    zkNodeValues.push_back(ss);
-        
-    try {
-	if (zkNodeKeys.size() != zkNodeValues.size()) {
-	    throw ClusterException("Keys and values don't match");
-	}
-	uint32_t i;
-	for (i = 0; i < zkNodeKeys.size(); i++) {
-	    if (!m_zk.nodeExists(zkNodeKeys[i])) {
-		m_zk.createNode(zkNodeKeys[i], zkNodeValues[i],
-				0, true);
-	    }
-	    else {
-		m_zk.setNodeData(zkNodeKeys[i], zkNodeValues[i]);
-	    }
-	    m_zk.getNodeData(zkNodeKeys[i],
-			     this,
-			     (void *) NULL);	/* PROVIDE HANDLER */
-	}
-    } catch (zk::ZooKeeperException &e) {
-	throw ClusterException(e.what());
+    string csKey = key + PATHSEPARATOR + CLIENTSTATEDESC;
+    bool exists = false;
+
+
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(csKey)),
+                 "Could not determine whether node %s exists: %s",
+                 csKey.c_str(),
+                 true,
+                 true);
+    if (!exists) {
+        SAFE_CALL_ZK(m_zk.createNode(csKey, desc, 0, true),
+                     "Creation of %s failed: %s",
+                     csKey.c_str(),
+                     true,
+                     true);
     }
+    SAFE_CALL_ZK(m_zk.setNodeData(csKey, desc),
+                 "Setting of %s failed: %s",
+                 csKey.c_str(),
+                 false,
+                 true);
+
+    /*
+     * NO WATCHER -- do we need one?
+     */
 }
 
 /*
  * Update the master state field of a node.
  */
 void
-Factory::updateNodeMasterState(const string &key,
-                               const string &ms)
+Factory::updateNodeMasterSetState(const string &key,
+                                  const string &ms)
 {
-    /* TO BE IMPLEMENTED */
+    TRACE( CL_LOG, "updateNodeMasterSetState" );
+
+    string msKey = key + PATHSEPARATOR + MASTERSETSTATE;
+    bool exists = false;
+
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(msKey)),
+                 "Could not determine whether node %s exists: %s",
+                 msKey.c_str(),
+                 true,
+                 true);
+    if (!exists) {
+        SAFE_CALL_ZK(m_zk.createNode(msKey, ms, 0, true),
+                     "Creation of %s failed: %s",
+                     msKey.c_str(),
+                     true,
+                     true);
+    }
+    SAFE_CALL_ZK(m_zk.setNodeData(msKey, ms),
+                 "Setting of %s failed: %s",
+                 msKey.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.getNodeData(msKey,
+                                  this,
+                                  &m_nodeMasterSetStateChangeHandler),
+                 "Reestablishing watch on value of %s failed: %s",
+                 msKey.c_str(),
+                 false,
+                 true);
 }
 
 /*
@@ -1554,24 +1691,26 @@ Factory::loadApplication(const string &name,
 
     vector<string> zkNodes;
     Application *app;
+    bool exists = false;
+    Locker l(&m_appLock);
 
-    {
-        /*
-         * Scope the lock to the shortest sequence possible.
-         */
-        Locker l(&m_appLock);
-
-        app = m_applications[key];
-        if (app != NULL) {
-            return app;
-        }
-        if (m_zk.nodeExists(key, this, &m_notifyableExistsHandler) == false) {
-            return NULL;
-        }
-        app = new Application(name, key, mp_ops);
-        m_applications[key] = app;
+    app = m_applications[key];
+    if (app != NULL) {
+        return app;
     }
 
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(key, 
+                                           this,
+                                           &m_notifyableExistsHandler)),
+                 "Could not determine whether node %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        return NULL;
+    }
+    app = new Application(name, key, mp_ops);
+    m_applications[key] = app;
     app->updateCachedRepresentation();
 
 #ifdef	TO_BE_MOVED
@@ -1590,7 +1729,6 @@ Factory::loadApplication(const string &name,
                      this,
                      &m_propertiesChangeHandler);
 #endif
-
     /*
      * Set up ready protocol.
      */
@@ -1607,24 +1745,29 @@ Factory::loadDistribution(const string &name,
     TRACE( CL_LOG, "loadDataDistribution" );
 
     DataDistribution *dp;
+    bool exists = false;
 
     /*
      * Ensure that we have a cached object for this data
      * distribution in the cache.
      */
-    {
-        Locker l(&m_ddLock);
+    Locker l(&m_ddLock);
 
-        dp = m_dataDistributions[key];
-        if (dp != NULL) {
-            return dp;
-        }
-        if (m_zk.nodeExists(key, this, NULL) == false) {
-            return NULL;
-        }
-        dp = new DataDistribution(app, name, key, mp_ops);
-        m_dataDistributions[key] = dp;
+    dp = m_dataDistributions[key];
+    if (dp != NULL) {
+        return dp;
     }
+
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(key)),
+                 "Could not determine whether node %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        return NULL;
+    }
+    dp = new DataDistribution(app, name, key, mp_ops);
+    m_dataDistributions[key] = dp;
 
     /*
      * Set up event notifications and load the data
@@ -1648,13 +1791,18 @@ Factory::loadShards(const string &key, int32_t &version)
         key +
         PATHSEPARATOR +
         SHARDS;
+    string res = "";
 
-    string res = m_zk.getNodeData(snode,
-				  this,
-                                  &m_shardsChangeHandler,
-				  &stat);
+    version = 0;
+    SAFE_CALL_ZK((res = m_zk.getNodeData(snode,
+                                         this,
+                                         &m_shardsChangeHandler,
+                                         &stat)),
+                 "Loading shards from %s failed: %s",
+                 snode.c_str(),
+                 false,
+                 true);
     version = stat.version;
-    
     return res;
 }
 
@@ -1666,13 +1814,18 @@ Factory::loadManualOverrides(const string &key, int32_t &version)
         key +
         PATHSEPARATOR +
         MANUALOVERRIDES;
+    string res = "";
 
-    string res = m_zk.getNodeData(monode,
-				  this,
-                                  &m_manualOverridesChangeHandler,
-				  &stat);
+    version = 0;
+    SAFE_CALL_ZK((res = m_zk.getNodeData(monode,
+                                         this,
+                                         &m_manualOverridesChangeHandler,
+                                         &stat)),
+                 "Loading manual overrides from %s failed: %s",
+                 monode.c_str(),
+                 false,
+                 true);
     version = stat.version;
-    
     return res;
 }
 
@@ -1682,26 +1835,31 @@ Factory::loadProperties(const string &key)
     TRACE( CL_LOG, "Properties" );
 
     Properties *prop;
+    bool exists = false;
+    Locker l(&m_propLock);
 
-    {
-        /*
-         * Scope the lock to the shortest sequence possible.
-         */
-        Locker l(&m_propLock);
-
-        prop = m_properties[key];
-        if (prop != NULL) {
-            return prop;
-        }
-        if (m_zk.nodeExists(key, this, NULL) == false) {
-            return NULL;
-        }
-	m_zk.getNodeData(key,
-			 this,
-			 &m_propertiesChangeHandler);
-	prop = new Properties(key, mp_ops);
-        m_properties[key] = prop;
+    prop = m_properties[key];
+    if (prop != NULL) {
+        return prop;
     }
+
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(key, this, NULL)),
+                 "Could not determine whether node %s exists: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    if (!exists) {
+        return NULL;
+    }
+    SAFE_CALL_ZK(m_zk.getNodeData(key,
+                                  this,
+                                  &m_propertiesChangeHandler),
+                 "Reading the value of %s failed: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    prop = new Properties(key, mp_ops);
+    m_properties[key] = prop;
 
     return prop;
 }
@@ -1710,11 +1868,20 @@ string
 Factory::loadKeyValMap(const string &key, int32_t &version)
 {
     Stat stat;
-    string kvnode = m_zk.getNodeData(key,
-				     this,
-				     &m_propertiesChangeHandler,
-				     &stat);
-    version = stat.version;
+    string kvnode = "";
+
+    version = 0;
+    SAFE_CALL_ZK((kvnode = m_zk.getNodeData(key,
+                                            this,
+                                            &m_propertiesChangeHandler,
+                                            &stat)),
+                 "Reading the value of %s failed: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (kvnode != "") {
+        version = stat.version;
+    }
 
     return kvnode;
 }
@@ -1727,23 +1894,24 @@ Factory::loadGroup(const string &name,
     TRACE( CL_LOG, "loadGroup" );
 
     Group *grp;
+    bool exists = false;
+    Locker l(&m_grpLock);
 
-    {
-        /*
-         * Scope the lock to the shortest sequence possible.
-         */
-        Locker l(&m_grpLock);
-
-        grp = m_groups[key];
-        if (grp != NULL) {
-            return grp;
-        }
-        if (m_zk.nodeExists(key, this, NULL) == false) {
-            return NULL;
-        }
-        grp = new Group(app, name, key, mp_ops);
-        m_groups[key] = grp;
+    grp = m_groups[key];
+    if (grp != NULL) {
+        return grp;
     }
+
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(key)),
+                 "Could not determine whether node %s exists: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    if (!exists) {
+        return NULL;
+    }
+    grp = new Group(app, name, key, mp_ops);
+    m_groups[key] = grp;
 
     /*
      * Update the cached representation and establish
@@ -1769,7 +1937,6 @@ Factory::loadGroup(const string &name,
                      this,
                      &m_propertiesChangeHandler);
 #endif
-
     /*
      * Set up ready protocol.
      */
@@ -1786,20 +1953,24 @@ Factory::loadNode(const string &name,
     TRACE( CL_LOG, "loadNode" );
 
     Node *np;
+    bool exists = false;
+    Locker l(&m_nodeLock);
 
-    {
-        Locker l(&m_nodeLock);
-
-        np = m_nodes[key];
-        if (np != NULL) {
-            return np;
-        }
-        if (m_zk.nodeExists(key, this, NULL) == false) {
-            return NULL;
-        }
-        np = new Node(grp, name, key, mp_ops);
-        m_nodes[key] = np;
+    np = m_nodes[key];
+    if (np != NULL) {
+        return np;
     }
+
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(key)),
+                 "Could not determine whether node %s exists: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    if (!exists) {
+        return NULL;
+    }
+    np = new Node(grp, name, key, mp_ops);
+    m_nodes[key] = np;
 
     /*
      * Update the cached representation and
@@ -1826,47 +1997,65 @@ Factory::createApplication(const string &name, const string &key)
     vector<string> zkNodes;
     Application *app = NULL;
     bool created = false;
+    bool exists = false;
     
-    try {
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(key,
+                                           this,
+                                           &m_notifyableExistsHandler)),
+                 "Could not determine whether node %s exists: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    if (!exists) {
+        string groups = key + PATHSEPARATOR + GROUPS;
+        string dists = key + PATHSEPARATOR + DISTRIBUTIONS;
+        string props = key + PATHSEPARATOR + PROPERTIES;
+
         /*
          * Create the application data structure if needed.
          */
-        if (!m_zk.nodeExists(key, this, &m_notifyableExistsHandler)) {
-            created = true;
-            m_zk.createNode(key, "", 0, true);
-            m_zk.createNode(key + PATHSEPARATOR + GROUPS,
-                            "",
-                            0,
-                            true);
-            m_zk.createNode(key + PATHSEPARATOR + DISTRIBUTIONS,
-                            "",
-                            0,
-                            true);
-            m_zk.createNode(key + PATHSEPARATOR + PROPERTIES,
-                            "",
-                            0,
-                            true);
-        }
+        created = true;
+        SAFE_CALL_ZK(m_zk.createNode(key, "", 0, true),
+                     "Could not create node %s: %s",
+                     key.c_str(),
+                     true,
+                     true);
+        SAFE_CALL_ZK(m_zk.createNode(groups, "", 0, true),
+                     "Could not create node %s: %s",
+                     groups.c_str(),
+                     true,
+                     true);
+        SAFE_CALL_ZK(m_zk.createNode(dists, "", 0, true),
+                     "Could not create node %s: %s",
+                     dists.c_str(),
+                     true,
+                     true);
+        SAFE_CALL_ZK(m_zk.createNode(props, "", 0, true),
+                     "Could not create node %s: %s",
+                     props.c_str(),
+                     true,
+                     true);
+    }
 
-        /*
-         * Load the application object, which will load the data,
-         * establish all the event notifications, and add the
-         * object to the cache.
-         */
-        app = loadApplication(name, key);
+    /*
+     * Load the application object, which will load the data,
+     * establish all the event notifications, and add the
+     * object to the cache.
+     */
+    app = loadApplication(name, key);
 
-        /*
-         * Trigger the 'ready' protocol if we created this
-         * application. We need to do this for any *OTHER*
-         * processes waiting for the application to be
-         * ready.
-         */
-        if (created) {
-            m_zk.setNodeData(key, "ready", 0);
-        }
-
-    } catch (zk::ZooKeeperException &e) {
-	throw ClusterException(e.what());
+    /*
+     * Trigger the 'ready' protocol if we created this
+     * application. We need to do this for any *OTHER*
+     * processes waiting for the application to be
+     * ready.
+     */
+    if (created) {
+        SAFE_CALL_ZK(m_zk.setNodeData(key, "ready", 0),
+                     "Could not complete ready protocol for %s: %s",
+                     key.c_str(),
+                     true,
+                     true);
     }
 
     return app;
@@ -1883,57 +2072,62 @@ Factory::createDistribution(const string &name,
 
     DataDistribution *dp;
     bool created = false;
+    bool exists = false;
 
-    try {    
-        /*
-         * Create the data distribution structure if needed.
-         */
-        if (!m_zk.nodeExists(key, this, &m_notifyableExistsHandler)) {
-            created = true;
-            m_zk.createNode(key, "", 0, true);
-            m_zk.createNode(key + PATHSEPARATOR + SHARDS,
-                            "",
-                            0,
-                            true);
-            m_zk.createNode(key + PATHSEPARATOR + MANUALOVERRIDES,
-                            "",
-                            0,
-                            true);
-            m_zk.createNode(key + PATHSEPARATOR + PROPERTIES,
-                            "",
-                            0,
-                            true);
-        }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(key,
+                                           this,
+                                           &m_notifyableExistsHandler)),
+                 "Could not determine whether node %s exists: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    if (!exists) {
+        string shards = key + PATHSEPARATOR + SHARDS;
+        string mos = key + PATHSEPARATOR + MANUALOVERRIDES;
+        string props = key + PATHSEPARATOR + PROPERTIES;
 
-        /*
-         * Load the distribution, which will load the data,
-         * establish all the event notifications, and add the
-         * object to the cache.
-         */
-        dp = loadDistribution(name, key, app);
-
-        /*
-         * If we created the data distribution in the
-         * repository, trigger the ready protocol. This is
-         * needed for *OTHER* processes waiting till this
-         * object is ready.
-         */
-        if (created) {
-            m_zk.setNodeData(key, "ready", 0);
-        }
-    } catch (zk::ZooKeeperException &e) {
-	throw ClusterException(e.what());
+        created = true;
+        SAFE_CALL_ZK(m_zk.createNode(key, "", 0, true),
+                     "Could not create node %s: %s",
+                     key.c_str(),
+                     true,
+                     true);
+        SAFE_CALL_ZK(m_zk.createNode(shards, "", 0, true),
+                     "Could not create node %s: %s",
+                     shards.c_str(),
+                     true,
+                     true);
+        SAFE_CALL_ZK(m_zk.createNode(mos, "", 0, true),
+                     "Could not create node %s: %s",
+                     mos.c_str(),
+                     true,
+                     true);
+        SAFE_CALL_ZK(m_zk.createNode(props, "", 0, true),
+                     "Could not create node %s: %s",
+                     props.c_str(),
+                     true,
+                     true);
     }
 
     /*
-     * Ready protocol
+     * Load the distribution, which will load the data,
+     * establish all the event notifications, and add the
+     * object to the cache.
      */
-    try {
-	m_zk.setNodeData(key, "ready", 0);
-    } catch (zk::ZooKeeperException &e) {
-	LOG_WARN(CL_LOG,
-		 "Tried to set node %s to \"ready\" state failed: %s",
-		 key.c_str(), e.what());
+    dp = loadDistribution(name, key, app);
+
+    /*
+     * If we created the data distribution in the
+     * repository, trigger the ready protocol. This is
+     * needed for *OTHER* processes waiting till this
+     * object is ready.
+     */
+    if (created) {
+        SAFE_CALL_ZK(m_zk.setNodeData(key, "ready", 0),
+                     "Could not complete ready protocol for %s: %s",
+                     key.c_str(),
+                     true,
+                     true);
     }
 
     return dp;
@@ -1943,18 +2137,35 @@ Properties *
 Factory::createProperties(const string &key) 
 {
     TRACE( CL_LOG, "createProperties" );
+    bool exists = false;
 
-    try {
-	if (!m_zk.nodeExists(key, this, &m_notifyableExistsHandler)) {
-	    m_zk.createNode(key, "", 0, true);
-	}
-	m_zk.getNodeData(key,
-			 this,
-			 &m_propertiesChangeHandler);
-    } catch (zk::ZooKeeperException &e) {
-	throw ClusterException(e.what());
+    /*
+     * Preliminaries: Ensure the node exists and
+     * has the correct watchers set up.
+     */
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(key,
+                                           this,
+                                           &m_notifyableExistsHandler)),
+                 "Could not determine whether node %s exists: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    if (!exists) {
+        SAFE_CALL_ZK(m_zk.createNode(key, "", 0, true),
+                     "Could not create node %s: %s",
+                     key.c_str(),
+                     true,
+                     true);
     }
-    
+    SAFE_CALL_ZK(m_zk.getNodeData(key, this, &m_propertiesChangeHandler),
+                 "Could not read value of %s: %s",
+                 key.c_str(),
+                 false,
+                 true);
+
+    /*
+     * Enter into cache.
+     */
     Properties *prop;
     {
 	/*                                                                
@@ -1967,10 +2178,11 @@ Factory::createProperties(const string &key)
 	    LOG_WARN(CL_LOG,
 		     "Tried to create properties that exists!");
 	}
-	if (m_zk.nodeExists(key, this, NULL) == false) {
-	    throw ClusterException("The group " + key + 
-				   " should have been created!");
-	}
+        SAFE_CALL_ZK(m_zk.nodeExists(key, this, &m_notifyableExistsHandler),
+                     "Could not determine whether node %s exists: %s",
+                     key.c_str(),
+                     false,
+                     true);
 	prop = new Properties(key, mp_ops);
     }
     
@@ -1987,53 +2199,65 @@ Factory::createGroup(const string &name,
 
     Group *grp = NULL;
     bool created = false;
+    bool exists = false;
     
-    try {
-        /*
-         * Create the group structure if needed.
-         */
-        if (!m_zk.nodeExists(key, this, &m_notifyableExistsHandler)) {
-            created = true;
-            m_zk.createNode(key, "", 0, true);
-            m_zk.createNode(key + PATHSEPARATOR + NODES,
-                            "",
-                            0,
-                            true);
-            m_zk.createNode(key + PATHSEPARATOR + LEADERSHIP,
-                            "",
-                            0,
-                            true);
-            m_zk.createNode(key +
-                            PATHSEPARATOR +
-                            LEADERSHIP +
-                            PATHSEPARATOR +
-                            BIDS,
-                            "",
-                            0,
-                            true);
-            m_zk.createNode(key + PATHSEPARATOR + PROPERTIES,
-                            "",
-                            0,
-                            true);
-        }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(key, this, &m_notifyableExistsHandler)),
+                 "Could not determine whether node %s exists: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    if (!exists) {
+        string nodes = key + PATHSEPARATOR + NODES;
+        string leadership = key + PATHSEPARATOR + LEADERSHIP;
+        string bids = leadership + PATHSEPARATOR + BIDS;
+        string props = key + PATHSEPARATOR + PROPERTIES;
 
-        /*
-         * Load the group, which will load the data,
-         * establish all the event notifications, and add the
-         * object to the cache.
-         */
-        grp = loadGroup(name, key, app);
+        created = true;
+        SAFE_CALL_ZK(m_zk.createNode(key, "", 0, true),
+                     "Could not create node %s: %s",
+                     key.c_str(),
+                     true,
+                     true);
+        SAFE_CALL_ZK(m_zk.createNode(nodes, "", 0, true),
+                     "Could not create node %s: %s",
+                     nodes.c_str(),
+                     true,
+                     true);
+        SAFE_CALL_ZK(m_zk.createNode(leadership, "", 0, true),
+                     "Could not create node %s: %s",
+                     leadership.c_str(),
+                     true,
+                     true);
+        SAFE_CALL_ZK(m_zk.createNode(bids, "", 0, true),
+                     "Could not create node %s: %s",
+                     bids.c_str(),
+                     true,
+                     true);
+        SAFE_CALL_ZK(m_zk.createNode(props, "", 0, true),
+                     "Could not create node %s: %s",
+                     props.c_str(),
+                     true,
+                     true);
+    }
 
-        /*
-         * Trigger the 'ready' protocol if we created the
-         * group. This is for *OTHER* processes that are
-         * waiting for the group to be ready.
-         */
-        if (created) {
-            m_zk.setNodeData(key, "ready", 0);
-        }
-    } catch (zk::ZooKeeperException &e) {
-	throw ClusterException(e.what());
+    /*
+     * Load the group, which will load the data,
+     * establish all the event notifications, and add the
+     * object to the cache.
+     */
+    grp = loadGroup(name, key, app);
+    
+    /*
+     * Trigger the 'ready' protocol if we created the
+     * group. This is for *OTHER* processes that are
+     * waiting for the group to be ready.
+     */
+    if (created) {
+        SAFE_CALL_ZK(m_zk.setNodeData(key, "ready", 0),
+                     "Could not complete ready protocol for %s: %s",
+                     key.c_str(),
+                     true,
+                     true);
     }
     
     return grp;
@@ -2048,52 +2272,163 @@ Factory::createNode(const string &name,
 
     Node *np = NULL;
     bool created = false;
+    bool exists = false;
 
-    try {    
-        /*
-         * Create the node structure if needed.
-         */
-        if (!m_zk.nodeExists(key, this, &m_notifyableExistsHandler)) {
-            created = true;
-            m_zk.createNode(key, "", 0, true);
-            m_zk.createNode(key + PATHSEPARATOR + CLIENTSTATE,
-                            "",
-                            0,
-                            true);
-            m_zk.createNode(key + PATHSEPARATOR + MASTERSETSTATE,
-                            "",
-                            0,
-                            true);
-            m_zk.createNode(key + PATHSEPARATOR + CLIENTVERSION,
-                            "1.0",
-                            0,
-                            true);
-            m_zk.createNode(key + PATHSEPARATOR + PROPERTIES,
-                            "",
-                            0,
-                            true);
-        }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(key, this, &m_notifyableExistsHandler)),
+                 "Could not determine whether node %s exists: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    if (!exists) {
+        string cs = key + PATHSEPARATOR + CLIENTSTATE;
+        string ms = key + PATHSEPARATOR + MASTERSETSTATE;
+        string cv = key + PATHSEPARATOR + CLIENTVERSION;
+        string props = key + PATHSEPARATOR + PROPERTIES;
 
-        /*
-         * Load the node, which will load the data,
-         * establish all the event notifications, and add the
-         * object to the cache.
-         */
-        np = loadNode(name, key, grp);
+        created = true;
+        SAFE_CALL_ZK(m_zk.createNode(key, "", 0, true),
+                     "Could not create node %s: %s",
+                     key.c_str(),
+                     true,
+                     true);
+        SAFE_CALL_ZK(m_zk.createNode(cs, "", 0, true),
+                     "Could not create node %s: %s",
+                     cs.c_str(),
+                     true,
+                     true);
+        SAFE_CALL_ZK(m_zk.createNode(ms, "", 0, true),
+                     "Could not create node %s: %s",
+                     ms.c_str(),
+                     true,
+                     true);
+        SAFE_CALL_ZK(m_zk.createNode(cv, "1.0", 0, true),
+                     "Could not create node %s: %s",
+                     cv.c_str(),
+                     true,
+                     true);
+        SAFE_CALL_ZK(m_zk.createNode(props, "", 0, true),
+                     "Could not create node %s: %s",
+                     props.c_str(),
+                     true,
+                     true);
+    }
 
-        /*
-         * Trigger the 'ready' protocol if we created the
-         * group. This is for *OTHER* processes that are
-         * waiting for the group to be ready.
-         */
-        if (created) {
-            m_zk.setNodeData(key, "ready", 0);
-        }
-    } catch (zk::ZooKeeperException &e) {
-	throw ClusterException(e.what());
+    /*
+     * Load the node, which will load the data,
+     * establish all the event notifications, and add the
+     * object to the cache.
+     */
+    np = loadNode(name, key, grp);
+
+    /*
+     * Trigger the 'ready' protocol if we created the
+     * group. This is for *OTHER* processes that are
+     * waiting for the group to be ready.
+     */
+    if (created) {
+        SAFE_CALL_ZK(m_zk.setNodeData(key, "ready", 0),
+                     "Could not complete ready protocol for %s: %s",
+                     key.c_str(),
+                     true,
+                     true);
     }
     
     return np;
+}
+
+/*
+ * Get all entity names within a collection: all applications,
+ * all groups or distributions within an application, or all
+ * nodes within a group.
+ */
+IdList
+Factory::getApplicationNames()
+{
+    TRACE( CL_LOG, "getApplicationNames" );
+
+    IdList list;
+    string key =
+        ROOTNODE +
+        CLUSTERLIB +
+        PATHSEPARATOR +
+        VERSION;
+
+    list.clear();
+    SAFE_CALL_ZK(m_zk.getNodeChildren(list,
+                                      key, 
+                                      this,
+                                      &m_applicationsChangeHandler),
+                 "Reading the value of %s failed: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    return list;
+}
+IdList
+Factory::getGroupNames(Application *app)
+{
+    TRACE( CL_LOG, "getGroupNames" );
+
+    IdList list;
+    string key =
+        app->getKey() +
+        PATHSEPARATOR +
+        GROUPS;
+
+    list.clear();
+    SAFE_CALL_ZK(m_zk.getNodeChildren(list,
+                                      key,
+                                      this,
+                                      &m_groupsChangeHandler),
+                 "Reading the value of %s failed: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    return list;
+}
+IdList
+Factory::getDistributionNames(Application *app)
+{
+    TRACE( CL_LOG, "getDistributionNames" );
+
+    IdList list;
+    string key=
+        app->getKey() +
+        PATHSEPARATOR +
+        DISTRIBUTIONS;
+
+    list.clear();
+    SAFE_CALL_ZK(m_zk.getNodeChildren(list,
+                                      key,
+                                      this,
+                                      &m_distributionsChangeHandler),
+                 "Reading the value of %s failed: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    return list;
+}
+IdList
+Factory::getNodeNames(Group *grp)
+{
+    TRACE( CL_LOG, "getNodeNames" );
+
+    IdList list;
+    string key =
+        grp->getKey() +
+        PATHSEPARATOR +
+        NODES;
+
+    list.clear();
+    SAFE_CALL_ZK(m_zk.getNodeChildren(list,
+                                      key,
+                                      this,
+                                      &m_nodesChangeHandler),
+                 "Reading the value of %s failed: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    return list;
 }
 
 /*
@@ -2221,14 +2556,22 @@ Factory::updateCachedObject(FactoryEventHandler *cp,
 bool
 Factory::establishNotifyableReady(Notifyable *np)
 {
-    string ready = m_zk.getNodeData(np->getKey(),
-                                    this,
-                                    &m_notifyableReadyHandler);
+    string ready = "";
+
+    SAFE_CALL_ZK((ready = m_zk.getNodeData(np->getKey(),
+                                           this,
+                                           &m_notifyableReadyHandler)),
+                 "Reading the value of %s failed: %s",
+                 np->getKey().c_str(),
+                 true,
+                 true);
+
     if (ready == "ready") {
         np->setReady(true);
     } else {
         np->setReady(false);
     }
+
     return np->isReady();
 }
 
@@ -2241,6 +2584,21 @@ Factory::handleNotifyableReady(Notifyable *np,
                                const string &path)
 {
     TRACE( CL_LOG, "handleNotifyableReady" );
+
+    /*
+     * If there's no notifyable, punt.
+     */
+    if (np == NULL) {
+        LOG_WARN( CL_LOG,
+                  "Punting on event: %d on %s",
+                  etype,
+                  path.c_str() );
+        return EN_NO_EVENT;
+    }
+
+    LOG_WARN( CL_LOG, 
+              "handleNotifyableReady(%s)",
+              np->getKey().c_str() );
 
     (void) establishNotifyableReady(np);
     return EN_NOTIFYABLE_READY;
@@ -2295,6 +2653,26 @@ Factory::handleNotifyableExists(Notifyable *np,
         establishNotifyableReady(np);
         return EN_NOTIFYABLE_CREATED;
     }
+
+    /*
+     * SHOULD NOT HAPPEN!
+     */
+    return EN_NO_EVENT;
+}
+
+/*
+ * Handle a change in the set of applications
+ */
+Event
+Factory::handleApplicationsChange(Notifyable *np,
+                                  int etype,
+                                  const string &path)
+{
+    TRACE( CL_LOG, "handleApplicationsChange" );
+
+    /*
+     * For now return EN_NO_EVENT.
+     */
     return EN_NO_EVENT;
 }
 
@@ -2309,7 +2687,37 @@ Factory::handleGroupsChange(Notifyable *np,
 {
     TRACE( CL_LOG, "handleGroupsChange" );
 
-    return EN_NO_EVENT;
+    /*
+     * If there's no notifyable, punt.
+     */
+    if (np == NULL) {
+        LOG_WARN( CL_LOG,
+                  "Punting on event: %d on %s",
+                  etype,
+                  path.c_str() );
+        return EN_NO_EVENT;
+    }
+
+    LOG_WARN( CL_LOG,
+              "Got groups change event for : \"%s\"",
+              np->getKey().c_str() );
+
+    /*
+     * Convert to application object.
+     */
+    Application *app = dynamic_cast<Application *>(np);
+    if (app == NULL) {
+        LOG_FATAL( CL_LOG,
+                   "Expected application object for %s",
+                   path.c_str() );
+        return EN_NO_EVENT;
+    }
+
+    if (app->cachingGroups()) {
+        app->recacheGroups();
+    }
+
+    return EN_APP_GROUPSCHANGE;
 }
 
 /*
@@ -2323,7 +2731,88 @@ Factory::handleDistributionsChange(Notifyable *np,
 {
     TRACE( CL_LOG, "handleDistributionsChange" );
 
-    return EN_NO_EVENT;
+    /*
+     * If there's no notifyable, punt.
+     */
+    if (np == NULL) {
+        LOG_WARN( CL_LOG,
+                  "Punting on event: %d on %s",
+                  etype,
+                  path.c_str() );
+        return EN_NO_EVENT;
+    }
+
+    LOG_WARN( CL_LOG,
+              "Got dists change event for : \"%s\"",
+              np->getKey().c_str() );
+
+    /*
+     * Convert to application object.
+     */
+    Application *app = dynamic_cast<Application *>(np);
+    if (app == NULL) {
+        LOG_FATAL( CL_LOG,
+                   "Expected application object for %s",
+                   path.c_str() );
+        return EN_NO_EVENT;
+    }
+
+    /*
+     * If we are caching the distribution objects,
+     * then update the cache.
+     */
+    if (app->cachingDists()) {
+        app->recacheDists();
+    }
+
+    return EN_APP_DISTSCHANGE;
+}
+
+/*
+ * Handle a change in the set of nodes in a group.
+ */
+Event
+Factory::handleNodesChange(Notifyable *np,
+                           int etype,
+                           const string &path)
+{
+    TRACE( CL_LOG, "handleNodesChange" );
+
+    /*
+     * If there's no notifyable, punt.
+     */
+    if (np == NULL) {
+        LOG_WARN( CL_LOG,
+                  "Punting on event: %d on %s",
+                  etype,
+                  path.c_str() );
+        return EN_NO_EVENT;
+    }
+
+    LOG_WARN( CL_LOG,
+              "Got nodes change event for : \"%s\"",
+              np->getKey().c_str() );
+
+    /*
+     * Convert to a group object.
+     */
+    Group *grp = dynamic_cast<Group *>(np);
+    if (grp == NULL) {
+        LOG_FATAL( CL_LOG,
+                   "Expected group object for %s",
+                   path.c_str() );
+        return EN_NO_EVENT;
+    }
+
+    /*
+     * If we are caching the node objects,
+     * then update the cache.
+     */
+    if (grp->cachingNodes()) {
+        grp->recacheNodes();
+    }
+
+    return EN_GRP_MEMBERSHIP;
 }
 
 /*
@@ -2355,7 +2844,11 @@ Factory::handlePropertiesChange(Notifyable *np,
     /*
      * Re-establish interest in the existence of this notifyable.
      */
-    (void) m_zk.nodeExists(path, this, &m_notifyableExistsHandler);
+    SAFE_CALL_ZK(m_zk.nodeExists(path, this, &m_notifyableExistsHandler),
+                 "Could not establish interest in the existence of %s: %s",
+                 path.c_str(),
+                 false,
+                 true);
 
     /*
      * Now decide what to do with the event.
@@ -2367,14 +2860,14 @@ Factory::handlePropertiesChange(Notifyable *np,
 	np->setReady(false);
 	return EN_NOTIFYABLE_DELETED;
     }
-    else if (etype == CREATED_EVENT) {
+    if (etype == CREATED_EVENT) {
 	LOG_WARN( CL_LOG,
 		  "Created event for path: %s",
 		  path.c_str() );
 	establishNotifyableReady(np);
 	return EN_NOTIFYABLE_CREATED;
     }
-    else if (etype == CHANGED_EVENT) {
+    if (etype == CHANGED_EVENT) {
 	LOG_WARN( CL_LOG,
 		  "Changed event for path: %s",
 		  path.c_str() );
@@ -2409,6 +2902,45 @@ Factory::handleManualOverridesChange(Notifyable *np,
     TRACE( CL_LOG, "handleManualOverridesChange" );
 
     return EN_NO_EVENT;
+}
+
+/*
+ * Handle change in client-reported state for a node.
+ */
+Event
+Factory::handleClientStateChange(Notifyable *np,
+                                 int etype,
+                                 const string &path)
+{
+    TRACE( CL_LOG, "handleClientStateChange" );
+
+    return EN_NO_EVENT;
+}
+
+/*
+ * Handle change in master-set desired state for
+ * a node.
+ */
+Event
+Factory::handleMasterSetStateChange(Notifyable *np,
+                                    int etype,
+                                    const string &path)
+{
+    TRACE( CL_LOG, "handleMasterSetStateChange" );
+
+    return EN_NO_EVENT;
+}
+
+/*
+ * Re-establish the ZooKeeper connection and
+ * re-initialize all the watches.
+ */
+void
+Factory::reestablishConnectionAndState(const char *what)
+    throw(ClusterException)
+{
+    /* TBD -- Real implementation */
+    throw ClusterException(what);
 }
 
 };	/* End of 'namespace clusterlib' */

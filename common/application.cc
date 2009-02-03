@@ -113,6 +113,33 @@ Application::getDistribution(const string &distName,
 void
 Application::updateCachedRepresentation()
 {
+    TRACE( CL_LOG, "updateCachedRepresentation" );
+
+    if (cachingGroups()) {
+        recacheGroups();
+    }
+    if (cachingDists()) {
+        recacheDists();
+    }
+}
+
+/*
+ * Refresh the cache of groups in this application.
+ */
+void
+Application::recacheGroups()
+{
+    TRACE( CL_LOG, "recacheGroups" );
+}
+
+/*
+ * Refresh the cache of distributions in this
+ * application.
+ */
+void
+Application::recacheDists()
+{
+    TRACE( CL_LOG, "recacheDists" );
 }
 
 };	/* End of 'namespace clusterlib' */

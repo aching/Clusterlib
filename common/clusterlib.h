@@ -295,6 +295,24 @@ class Factory
     IdList getApplicationNames();
 
     /*
+     * Retrieve a list of all (currently known) group names within
+     * the given application.
+     */
+    IdList getGroupNames(Application *app);
+
+    /*
+     * Retrieve a list of all (currently known) distribution
+     * names within the given application.
+     */
+    IdList getDistributionNames(Application *app);
+
+    /*
+     * Retrieve a list of all (currently known) node names
+     * within the given group.
+     */
+    IdList getNodeNames(Group *grp);
+
+    /*
      * Retrieve (and potentially create) instances of
      * objects representing applications, groups, nodes,
      * and distributions.
@@ -339,11 +357,10 @@ class Factory
 			  int32_t versionNumber);
     void updateNodeClientState(const string &key,
                                const string &cs);
-    void updateNodeServerStateDesc(const string &key,
-				   const string &ss,
-				   const string &sd);
-    void updateNodeMasterState(const string &key,
-                               const string &ms);
+    void updateNodeClientStateDesc(const string &key,
+                                   const string &desc);
+    void updateNodeMasterSetState(const string &key,
+                                  const string &ms);
 
     Application *getApplicationFromKey(const string &key,
                                        bool create);
@@ -455,6 +472,13 @@ class Factory
                                  const string &path);
 
     /*
+     * Handle changes in the set of applications.
+     */
+    Event handleApplicationsChange(Notifyable *np,
+                                   int etype,
+                                   const string &path);
+
+    /*
      * Handle changes in the set of groups in
      * an application.
      */
@@ -469,6 +493,13 @@ class Factory
     Event handleDistributionsChange(Notifyable *np,
                                     int etype,
                                     const string &path);
+
+    /*
+     * Handle changes in the set of nodes in a group.
+     */
+    Event handleNodesChange(Notifyable *np,
+                            int etype,
+                            const string &path);
 
     /*
      * Handle changes in a property list.
@@ -491,6 +522,29 @@ class Factory
     Event handleManualOverridesChange(Notifyable *np,
                                       int etype,
                                       const string &path);
+
+    /*
+     * Handle changes in client-reported state for
+     * a node.
+     */
+    Event handleClientStateChange(Notifyable *np,
+                                  int etype,
+                                  const string &path);
+
+    /*
+     * Handle changes in master-set desired state
+     * for a node.
+     */
+    Event handleMasterSetStateChange(Notifyable *np,
+                                     int etype,
+                                     const string &path);
+
+    /*
+     * Re-establish connection with ZooKeeper and re-establish
+     * all the watches.
+     */
+    void reestablishConnectionAndState(const char *msg)
+	throw(ClusterException);
 
   private:
 
@@ -606,11 +660,15 @@ class Factory
      */
     FactoryEventHandler m_notifyableReadyHandler;
     FactoryEventHandler m_notifyableExistsHandler;
+    FactoryEventHandler m_propertiesChangeHandler;
+    FactoryEventHandler m_applicationsChangeHandler;
     FactoryEventHandler m_groupsChangeHandler;
     FactoryEventHandler m_distributionsChangeHandler;
-    FactoryEventHandler m_propertiesChangeHandler;
     FactoryEventHandler m_shardsChangeHandler;
     FactoryEventHandler m_manualOverridesChangeHandler;
+    FactoryEventHandler m_nodesChangeHandler;
+    FactoryEventHandler m_nodeClientStateChangeHandler;
+    FactoryEventHandler m_nodeMasterSetStateChangeHandler;
 };
 
 /*
@@ -737,16 +795,15 @@ class FactoryOps
     {
         mp_f->updateNodeClientState(key, cs);
     }
-    void updateNodeServerStateDesc(const string &key,
-				   const string &ss,
-				   const string &sd)
+    void updateNodeClientStateDesc(const string &key,
+                                   const string &desc)
     {
-        mp_f->updateNodeServerStateDesc(key, ss, sd);
+        mp_f->updateNodeClientStateDesc(key, desc);
     }
-    void updateNodeMasterState(const string &key,
-                               const string &ms)
+    void updateNodeMasterSetState(const string &key,
+                                  const string &ms)
     {
-        mp_f->updateNodeMasterState(key, ms);
+        mp_f->updateNodeMasterSetState(key, ms);
     }
 
     Application *getApplicationFromKey(const string &key,
@@ -863,6 +920,26 @@ class FactoryOps
     bool establishNotifyableReady(Notifyable *np)
     {
         return mp_f->establishNotifyableReady(np);
+    }
+
+    /*
+     * Return entity names.
+     */
+    IdList getApplicationNames()
+    {
+        return mp_f->getApplicationNames();
+    }
+    IdList getGroupNames(Application *app)
+    {
+        return mp_f->getGroupNames(app);
+    }
+    IdList getDistributionNames(Application *app)
+    {
+        return mp_f->getDistributionNames(app);
+    }
+    IdList getNodeNames(Group *grp)
+    {
+        return mp_f->getNodeNames(grp);
     }
 
   private:

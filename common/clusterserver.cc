@@ -254,12 +254,13 @@ Server::setHealthy(const HealthReport &report)
 				     getGroupName(),
 				     getNodeName(),
 				     (m_flags & SF_MANAGED) == SF_MANAGED);
-   string value = report.getHealthState() == HealthReport::HS_HEALTHY ? 
-       ClusterlibStrings::HEALTHY : ClusterlibStrings::UNHEALTHY;
+    string value =
+        (report.getHealthState() == HealthReport::HS_HEALTHY)
+        ? ClusterlibStrings::HEALTHY
+        : ClusterlibStrings::UNHEALTHY;
  
-    mp_f->updateNodeServerStateDesc(key,
-				    value,
-				    report.getStateDescription());
+    mp_f->updateNodeClientState(key, value);
+    mp_f->updateNodeClientStateDesc(key, report.getStateDescription());
 }
 
 };	/* End of 'namespace clusterlib' */

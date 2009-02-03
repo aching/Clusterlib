@@ -352,16 +352,19 @@ const int EN_NOTIFYABLE_CREATED =	(1<<0);
 const int EN_NOTIFYABLE_DELETED =	(1<<1);
 const int EN_NOTIFYABLE_READY =		(1<<2);
 
-const int EN_GRP_MEMBERSHIP =		(1<<7);
-const int EN_GRP_LEADERSHIP =		(1<<8);
+const int EN_APP_GROUPSCHANGE =		(1<<3);
+const int EN_APP_DISTSCHANGE =		(1<<4);
 
-const int EN_NODE_HEALTHCHANGE =	(1<<12);
-const int EN_NODE_CONNECTCHANGE =	(1<<13);
-const int EN_NODE_MASTERSTATECHANGE =	(1<<14);
+const int EN_GRP_MEMBERSHIP =		(1<<5);
+const int EN_GRP_LEADERSHIP =		(1<<6);
 
-const int EN_DIST_CHANGE =		(1<<22);
+const int EN_NODE_HEALTHCHANGE =	(1<<7);
+const int EN_NODE_CONNECTCHANGE =	(1<<8);
+const int EN_NODE_MASTERSTATECHANGE =	(1<<9);
 
-const int EN_PROP_CHANGE =		(1<<25);
+const int EN_DIST_CHANGE =		(1<<10);
+
+const int EN_PROP_CHANGE =		(1<<11);
 
 /*
  * An event type.

@@ -66,6 +66,20 @@ Group::getNode(const string &nodeName,
 void
 Group::updateCachedRepresentation()
 {
+    TRACE( CL_LOG, "updateCachedRepresentation" );
+
+    if (cachingNodes()) {
+        recacheNodes();
+    }
+}
+
+/*
+ * Recache the nodes in this group.
+ */
+void
+Group::recacheNodes()
+{
+    TRACE( CL_LOG, "recacheNodes" );
 }
 
 };	/* End of 'namespace clusterlib' */

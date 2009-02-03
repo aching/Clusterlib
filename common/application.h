@@ -29,9 +29,18 @@ class Application
 		    bool create = false);
 
     /*
-     * Retrieve a map of all groups within the application.
+     * Retrieve a map of all currently known groups within
+     * the application.
      */
-    GroupMap *getGroups();
+    GroupMap getGroups()
+    {
+        Locker l(getGroupMapLock());
+
+        m_cachingGroups = true;
+        recacheGroups();
+        return m_groups;
+    }
+
 
     /*
      * Retrieve a named data distribution within an
@@ -41,16 +50,17 @@ class Application
 				      bool create = false);
 
     /*
-     * Retrieve a map of all data distributions within the
-     * application (at the application level).
+     * Retrieve a map of all currently known data distributions
+     * within the application.
      */
-    DataDistributionMap *getDistributions() { return &m_distributions; }
+    DataDistributionMap getDistributions()
+    {
+        Locker l(getDistributionMapLock());
 
-    /*
-     * Have the distribution and group maps been filled already?
-     */
-    bool filledGroupMap() { return m_filledGroupMap; }
-    bool filledDataDistributionMap() { return m_filledDataDistributionMap; }
+        m_cachingDists = true;
+        recacheDists();
+        return m_distributions;
+    }
 
   protected:
     /*
@@ -63,7 +73,9 @@ class Application
      * Constructor used by Factory.
      */
     Application(const string &name, const string &key, FactoryOps *f)
-        : Notifyable(f, key, name)
+        : Notifyable(f, key, name),
+          m_cachingGroups(false),
+          m_cachingDists(false)
     {
         m_groups.clear();
         m_distributions.clear();
@@ -72,13 +84,12 @@ class Application
     }
 
     /*
-     * Did we already fill the group and/or distribution maps?
+     * Are we caching the distributions and groups fully?
      */
-    void setFilledGroupMap(bool v) { m_filledGroupMap = v; }
-    void setFilledDataDistributionMap(bool v)
-    {
-        m_filledDataDistributionMap = v;
-    }
+    bool cachingGroups() { return m_cachingGroups; }
+    bool cachingDists() { return m_cachingDists; }
+    void recacheGroups();
+    void recacheDists();
 
     /*
      * Get locks associated with the various maps.
@@ -112,15 +123,20 @@ class Application
      * Map of all groups within this application.
      */
     GroupMap m_groups;
-    bool m_filledGroupMap;
     Mutex m_grpLock;
 
     /*
      * Map of all data distributions within this application.
      */
     DataDistributionMap m_distributions;
-    bool m_filledDataDistributionMap;
     Mutex m_distLock;
+
+    /*
+     * Variables to remember whether we're caching groups
+     * and distributions fully.
+     */
+    bool m_cachingGroups;
+    bool m_cachingDists;
 };
 
 };	/* End of 'namespace clusterlib' */

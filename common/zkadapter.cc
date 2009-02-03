@@ -199,20 +199,23 @@ ZooKeeperAdapter::validatePath(const string &path)
         throw ZooKeeperException( string("Node path must start with '/' but"
                                          "it was '") +
                                   path +
-                                  "'" );
+                                  "'",
+                                  m_state == AS_CONNECTED );
     }
     if (path.length() > 1) {
         if (path.rfind( "/" ) == path.length() - 1) {
             throw ZooKeeperException( string("Node path must not end with "
                                              "'/' but it was '") +
                                       path +
-                                      "'" );
+                                      "'",
+                                      m_state == AS_CONNECTED );
         }
         if (path.find( "//" ) != string::npos) {
             throw ZooKeeperException( string("Node path must not contain "
                                              "'//' but it was '") +
                                       path +
-                                      "'" ); 
+                                      "'",
+                                      m_state == AS_CONNECTED );
         }
     }
 }
@@ -252,9 +255,11 @@ ZooKeeperAdapter::reconnect()
         m_stateLock.unlock();
     } else {
         m_stateLock.unlock();
-        throw ZooKeeperException( 
-            string("Unable to connect to ZK running at '") +
-                    m_zkConfig.getHosts() + "'" );
+        throw ZooKeeperException(
+	    string("Unable to connect to ZK running at '") +
+            m_zkConfig.getHosts() +
+            "'",
+            false);
     }
     
     LOG_DEBUG( LOG, "mp_zkHandle: %p, state %d", mp_zkHandle, m_state ); 
@@ -402,7 +407,9 @@ ZooKeeperAdapter::registerContext(WatchableMethod method,
     if (context == NULL) {
 	LOG_ERROR ( LOG, 
 		  "registerContext must have a valid context" );
-	throw ZooKeeperException("registerContext must have a valid context");
+	throw ZooKeeperException(
+		"registerContext must have a valid context",
+                m_state == AS_CONNECTED);
     }
 
     m_zkContexts[method][path][listener] = context;
@@ -473,12 +480,14 @@ ZooKeeperAdapter::waitUntilConnected()
     if (!connected) {
         if (timeout > 0) {
             LOG_WARN( LOG, "Timed out while waiting for connection to ZK" );
-            throw ZooKeeperException("Timed out while waiting for "
-                                    "connection to ZK");
+            throw ZooKeeperException(
+		"Timed out while waiting for connection to ZK",
+                false);
         } else {
             LOG_ERROR( LOG, "Global timeout expired and still not connected to ZK" );
-            throw ZooKeeperException("Global timeout expired and still not "
-                                     "connected to ZK");
+            throw ZooKeeperException(
+		"Global timeout expired and still not connected to ZK",
+                false);
         }
     }
     LOG_INFO( LOG, "Connected!" );
@@ -492,8 +501,10 @@ ZooKeeperAdapter::verifyConnection()
     m_stateLock.lock();
     try {
         if (m_state == AS_DISCONNECTED) {
-            throw ZooKeeperException("Disconnected from ZK. " \
-                "Please use reconnect() before attempting to use any ZK API");
+            throw ZooKeeperException(
+		"Disconnected from ZK. " \
+                "Please use reconnect() before attempting to use any ZK API",
+                false);
         } else if (m_state != AS_CONNECTED) {
             LOG_TRACE( LOG, "Checking if need to reconnect..." );
             //we are not connected, so check if connection in progress...
@@ -505,7 +516,8 @@ ZooKeeperAdapter::verifyConnection()
                     //...too bad, disallowed :(
                     LOG_TRACE( LOG, "no. Sorry." );
                     throw ZooKeeperException("ZK connection is down and "
-                                             "auto-reconnect is not allowed");
+                                             "auto-reconnect is not allowed",
+                                             false);
                 } else {
                     LOG_TRACE( LOG, "...yes. About to reconnect" );
                 }
@@ -570,7 +582,8 @@ ZooKeeperAdapter::createNode(const string &path,
                         throw ZooKeeperException( string("Unable to create "
                                                          "node ") + 
                                                   path, 
-                                                  rc );
+                                                  rc,
+                                                  m_state == AS_CONNECTED );
                     }
                     pos++;
                 } else {
@@ -582,7 +595,8 @@ ZooKeeperAdapter::createNode(const string &path,
         LOG_ERROR( LOG,"Error %d for %s", rc, path.c_str() );
         throw ZooKeeperException( string("Unable to create node ") +
                                   path,
-                                  rc );
+                                  rc,
+                                  m_state == AS_CONNECTED );
     } else {
         LOG_INFO( LOG, "%s has been created", realPath );
         returnPath = string( realPath );
@@ -625,7 +639,8 @@ ZooKeeperAdapter::createSequence(const string &path,
                                       createdPath + 
                                       "' to start with '" +
                                       path +
-                                      "'" );
+                                      "'",
+                                      m_state == AS_CONNECTED );
         }
         string seqSuffix =
             createdPath.substr( path.length(), 
@@ -634,7 +649,8 @@ ZooKeeperAdapter::createSequence(const string &path,
         int64_t seq = strtol( seqSuffix.c_str(), &ptr, 10 );
         if (ptr != NULL && *ptr != '\0') {
             throw ZooKeeperException( string("Expecting a number but got ") +
-                                      seqSuffix );
+                                      seqSuffix,
+                                      m_state == AS_CONNECTED );
         }
         return seq;
     }
@@ -675,7 +691,8 @@ ZooKeeperAdapter::deleteNode(const string &path,
         }
         LOG_ERROR( LOG, "Error %d for %s", rc, path.c_str() );
         throw ZooKeeperException( string("Unable to delete node ") + path,
-                                  rc );
+                                  rc,
+                                  m_state == AS_CONNECTED );
     } else {
         LOG_INFO( LOG, "%s has been deleted", path.c_str() );
         return true;
@@ -726,7 +743,8 @@ ZooKeeperAdapter::nodeExists(const string &path,
         LOG_ERROR( LOG, "Error %d for %s", rc, path.c_str() );
         throw ZooKeeperException(
                  string("Unable to check existence of node ") + path,
-                 rc );
+                 rc,
+                 m_state == AS_CONNECTED );
     } else {
         return true;        
     }
@@ -770,7 +788,8 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
         LOG_ERROR( LOG, "Error %d for %s", rc, path.c_str() );
         throw ZooKeeperException( string("Unable to get children of node ") +
                                   path, 
-                                  rc );
+                                  rc,
+                                  m_state == AS_CONNECTED );
     } else {
         for (int i = 0; i < children.count; ++i) {
             //convert each child's path from relative to absolute 
@@ -830,7 +849,9 @@ ZooKeeperAdapter::getNodeData(const string &path,
     if (rc != ZOK) {
         LOG_ERROR( LOG, "Error %d for %s", rc, path.c_str() );
         throw ZooKeeperException( 
-            string("Unable to get data of node ") + path, rc 
+            string("Unable to get data of node ") + path,
+            rc,
+            m_state == AS_CONNECTED
         );
     } else {
         return string( buffer, buffer + len );
@@ -859,7 +880,8 @@ ZooKeeperAdapter::setNodeData(const string &path,
         LOG_ERROR( LOG, "Error %d for %s", rc, path.c_str() );
         throw ZooKeeperException( string("Unable to set data for node ") +
                                   path,
-                                  rc );
+                                  rc,
+                                  m_state == AS_CONNECTED );
     }
 }
 

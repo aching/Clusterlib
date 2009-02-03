@@ -35,14 +35,17 @@ class Group
 		  bool create = false);
 
     /*
-     * Retrieve the map of nodes in this group.
+     * Retrieve a map of all currently known nodes in this
+     * group.
      */
-    NodeMap *getNodes() { return &m_nodes; }
+    NodeMap getNodes() 
+    {
+        Locker l(getNodeMapLock());
 
-    /*
-     * Has the node map already been filled?
-     */
-    bool filledNodeMap() { return m_filledNodeMap; }
+        m_cachingNodes = true;
+        recacheNodes();
+        return m_nodes;
+    }
 
   protected:
     /*
@@ -59,7 +62,7 @@ class Group
           FactoryOps *f)
         : Notifyable(f, key, name),
           mp_app(app),
-          m_filledNodeMap(false)
+          m_cachingNodes(false)
     {
         m_nodes.clear();
 
@@ -67,9 +70,10 @@ class Group
     }
 
     /*
-     * Set the filled flag for the node map.
+     * Are we caching all nodes fully?
      */
-    void setFilledNodeMap(bool v) { m_filledNodeMap = v; }
+    bool cachingNodes() { return m_cachingNodes; }
+    void recacheNodes();
 
     /*
      * Update the cached representation of this group.
@@ -110,9 +114,9 @@ class Group
     Mutex m_nodeMapLock;
 
     /*
-     * Denote whether we've filled the node map.
+     * Are we caching nodes fully?
      */
-    bool m_filledNodeMap;
+    bool m_cachingNodes;
 };
 
 };	/* End of 'namespace clusterlib' */
