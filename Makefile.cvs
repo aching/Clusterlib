@@ -1,9 +1,8 @@
 default: all
 
 all:
-	aclocal -I /usr/releng/external/cppunit-1.12.0/share/aclocal
+	aclocal
 	libtoolize --force
-	autoheader
-	automake --add-missing --force
+	automake --add-missing
 	autoconf
 

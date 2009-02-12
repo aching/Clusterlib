@@ -1,2 +1,5 @@
-@BUILD_PATH@/common				/bin/
-- common
+@SOURCE_PATH@/common				/include
+- *.h
+
+@BUILD_PATH@/common				/lib
+- libcluster.a

@@ -8,12 +8,15 @@ METASOURCES = AUTO
 bin_PROGRAMS = test
 test_LDADD = \
 	$(top_builddir)/common/libcluster.a \
-	@LOG4CXX@ \
-	@ZOOKEEPER@ \
+	@LOG4CXX_LIB@ \
+	@ZOOKEEPER_LIB@ \
 	@CPPUNIT_LIBS@ \
+	@APR_LIB@ \
+	@APRUTIL_LIB@ \
+	@EXPAT_LIB@ \
+	@LIB_THREAD_OS@ \
 	@MPICH_LIB@
-AM_CXXFLAGS = -Wall -g 
-test_CXXFLAGS = $(CPPUNIT_CFLAGS) -DMPICH_IGNORE_CXX_SEEK
+CXXFLAGS = -Wall -g $(CPPUNIT_CFLAGS) -DMPICH_IGNORE_CXX_SEEK @CXXFLAGS@
 test_SOURCES = \
 	test.cc \
 	clusterlibProperties.cc 

@@ -1,14 +1,14 @@
 AC_INIT(configure.in)
 
-AM_CONFIG_HEADER(config.h)
+#AM_CONFIG_HEADER(config.h)
 AM_INIT_AUTOMAKE(clusterlib, 0.0.2)
 
 AM_PATH_CPPUNIT(1.10.12)
 
 AC_LANG_CPLUSPLUS
 AC_PROG_CXX
-AC_PROG_LIBTOOL
-#AC_PROG_RANLIB
+#AC_PROG_LIBTOOL
+AC_PROG_RANLIB
 
 BUILD_PATH="`pwd`"
 
@@ -37,9 +37,10 @@ if (test $enviroment_use_ccache ) && (test $enviroment_use_ccache = "yes" ); the
    default_with_ccache="yes"
 fi
 
-#if test $os_type = "Linux"; then
-#    AR="/usr/bin/ar cru"
-#fi
+if test $os_type = "Linux"; then
+    AR="/usr/bin/ar cru"
+    AC_SUBST(AR)
+fi
 
 #AC_DEFINE_UNQUOTED($os_type)
 #AC_DEFINE_UNQUOTED(OS_$osver)
@@ -102,6 +103,27 @@ AC_ARG_WITH(gcc,
 AC_MSG_RESULT($with_gcc)
 AC_MSG_RESULT($withval)
 AC_MSG_RESULT($compiler_version)
+
+if eval "test x$with_gcc = xyes"; then
+  DEP1=""
+  DEP2="#"
+else
+  DEP1="#"
+  DEP2=""
+fi
+
+if eval "test x$with_gcc = xyes"; then
+  CXXDEP1=""
+  CXXDEP2="#"
+else
+  CXXDEP1="#"
+  CXXDEP2=""
+fi
+
+AC_SUBST(DEP1)
+AC_SUBST(DEP2)
+AC_SUBST(CXXDEP1)
+AC_SUBST(CXXDEP2)
 
 ### Boost ###
 
@@ -204,6 +226,108 @@ AC_SUBST(ZOOKEEPER_PATH)
 AC_SUBST(ZOOKEEPER_LIB_PATH)
 AC_SUBST(ZOOKEEPER_INCLUDES)
 AC_SUBST(ZOOKEEPER_LIB)
+
+### APR ###
+
+APR_VERSION="1.2.12"
+
+AC_MSG_CHECKING(location of APR headers and libraries)
+AC_ARG_WITH(apr_root,
+  [ --with-apr-root   location of APR libraries and headers.],
+  [ case "${withval}" in
+      yes|no)
+        AC_ERROR(Option --with-apr-root requires a path argument.)
+        ;;
+    esac ],
+  [
+        with_apr_root="/usr/releng/external/apr/$APR_VERSION"
+  ]
+)
+AC_MSG_RESULT($with_apr_root)
+
+APR_PATH="${with_apr_root}"
+APR_LIB_PATH="$APR_PATH/lib"
+APR_INCLUDES="$APR_PATH/include"
+APR_LIB="$APR_LIB_PATH/libapr-1.a"
+
+AC_CHECK_LIB(apr-1, main, [APR="-L${APR_LIB_PATH} -lapr-1"],,["-L${APR_LIB_PATH}"])
+if test -z "${APR}"; then
+  AC_ERROR("... invalid APR library!")
+fi
+
+AC_SUBST(APR)
+AC_SUBST(APR_PATH)
+AC_SUBST(APR_LIB_PATH)
+AC_SUBST(APR_INCLUDES)
+AC_SUBST(APR_LIB)
+
+### APRUTIL ###
+
+APRUTIL_VERSION=$APR_VERSION
+
+AC_MSG_CHECKING(location of APR utility headers and libraries)
+AC_ARG_WITH(aprutil_root,
+  [ --with-aprutil-root   location of APR utility libraries and headers.],
+  [ case "${withval}" in
+      yes|no)
+        AC_ERROR(Option --with-aprutil-root requires a path argument.)
+        ;;
+    esac ],
+  [
+        with_aprutil_root="/usr/releng/external/apr-util/$APRUTIL_VERSION"
+  ]
+)
+AC_MSG_RESULT($with_aprutil_root)
+
+APRUTIL_PATH="${with_aprutil_root}"
+APRUTIL_LIB_PATH="$APRUTIL_PATH/lib"
+APRUTIL_INCLUDES="$APRUTIL_PATH/include"
+APRUTIL_LIB="$APRUTIL_LIB_PATH/libaprutil-1.a"
+
+AC_CHECK_LIB(aprutil-1, main, [APRUTIL="-L${APRUTIL_LIB_PATH} -laprutil-1"],,["-L${APRUTIL_LIB_PATH}"])
+if test -z "${APRUTIL}"; then
+  AC_ERROR("... invalid APR utility library!")
+fi
+
+AC_SUBST(APRUTIL)
+AC_SUBST(APRUTIL_PATH)
+AC_SUBST(APRUTIL_LIB_PATH)
+AC_SUBST(APRUTIL_INCLUDES)
+AC_SUBST(APRUTIL_LIB)
+
+### Expat ###
+
+EXPAT_VERSION="1.95.8"
+
+AC_MSG_CHECKING(location of expat headers and libraries)
+AC_ARG_WITH(expat_root,
+  [ --with-expat-root   location of expat libraries and headers.],
+  [ case "${withval}" in
+      yes|no)
+        AC_ERROR(Option --with-expat-root requires a path argument.)
+        ;;
+    esac ],
+  [
+        with_expat_root="/usr/releng/external/expat/$EXPAT_VERSION"
+  ]
+)
+AC_MSG_RESULT($with_expat_root)
+
+EXPAT_PATH="${with_expat_root}"
+EXPAT_LIB_PATH="$EXPAT_PATH/lib"
+EXPAT_INCLUDES="$EXPAT_PATH/include"
+EXPAT_LIB="$EXPAT_LIB_PATH/libexpat.a"
+
+AC_CHECK_LIB(expat, main, [EXPAT="-L${EXPAT_LIB_PATH} -lexpat"],,["-L${EXPAT_LIB_PATH}"])
+if test -z "${EXPAT}"; then
+  AC_ERROR("... invalid expat library!")
+fi
+
+AC_SUBST(EXPAT)
+AC_SUBST(EXPAT_PATH)
+AC_SUBST(EXPAT_LIB_PATH)
+AC_SUBST(EXPAT_INCLUDES)
+AC_SUBST(EXPAT_LIB)
 
 ### YTS ###
 

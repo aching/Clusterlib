@@ -73,7 +73,7 @@ class ClusterlibStrings
     static const string PATHSEPARATOR;
 
     static const string CLUSTERLIB;
-    static const string VERSION;
+    static const string CLUSTERLIBVERSION;
 
     static const string PROPERTIES;
     static const string CONFIGURATION;

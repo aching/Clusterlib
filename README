@@ -11,8 +11,6 @@ Environment:
 
 Add the following early in your path:
 
-/usr/releng/tools/automake/1.9.4/bin
-/usr/releng/tools/autoconf/2.59/bin
 /usr/releng/external/cppunit-1.12.0/bin
 
 Building:

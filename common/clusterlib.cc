@@ -56,7 +56,7 @@ const string ClusterlibStrings::ROOTNODE = "/";
 const string ClusterlibStrings::PATHSEPARATOR = "/";
 
 const string ClusterlibStrings::CLUSTERLIB = "clusterlib";
-const string ClusterlibStrings::VERSION = "1.0";
+const string ClusterlibStrings::CLUSTERLIBVERSION = "1.0";
 
 const string ClusterlibStrings::PROPERTIES = "properties";
 const string ClusterlibStrings::CONFIGURATION = "configuration";
@@ -1330,7 +1330,7 @@ Factory::createAppKey(const string &appName)
         ROOTNODE +
         CLUSTERLIB +
         PATHSEPARATOR +
-        VERSION +
+        CLUSTERLIBVERSION +
         PATHSEPARATOR +
         APPLICATIONS +
         PATHSEPARATOR +
@@ -1512,7 +1512,7 @@ Factory::hasAppKeyPrefix(vector<string> &components)
 {
     if ((components.size() < 4) ||
         (components[0] != CLUSTERLIB) ||
-        (components[1] != VERSION) ||
+        (components[1] != CLUSTERLIBVERSION) ||
         (components[2] != APPLICATIONS)) {
         return false;
     }
@@ -1536,7 +1536,7 @@ Factory::getAppKeyPrefix(vector<string> &components)
         ROOTNODE +
         CLUSTERLIB +
         PATHSEPARATOR +
-        VERSION +
+        CLUSTERLIBVERSION +
         PATHSEPARATOR +
         APPLICATIONS +
         PATHSEPARATOR +
@@ -1647,7 +1647,7 @@ Factory::nodeNameFromKey(const string &key)
 /*
  * Remove the name from the key such that it is removed at most once
  * and deepest in the namespace.  Does not remove the CLUSTERLIB,
- * VERSION, APPLICATIONS, PROPERTIES, or the application name.
+ * CLUSTERLIBVERSION, APPLICATIONS, PROPERTIES, or the application name.
  */
 string 
 Factory::removeObjectFromKey(const string &key)
@@ -2351,7 +2351,7 @@ Factory::getApplicationNames()
         ROOTNODE +
         CLUSTERLIB +
         PATHSEPARATOR +
-        VERSION;
+        CLUSTERLIBVERSION;
 
     list.clear();
     SAFE_CALL_ZK(m_zk.getNodeChildren(list,
