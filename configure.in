@@ -329,74 +329,10 @@ AC_SUBST(EXPAT_LIB_PATH)
 AC_SUBST(EXPAT_INCLUDES)
 AC_SUBST(EXPAT_LIB)
 
-### YTS ###
-
-CDXCORE_VERSION="7.4.10"
-
-CDXCORE_PATH="/usr/releng/internal/catalog_cdxcore/$CDXCORE_VERSION$compiler_version"
-CDXCORE_INCLUDES="$CDXCORE_PATH/include"
-CDXCORE_LIB_PATH="$CDXCORE_PATH/lib"
-
-AC_SUBST(CDXCORE_PATH)
-AC_SUBST(CDXCORE_INCLUDES)
-AC_SUBST(CDXCORE_LIB_PATH)
-
-### CPPUTILS ###
-
-CPPUTILS_VERSION="5.0.0"
-
-CPPUTILS_PATH="/usr/releng/internal/c++_utils/$CPPUTILS_VERSION$compiler_version"
-CPPUTILS_INCLUDES="$CPPUTILS_PATH/include"
-CPPUTILS_LIB_PATH="$CPPUTILS_PATH/lib"
-
-AC_SUBST(CPPUTILS_PATH)
-AC_SUBST(CPPUTILS_INCLUDES)
-AC_SUBST(CPPUTILS_LIB_PATH)
-
-CDXCORE="-L$CDXCORE_LIB_PATH -lhtml -lcrawdex -lcrawdexcore -lBasics -linktomi -ldoc -L$CPPUTILS_LIB_PATH -lc++_utils_dbg -pthread -ldl -ltcl8.4 -lrt -lz"
-AC_SUBST(CDXCORE)
-
-CDXCORE_CXXFLAGS="-fPIC -DLinux=1 -DOS_TYPE=Linux -D_PTHREADS=1 -D_FILE_OFFSET_BITS=64 -D_REDHAT_=1 -DBAS_DBG_MSGS=1 -DUSE_EXCEPTIONS=1 -rdynamic -Wno-deprecated -Wno-invalid-offsetof -DNEED_HRTIME"
-AC_SUBST(CDXCORE_CXXFLAGS)
-
 ### Default CXXFLAGS ###
 
 BASE_CXXFLAGS="-Wall -Werror -g -O2"
 AC_SUBST(BASE_CXXFLAGS)
-
-### Simon ###
-
-SIMON_VERSION="1.1.1"
-
-AC_MSG_CHECKING(location of Simon headers and libraries)
-AC_ARG_WITH(simon_root,
-  [ --with-simon-root   location of Simon libraries and headers.],
-  [ case "${withval}" in
-      yes|no)
-        AC_ERROR(Option --with-simon-root requires a path argument.)
-        ;;
-    esac ],
-  [
-      with_simon_root="/usr/releng/internal/simon/$SIMON_VERSION$compiler_version"
-  ]
-)
-AC_MSG_RESULT($with_simon_root)
-
-SIMON_PATH="${with_simon_root}"
-SIMON_LIB_PATH="$SIMON_PATH/client/lib"
-SIMON_INCLUDES="$SIMON_PATH/client/include"
-SIMON_LIB="$SIMON_LIB_PATH/libsimon.a $SIMON_LIB_PATH/libBasicsSubset.a"
-
-AC_CHECK_LIB(simon, main, [SIMON="-L${SIMON_LIB_PATH} -lsimon -lBasicsSubset"],,["-L${SIMON_LIB_PATH}"])
-if test -z "${SIMON}"; then
-  AC_ERROR("... invalid Simon library!")
-fi
-
-AC_SUBST(SIMON)
-AC_SUBST(SIMON_PATH)
-AC_SUBST(SIMON_LIB_PATH)
-AC_SUBST(SIMON_INCLUDES)
-AC_SUBST(SIMON_LIB)
 
 ### log4cxx ###
 
@@ -471,25 +407,6 @@ AC_SUBST(NEW_MAKE_BUILDSTAMP_SOURCE)
 #AC_SUBST(NEW_MAKE_BUILDSTAMP_OBJECT)
 #AC_SUBST(NEW_MAKE_BUILDSTAMP_PICOBJECT)
 
-# openssl crypto md5
-LIB_SSL="-lssl"
-
-if test $os_type = "Linux" -a $os_version -ge 26; then
-        LIB_SSL="-lxmlsec1-openssl"
-fi
-AC_SUBST(LIB_SSL)
-
-OPENSSL_VERSION="0.9.7g"
-AC_SUBST(OPENSSL_VERSION)
-
-openssl_crypto_lib_ext=".a"
-openssl_crypto_lib_root="/usr/releng/external/openssl"
-openssl_crypto_inc_root="/usr/releng/external/openssl"
-OPENSSL_INC_DIR="${openssl_crypto_inc_root}/${OPENSSL_VERSION}/include/openssl"
-
-OPENSSLCRYPTO_INC_DIR="$OPENSSL_INC_DIR"
-LIBOPENSSLCRYPTO="${openssl_crypto_lib_root}/${OPENSSL_VERSION}/lib/libcrypto.a"
-
 AC_CHECK_LIB(thread, thr_create, LIBTHREAD="-lthread")
 AC_SUBST(LIBTHREAD)
 
@@ -516,24 +433,9 @@ fi
 AC_MSG_RESULT($LIB_KSTAT_OS)
 AC_SUBST(LIB_KSTAT_OS)
 
-AC_MSG_RESULT(OPENSSL_INC_DIR = ${OPENSSL_INC_DIR})
-AC_MSG_RESULT(OPENSSLCRYPTO_INC_DIR = ${OPENSSLCRYPTO_INC_DIR})
-AC_MSG_RESULT(LIBOPENSSLCRYPTO = ${LIBOPENSSLCRYPTO})
-
-AC_SUBST(OPENSSL_INC_DIR)
-AC_SUBST(OPENSSLCRYPTO_INC_DIR)
-AC_SUBST(LIBOPENSSLCRYPTO)
-
-
 AC_CHECK_LIB(rt, clock_gettime, LIBRT="-lrt")
 AC_CHECK_LIB(posix4, clock_gettime, LIBRT="-lposix4")
 AC_SUBST(LIBRT)
-
-AC_CHECK_LIB(socket, socket, LIBSOCKET="-lsocket")
-AC_SUBST(LIBSOCKET)
-
-AC_CHECK_LIB(nsl, gethostbyname, LIBNSL="-lnsl")
-AC_SUBST(LIBNSL)
 
 makefile_inc="$srcdir/Makefile.inc"
 AC_SUBST_FILE(makefile_inc)
