@@ -1,0 +1,67 @@
+In order to maintain consistent looking code we have defined the
+following conventions.  These conventions are not exhaustive and
+should be changed as necessary.
+
+- Identifier Names
+
+* Names of classes begin with an uppercase letter (for example, Canvas).
+* Both member and non-member functions begin with an lowercase letter
+  (for example, textStyle).
+* Class data members begin with its m (for example, m_nodes). 
+
+
+- Control Structures
+
+The control structures are as follows:
+
+if (expression) {
+    statements;
+} 
+else {
+    statements;
+}
+
+for (expression; expression; expression) {
+    statements;
+}
+
+do {
+    statements;
+} while (expression);
+
+while (expression) {
+    statements;
+}
+
+switch (expression) {
+  case constant:
+     statements;
+      break;
+  default:
+}
+
+
+- Logging and message output
+
+No direct messages to stdout or stderr (i.e. cout, cerr, printf, etc.)
+Use log4cxx for all messaging output.
+
+If the log message fits on a single line:
+
+LOG_ERROR(CL_LOG, "ZooKeeperException: %s", zke.what());
+
+Otherwise, the logger, and all arguments except the format must each
+be on their own line.  The format may span one or more lines.
+
+LOG_ERROR(LOG,
+          "Skipping ZK event (type: %d, state: %d, path: '%s'), "
+          "because ZK passed no context",
+          type,
+          state,
+          sPath.c_str());
+
+
+- File Names
+
+C++ source files use the suffix .cc. 
+C++ header files use the suffix .h.

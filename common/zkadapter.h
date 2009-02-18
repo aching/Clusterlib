@@ -384,6 +384,11 @@ class ZooKeeperAdapter
          * \brief Disconnects from the ZK and unregisters {@link #mp_zkHandle}.
          */
         void disconnect();
+
+	/**
+	 * \brief Synchronizes all events with ZK with the local server.
+	 */
+	bool sync(const string &path);
         
         /**
          * \brief Creates a new node identified by the given path. 

@@ -31,7 +31,7 @@
 	    if (!ze.isConnected()) { \
 		reestablishConnectionAndState(ze.what()); \
 	    } else if (_warning) { \
-		LOG_WARN( CL_LOG, _message, _node, ze.what() ); \
+		LOG_WARN(CL_LOG, _message, _node, ze.what()); \
 		if (_once) { \
 		    /* \
 		     * Only warn once. \
@@ -130,6 +130,20 @@ const string ClusterlibStrings::SERVERBIN = "server.bin";
  */
 const string ClusterlibStrings::MASTER = "master";
 
+/* 
+ * All indices use for parsing ZK node names
+ */
+const int ClusterlibInts::CLUSTERLIB_INDEX = 1;
+const int ClusterlibInts::VERSION_NAME_INDEX = 2;
+const int ClusterlibInts::APP_INDEX = 3;
+const int ClusterlibInts::APP_NAME_INDEX = 4;
+const int ClusterlibInts::GROUP_INDEX = 5;
+const int ClusterlibInts::GROUP_NAME_INDEX = 6;
+const int ClusterlibInts::DIST_INDEX = 5;
+const int ClusterlibInts::DIST_NAME_INDEX = 6;
+const int ClusterlibInts::NODE_TYPE_INDEX = 7;
+const int ClusterlibInts::NODE_NAME_INDEX = 8;
+
 /*
  * Constructor of Factory.
  *
@@ -139,7 +153,7 @@ const string ClusterlibStrings::MASTER = "master";
  */
 Factory::Factory(const string &registry)
     : m_config(registry, 3000),
-      m_zk(m_config, this, false),
+      m_zk(m_config, NULL, false),
       m_timerEventAdapter(m_timerEventSrc),
       m_zkEventAdapter(m_zk),
       m_shutdown(false),
@@ -178,7 +192,7 @@ Factory::Factory(const string &registry)
 	  this,
           &Factory::handleMasterSetStateChange)
 {
-    TRACE( CL_LOG, "Factory" );
+    TRACE(CL_LOG, "Factory");
 
     /*
      * Clear all the collections (lists, maps)
@@ -216,13 +230,15 @@ Factory::Factory(const string &registry)
      */
     try {
         m_zk.reconnect();
-        LOG_WARN( CL_LOG, "Waiting for connect event from ZooKeeper" );
+        LOG_WARN(CL_LOG, 
+                 "Waiting for connect event from ZooKeeper");
         if (m_eventSyncLock.lockedWait(3000) == false) {
 	    throw ClusterException(
 		"Did not receive connect event in time, aborting");
         }
-        LOG_WARN( CL_LOG, "After wait, m_connected == %d",
-		  static_cast<int>(m_connected));
+        LOG_WARN(CL_LOG, 
+                 "After wait, m_connected == %d",
+                 static_cast<int>(m_connected));
     } catch (zk::ZooKeeperException &e) {
         m_zk.disconnect();
         throw ClusterException(e.what());
@@ -234,7 +250,7 @@ Factory::Factory(const string &registry)
  */
 Factory::~Factory()
 {
-    TRACE( CL_LOG, "~Factory" );
+    TRACE(CL_LOG, "~Factory");
 
     removeAllClients();
     removeAllDataDistributions();
@@ -248,9 +264,9 @@ Factory::~Factory()
     try {
         m_zk.disconnect();
     } catch (zk::ZooKeeperException &e) {
-        LOG_WARN( CL_LOG,
-                  "Got exception during disconnect: %s",
-                  e.what() );
+        LOG_WARN(CL_LOG,
+                 "Got exception during disconnect: %s",
+                 e.what());
     }
 };
 
@@ -261,14 +277,13 @@ Factory::~Factory()
 Client *
 Factory::createClient()
 {
-    TRACE( CL_LOG, "createClient" );
+    TRACE(CL_LOG, "createClient");
 
     /*
      * Ensure we're connected.
      */
     if (!m_connected) {
-        LOG_ERROR(CL_LOG,
-                  "Cannot create client when disconnected.");
+        LOG_ERROR(CL_LOG, "Cannot create client when disconnected.");
         return NULL;
     }
 
@@ -280,8 +295,9 @@ Factory::createClient()
         addClient(cp);
         return cp;
     } catch (ClusterException &e) {
-	LOG_WARN(CL_LOG, "Couldn't create client because: %s", 
-		 e.what());
+	LOG_WARN(CL_LOG, 
+                 "Couldn't create client because: %s", 
+                 e.what());
         return NULL;
     }
 };
@@ -296,14 +312,13 @@ Factory::createServer(const string &app,
                       HealthChecker *checker,
                       ServerFlags flags)
 {
-    TRACE( CL_LOG, "createServer" );
+    TRACE(CL_LOG, "createServer");
 
     /*
      * Ensure we're connected.
      */
     if (!m_connected) {
-        LOG_ERROR(CL_LOG,
-                  "Cannot create server when disconnected.");
+        LOG_ERROR(CL_LOG, "Cannot create server when disconnected.");
         return NULL;
     }
 
@@ -320,29 +335,35 @@ Factory::createServer(const string &app,
         addClient(sp);
         return sp;
     } catch (ClusterException &e) {
-	LOG_WARN(CL_LOG, "Couldn't create server with app %s, "
-		 "group %s, node %s because: %s", 
-		 app.c_str(), group.c_str(), node.c_str(), e.what());
+	LOG_WARN(CL_LOG, 
+                 "Couldn't create server with app %s, "
+                 "group %s, node %s because: %s", 
+                 app.c_str(), 
+                 group.c_str(), 
+                 node.c_str(), 
+                 e.what());
         return NULL;
     }
 };
 
-
 /*
- * Handle events. Must be given to satisfy the interface but
- * not used.
+ * Try to synchronize with the underlying data store.
  */
 void
-Factory::eventReceived(const zk::ZKEventSource &zksrc,
-                       const zk::ZKWatcherEvent &e)
+Factory::synchronize()
 {
-    TRACE( CL_LOG, "eventReceived" );
+    TRACE(CL_LOG, "synchronize");
+    
+    SAFE_CALL_ZK(m_zk.sync("/"),
+                 "Could not synchronize with the underlying store %s: %s",
+                 "/",
+                 true,
+                 true);
 
-    /*
-     * Do nothing with this event, the callback will enqueue
-     * it to the event handling thread.
-     */
-};
+    /* Wait for notification of the event - will change to wait until
+     * the sync event is received. */
+    sleep(1);
+}
 
 
 /**********************************************************************/
@@ -355,7 +376,7 @@ Factory::eventReceived(const zk::ZKEventSource &zksrc,
 void
 Factory::addClient(Client *clp)
 {
-    TRACE( CL_LOG, "addClient" );
+    TRACE(CL_LOG, "addClient");
 
     Locker l(&m_clLock);
     
@@ -365,7 +386,7 @@ Factory::addClient(Client *clp)
 void
 Factory::removeClient(Client *clp)
 {
-    TRACE( CL_LOG, "removeClient" );
+    TRACE(CL_LOG, "removeClient");
 
     Locker l(&m_clLock);
     ClientList::iterator i = find(m_clients.begin(),
@@ -381,7 +402,7 @@ Factory::removeClient(Client *clp)
 void
 Factory::removeAllClients()
 {
-    TRACE( CL_LOG, "removeAllClients" );
+    TRACE(CL_LOG, "removeAllClients");
 
     Locker l(&m_clLock);
     ClientList::iterator it = m_clients.begin();
@@ -397,7 +418,7 @@ Factory::removeAllClients()
 void
 Factory::removeAllDataDistributions()
 {
-    TRACE( CL_LOG, "removeAllDataDistributions" );
+    TRACE(CL_LOG, "removeAllDataDistributions");
 
     Locker l(&m_ddLock);
     DataDistributionMap::iterator it = m_dataDistributions.begin();
@@ -409,7 +430,7 @@ Factory::removeAllDataDistributions()
 void
 Factory::removeAllProperties()
 {
-    TRACE( CL_LOG, "removeAllProperties" );
+    TRACE(CL_LOG, "removeAllProperties");
 
     Locker l(&m_propLock);
     PropertiesMap::iterator it = m_properties.begin();
@@ -421,7 +442,7 @@ Factory::removeAllProperties()
 void
 Factory::removeAllApplications()
 {
-    TRACE( CL_LOG, "removeAllApplications" );
+    TRACE(CL_LOG, "removeAllApplications");
 
     Locker l(&m_appLock);
     ApplicationMap::iterator it = m_applications.begin();
@@ -433,7 +454,7 @@ Factory::removeAllApplications()
 void
 Factory::removeAllGroups()
 {
-    TRACE( CL_LOG, "removeAllGroups" );
+    TRACE(CL_LOG, "removeAllGroups");
 
     Locker l(&m_grpLock);
     GroupMap::iterator it = m_groups.begin();
@@ -445,7 +466,7 @@ Factory::removeAllGroups()
 void
 Factory::removeAllNodes()
 {
-    TRACE( CL_LOG, "removeAllNodes" );
+    TRACE(CL_LOG, "removeAllNodes");
 
     Locker l(&m_nodeLock);
     NodeMap::iterator it = m_nodes.begin();
@@ -461,18 +482,16 @@ Factory::removeAllNodes()
 void
 Factory::dispatchEvents()
 {
-    TRACE( CL_LOG, "dispatchEvents" );
+    TRACE(CL_LOG, "dispatchEvents");
 
     unsigned int eventSeqId = 0;
     bool sentEndEvent = false;
     GenericEvent ge;
 
-#ifdef	VERY_VERY_VERBOSE
-    LOG_WARN( CL_LOG,
+    LOG_DEBUG(CL_LOG,
               "Hello from dispatchEvents(), this = 0x%x, thread: %d",
-              this,
-              pthread_self() );
-#endif
+              (unsigned int) this,
+              (unsigned int) pthread_self());
 
     try {
         for (m_shutdown = false;
@@ -490,72 +509,62 @@ Factory::dispatchEvents()
              */
             ge = m_eventAdapter.getNextEvent();
 
-            LOG_WARN( CL_LOG,
-                      "[%d, 0x%x] dispatchEvents() received event of type %d",
+            LOG_DEBUG(CL_LOG,
+                      "[%d, 0x%x] dispatchEvents() received event of "
+                      "type %d",
                       eventSeqId,
                       (unsigned int) this,
-                      (unsigned int) ge.getType() );
-
-            LOG_INFO(CL_LOG,
-                     "[%d] dispatchEvent received event of type: %d",
-                     eventSeqId,
-                     (unsigned int) ge.getType());
-
+                      (unsigned int) ge.getType());
+            
             switch (ge.getType()) {
-              default:
-                LOG_FATAL(CL_LOG,
-                          "Illegal event with type %d",
-                          ge.getType());
-                ::abort();
+                default:
+                    LOG_FATAL(CL_LOG,
+                              "Illegal event with type %d",
+                              ge.getType());
+                    ::abort();
+                    
+                case ILLEGALEVENT:
+                    LOG_FATAL(CL_LOG, "Illegal event");
+                    ::abort();
+                    
+                case TIMEREVENT:
+                {
+                    ClusterlibTimerEvent *tp =
+                        (ClusterlibTimerEvent *) ge.getEvent();
+                    
+                    LOG_DEBUG(CL_LOG,
+                              "Dispatching timer event: 0x%x, id: "
+                              "%d, alarm time: %lld",
+                              (unsigned int) tp,
+                              tp->getID(),
+                              tp->getAlarmTime());
+                    
+                    dispatchTimerEvent(tp);
+                    
+                    break;
+                }
 
-              case ILLEGALEVENT:
-                LOG_FATAL(CL_LOG, "Illegal event");
-                ::abort();
-
-              case TIMEREVENT:
-                  {
-                      ClusterlibTimerEvent *tp =
-                          (ClusterlibTimerEvent *) ge.getEvent();
-
-#ifdef	VERY_VERY_VERBOSE
-                      LOG_WARN( CL_LOG,
-                                "Dispatching timer event: 0x%x, id: %d, alarm time: %lld",
-                                tp,
-                                tp->getID(),
-                                tp->getAlarmTime() );
-#endif
-
-                      dispatchTimerEvent(tp);
-
-                      break;
-                  }
-
-              case ZKEVENT:
-                  {
-                      zk::ZKWatcherEvent *zp =
-                          (zk::ZKWatcherEvent *) ge.getEvent();
-
-                      LOG_WARN( CL_LOG,
-                                "Processing ZK event (type: %d, state: %d, context: 0x%x)",
-                                zp->getType(),
-                                zp->getState(),
-                                (unsigned int) zp->getContext() );
-
-                      LOG_INFO(CL_LOG,
-                               "Processing ZK event "
-                               "(type: %d, state: %d, context: 0x%x)",
-                               zp->getType(),
-                               zp->getState(),
-                               (unsigned int) zp->getContext());
-
-                      if (zp->getType() == SESSION_EVENT) {
-                          dispatchSessionEvent(zp);
-                      } else {
-                          dispatchZKEvent(zp);
-                      }
-
-                      break;
-                  }
+                case ZKEVENT:
+                {
+                    zk::ZKWatcherEvent *zp =
+                        (zk::ZKWatcherEvent *) ge.getEvent();
+                    
+                    LOG_DEBUG(CL_LOG,
+                              "Processing ZK event "
+                              "(type: %d, state: %d, context: 0x%x)",
+                              zp->getType(),
+                              zp->getState(),
+                              (unsigned int) zp->getContext());
+                    
+                    if (zp->getType() == SESSION_EVENT) {
+                        dispatchSessionEvent(zp);
+                    } 
+                    else {
+                        dispatchZKEvent(zp);
+                    }
+                    
+                    break;
+                }
             }
         }
 
@@ -566,7 +575,7 @@ Factory::dispatchEvents()
          */
         sentEndEvent = dispatchEndEvent();
     } catch (zk::ZooKeeperException &zke) {
-        LOG_ERROR( CL_LOG, "ZooKeeperException: %s", zke.what() );
+        LOG_ERROR(CL_LOG, "ZooKeeperException: %s", zke.what());
         if (!sentEndEvent) {
             dispatchEndEvent();
         }
@@ -577,7 +586,7 @@ Factory::dispatchEvents()
         }
         throw ClusterException(ce.what());
     } catch (std::exception &stde) {
-        LOG_ERROR( CL_LOG, "Unknown exception: %s", stde.what() );
+        LOG_ERROR(CL_LOG, "Unknown exception: %s", stde.what());
         if (!sentEndEvent) {
             dispatchEndEvent();
         }
@@ -591,11 +600,7 @@ Factory::dispatchEvents()
 void
 Factory::dispatchTimerEvent(ClusterlibTimerEvent *te)
 {
-    TRACE( CL_LOG, "dispatchTimerEvent" );
-
-#ifdef	VERY_VERY_VERBOSE    
-    LOG_WARN( CL_LOG, "Dispatching timer event" );
-#endif
+    TRACE(CL_LOG, "dispatchTimerEvent");
 
     if (te == NULL) {
         m_timerEventQueue.put(NULL);
@@ -611,8 +616,12 @@ Factory::dispatchTimerEvent(ClusterlibTimerEvent *te)
 void
 Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
 {
-    TRACE( CL_LOG, "dispatchZKEvent" );
+    TRACE(CL_LOG, "dispatchZKEvent");
     
+    if (!zp) {
+	throw ClusterException("Unexpected NULL ZKWatcherEvent");
+    }
+
     FactoryEventHandler *cp =
         (FactoryEventHandler *) zp->getContext();
     ClusterEventPayload *cep, *cepp;
@@ -634,7 +643,7 @@ Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
                                buf);
     }
 
-    LOG_WARN( CL_LOG, "Dispatching ZK event!" );
+    LOG_DEBUG(CL_LOG, "Dispatching ZK event!");
 
     /*
      * Update the cache representation of the clusterlib
@@ -646,6 +655,9 @@ Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
      */
     cep = updateCachedObject(cp, zp);
     if (cep == NULL) {
+        LOG_DEBUG(CL_LOG, 
+                  "dispatchZKEvent: NULL cluster event payload "
+                  "will not propogate to clients");
         return;
     }
 
@@ -672,18 +684,12 @@ Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
 void
 Factory::dispatchSessionEvent(zk::ZKWatcherEvent *ze)
 {
-    TRACE( CL_LOG, "dispatchSessionEvent" );
+    TRACE(CL_LOG, "dispatchSessionEvent");
 
-    LOG_INFO(CL_LOG,
-             "Session event: (type: %d, state: %d)",
-             ze->getType(), ze->getState());
-
-#ifdef	VERY_VERY_VERBOSE
-    LOG_WARN( CL_LOG,
-              "Session event: (type: %d, state: %d)",
-              ze->getType(),
-              ze->getState() );
-#endif
+    LOG_DEBUG(CL_LOG,
+              "dispatchSessionEvent: (type: %d, state: %d)",
+              ze->getType(), 
+              ze->getState());
 
     if ((ze->getState() == ASSOCIATING_STATE) ||
         (ze->getState() == CONNECTING_STATE)) {
@@ -692,14 +698,14 @@ Factory::dispatchSessionEvent(zk::ZKWatcherEvent *ze)
          * For now do nothing.
          */
 #ifdef	VERY_VERY_VERBOSE
-        LOG_WARN( CL_LOG, "Do nothing." );
+        LOG_TRACE(CL_LOG, "Do nothing.");
 #endif
     } else if (ze->getState() == CONNECTED_STATE) {
         /*
          * Mark as connected.
          */
 #ifdef	VERY_VERY_VERBOSE
-        LOG_WARN( CL_LOG, "Marked connected." );
+        LOG_TRACE(CL_LOG, "Marked connected.");
 #endif
         m_connected = true;
 
@@ -713,7 +719,7 @@ Factory::dispatchSessionEvent(zk::ZKWatcherEvent *ze)
          * We give up on SESSION_EXPIRED.
          */
 #ifdef	VERY_VERY_VERBOSE
-        LOG_WARN( CL_LOG, "Giving up." );
+        LOG_WARN(CL_LOG, "Giving up.");
 #endif
         m_shutdown = true;
         m_connected = false;
@@ -724,15 +730,11 @@ Factory::dispatchSessionEvent(zk::ZKWatcherEvent *ze)
          */
         m_eventSyncLock.lockedNotify();
     } else {
-#ifdef	VERY_VERY_VERBOSE
-        LOG_WARN( CL_LOG,
-                  "No idea what to do with state: %d",
-                  ze->getState() );
-#endif
         LOG_WARN(CL_LOG,
                  "Session event with unknown state "
                  "(type: %d, state: %d)",
-                 ze->getType(), ze->getState());
+                 ze->getType(), 
+                 ze->getState());
     }
 }
 
@@ -744,7 +746,7 @@ Factory::dispatchSessionEvent(zk::ZKWatcherEvent *ze)
 bool
 Factory::dispatchEndEvent()
 {
-    TRACE( CL_LOG, "dispatchEndEvent" );
+    TRACE(CL_LOG, "dispatchEndEvent");
 
     ClientList::iterator i;
 
@@ -772,15 +774,15 @@ Factory::dispatchEndEvent()
 void
 Factory::consumeTimerEvents()
 {
-    TRACE( CL_LOG, "consumeTimerEvents" );
+    TRACE(CL_LOG, "consumeTimerEvents");
 
     TimerEventPayload *pp;
 
 #ifdef	VERY_VERY_VERBOSE
-    LOG_WARN( CL_LOG,
-              "Hello from consumeTimerEvents, this: 0x%x, thread: %d",
-              this,
-              pthread_self() );
+    LOG_WARN(CL_LOG,
+             "Hello from consumeTimerEvents, this: 0x%x, thread: %d",
+             this,
+             (uint32_t) pthread_self());
 #endif
 
     try {
@@ -792,8 +794,8 @@ Factory::consumeTimerEvents()
              * then exit from the loop.
              */
             if (pp == NULL) {
-                LOG_INFO( CL_LOG,
-                          "Received terminate signal, finishing loop" );
+                LOG_INFO(CL_LOG,
+                         "Received terminate signal, finishing loop");
                 return;
             }
 
@@ -806,11 +808,11 @@ Factory::consumeTimerEvents()
                                                    pp->getData());
             }
 
-            LOG_INFO( CL_LOG,
-                      "Serviced timer %d, handler 0x%x, client data 0x%x",
-                      pp->getId(), 
-                      (int) pp->getHandler(),
-                      (int) pp->getData() );
+            LOG_INFO(CL_LOG,
+                     "Serviced timer %d, handler 0x%x, client data 0x%x",
+                     pp->getId(), 
+                     (int) pp->getHandler(),
+                     (int) pp->getData());
 
             /*
              * Deallocate the payload object.
@@ -818,12 +820,12 @@ Factory::consumeTimerEvents()
             delete pp;
         }
     } catch (zk::ZooKeeperException &zke) {
-        LOG_ERROR( CL_LOG, "ZooKeeperException: %s", zke.what() );
+        LOG_ERROR(CL_LOG, "ZooKeeperException: %s", zke.what());
         throw ClusterException(zke.what());
     } catch (ClusterException &ce) {
         throw ClusterException(ce.what());
     } catch (std::exception &stde) {
-        LOG_ERROR( CL_LOG, "Unknown exception: %s", stde.what() );
+        LOG_ERROR(CL_LOG, "Unknown exception: %s", stde.what());
         throw ClusterException(stde.what());
     }        
 }
@@ -1007,7 +1009,7 @@ Factory::updateDistribution(const string &key,
                             int32_t shardsVersion,
 			    int32_t manualOverridesVersion)
 {
-    TRACE( CL_LOG, "updateDistribution" );
+    TRACE(CL_LOG, "updateDistribution");
     
     string snode = 
 	key +
@@ -1039,7 +1041,8 @@ Factory::updateDistribution(const string &key,
                  snode.c_str(),
                  false,
                  true);
-    SAFE_CALL_ZK(m_zk.getNodeData(snode, this, &m_shardsChangeHandler),
+    SAFE_CALL_ZK(m_zk.getNodeData(snode, &m_zkEventAdapter, 
+                                  &m_shardsChangeHandler),
                  "Reestablishing watch on value of %s failed: %s",
                  snode.c_str(),
                  true,
@@ -1071,7 +1074,7 @@ Factory::updateDistribution(const string &key,
                  false,
                  true);
     SAFE_CALL_ZK(m_zk.getNodeData(monode,
-                                  this,
+                                  &m_zkEventAdapter,
                                   &m_manualOverridesChangeHandler),
                  "Reestablishing watch on value of %s failed: %s",
                  monode.c_str(),
@@ -1087,7 +1090,7 @@ Factory::updateProperties(const string &key,
 			  const string &properties,
 			  int32_t versionNumber)
 {
-    TRACE( CL_LOG, "updateProperties" );
+    TRACE(CL_LOG, "updateProperties");
     
     bool exists = false;
 
@@ -1109,7 +1112,7 @@ Factory::updateProperties(const string &key,
                  false,
                  true);
     SAFE_CALL_ZK(m_zk.getNodeData(key,
-                                  this,
+                                  &m_zkEventAdapter,
                                   &m_propertiesChangeHandler),
                  "Reestablishing watch on value of %s failed: %s",
                  key.c_str(),
@@ -1124,7 +1127,7 @@ void
 Factory::updateNodeClientState(const string &key,
                                const string &cs)
 {
-    TRACE( CL_LOG, "updateNodeClientState" );
+    TRACE(CL_LOG, "updateNodeClientState");
 
     string csKey = key + PATHSEPARATOR + CLIENTSTATE;
     bool exists = false;
@@ -1147,7 +1150,7 @@ Factory::updateNodeClientState(const string &key,
                  false,
                  true);
     SAFE_CALL_ZK(m_zk.getNodeData(csKey,
-                                  this,
+                                  &m_zkEventAdapter,
                                   &m_nodeClientStateChangeHandler),
                  "Reestablishing watch on value of %s failed: %s",
                  csKey.c_str(),
@@ -1163,7 +1166,7 @@ void
 Factory::updateNodeClientStateDesc(const string &key,
                                    const string &desc)
 {
-    TRACE( CL_LOG, "updateNodeClientStateDesc" );
+    TRACE(CL_LOG, "updateNodeClientStateDesc");
 
     string csKey = key + PATHSEPARATOR + CLIENTSTATEDESC;
     bool exists = false;
@@ -1199,7 +1202,7 @@ void
 Factory::updateNodeMasterSetState(const string &key,
                                   const string &ms)
 {
-    TRACE( CL_LOG, "updateNodeMasterSetState" );
+    TRACE(CL_LOG, "updateNodeMasterSetState");
 
     string msKey = key + PATHSEPARATOR + MASTERSETSTATE;
     bool exists = false;
@@ -1222,7 +1225,7 @@ Factory::updateNodeMasterSetState(const string &key,
                  true,
                  true);
     SAFE_CALL_ZK(m_zk.getNodeData(msKey,
-                                  this,
+                                  &m_zkEventAdapter,
                                   &m_nodeMasterSetStateChangeHandler),
                  "Reestablishing watch on value of %s failed: %s",
                  msKey.c_str(),
@@ -1240,7 +1243,7 @@ Factory::getApplicationFromKey(const string &key, bool create)
 
     split(components, key, is_any_of(PATHSEPARATOR));
     if (hasAppKeyPrefix(components)) {
-        return getApplication(components[3], create);
+        return getApplication(components[APP_NAME_INDEX], create);
     }
     return NULL;
 }
@@ -1251,8 +1254,9 @@ Factory::getDistributionFromKey(const string &key, bool create)
 
     split(components, key, is_any_of(PATHSEPARATOR));
     if (hasDistKeyPrefix(components)) {
-        return getDistribution(components[5],
-                               getApplication(components[3], false),
+        return getDistribution(components[DIST_NAME_INDEX],
+                               getApplication(components[APP_NAME_INDEX], 
+                                              false),
                                create);
     }
     return NULL;
@@ -1264,8 +1268,8 @@ Factory::getGroupFromKey(const string &key, bool create)
 
     split(components, key, is_any_of(PATHSEPARATOR));
     if (hasGroupKeyPrefix(components)) {
-        return getGroup(components[5],
-                        getApplication(components[3], false),
+        return getGroup(components[GROUP_NAME_INDEX],
+                        getApplication(components[APP_NAME_INDEX], false),
                         create);
     }
     return NULL;
@@ -1277,11 +1281,11 @@ Factory::getNodeFromKey(const string &key, bool create)
 
     split(components, key, is_any_of(PATHSEPARATOR));
     if (hasNodeKeyPrefix(components)) {
-        return getNode(components[7],
-                       getGroup(components[3],
-                                components[5],
+        return getNode(components[NODE_NAME_INDEX],
+                       getGroup(components[APP_NAME_INDEX],
+                                components[GROUP_NAME_INDEX],
                                 false),
-                       (components[6] == "nodes") ? true : false,
+                       (components[NODE_TYPE_INDEX] == "nodes") ? true : false,
                        create);
     }
     return NULL;
@@ -1385,12 +1389,12 @@ Factory::hasNodeKeyPrefix(vector<string> &components, bool *managedP)
 {
     if ((components.size() < 8) ||
         (hasGroupKeyPrefix(components) == false) ||
-        ((components[6] != NODES) &&
-         (components[6] != UNMANAGEDNODES))) {
+        ((components[NODE_TYPE_INDEX] != NODES) &&
+         (components[NODE_TYPE_INDEX] != UNMANAGEDNODES))) {
         return false;
     }
     if (managedP != NULL) {
-        *managedP = ((components[6] == NODES) ? true : false);
+        *managedP = ((components[NODE_TYPE_INDEX] == NODES) ? true : false);
     }
     return true;
 }
@@ -1413,7 +1417,7 @@ Factory::getNodeKeyPrefix(vector<string> &components)
         PATHSEPARATOR +
         NODES +
         PATHSEPARATOR +
-        components[7];
+        components[NODE_NAME_INDEX];
 }
 
 bool
@@ -1427,21 +1431,20 @@ Factory::hasPropertiesKeyPrefix(const string &key)
 bool
 Factory::hasPropertiesKeyPrefix(vector<string> &components)
 {
-    if ((components.size() < 4) ||
+    if ((components.size() < 5) ||
         (hasAppKeyPrefix(components) == false) ||
-        (components[components.size() - 2] != PROPERTIES)) {
+        (components.back().compare(PROPERTIES))) {
         return false;
     }
     return true;
 }
-
 bool
 Factory::isGroupKey(const string &key)
 {
     vector<string> components;
 
     split(components, key, is_any_of(PATHSEPARATOR));
-    if ((components.size() != 8) ||
+    if ((components.size() != 7) ||
         (hasGroupKeyPrefix(components) == false)) {
         return false;
     }
@@ -1458,9 +1461,9 @@ Factory::hasGroupKeyPrefix(const string &key)
 bool
 Factory::hasGroupKeyPrefix(vector<string> &components)
 {
-    if ((components.size() < 8) ||
+    if ((components.size() < 7) ||
         (hasAppKeyPrefix(components) == false) ||
-        (components[5] != GROUPS)) {
+        (components[GROUP_NAME_INDEX] != GROUPS)) {
         return false;
     }
     return true;
@@ -1484,7 +1487,7 @@ Factory::getGroupKeyPrefix(vector<string> &components)
         PATHSEPARATOR +
         GROUPS +
         PATHSEPARATOR +
-        components[5];
+        components[GROUP_NAME_INDEX];
 }
 
 bool
@@ -1493,10 +1496,11 @@ Factory::isAppKey(const string &key)
     vector<string> components;
 
     split(components, key, is_any_of(PATHSEPARATOR));
-    if ((components.size() != 4) ||
+    if ((components.size() != 5) ||
         (hasAppKeyPrefix(components) == false)) {
         return false;
     }
+
     return true;
 }
 bool
@@ -1511,9 +1515,9 @@ bool
 Factory::hasAppKeyPrefix(vector<string> &components)
 {
     if ((components.size() < 4) ||
-        (components[0] != CLUSTERLIB) ||
-        (components[1] != CLUSTERLIBVERSION) ||
-        (components[2] != APPLICATIONS)) {
+        (components[CLUSTERLIB_INDEX] != CLUSTERLIB) ||
+        (components[VERSION_NAME_INDEX] != CLUSTERLIBVERSION) ||
+        (components[APP_INDEX] != APPLICATIONS)) {
         return false;
     }
     return true;
@@ -1540,7 +1544,7 @@ Factory::getAppKeyPrefix(vector<string> &components)
         PATHSEPARATOR +
         APPLICATIONS +
         PATHSEPARATOR +
-        components[3];
+        components[APP_NAME_INDEX];
 }
 
 bool
@@ -1549,7 +1553,7 @@ Factory::isDistKey(const string &key)
     vector<string> components;
 
     split(components, key, is_any_of(PATHSEPARATOR));
-    if ((components.size() != 6) ||
+    if ((components.size() != 7) ||
         (hasDistKeyPrefix(components) == false)) {
         return false;
     }
@@ -1568,7 +1572,7 @@ Factory::hasDistKeyPrefix(vector<string> &components)
 {
     if ((components.size() < 6) ||
         (hasAppKeyPrefix(components) == false) ||
-        (components[4] != DISTRIBUTIONS)) {
+        (components[DIST_INDEX] != DISTRIBUTIONS)) {
         return false;
     }
     return true;
@@ -1592,7 +1596,7 @@ Factory::getDistKeyPrefix(vector<string> &components)
         PATHSEPARATOR +
         DISTRIBUTIONS +
         PATHSEPARATOR +
-        components[5];
+        components[DIST_NAME_INDEX];
 }
 
 string
@@ -1601,11 +1605,11 @@ Factory::appNameFromKey(const string &key)
     vector<string> components;
 
     split(components, key, is_any_of(PATHSEPARATOR));
-    if ((components.size() != 4) ||
+    if ((components.size() < 4) ||
         (hasAppKeyPrefix(components) == false)) {
         return "";
     }
-    return components[3];
+    return components[APP_NAME_INDEX];
 }
 string
 Factory::distNameFromKey(const string &key)
@@ -1613,11 +1617,11 @@ Factory::distNameFromKey(const string &key)
     vector<string> components;
 
     split(components, key, is_any_of(PATHSEPARATOR));
-    if ((components.size() != 6) ||
+    if ((components.size() != 7) ||
         (hasDistKeyPrefix(components) == false)) {
         return "";
     }
-    return components[5];
+    return components[DIST_NAME_INDEX];
 }
 string
 Factory::groupNameFromKey(const string &key)
@@ -1625,11 +1629,11 @@ Factory::groupNameFromKey(const string &key)
     vector<string> components;
 
     split(components, key, is_any_of(PATHSEPARATOR));
-    if ((components.size() != 6) ||
+    if ((components.size() != 7) ||
         (hasGroupKeyPrefix(components) == false)) {
         return "";
     }
-    return components[5];
+    return components[GROUP_NAME_INDEX];
 }
 string
 Factory::nodeNameFromKey(const string &key)
@@ -1637,11 +1641,11 @@ Factory::nodeNameFromKey(const string &key)
     vector<string> components;
 
     split(components, key, is_any_of(PATHSEPARATOR));
-    if ((components.size() != 8) ||
+    if ((components.size() != 9) ||
         (hasDistKeyPrefix(components) == false)) {
         return "";
     }
-    return components[7];
+    return components[NODE_NAME_INDEX];
 }
 
 /*
@@ -1672,9 +1676,10 @@ Factory::removeObjectFromKey(const string &key)
 	}
     }
 
-    LOG_WARN( CL_LOG, 
+    LOG_WARN(CL_LOG, 
               "Changed key %s to %s",
-              key.c_str(), res.c_str() );
+              key.c_str(), 
+             res.c_str());
 
     return res;
 }
@@ -1687,7 +1692,7 @@ Application *
 Factory::loadApplication(const string &name,
                          const string &key)
 {
-    TRACE( CL_LOG, "loadApplication");
+    TRACE(CL_LOG, "loadApplication");
 
     vector<string> zkNodes;
     Application *app;
@@ -1700,7 +1705,7 @@ Factory::loadApplication(const string &name,
     }
 
     SAFE_CALL_ZK((exists = m_zk.nodeExists(key, 
-                                           this,
+                                           &m_zkEventAdapter,
                                            &m_notifyableExistsHandler)),
                  "Could not determine whether node %s exists: %s",
                  key.c_str(),
@@ -1719,14 +1724,14 @@ Factory::loadApplication(const string &name,
      */
     m_zk.getNodeChildren(zkNodes,
                          key + PATHSEPARATOR + GROUPS,
-                         this,
+                         &m_zkEventAdapter,
                          &m_groupsChangeHandler);
     m_zk.getNodeChildren(zkNodes,
                          key + PATHSEPARATOR + DISTRIBUTIONS,
-                         this,
+                         &m_zkEventAdapter,
                          &m_distributionsChangeHandler);
     m_zk.getNodeData(key + PATHSEPARATOR + PROPERTIES,
-                     this,
+                     &m_zkEventAdapter,
                      &m_propertiesChangeHandler);
 #endif
     /*
@@ -1742,7 +1747,7 @@ Factory::loadDistribution(const string &name,
                           const string &key,
                           Application *app)
 {
-    TRACE( CL_LOG, "loadDataDistribution" );
+    TRACE(CL_LOG, "loadDataDistribution");
 
     DataDistribution *dp;
     bool exists = false;
@@ -1795,7 +1800,7 @@ Factory::loadShards(const string &key, int32_t &version)
 
     version = 0;
     SAFE_CALL_ZK((res = m_zk.getNodeData(snode,
-                                         this,
+                                         &m_zkEventAdapter,
                                          &m_shardsChangeHandler,
                                          &stat)),
                  "Loading shards from %s failed: %s",
@@ -1818,7 +1823,7 @@ Factory::loadManualOverrides(const string &key, int32_t &version)
 
     version = 0;
     SAFE_CALL_ZK((res = m_zk.getNodeData(monode,
-                                         this,
+                                         &m_zkEventAdapter,
                                          &m_manualOverridesChangeHandler,
                                          &stat)),
                  "Loading manual overrides from %s failed: %s",
@@ -1832,7 +1837,7 @@ Factory::loadManualOverrides(const string &key, int32_t &version)
 Properties *
 Factory::loadProperties(const string &key)
 {
-    TRACE( CL_LOG, "Properties" );
+    TRACE(CL_LOG, "Properties");
 
     Properties *prop;
     bool exists = false;
@@ -1843,7 +1848,7 @@ Factory::loadProperties(const string &key)
         return prop;
     }
 
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(key, this, NULL)),
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(key)),
                  "Could not determine whether node %s exists: %s",
                  key.c_str(),
                  true,
@@ -1852,7 +1857,7 @@ Factory::loadProperties(const string &key)
         return NULL;
     }
     SAFE_CALL_ZK(m_zk.getNodeData(key,
-                                  this,
+                                  &m_zkEventAdapter,
                                   &m_propertiesChangeHandler),
                  "Reading the value of %s failed: %s",
                  key.c_str(),
@@ -1872,7 +1877,7 @@ Factory::loadKeyValMap(const string &key, int32_t &version)
 
     version = 0;
     SAFE_CALL_ZK((kvnode = m_zk.getNodeData(key,
-                                            this,
+                                            &m_zkEventAdapter,
                                             &m_propertiesChangeHandler,
                                             &stat)),
                  "Reading the value of %s failed: %s",
@@ -1891,7 +1896,7 @@ Factory::loadGroup(const string &name,
                    const string &key,
                    Application *app)
 {
-    TRACE( CL_LOG, "loadGroup" );
+    TRACE(CL_LOG, "loadGroup");
 
     Group *grp;
     bool exists = false;
@@ -1931,10 +1936,10 @@ Factory::loadGroup(const string &name,
                     LEADERSHIP +
                     PATHSEPARATOR +
                     CURRENTLEADER,
-                    this,
+                    &m_zkEventAdapter,
                     &m_groupLeadershipChangeHandler);
     m_zk.getNodeData(key + PATHSEPARATOR + PROPERTIES,
-                     this,
+                     &m_zkEventAdapter,
                      &m_propertiesChangeHandler);
 #endif
     /*
@@ -1950,7 +1955,7 @@ Factory::loadNode(const string &name,
                   const string &key,
                   Group *grp)
 {
-    TRACE( CL_LOG, "loadNode" );
+    TRACE(CL_LOG, "loadNode");
 
     Node *np;
     bool exists = false;
@@ -1992,7 +1997,7 @@ Factory::loadNode(const string &name,
 Application *
 Factory::createApplication(const string &name, const string &key)
 {
-    TRACE( CL_LOG, "createApplication" );
+    TRACE(CL_LOG, "createApplication");
 
     vector<string> zkNodes;
     Application *app = NULL;
@@ -2000,7 +2005,7 @@ Factory::createApplication(const string &name, const string &key)
     bool exists = false;
     
     SAFE_CALL_ZK((exists = m_zk.nodeExists(key,
-                                           this,
+                                           &m_zkEventAdapter,
                                            &m_notifyableExistsHandler)),
                  "Could not determine whether node %s exists: %s",
                  key.c_str(),
@@ -2068,14 +2073,14 @@ Factory::createDistribution(const string &name,
                             const string &marshalledManualOverrides,
                             Application *app)
 {
-    TRACE( CL_LOG, "createDataDistribution" );
+    TRACE(CL_LOG, "createDataDistribution");
 
     DataDistribution *dp;
     bool created = false;
     bool exists = false;
 
     SAFE_CALL_ZK((exists = m_zk.nodeExists(key,
-                                           this,
+                                           &m_zkEventAdapter,
                                            &m_notifyableExistsHandler)),
                  "Could not determine whether node %s exists: %s",
                  key.c_str(),
@@ -2136,7 +2141,7 @@ Factory::createDistribution(const string &name,
 Properties *
 Factory::createProperties(const string &key) 
 {
-    TRACE( CL_LOG, "createProperties" );
+    TRACE(CL_LOG, "createProperties");
     bool exists = false;
 
     /*
@@ -2144,7 +2149,7 @@ Factory::createProperties(const string &key)
      * has the correct watchers set up.
      */
     SAFE_CALL_ZK((exists = m_zk.nodeExists(key,
-                                           this,
+                                           &m_zkEventAdapter,
                                            &m_notifyableExistsHandler)),
                  "Could not determine whether node %s exists: %s",
                  key.c_str(),
@@ -2157,7 +2162,9 @@ Factory::createProperties(const string &key)
                      true,
                      true);
     }
-    SAFE_CALL_ZK(m_zk.getNodeData(key, this, &m_propertiesChangeHandler),
+    SAFE_CALL_ZK(m_zk.getNodeData(key, 
+                                  &m_zkEventAdapter,
+                                  &m_propertiesChangeHandler),
                  "Could not read value of %s: %s",
                  key.c_str(),
                  false,
@@ -2178,7 +2185,7 @@ Factory::createProperties(const string &key)
 	    LOG_WARN(CL_LOG,
 		     "Tried to create properties that exists!");
 	}
-        SAFE_CALL_ZK(m_zk.nodeExists(key, this, &m_notifyableExistsHandler),
+        SAFE_CALL_ZK(m_zk.nodeExists(key, &m_zkEventAdapter, &m_notifyableExistsHandler),
                      "Could not determine whether node %s exists: %s",
                      key.c_str(),
                      false,
@@ -2195,13 +2202,13 @@ Factory::createGroup(const string &name,
 		     const string &key, 
 		     Application *app)
 {
-    TRACE( CL_LOG, "createGroup" );
+    TRACE(CL_LOG, "createGroup");
 
     Group *grp = NULL;
     bool created = false;
     bool exists = false;
     
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(key, this, &m_notifyableExistsHandler)),
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(key, &m_zkEventAdapter, &m_notifyableExistsHandler)),
                  "Could not determine whether node %s exists: %s",
                  key.c_str(),
                  true,
@@ -2268,13 +2275,14 @@ Factory::createNode(const string &name,
 		    const string &key, 
 		    Group *grp)
 {
-    TRACE( CL_LOG, "createNode" );
+    TRACE(CL_LOG, "createNode");
 
     Node *np = NULL;
     bool created = false;
     bool exists = false;
 
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(key, this, &m_notifyableExistsHandler)),
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(key, &m_zkEventAdapter, 
+                                           &m_notifyableExistsHandler)),
                  "Could not determine whether node %s exists: %s",
                  key.c_str(),
                  true,
@@ -2344,7 +2352,7 @@ Factory::createNode(const string &name,
 IdList
 Factory::getApplicationNames()
 {
-    TRACE( CL_LOG, "getApplicationNames" );
+    TRACE(CL_LOG, "getApplicationNames");
 
     IdList list;
     string key =
@@ -2356,7 +2364,7 @@ Factory::getApplicationNames()
     list.clear();
     SAFE_CALL_ZK(m_zk.getNodeChildren(list,
                                       key, 
-                                      this,
+                                      &m_zkEventAdapter,
                                       &m_applicationsChangeHandler),
                  "Reading the value of %s failed: %s",
                  key.c_str(),
@@ -2367,7 +2375,7 @@ Factory::getApplicationNames()
 IdList
 Factory::getGroupNames(Application *app)
 {
-    TRACE( CL_LOG, "getGroupNames" );
+    TRACE(CL_LOG, "getGroupNames");
 
     IdList list;
     string key =
@@ -2378,7 +2386,7 @@ Factory::getGroupNames(Application *app)
     list.clear();
     SAFE_CALL_ZK(m_zk.getNodeChildren(list,
                                       key,
-                                      this,
+                                      &m_zkEventAdapter,
                                       &m_groupsChangeHandler),
                  "Reading the value of %s failed: %s",
                  key.c_str(),
@@ -2389,7 +2397,7 @@ Factory::getGroupNames(Application *app)
 IdList
 Factory::getDistributionNames(Application *app)
 {
-    TRACE( CL_LOG, "getDistributionNames" );
+    TRACE(CL_LOG, "getDistributionNames");
 
     IdList list;
     string key=
@@ -2400,7 +2408,7 @@ Factory::getDistributionNames(Application *app)
     list.clear();
     SAFE_CALL_ZK(m_zk.getNodeChildren(list,
                                       key,
-                                      this,
+                                      &m_zkEventAdapter,
                                       &m_distributionsChangeHandler),
                  "Reading the value of %s failed: %s",
                  key.c_str(),
@@ -2411,7 +2419,7 @@ Factory::getDistributionNames(Application *app)
 IdList
 Factory::getNodeNames(Group *grp)
 {
-    TRACE( CL_LOG, "getNodeNames" );
+    TRACE(CL_LOG, "getNodeNames");
 
     IdList list;
     string key =
@@ -2422,7 +2430,7 @@ Factory::getNodeNames(Group *grp)
     list.clear();
     SAFE_CALL_ZK(m_zk.getNodeChildren(list,
                                       key,
-                                      this,
+                                      &m_zkEventAdapter,
                                       &m_nodesChangeHandler),
                  "Reading the value of %s failed: %s",
                  key.c_str(),
@@ -2492,12 +2500,7 @@ ClusterEventPayload *
 Factory::updateCachedObject(FactoryEventHandler *cp,
                             zk::ZKWatcherEvent *ep)
 {
-    TRACE( CL_LOG, "updateCachedObject" );
-
-    LOG_WARN( CL_LOG,
-              "In updateCachedObject(0x%x, 0x%x)",
-              (int) cp,
-              (int) ep );
+    TRACE(CL_LOG, "updateCachedObject");
 
     if (ep == NULL) {
         throw ClusterException(string("") +
@@ -2509,27 +2512,35 @@ Factory::updateCachedObject(FactoryEventHandler *cp,
     vector<string> components;
     Notifyable *np;
 
+    LOG_INFO(CL_LOG,
+              "updateCachedObject: (0x%x, 0x%x, %s)",
+              (int) cp,
+              (int) ep,
+	      path.c_str());
+
     split(components, path, is_any_of(PATHSEPARATOR));
+    /* Check for matches of the path in reverse order since these are
+     * prefix matches. */
     if (hasNodeKeyPrefix(components)) {
-        np = getNode(components[7],
-                     getGroup(components[3],
-                              components[5],
+        np = getNode(components[NODE_NAME_INDEX],
+                     getGroup(components[APP_NAME_INDEX],
+                              components[GROUP_NAME_INDEX],
                               false),
                      false,
                      false);
-    } else if (hasDistKeyPrefix(components)) {
-        np = getDistribution(components[5],
-                             getApplication(components[3], false),
-                             false);
-    } else if (hasAppKeyPrefix(components)) {
-        np = getApplication(components[3], false);
-    } else if (hasGroupKeyPrefix(components)) {
-        np = getGroup(components[5],
-                      getApplication(components[3], false),
-                      false);
     } else if (hasPropertiesKeyPrefix(components)) {
 	np = getProperties(path,
 			   false);
+    } else if (hasDistKeyPrefix(components)) {
+        np = getDistribution(components[DIST_NAME_INDEX],
+                             getApplication(components[APP_NAME_INDEX], false),
+                             false);
+    } else if (hasGroupKeyPrefix(components)) {
+        np = getGroup(components[GROUP_NAME_INDEX],
+                      getApplication(components[APP_NAME_INDEX], false),
+                      false);
+    } else if (hasAppKeyPrefix(components)) {
+        np = getApplication(components[APP_NAME_INDEX], false);
     } else {
         throw ClusterException(string("") +
                                "Unknown event key: " +
@@ -2559,7 +2570,7 @@ Factory::establishNotifyableReady(Notifyable *np)
     string ready = "";
 
     SAFE_CALL_ZK((ready = m_zk.getNodeData(np->getKey(),
-                                           this,
+                                           &m_zkEventAdapter,
                                            &m_notifyableReadyHandler)),
                  "Reading the value of %s failed: %s",
                  np->getKey().c_str(),
@@ -2583,22 +2594,22 @@ Factory::handleNotifyableReady(Notifyable *np,
                                int etype,
                                const string &path)
 {
-    TRACE( CL_LOG, "handleNotifyableReady" );
+    TRACE(CL_LOG, "handleNotifyableReady");
 
     /*
      * If there's no notifyable, punt.
      */
     if (np == NULL) {
-        LOG_WARN( CL_LOG,
+        LOG_WARN(CL_LOG,
                   "Punting on event: %d on %s",
                   etype,
-                  path.c_str() );
+                  path.c_str());
         return EN_NO_EVENT;
     }
 
-    LOG_WARN( CL_LOG, 
+    LOG_WARN(CL_LOG, 
               "handleNotifyableReady(%s)",
-              np->getKey().c_str() );
+              np->getKey().c_str());
 
     (void) establishNotifyableReady(np);
     return EN_NOTIFYABLE_READY;
@@ -2613,43 +2624,43 @@ Factory::handleNotifyableExists(Notifyable *np,
                                 int etype,
                                 const string &path)
 {
-    TRACE( CL_LOG, "handleNotifyableExists" );
+    TRACE(CL_LOG, "handleNotifyableExists");
 
     /*
      * If there's no notifyable, punt.
      */
     if (np == NULL) {
-        LOG_WARN( CL_LOG,
+        LOG_WARN(CL_LOG,
                   "Punting on event: %d on %s",
                   etype,
-                  path.c_str() );
+                  path.c_str());
         return EN_NO_EVENT;
     }
 
-    LOG_WARN( CL_LOG,
+    LOG_WARN(CL_LOG,
               "Got exists event: %d on notifyable: \"%s\"",
               etype,
-              np->getKey().c_str() );
+              np->getKey().c_str());
 
     /*
      * Re-establish interest in the existence of this notifyable.
      */
-    (void) m_zk.nodeExists(path, this, &m_notifyableExistsHandler);
+    (void) m_zk.nodeExists(path, &m_zkEventAdapter, &m_notifyableExistsHandler);
 
     /*
      * Now decide what to do with the event.
      */
     if (etype == DELETED_EVENT) {
-        LOG_WARN( CL_LOG,
+        LOG_WARN(CL_LOG,
                   "Deleted event for path: %s",
-                  path.c_str() );
+                  path.c_str());
         np->setReady(false);
         return EN_NOTIFYABLE_DELETED;
     }
     if (etype == CREATED_EVENT) {
-        LOG_WARN( CL_LOG,
+        LOG_WARN(CL_LOG,
                   "Created event for path: %s",
-                  path.c_str() );
+                  path.c_str());
         establishNotifyableReady(np);
         return EN_NOTIFYABLE_CREATED;
     }
@@ -2668,7 +2679,7 @@ Factory::handleApplicationsChange(Notifyable *np,
                                   int etype,
                                   const string &path)
 {
-    TRACE( CL_LOG, "handleApplicationsChange" );
+    TRACE(CL_LOG, "handleApplicationsChange");
 
     /*
      * For now return EN_NO_EVENT.
@@ -2685,31 +2696,31 @@ Factory::handleGroupsChange(Notifyable *np,
                             int etype,
                             const string &path)
 {
-    TRACE( CL_LOG, "handleGroupsChange" );
+    TRACE(CL_LOG, "handleGroupsChange");
 
     /*
      * If there's no notifyable, punt.
      */
     if (np == NULL) {
-        LOG_WARN( CL_LOG,
+        LOG_WARN(CL_LOG,
                   "Punting on event: %d on %s",
                   etype,
-                  path.c_str() );
+                  path.c_str());
         return EN_NO_EVENT;
     }
 
-    LOG_WARN( CL_LOG,
+    LOG_WARN(CL_LOG,
               "Got groups change event for : \"%s\"",
-              np->getKey().c_str() );
+              np->getKey().c_str());
 
     /*
      * Convert to application object.
      */
     Application *app = dynamic_cast<Application *>(np);
     if (app == NULL) {
-        LOG_FATAL( CL_LOG,
+        LOG_FATAL(CL_LOG,
                    "Expected application object for %s",
-                   path.c_str() );
+                   path.c_str());
         return EN_NO_EVENT;
     }
 
@@ -2729,31 +2740,31 @@ Factory::handleDistributionsChange(Notifyable *np,
                                    int etype,
                                    const string &path)
 {
-    TRACE( CL_LOG, "handleDistributionsChange" );
+    TRACE(CL_LOG, "handleDistributionsChange");
 
     /*
      * If there's no notifyable, punt.
      */
     if (np == NULL) {
-        LOG_WARN( CL_LOG,
+        LOG_WARN(CL_LOG,
                   "Punting on event: %d on %s",
                   etype,
-                  path.c_str() );
+                  path.c_str());
         return EN_NO_EVENT;
     }
 
-    LOG_WARN( CL_LOG,
+    LOG_WARN(CL_LOG,
               "Got dists change event for : \"%s\"",
-              np->getKey().c_str() );
+              np->getKey().c_str());
 
     /*
      * Convert to application object.
      */
     Application *app = dynamic_cast<Application *>(np);
     if (app == NULL) {
-        LOG_FATAL( CL_LOG,
+        LOG_FATAL(CL_LOG,
                    "Expected application object for %s",
-                   path.c_str() );
+                   path.c_str());
         return EN_NO_EVENT;
     }
 
@@ -2776,31 +2787,31 @@ Factory::handleNodesChange(Notifyable *np,
                            int etype,
                            const string &path)
 {
-    TRACE( CL_LOG, "handleNodesChange" );
+    TRACE(CL_LOG, "handleNodesChange");
 
     /*
      * If there's no notifyable, punt.
      */
     if (np == NULL) {
-        LOG_WARN( CL_LOG,
+        LOG_WARN(CL_LOG,
                   "Punting on event: %d on %s",
                   etype,
-                  path.c_str() );
+                  path.c_str());
         return EN_NO_EVENT;
     }
 
-    LOG_WARN( CL_LOG,
+    LOG_WARN(CL_LOG,
               "Got nodes change event for : \"%s\"",
-              np->getKey().c_str() );
+              np->getKey().c_str());
 
     /*
      * Convert to a group object.
      */
     Group *grp = dynamic_cast<Group *>(np);
     if (grp == NULL) {
-        LOG_FATAL( CL_LOG,
+        LOG_FATAL(CL_LOG,
                    "Expected group object for %s",
-                   path.c_str() );
+                   path.c_str());
         return EN_NO_EVENT;
     }
 
@@ -2823,28 +2834,30 @@ Factory::handlePropertiesChange(Notifyable *np,
                                 int etype,
                                 const string &path)
 {
-    TRACE( CL_LOG, "handlePropertiesChange" );
+    TRACE(CL_LOG, "handlePropertiesChange");
 
     /*
      * If there's no notifyable, punt.
      */
     if (np == NULL) {
-        LOG_WARN( CL_LOG,
-                  "Punting on event: %d on %s",
-                  etype,
-                  path.c_str() );
+        LOG_WARN(CL_LOG,
+                 "Punting on event: %d on %s",
+                 etype,
+                 path.c_str());
         return EN_NO_EVENT;
     }
 
-    LOG_WARN( CL_LOG,
-              "Got exists event: %d on properties: \"%s\"",
+    LOG_DEBUG(CL_LOG,
+              "handlePropertiesChange: Got event %d on properties \"%s\"",
               etype,
-              np->getKey().c_str() );
+              np->getKey().c_str());
 
     /*
      * Re-establish interest in the existence of this notifyable.
      */
-    SAFE_CALL_ZK(m_zk.nodeExists(path, this, &m_notifyableExistsHandler),
+    SAFE_CALL_ZK(m_zk.nodeExists(path, 
+                                 &m_zkEventAdapter, 
+                                 &m_notifyableExistsHandler),
                  "Could not establish interest in the existence of %s: %s",
                  path.c_str(),
                  false,
@@ -2854,23 +2867,23 @@ Factory::handlePropertiesChange(Notifyable *np,
      * Now decide what to do with the event.
      */
     if (etype == DELETED_EVENT) {
-	LOG_WARN( CL_LOG,
-		  "Deleted event for path: %s",
-		  path.c_str() );
+	LOG_WARN(CL_LOG,
+                 "handlePropertiesChange: Deleted event for path: %s",
+                 path.c_str());
 	np->setReady(false);
 	return EN_NOTIFYABLE_DELETED;
     }
     if (etype == CREATED_EVENT) {
-	LOG_WARN( CL_LOG,
-		  "Created event for path: %s",
-		  path.c_str() );
+	LOG_WARN(CL_LOG,
+                 "handlePropertiesChange: Created event for path: %s",
+                 path.c_str());
 	establishNotifyableReady(np);
 	return EN_NOTIFYABLE_CREATED;
     }
     if (etype == CHANGED_EVENT) {
-	LOG_WARN( CL_LOG,
-		  "Changed event for path: %s",
-		  path.c_str() );
+	LOG_WARN(CL_LOG,
+                 "handlePropertiesChange: Changed event for path: %s",
+                 path.c_str());
 	np->updateCachedRepresentation();
 	return EN_PROP_CHANGE;
     }
@@ -2886,7 +2899,7 @@ Factory::handleShardsChange(Notifyable *np,
                             int etype,
                             const string &path)
 {
-    TRACE( CL_LOG, "handleShardsChange" );
+    TRACE(CL_LOG, "handleShardsChange");
 
     return EN_NO_EVENT;
 }
@@ -2899,7 +2912,7 @@ Factory::handleManualOverridesChange(Notifyable *np,
                                      int etype,
                                      const string &path)
 {
-    TRACE( CL_LOG, "handleManualOverridesChange" );
+    TRACE(CL_LOG, "handleManualOverridesChange");
 
     return EN_NO_EVENT;
 }
@@ -2912,7 +2925,7 @@ Factory::handleClientStateChange(Notifyable *np,
                                  int etype,
                                  const string &path)
 {
-    TRACE( CL_LOG, "handleClientStateChange" );
+    TRACE(CL_LOG, "handleClientStateChange");
 
     return EN_NO_EVENT;
 }
@@ -2926,7 +2939,7 @@ Factory::handleMasterSetStateChange(Notifyable *np,
                                     int etype,
                                     const string &path)
 {
-    TRACE( CL_LOG, "handleMasterSetStateChange" );
+    TRACE(CL_LOG, "handleMasterSetStateChange");
 
     return EN_NO_EVENT;
 }

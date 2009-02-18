@@ -26,6 +26,8 @@ using namespace boost;
 #include "mutex.h"
 #include "thread.h"
 
+DEFINE_LOGGER(EV_LOG, "event")
+
 namespace clusterlib {
 
 /**********************************************************************/
@@ -283,16 +285,12 @@ class SynchronousEventAdapter
         
     void eventReceived(const EventSource<E> &source, const E &e)
     {
-#ifdef	VERY_VERBOSE_DEBUG
-        cerr << "Received event: "
-             << &e
-             << ", instance: "
-             << this
-             << ", thread: "
-             << pthread_self()
-             << endl;
-#endif
-
+        LOG_DEBUG(EV_LOG, 
+                  "eventReceived: event 0x%x, instance 0x%x, thread %u",
+                  (uint32_t) &e, 
+                  (uint32_t) this, 
+                  (uint32_t) pthread_self());
+        
         m_queue.put( e );
     }
 
@@ -562,15 +560,12 @@ class TimerEvent
           m_alarmTime(alarmTime),
           m_userData(userData) 
     {
-#ifdef	VERY_VERBOSE_DEBUG
-        cerr << "Created timer event: "
-             << this
-             << " with id: "
-             << id
-             << " and alarm time: "
-             << alarmTime
-             << endl;
-#endif
+        LOG_DEBUG(EV_LOG, 
+                  "Created timer event: instance 0x%x, "
+                  "id %d alarm time %lld", 
+                  (uint32_t) this, 
+                  (uint32_t) id, 
+                  alarmTime);
     }
 
     /**
@@ -733,14 +728,11 @@ class Timer
      */
     void sendAlarms()
     {
-#ifdef	VERY_VERBOSE_DEBUG
-        cerr << "Hello from sendAlarms, this: "
-             << this
-             << ", thread: "
-             << pthread_self()
-             << endl;
-#endif
-
+        LOG_DEBUG(EV_LOG, 
+                  "sendAlarms, this: 0x%x, thread %u",
+                  (uint32_t) this, 
+                  (uint32_t) pthread_self());
+        
         //iterate until terminating
         while (!m_terminating) {
             m_lock.lock();
@@ -823,15 +815,12 @@ void EventSource<E>::fireEventToAllListeners(const E &event)
 template<typename E>
 void EventSource<E>::fireEvent(EventListener<E> *listener, const E &event)
 {
-#ifdef	VERY_VERBOSE_DEBUG
-    cerr << "Sending event: "
-         << &event
-         << " to listener: "
-         << listener
-         << ", thread: "
-         << pthread_self()
-         << endl;
-#endif
+    LOG_DEBUG(EV_LOG,
+              "fireEvent: Sending event: event 0x%x, listener 0x%x, "
+              "thread %u", 
+              (uint32_t) &event, 
+              (uint32_t) listener, 
+              (uint32_t) pthread_self());
 
     listener->eventReceived( *this, event );
 }

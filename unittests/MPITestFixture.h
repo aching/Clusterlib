@@ -19,17 +19,20 @@ class MPITestFixture : public CppUnit::TestFixture {
     }
     int getRank() { return _rank; }
     int getSize() { return _size; }
-    void waitsForOrder(int procFirst, int procNext)
+    void waitsForOrder(clusterlib::Factory *factory,
+		       int procFirst, int procNext)
     {
 	assert(procFirst < getSize());
 	assert(procNext < getSize());
 	assert(procFirst != procNext);
 
 	if (getRank() == procFirst) {
+	    factory->synchronize();
 	    MPI::COMM_WORLD.Ssend(NULL, 0, MPI_BYTE, procNext, MPI_TAG);
 	}
 	else if (getRank() == procNext) {
 	    MPI::COMM_WORLD.Recv(NULL, 0, MPI_BYTE, procFirst, MPI_TAG);
+	    factory->synchronize();
 	}
     }
 

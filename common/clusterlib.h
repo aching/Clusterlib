@@ -150,12 +150,28 @@ class ClusterlibStrings
     ClusterlibStrings() {}
 };
 
+class ClusterlibInts {
+  public:
+    /* 
+     * All indices use for parsing ZK node names
+     */
+    static const int CLUSTERLIB_INDEX;
+    static const int VERSION_NAME_INDEX;
+    static const int APP_INDEX;
+    static const int APP_NAME_INDEX;
+    static const int GROUP_INDEX;
+    static const int GROUP_NAME_INDEX;
+    static const int DIST_INDEX;
+    static const int DIST_NAME_INDEX;
+    static const int NODE_TYPE_INDEX;
+    static const int NODE_NAME_INDEX;
+};
+
 /*
  * The actual factory class.
  */
 class Factory
-    : public virtual ClusterlibStrings,
-      public virtual zk::ZKEventListener
+    : public virtual ClusterlibStrings, public virtual ClusterlibInts
 {
   public:
     /*
@@ -200,13 +216,10 @@ class Factory
     bool isConnected() { return m_connected; }
 
     /*
-     * Handle events received from ZooKeeper. Must provide
-     * and inherit from ZKEventListener so that Factory can
-     * be used as an event sink. Not used, just a place holder
-     * and the real event processing happens in the callback.
+     * Ensure that all operations at this point have been pushed to
+     * the underlying data store.
      */
-    void eventReceived(const zk::ZKEventSource &source,
-                       const zk::ZKWatcherEvent &event);
+    void synchronize();
 
   private:
     /*

@@ -17,12 +17,12 @@ example2_LDADD = \
 	@APRUTIL_LIB@ \
 	@EXPAT_LIB@ \
 	@LIB_THREAD_OS@
-CXXFLAGS = -Wall -g @CXXFLAGS@
 INCLUDES = \
 	-I$(top_srcdir)/common \
 	-I@LOG4CXX_INCLUDES@ \
 	-I@ZOOKEEPER_INCLUDES@ \
 	-I@BOOST_INCLUDES@
+CXXFLAGS = @BASE_CXXFLAGS@
 
 example_SOURCES = \
 	example.cc

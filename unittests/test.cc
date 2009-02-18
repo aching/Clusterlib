@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
     int wasSuccessful = runner.run();
 
     /* Check if all processes were successful */
-    int *successArr;
+    int *successArr = NULL;
     if (MPI::COMM_WORLD.Get_rank() == 0) {
 	successArr = new int[MPI::COMM_WORLD.Get_size()];
     }
@@ -51,6 +51,7 @@ int main(int argc, char* argv[]) {
 	    }
 	}
 	delete successArr;
+        successArr = NULL;
 
 	cout << (wasSuccessful ? "SUCCESS" : "FAILURE")
 	     << " - See details in files (0-"

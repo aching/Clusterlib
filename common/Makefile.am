@@ -27,4 +27,4 @@ libcluster_a_SOURCES = \
 	notifyable.cc \
 	thread.cc \
 	zkadapter.cc
-CXXFLAGS = -Wall -g @CDXCORE_CXXFLAGS@ @CXXFLAGS@
+CXXFLAGS = @BASE_CXXFLAGS@
