@@ -78,6 +78,7 @@ class ClusterlibStrings
     static const string PROPERTIES;
     static const string CONFIGURATION;
     static const string ALERTS;
+    static const string SYNC;
 
     static const string APPLICATIONS;
     static const string GROUPS;
@@ -553,6 +554,13 @@ class Factory
                                      const string &path);
 
     /*
+     * Handle changes in synchronization of a zookeeper path.
+     */
+    Event handleSynchronizeChange(Notifyable *np,
+                                  int etype,
+                                  const string &path);
+
+    /*
      * Re-establish connection with ZooKeeper and re-establish
      * all the watches.
      */
@@ -607,6 +615,14 @@ class Factory
      */
     TimerRegistry m_timerRegistry;
     Mutex m_timerRegistryLock;
+
+    /*
+     * The registry of outstanding sync operations
+     */
+    int64_t m_syncId;
+    int64_t m_syncIdCompleted;
+    Mutex m_syncLock;
+    Cond m_syncCond;
 
     /*
      * The ZooKeeper config object.
@@ -682,6 +698,7 @@ class Factory
     FactoryEventHandler m_nodesChangeHandler;
     FactoryEventHandler m_nodeClientStateChangeHandler;
     FactoryEventHandler m_nodeMasterSetStateChangeHandler;
+    FactoryEventHandler m_synchronizeChangeHandler;
 };
 
 /*

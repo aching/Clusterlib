@@ -388,7 +388,9 @@ class ZooKeeperAdapter
 	/**
 	 * \brief Synchronizes all events with ZK with the local server.
 	 */
-	bool sync(const string &path);
+	bool sync(const string &path,
+                  ZKEventListener *listener,
+                  void *context);
         
         /**
          * \brief Creates a new node identified by the given path. 
@@ -545,7 +547,8 @@ class ZooKeeperAdapter
         enum WatchableMethod {
             NODE_EXISTS = 0,
             GET_NODE_CHILDREN,
-            GET_NODE_DATA
+            GET_NODE_DATA,
+            SYNC_DATA
         };
                 
         /**

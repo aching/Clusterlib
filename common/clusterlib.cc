@@ -61,6 +61,7 @@ const string ClusterlibStrings::CLUSTERLIBVERSION = "1.0";
 const string ClusterlibStrings::PROPERTIES = "properties";
 const string ClusterlibStrings::CONFIGURATION = "configuration";
 const string ClusterlibStrings::ALERTS = "alerts";
+const string ClusterlibStrings::SYNC = "sync";
 
 const string ClusterlibStrings::APPLICATIONS = "applications";
 const string ClusterlibStrings::GROUPS = "groups";
@@ -152,7 +153,9 @@ const int ClusterlibInts::NODE_NAME_INDEX = 8;
  * Create the associated FactoryOps delegate object.
  */
 Factory::Factory(const string &registry)
-    : m_config(registry, 3000),
+    : m_syncId(0),
+      m_syncIdCompleted(0),
+      m_config(registry, 3000),
       m_zk(m_config, NULL, false),
       m_timerEventAdapter(m_timerEventSrc),
       m_zkEventAdapter(m_zk),
@@ -190,7 +193,10 @@ Factory::Factory(const string &registry)
           &Factory::handleClientStateChange),
       m_nodeMasterSetStateChangeHandler(
 	  this,
-          &Factory::handleMasterSetStateChange)
+          &Factory::handleMasterSetStateChange),
+      m_synchronizeChangeHandler(
+	  this,
+          &Factory::handleSynchronizeChange)
 {
     TRACE(CL_LOG, "Factory");
 
@@ -346,6 +352,8 @@ Factory::createServer(const string &app,
     }
 };
 
+
+
 /*
  * Try to synchronize with the underlying data store.
  */
@@ -353,16 +361,53 @@ void
 Factory::synchronize()
 {
     TRACE(CL_LOG, "synchronize");
-    
-    SAFE_CALL_ZK(m_zk.sync("/"),
+    int syncId = 0;
+
+    /* 
+     * Simple algorithm to ensure that each synchronize() called by
+     * various clients gets a unique ID.  As long as there are not
+     * 2^64 sync operations in progress, this will not be a problem.
+     */
+    {
+        AutoLock l1(m_syncLock);
+        if ((m_syncId < m_syncIdCompleted) ||
+            (m_syncId == numeric_limits<int64_t>::max())) {
+            throw ClusterException("synchronize: sync invariant not "
+                                   "maintained");
+        }
+        
+        /*
+         * Reset m_syncId and m_syncIdCompleted if there are no
+         * outstanding syncs and are not at the initial state. 
+         */
+        if ((m_syncId == m_syncIdCompleted) && (m_syncId != 0)) {
+            m_syncId = 0;
+            m_syncIdCompleted = 0;
+        }
+        ++m_syncId;
+        syncId = m_syncId;
+    }
+
+    string path(ROOTNODE);
+    path.append(CLUSTERLIB);
+    SAFE_CALL_ZK(m_zk.sync(path, 
+                           &m_zkEventAdapter, 
+                           &m_synchronizeChangeHandler),
                  "Could not synchronize with the underlying store %s: %s",
                  "/",
                  true,
                  true);
 
-    /* Wait for notification of the event - will change to wait until
-     * the sync event is received. */
-    sleep(1);
+    /* Wait for notification of the event to be received by *
+     * m_eventAdapter. */
+    {
+        AutoLock l1(m_syncLock);
+        while (syncId > m_syncIdCompleted) {
+            m_syncCond.Wait(m_syncLock);
+        }
+    }
+
+    LOG_DEBUG(CL_LOG, "synchronize: Complete");
 }
 
 
@@ -556,7 +601,8 @@ Factory::dispatchEvents()
                               zp->getState(),
                               (unsigned int) zp->getContext());
                     
-                    if (zp->getType() == SESSION_EVENT) {
+                    if ((zp->getType() == SESSION_EVENT) &&
+                        (zp->getPath().compare(SYNC) != 0)) {
                         dispatchSessionEvent(zp);
                     } 
                     else {
@@ -638,8 +684,7 @@ Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
                  zp->getType(),
                  zp->getState(),
                  zp->getPath().c_str());
-        throw ClusterException(string("") +
-                               "Unexpected NULL event context: " +
+        throw ClusterException(string("Unexpected NULL event context: ") +
                                buf);
     }
 
@@ -687,9 +732,10 @@ Factory::dispatchSessionEvent(zk::ZKWatcherEvent *ze)
     TRACE(CL_LOG, "dispatchSessionEvent");
 
     LOG_DEBUG(CL_LOG,
-              "dispatchSessionEvent: (type: %d, state: %d)",
+              "dispatchSessionEvent: (type: %d, state: %d, path: %s)",
               ze->getType(), 
-              ze->getState());
+              ze->getState(),
+              ze->getPath().c_str());
 
     if ((ze->getState() == ASSOCIATING_STATE) ||
         (ze->getState() == CONNECTING_STATE)) {
@@ -2502,9 +2548,11 @@ Factory::updateCachedObject(FactoryEventHandler *cp,
 {
     TRACE(CL_LOG, "updateCachedObject");
 
+    if (cp == NULL) {
+        throw ClusterException("NULL FactoryEventHandler!");
+    }
     if (ep == NULL) {
-        throw ClusterException(string("") +
-                               "NULL watcher event!");
+        throw ClusterException("NULL watcher event!");
     }
 
     const string path = ep->getPath();
@@ -2541,9 +2589,11 @@ Factory::updateCachedObject(FactoryEventHandler *cp,
                       false);
     } else if (hasAppKeyPrefix(components)) {
         np = getApplication(components[APP_NAME_INDEX], false);
+    } else if (!path.compare(SYNC)) {
+        /* There is no notifyable for sync */
+        np = NULL;
     } else {
-        throw ClusterException(string("") +
-                               "Unknown event key: " +
+        throw ClusterException(string("Unknown event key: ") +
                                path);
     }
 
@@ -2553,7 +2603,7 @@ Factory::updateCachedObject(FactoryEventHandler *cp,
      * event represents.
      */
     Event e = cp->deliver(np, etype, path);
-
+    
     if (e == EN_NO_EVENT) {
         return NULL;
     }
@@ -2645,7 +2695,8 @@ Factory::handleNotifyableExists(Notifyable *np,
     /*
      * Re-establish interest in the existence of this notifyable.
      */
-    (void) m_zk.nodeExists(path, &m_zkEventAdapter, &m_notifyableExistsHandler);
+    (void) m_zk.nodeExists(path, &m_zkEventAdapter, 
+                           &m_notifyableExistsHandler);
 
     /*
      * Now decide what to do with the event.
@@ -2941,6 +2992,27 @@ Factory::handleMasterSetStateChange(Notifyable *np,
 {
     TRACE(CL_LOG, "handleMasterSetStateChange");
 
+    return EN_NO_EVENT;
+}
+
+/*
+ * Special handler for synchronization that waits until the zk event
+ * is propogated through the m_eventAdapter before returning.  This
+ * ensures that all zk events prior to this point are visible by each
+ * client.
+ */
+Event
+Factory::handleSynchronizeChange(Notifyable *np,
+                                 int etype,
+                                 const string &path)
+{
+    {
+        AutoLock l1(m_syncLock);
+        ++m_syncIdCompleted;
+        m_syncCond.Signal();
+    }
+
+    LOG_DEBUG(CL_LOG, "handleSynchronizeChange: sent conditional signal");
     return EN_NO_EVENT;
 }
 

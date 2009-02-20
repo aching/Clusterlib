@@ -305,65 +305,65 @@ static void waitCompletion(int rc, const char *value, const void *data)
 }
 
 bool
-ZooKeeperAdapter::sync(const string &path)
+ZooKeeperAdapter::sync(const string &path,
+                       ZKEventListener *listener,
+                       void *context)
 {
     TRACE(LOG, "sync");
 
     validatePath(path);
 
     int rc = ZINVALIDSTATE, ret;
+    struct sync_completion sc;
     RetryHandler rh(m_zkConfig);
     do {
         verifyConnection();
-	struct sync_completion *sc = new struct sync_completion;
-	memset(sc, 0, sizeof(*sc));
-	sc->zk = this;
-	ret = pthread_mutex_init(&sc->mutex, NULL);
+	memset(&sc, 0, sizeof(sc));
+	sc.zk = this;
+	ret = pthread_mutex_init(&sc.mutex, NULL);
 	if (ret) {
 	    throw ZooKeeperException("Unable to init mutex", rc,
 				      m_state == AS_CONNECTED);
 	}
-	ret = pthread_cond_init(&sc->cond, NULL); 
+	ret = pthread_cond_init(&sc.cond, NULL); 
 	if (ret) {
 	    throw ZooKeeperException("Unable to init cond", ret,
 				      m_state == AS_CONNECTED);
 	}
 	rc = zoo_async(mp_zkHandle,
-			path.c_str(),
-			waitCompletion,
-			sc);
+                       path.c_str(),
+                       waitCompletion,
+                       &sc);
 	if (rc == ZOK) {	    
-	    ret = pthread_mutex_lock(&sc->mutex);
+	    ret = pthread_mutex_lock(&sc.mutex);
 	    if (ret) {
 		throw ZooKeeperException("Unable to lock mutex", ret,
 					  m_state == AS_CONNECTED);
 	    }
-	    while (!sc->done) {
-		ret = pthread_cond_wait(&sc->cond, &sc->mutex);
+	    while (!sc.done) {
+		ret = pthread_cond_wait(&sc.cond, &sc.mutex);
 		if (ret) {
 		    throw ZooKeeperException("Unable to wait cond", ret,
                                              m_state == AS_CONNECTED);
 		}
 	    }
-	    ret = pthread_mutex_unlock(&sc->mutex);
+	    ret = pthread_mutex_unlock(&sc.mutex);
 	    if (ret) {
 		throw ZooKeeperException("Unable to unlock mutex", ret,
                                          m_state == AS_CONNECTED);
 	    }
 	}
 
-	ret = pthread_mutex_destroy(&sc->mutex);
+	ret = pthread_mutex_destroy(&sc.mutex);
 	if (ret) {
 	    throw ZooKeeperException("Unable to destroy mutex", ret,
                                      m_state == AS_CONNECTED);
 	}
-	ret = pthread_cond_destroy(&sc->cond); 
+	ret = pthread_cond_destroy(&sc.cond); 
 	if (ret) {
 	    throw ZooKeeperException("Unable to destroy cond", ret,
                                      m_state == AS_CONNECTED);
 	}
-	
-	delete sc;
     } while (rc != ZOK && rh.handleRC(rc));
     if (rc != ZOK) {
         LOG_ERROR(LOG, 
@@ -376,7 +376,22 @@ ZooKeeperAdapter::sync(const string &path)
                                  m_state == AS_CONNECTED);
     }
 
-    
+    /* Sync cannot set a watch, so manually push a zk event up to the
+     * listeners.  This assumes:
+     * 
+     * 1) After a sync, all the watches for any other events have been
+     * triggered and processed by zkWatcher.  
+     * 2) Syncs complete in order. 
+     * 
+     * At this point, we insert the sync event into the blocking queue
+     * for other listeners.
+     */
+    m_zkContextsMutex.Acquire();
+    registerContext(SYNC_DATA, clusterlib::ClusterlibStrings::SYNC, 
+                    listener, context);
+    m_zkContextsMutex.Release();
+    m_events.put(ZKWatcherEvent(SESSION_EVENT, CONNECTED_STATE,
+                                clusterlib::ClusterlibStrings::SYNC));
 
     return true;
 }
@@ -395,20 +410,32 @@ ZooKeeperAdapter::handleAsyncEvent(int type,
               path.c_str());
 
     Listener2Context context, context2;
-    //ignore internal ZK events
-    if (type != SESSION_EVENT && type != NOTWATCHING_EVENT) {
+    /* Ignore internal ZK events */
+    if (((type != SESSION_EVENT) || 
+         (!path.compare(clusterlib::ClusterlibStrings::SYNC))) &&
+        (type != NOTWATCHING_EVENT)) {
         m_zkContextsMutex.Acquire();
-        //check if the user context is available
+        /* Check if the user context is available */
         if (type == CHANGED_EVENT || type == DELETED_EVENT) {
-            //we may have two types of interest here, 
-            //in this case lets try to notify twice
+            /*
+             * There could be two types of interest here.  In this
+             * case, try to notify twice.
+             */
             context = findAndRemoveListenerContext(GET_NODE_DATA, path);
             context2 = findAndRemoveListenerContext(NODE_EXISTS, path);
-        } else if (type == CHILD_EVENT) {
+        } 
+        else if (type == CHILD_EVENT) {
             context = findAndRemoveListenerContext(GET_NODE_CHILDREN, path);
-        } else if (type == CREATED_EVENT) {
+        } 
+        else if (type == CREATED_EVENT) {
             context = findAndRemoveListenerContext(NODE_EXISTS, path);
+        } 
+        else if ((type == SESSION_EVENT) && 
+                 (!path.compare(clusterlib::ClusterlibStrings::SYNC))) {
+            /* Special synthetic sync event */
+            context = findAndRemoveListenerContext(SYNC_DATA, path);
         }
+
         m_zkContextsMutex.Release();
 
         /* Only forward events that do have context */
