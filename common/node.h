@@ -42,6 +42,14 @@ class Node
      */
     Group *getGroup() { return mp_group; }
 
+    /*
+     * Is this node the leader of its group?
+     */
+    bool isLeader()
+    {
+        return (mp_group->getLeader() == this) ? true : false;
+    }
+
   protected:
     /*
      * Friend declaration for Factory so that it will be able

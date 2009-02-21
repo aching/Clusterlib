@@ -2,13 +2,49 @@ In order to maintain consistent looking code we have defined the
 following conventions.  These conventions are not exhaustive and
 should be changed as necessary.
 
+- Coding Approach
+
+* Code defensively, we don't know anything about the caller and
+  cannot rely on the sanity of any arguments passed through a
+  public interface.
+* Code for the future. If a condition depends on a conclusion
+  reached before it (depending on how far before it of course)
+  it might make sense to recheck the assumption where you're
+  going to rely on it.
+* Test everything explicitly. Throw exceptions as appropriate.
+* The library should only throw ClusterException to the caller.
+
+- Scoping & Interface
+
+* Minimize the interface!!! Don't expose what other classes don't need.
+* Minimize the functionality!!! Don't add anything w/o a use case.
+* DO NOT EVER make instance variables public. All instance variable
+  should only be manipulated by getters and setters.
+* Use inner classes for concepts that are only used elsewhere within
+  the same class. Otherwise it deserves a top-level class.
+* Use friend declarations SPARINGLY, and for good reason. If it can
+  be done w/o a friend declaration, it SHOULD be done w/o one.
+
+- Exceptions
+
+Do not declare exceptions as part of the declaration of a method or
+function, C++ exception declarations only add complexity and provide
+no benefit.
+
+- Synchronization
+
+* Locking is your responsibility. If an instance variable needs to
+  be protected, scope the mutual exclusion to the shortest code path
+  possible.
+* Use auto-locks so that locks are released automatically under all
+  circumstances.
+
 - Identifier Names
 
 * Names of classes begin with an uppercase letter (for example, Canvas).
 * Both member and non-member functions begin with an lowercase letter
   (for example, textStyle).
 * Class data members begin with its m (for example, m_nodes). 
-
 
 - Control Structures
 
@@ -40,10 +76,21 @@ switch (expression) {
   default:
 }
 
+Special note about 'switch': There should ALWAYS be a
+'default', even when it is not needed at time of writing. It may
+become needed later.
+
+- Other indentation conventions
+
+* Indent 4 spaces at a time.
+* All closing '}' appear on a separate line.
+* Function and class declarations are terminated by ';' even when
+  not absolutely required.
+* No spaces around macro and function arguments.
 
 - Logging and message output
 
-No direct messages to stdout or stderr (i.e. cout, cerr, printf, etc.)
+No direct messages to stdout or stderr (i.e. cout, cerr, printf, etc.).
 Use log4cxx for all messaging output.
 
 If the log message fits on a single line:
@@ -60,8 +107,17 @@ LOG_ERROR(LOG,
           state,
           sPath.c_str());
 
-
 - File Names
 
 C++ source files use the suffix .cc. 
 C++ header files use the suffix .h.
+
+All file names are lower case throughout even when they're
+composed of multiple words. So
+
+clusterlib.cc not clusterLib.cc or ClusterLib.cc.
+
+- Compilation flags & code clean-ness
+
+Use -Wall and -Werror to force all warnings to be treated as
+errors. You cannot commit code with warnings.

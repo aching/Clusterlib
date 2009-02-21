@@ -49,23 +49,26 @@ Properties::setProperty(const string &name,
 void
 Properties::publish()
 {
-    TRACE( CL_LOG, "publish" );
+    TRACE(CL_LOG, "publish");
 
     Locker k(getKeyValMapLock());
     string marshalledKeyValMap = marshall();
     
-    LOG_INFO( CL_LOG,  
-	      "Tried to set node %s to %s with version %d\n",
-	      getKey().c_str(), marshalledKeyValMap.c_str(), 
-	      getKeyValVersion());
+    LOG_INFO(CL_LOG,
+	     "Tried to set node %s to %s with version %d\n",
+             getKey().c_str(),
+             marshalledKeyValMap.c_str(), 
+             getKeyValVersion());
 	
     getDelegate()->updateProperties(getKey(),
 				    marshalledKeyValMap,
 				    getKeyValVersion());
     
-    /* Since we should have the lock, the data should be identical to
+    /*
+     * Since we should have the lock, the data should be identical to
      * the zk data.  When the lock is released, clusterlib events will
-     * try to push this change again.  */
+     * try to push this change again. 
+     */
     setKeyValVersion(getKeyValVersion() + 1);
 }
 
@@ -98,7 +101,8 @@ Properties::marshall() const
 {
     string res;
     for (KeyValMap::const_iterator i = m_keyValMap.begin();
-         i != m_keyValMap.end(); ++i) {
+         i != m_keyValMap.end();
+         ++i) {
         res.append( i->first ).append( "=" ).append( i->second );
 	res.append( ";" );
     }
@@ -109,23 +113,24 @@ bool
 Properties::unmarshall(const string &marshalledKeyValMap) 
 {
     vector<string> nameValueList;
-    split( nameValueList, marshalledKeyValMap, is_any_of( ";" ) );
+    split(nameValueList, marshalledKeyValMap, is_any_of(";"));
     if (nameValueList.empty()) {
         return false;
     }
     KeyValMap keyValMap;
     for (vector<string>::iterator i = nameValueList.begin();
-         i != nameValueList.end() - 1; ++i) {
+         i != nameValueList.end() - 1;
+         ++i) {
         if (*i != "") {
             vector<string> pair;
-            split( pair, *i, is_any_of( "=" ) );
+            split(pair, *i, is_any_of("="));
             if (pair.size() != 2) {
 		stringstream s;
 		s << pair.size();
-		LOG_WARN( CL_LOG,
-			  "key-val pair (%d component(s)) = %s", 
-			  pair.size(),
-			  i->c_str());
+		LOG_WARN(CL_LOG,
+                         "key-val pair (%d component(s)) = %s", 
+                         pair.size(),
+                         i->c_str());
 		throw ClusterException("Malformed property \"" +
 				       *i +
 				       "\", expecting 2 components " +

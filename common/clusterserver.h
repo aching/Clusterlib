@@ -71,6 +71,22 @@ class Server
      */
     void enableHealthChecking(bool enabled);
 
+    /**
+     * \brief Participate in the leadership election protocol
+     * for the containing group.
+     */
+    bool tryToBecomeLeader();
+
+    /**
+     * \brief Am I the leader of my group?
+     */
+    bool amITheLeader();
+
+    /**
+     * \brief Give up leadership of my group.
+     */
+    void giveUpLeadership();
+
   protected:
     /*
      * Make the Factory class a friend.
@@ -203,6 +219,11 @@ class Server
      * The node that represents "my node".
      */
     Node *mp_node;
+
+    /*
+     * My leadership bid index.
+     */
+    int64_t m_myBid;
 };
 
 };	/* End of 'namespace clusterlib' */

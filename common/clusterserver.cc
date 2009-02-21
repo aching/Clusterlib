@@ -23,22 +23,22 @@ namespace clusterlib
 // execute the given code or die if it times out
 #define LIVE_OR_DIE(code, timeout)  \
     {   \
-        LOG_DEBUG( CL_LOG, "Setting up a bomb to go off in %d ms if '%s' deadlocks...", timeout, VAL(code) );  \
-        TimerId timerId = m_timer.scheduleAfter( timeout, VAL(code) );   \
+        LOG_DEBUG(CL_LOG, "Setting up a bomb to go off in %d ms if '%s' deadlocks...", timeout, VAL(code));  \
+        TimerId timerId = m_timer.scheduleAfter(timeout, VAL(code));   \
         try {   \
             code;   \
-            m_timer.cancelAlarm( timerId ); \
+            m_timer.cancelAlarm(timerId); \
         } catch (std::exception &e) {   \
-            m_timer.cancelAlarm( timerId ); \
-            LOG_ERROR( CL_LOG, \
-                        "An exception while executing '%s': %s",  \
-                        VAL(code), e.what() ); \
+            m_timer.cancelAlarm(timerId); \
+            LOG_ERROR(CL_LOG, \
+                      "An exception while executing '%s': %s",  \
+                      VAL(code), e.what()); \
         } catch (...) { \
-            m_timer.cancelAlarm( timerId ); \
-            LOG_ERROR( CL_LOG, \
-                        "Unable to execute '%s', unknown exception", VAL(code) );  \
+            m_timer.cancelAlarm(timerId); \
+            LOG_ERROR(CL_LOG, \
+                      "Unable to execute '%s', unknown exception", VAL(code));  \
         }   \
-        LOG_DEBUG( CL_LOG, "...disarming the bomb" );  \
+        LOG_DEBUG(CL_LOG, "...disarming the bomb");  \
     }
 
 
@@ -63,7 +63,8 @@ Server::Server(FactoryOps *f,
       m_healthCheckerTerminating(false),
       m_healthCheckingEnabled(true),
       mp_healthChecker(healthChecker),
-      m_flags(flags)
+      m_flags(flags),
+      m_myBid(-1)
 {
     mp_node = mp_f->getNode(m_appName,
                             m_grpName,
@@ -74,9 +75,12 @@ Server::Server(FactoryOps *f,
         throw ClusterException("Could not find or create node!");
     }
 
-    if (healthChecker != NULL) {
-	m_checkerThread.Create(*this, &Server::checkHealth);
-    }
+    /*
+     * Start the health checker thread, even if the caller did not
+     * register a health checker during construction. If mp_healthChecker
+     * is NULL then the health check is just skipped...
+     */
+    m_checkerThread.Create(*this, &Server::checkHealth);
 }
 
 Server::~Server()
@@ -146,13 +150,13 @@ Server::getHeartBeatCheckPeriod()
 void
 Server::checkHealth()
 {
-    TRACE( CL_LOG, "checkHealth" );
+    TRACE(CL_LOG, "checkHealth");
     
     int lastPeriod = m_checkFrequencyHealthy;   /* Initially.   */
     int curPeriod = m_checkFrequencyHealthy;    /* Initially.   */
 
     while (!m_healthCheckerTerminating) {
-        LOG_DEBUG( CL_LOG, "About to check health" );
+        LOG_DEBUG(CL_LOG, "About to check health");
 
         /*
          * First of all check the health, if health checking is turned on.
@@ -166,20 +170,21 @@ Server::checkHealth()
             try {
                 //schedule an abort in 10 mins to prevent from a deadlock
 #if 0 // AC - Events aren't ready yet
-                LIVE_OR_DIE( report = mp_healthChecker->checkHealth(), 10 * 60 * 1000 );
+                LIVE_OR_DIE(report = mp_healthChecker->checkHealth(), 10 * 60 * 1000);
 #else
 		report = mp_healthChecker->checkHealth();		
 #endif
-                LOG_DEBUG( CL_LOG, "Health report - state: %d, description: %s",
-                           report.getHealthState(), report.getStateDescription().c_str() );
+                LOG_DEBUG(CL_LOG,
+                          "Health report - state: %d, description: %s",
+                          report.getHealthState(), report.getStateDescription().c_str());
             } catch (std::exception &e) {
-                LOG_ERROR( CL_LOG, "Caught exception: %s", e.what() );
-                report = HealthReport( HealthReport::HS_UNHEALTHY, e.what() );
+                LOG_ERROR(CL_LOG, "Caught exception: %s", e.what());
+                report = HealthReport(HealthReport::HS_UNHEALTHY, e.what());
             } catch (...) {
-                LOG_ERROR(
-                    CL_LOG,
-                    "Caught unknown exception, assuming unhealthy state" );
-                report = HealthReport( HealthReport::HS_UNHEALTHY );
+                LOG_ERROR(CL_LOG,
+                          "Caught unknown exception, "
+                          "assuming unhealthy state");
+                report = HealthReport(HealthReport::HS_UNHEALTHY);
             }
             //check if m_healthCheckingEnabled is still true
             if (m_healthCheckingEnabled) {
@@ -191,12 +196,15 @@ Server::checkHealth()
 #endif
                 //schedule an abort in 2 mins to prevent from a deadlock
 #if 0 // AC - Events aren't ready yet
-                LIVE_OR_DIE( setHealthy( report ), 2 * 60 * 1000 );
+                LIVE_OR_DIE(setHealthy( report ), 2 * 60 * 1000);
 #else
 		setHealthy(report);
 #endif
-            } else {
-                LOG_WARN( CL_LOG, "m_healthCheckingEnabled has changed while checking the health. Ignoring the last report" );
+            }
+            else {
+                LOG_WARN(CL_LOG,
+                         "m_healthCheckingEnabled has changed while "
+                         "checking the health. Ignoring the last report");
             }
         }
 
@@ -206,7 +214,8 @@ Server::checkHealth()
          */
         if (report.getHealthState() == HealthReport::HS_HEALTHY) {
             curPeriod = m_checkFrequencyHealthy;
-        } else {
+        }
+        else {
             curPeriod = m_checkFrequencyUnhealthy;
         }
 
@@ -217,14 +226,15 @@ Server::checkHealth()
         if (curPeriod > 0) {
             lastPeriod = curPeriod;
             waitTime = curPeriod;
-        } else {
+        }
+        else {
             waitTime = lastPeriod;
         }
-        LOG_DEBUG( CL_LOG,
-                   "About to wait %d msec before next health check...",
-                   waitTime );
-        m_cond.Wait( m_mutex, waitTime );
-        LOG_DEBUG( CL_LOG, "...awoken!" );
+        LOG_DEBUG(CL_LOG,
+                  "About to wait %d msec before next health check...",
+                  waitTime);
+        m_cond.Wait(m_mutex, waitTime);
+        LOG_DEBUG(CL_LOG, "...awoken!");
         
         m_mutex.Release();
     }
@@ -233,11 +243,11 @@ Server::checkHealth()
 void
 Server::enableHealthChecking(bool enabled)
 {
-    TRACE( CL_LOG, "enableHealthChecking" );
+    TRACE(CL_LOG, "enableHealthChecking");
 
-    LOG_INFO( CL_LOG, 
-               "enableHealthChecking - enabled: %s",
-               enabled ? "true" : "false" );
+    LOG_INFO(CL_LOG, 
+             "enableHealthChecking - enabled: %s",
+             enabled ? "true" : "false");
     
     m_mutex.Acquire();
     if (enabled != m_healthCheckingEnabled) {
@@ -250,17 +260,90 @@ Server::enableHealthChecking(bool enabled)
 void
 Server::setHealthy(const HealthReport &report) 
 {
-    string key = mp_f->createNodeKey(getAppName(),
-				     getGroupName(),
-				     getNodeName(),
-				     (m_flags & SF_MANAGED) == SF_MANAGED);
+    TRACE(CL_LOG, "setHealthy");
+
     string value =
         (report.getHealthState() == HealthReport::HS_HEALTHY)
         ? ClusterlibStrings::HEALTHY
         : ClusterlibStrings::UNHEALTHY;
+    string key = mp_node->getKey();
  
     mp_f->updateNodeClientState(key, value);
     mp_f->updateNodeClientStateDesc(key, report.getStateDescription());
+}
+
+/**********************************************************************/
+/* Leadership protocol.                                               */
+/**********************************************************************/
+
+/*
+ * Attempt to become the leader.
+ */
+bool
+Server::tryToBecomeLeader()
+{
+    TRACE(CL_LOG, "tryToBecomeLeader");
+
+    /*
+     * Initialization.
+     */
+    if (m_myBid == -1) {
+        m_myBid = mp_f->placeBid(mp_node);
+    }
+    LOG_INFO(CL_LOG, "My leader bid: %lld", m_myBid);
+
+    /*
+     * First check if I already that I am or I am not the leader.
+     */
+    if (amITheLeader()) {
+        return true;
+    }
+    if (mp_f->isLeaderKnown(mp_node)) {
+        return false;
+    }
+
+    /*
+     * If my bid is the lowest, then I'm the leader. Find out.
+     */
+    return mp_f->tryToBecomeLeader(mp_node, m_myBid);
+}
+
+/*
+ * Is this server the leader of its group?
+ */
+bool
+Server::amITheLeader()
+{
+    TRACE(CL_LOG, "amITheLeader");
+
+    return mp_node->isLeader();
+}
+
+/*
+ * Give up leadership -- no-op if I'm not the leader of my
+ * group, else some other server becomes the leader.
+ */
+void
+Server::giveUpLeadership()
+{
+    TRACE(CL_LOG, "giveUpLeadership");
+
+    int64_t myBid = m_myBid;
+
+    /*
+     * I never bid, so cannot be the leader.
+     */
+    if (myBid == -1) {
+        return;
+    }
+
+    /*
+     * If I *am* the leader, give it up.
+     */
+    if (amITheLeader()) {
+        m_myBid = -1;
+        mp_f->giveUpLeadership(mp_node, myBid);
+    }
 }
 
 };	/* End of 'namespace clusterlib' */

@@ -269,6 +269,10 @@ ZooKeeperAdapter::reconnect()
               m_state); 
 }
 
+/***********************************************************************/
+/* ZK Sync mechanism.                                                  */
+/***********************************************************************/
+
 struct sync_completion {
     pthread_mutex_t mutex;
     pthread_cond_t cond;
@@ -298,9 +302,10 @@ static void waitCompletion(int rc, const char *value, const void *data)
     }    
     ret = pthread_mutex_unlock(&sc->mutex);
     if (ret) {
-	throw ZooKeeperException("Unable to unlock mutex", ret,
-				  sc->zk->getState() == 
-				  ZooKeeperAdapter::AS_CONNECTED);
+	throw ZooKeeperException("Unable to unlock mutex",
+                                 ret,
+                                 sc->zk->getState() == 
+                                 ZooKeeperAdapter::AS_CONNECTED);
     }
 }
 
@@ -322,13 +327,15 @@ ZooKeeperAdapter::sync(const string &path,
 	sc.zk = this;
 	ret = pthread_mutex_init(&sc.mutex, NULL);
 	if (ret) {
-	    throw ZooKeeperException("Unable to init mutex", rc,
-				      m_state == AS_CONNECTED);
+	    throw ZooKeeperException("Unable to init mutex",
+                                     rc,
+                                     m_state == AS_CONNECTED);
 	}
 	ret = pthread_cond_init(&sc.cond, NULL); 
 	if (ret) {
-	    throw ZooKeeperException("Unable to init cond", ret,
-				      m_state == AS_CONNECTED);
+	    throw ZooKeeperException("Unable to init cond",
+                                     ret,
+                                     m_state == AS_CONNECTED);
 	}
 	rc = zoo_async(mp_zkHandle,
                        path.c_str(),
@@ -337,31 +344,36 @@ ZooKeeperAdapter::sync(const string &path,
 	if (rc == ZOK) {	    
 	    ret = pthread_mutex_lock(&sc.mutex);
 	    if (ret) {
-		throw ZooKeeperException("Unable to lock mutex", ret,
-					  m_state == AS_CONNECTED);
+		throw ZooKeeperException("Unable to lock mutex",
+                                         ret,
+                                         m_state == AS_CONNECTED);
 	    }
 	    while (!sc.done) {
 		ret = pthread_cond_wait(&sc.cond, &sc.mutex);
 		if (ret) {
-		    throw ZooKeeperException("Unable to wait cond", ret,
+		    throw ZooKeeperException("Unable to wait cond",
+                                             ret,
                                              m_state == AS_CONNECTED);
 		}
 	    }
 	    ret = pthread_mutex_unlock(&sc.mutex);
 	    if (ret) {
-		throw ZooKeeperException("Unable to unlock mutex", ret,
+		throw ZooKeeperException("Unable to unlock mutex",
+                                         ret,
                                          m_state == AS_CONNECTED);
 	    }
 	}
 
 	ret = pthread_mutex_destroy(&sc.mutex);
 	if (ret) {
-	    throw ZooKeeperException("Unable to destroy mutex", ret,
+	    throw ZooKeeperException("Unable to destroy mutex",
+                                     ret,
                                      m_state == AS_CONNECTED);
 	}
 	ret = pthread_cond_destroy(&sc.cond); 
 	if (ret) {
-	    throw ZooKeeperException("Unable to destroy cond", ret,
+	    throw ZooKeeperException("Unable to destroy cond",
+                                     ret,
                                      m_state == AS_CONNECTED);
 	}
     } while (rc != ZOK && rh.handleRC(rc));
@@ -387,10 +399,13 @@ ZooKeeperAdapter::sync(const string &path,
      * for other listeners.
      */
     m_zkContextsMutex.Acquire();
-    registerContext(SYNC_DATA, clusterlib::ClusterlibStrings::SYNC, 
-                    listener, context);
+    registerContext(SYNC_DATA,
+                    clusterlib::ClusterlibStrings::SYNC, 
+                    listener,
+                    context);
     m_zkContextsMutex.Release();
-    m_events.put(ZKWatcherEvent(SESSION_EVENT, CONNECTED_STATE,
+    m_events.put(ZKWatcherEvent(SESSION_EVENT,
+                                CONNECTED_STATE,
                                 clusterlib::ClusterlibStrings::SYNC));
 
     return true;
@@ -405,8 +420,8 @@ ZooKeeperAdapter::handleAsyncEvent(int type,
 
     LOG_DEBUG(LOG, 
               "handleAsyncEvent: type: %d, state %d, path: %s",
-              type, 
-              state, 
+              type,
+              state,
               path.c_str());
 
     Listener2Context context, context2;
@@ -526,8 +541,7 @@ ZooKeeperAdapter::processEvents()
                     m_connected = false;
                     setState(AS_CONNECTING);
                 } else if (source.getState() == EXPIRED_SESSION_STATE) {
-                    LOG_INFO(LOG, 
-                             "Received EXPIRED_SESSION event");
+                    LOG_INFO(LOG, "Received EXPIRED_SESSION event");
                     setState(AS_SESSION_EXPIRED);
                 }
                 m_stateLock.unlock();
@@ -593,8 +607,7 @@ ZooKeeperAdapter::registerContext(WatchableMethod method,
               (uint32_t) listener);
 
     if (!listener) {
-	LOG_ERROR(LOG, 
-                  "registerContext must have a valid listener");
+	LOG_ERROR(LOG, "registerContext must have a valid listener");
 	throw ZooKeeperException(
             "registerContext must have a valid listener",
             m_state == AS_CONNECTED);
@@ -602,8 +615,7 @@ ZooKeeperAdapter::registerContext(WatchableMethod method,
     }
 
     if (!context) {
-	LOG_ERROR(LOG, 
-                  "registerContext must have a valid context");
+	LOG_ERROR(LOG, "registerContext must have a valid context");
 	throw ZooKeeperException(
             "registerContext must have a valid context",
             m_state == AS_CONNECTED);
@@ -849,31 +861,31 @@ ZooKeeperAdapter::createSequence(const string &path,
 
     string createdPath;    
     bool result = createNode(path,
-                              value,
-                              flags | SEQUENCE,
-                              createAncestors,
-                              createdPath);
+                             value,
+                             flags | SEQUENCE,
+                             createAncestors,
+                             createdPath);
     if (!result) {
         return -1;
     } else {
         //extract sequence number from the returned path
         if (createdPath.find(path) != 0) {
             throw ZooKeeperException(string("Expecting returned path '") +
-                                      createdPath + 
-                                      "' to start with '" +
-                                      path +
-                                      "'",
-                                      m_state == AS_CONNECTED);
+                                     createdPath + 
+                                     "' to start with '" +
+                                     path +
+                                     "'",
+                                     m_state == AS_CONNECTED);
         }
         string seqSuffix =
             createdPath.substr(path.length(), 
-                                createdPath.length() - path.length());
+                               createdPath.length() - path.length());
         char *ptr = NULL;
         int64_t seq = strtol(seqSuffix.c_str(), &ptr, 10);
         if (ptr != NULL && *ptr != '\0') {
             throw ZooKeeperException(string("Expecting a number but got ") +
-                                      seqSuffix,
-                                      m_state == AS_CONNECTED);
+                                     seqSuffix,
+                                     m_state == AS_CONNECTED);
         }
         return seq;
     }
@@ -923,8 +935,8 @@ ZooKeeperAdapter::deleteNode(const string &path,
                   rc, 
                   path.c_str());
         throw ZooKeeperException(string("Unable to delete node ") + path,
-                                  rc,
-                                  m_state == AS_CONNECTED);
+                                 rc,
+                                 m_state == AS_CONNECTED);
     } else {
         LOG_INFO(LOG, 
                  "%s has been deleted", 
@@ -936,7 +948,8 @@ ZooKeeperAdapter::deleteNode(const string &path,
 bool
 ZooKeeperAdapter::nodeExists(const string &path,
                              ZKEventListener *listener,
-                             void *context, Stat *stat)
+                             void *context,
+                             Stat *stat)
 {
     TRACE(LOG, "nodeExists");
 
@@ -1067,7 +1080,8 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
 string
 ZooKeeperAdapter::getNodeData(const string &path,
                               ZKEventListener *listener,
-                              void *context, Stat *stat)
+                              void *context,
+                              Stat *stat)
 {
     TRACE(LOG, "getNodeData");
 

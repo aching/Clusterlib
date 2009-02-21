@@ -35,6 +35,11 @@ class Group
 		  bool create = false);
 
     /*
+     * Get the leader node.
+     */
+    Node *getLeader();
+
+    /*
      * Retrieve a map of all currently known nodes in this
      * group.
      */
@@ -62,12 +67,32 @@ class Group
           FactoryOps *f)
         : Notifyable(f, key, name),
           mp_app(app),
+          mp_leader(NULL),
+          m_leaderIsKnown(false),
           m_cachingNodes(false)
     {
         m_nodes.clear();
 
         updateCachedRepresentation();
     }
+
+    /*
+     * Update the known leader.
+     */
+    void updateLeader(Node *np);
+
+    /*
+     * Is the leader known?
+     */
+    bool isLeaderKnown() { return m_leaderIsKnown; }
+
+    /*
+     * Get strings for leadership protocol.
+     */
+    void initializeStringsForLeadershipProtocol();
+    string getCurrentLeaderNodeName();
+    string getLeadershipBidsNodeName();
+    string getLeadershipBidPrefix();
 
     /*
      * Are we caching all nodes fully?
@@ -101,11 +126,32 @@ class Group
      */
     Mutex *getNodeMapLock() { return &m_nodeMapLock; }
 
+    /*
+     * Get the address of the lock for the leadership protocol.
+     */
+    Mutex *getLeadershipLock() { return &m_leadershipLock; }
+
   private:
     /*
      * The application object that contains this group.
      */
     Application *mp_app;
+
+    /*
+     * The leader node, if already cached (should be, if
+     * there's a leader).
+     */
+    Node *mp_leader;
+    bool m_leaderIsKnown;
+    Mutex m_leadershipLock;
+
+    /*
+     * Strings that help in the leadership protocol.
+     */
+    string m_currentLeaderNodeName;
+    string m_leadershipBidsNodeName;
+    string m_leadershipBidPrefix;
+    bool m_leadershipStringsInitialized;
 
     /*
      * Map of all nodes within this group.

@@ -194,6 +194,12 @@ Factory::Factory(const string &registry)
       m_nodeMasterSetStateChangeHandler(
 	  this,
           &Factory::handleMasterSetStateChange),
+      m_leadershipChangeHandler(
+	  this,
+          &Factory::handleLeadershipChange),
+      m_precLeaderExistsHandler(
+	  this,
+          &Factory::handlePrecLeaderExistsChange),
       m_synchronizeChangeHandler(
 	  this,
           &Factory::handleSynchronizeChange)
@@ -209,6 +215,11 @@ Factory::Factory(const string &registry)
     m_groups.clear();
     m_nodes.clear();
     m_clients.clear();
+
+    /*
+     * Clear the multi-map of leadership election watches.
+     */
+    m_leadershipWatches.clear();
 
     /*
      * Create the delegate.
@@ -534,7 +545,7 @@ Factory::dispatchEvents()
     GenericEvent ge;
 
     LOG_DEBUG(CL_LOG,
-              "Hello from dispatchEvents(), this = 0x%x, thread: %d",
+              "Hello from dispatchEvents(), this: 0x%x, thread: %d",
               (unsigned int) this,
               (unsigned int) pthread_self());
 
@@ -1073,7 +1084,7 @@ Factory::updateDistribution(const string &key,
     SAFE_CALL_ZK((exists = m_zk.nodeExists(snode)),
                  "Could not determine whether node %s exists: %s",
                  snode.c_str(),
-                 true,
+                 false,
                  true);
     if (!exists) {
         SAFE_CALL_ZK(m_zk.createNode(snode,shards,0,true),
@@ -2485,6 +2496,251 @@ Factory::getNodeNames(Group *grp)
     return list;
 }
 
+/**********************************************************************/
+/* Leadership protocol.                                               */
+/**********************************************************************/
+
+/*
+ * Get the node for the current leader of a given group.
+ */
+Node *
+Factory::getLeader(Group *grp)
+{
+    TRACE( CL_LOG, "getLeader" );
+
+    Node *lp = NULL;
+    string lnn = grp->getCurrentLeaderNodeName();
+    string ln = "";
+
+    SAFE_CALL_ZK((ln = m_zk.getNodeData(lnn, 
+                                        &m_zkEventAdapter,
+                                        &m_leadershipChangeHandler)),
+                 "Getting current leader of group %s failed: %s",
+                 grp->getKey().c_str(),
+                 true,
+                 true);
+    if (ln != "") {
+        lp = getNode(ln, grp, true, false);
+    }
+    return lp;
+}
+
+int64_t
+Factory::placeBid(Node *np)
+{
+    TRACE(CL_LOG, "placeBid");
+
+    char tmp[100];
+
+    snprintf(tmp, 100, "%d", getpid());
+
+    Group *grp = np->getGroup();
+    string pfx = grp->getLeadershipBidPrefix();
+    string value =
+        np->getKey() +
+        ";" +
+        VERSION +
+        ";" +
+        tmp;
+    int64_t bid = 0;
+
+    SAFE_CALL_ZK((bid = m_zk.createSequence(pfx, value, EPHEMERAL, true)),
+                 "Bidding with prefix %s to become leader failed: %s",
+                 pfx.c_str(),
+                 true,
+                 true);
+    return bid;
+}
+
+/*
+ * Make the given node a leader of its group if the given
+ * bid is the lowest (honors system!).
+ */
+bool
+Factory::tryToBecomeLeader(Node *np, int64_t bid)
+{
+    TRACE(CL_LOG, "tryToBecomeLeader");
+
+    IdList l;
+    Group *grp = np->getGroup();
+    string lnn = grp->getCurrentLeaderNodeName();
+    string bnn = grp->getLeadershipBidsNodeName();
+    string pfx = grp->getLeadershipBidPrefix();
+    string ln = "";
+    string val = "";
+    string suffix = "";
+    string toCheck = "";
+    int len = pfx.length();
+    const char *cppfx = pfx.c_str();
+    char *ptr;
+    int64_t checkID;
+    bool exists = false;
+
+    /*
+     * If there's already a different leader, then I'm not the leader.
+     */
+
+    SAFE_CALL_ZK((m_zk.getNodeChildren(l, bnn)),
+                 "Getting bids for group %s failed: %s",
+                 grp->getKey().c_str(),
+                 true,
+                 true);
+    for (IdList::iterator i = l.begin();
+         i != l.end();
+         i++) {
+        toCheck = *i;
+
+        /*
+         * Skip any random strings that are not
+         * sequence members.
+         */
+        if (toCheck.compare(0, len, cppfx, len) != 0) {
+            continue;
+        }
+
+        /*
+         * Ensure that this is a legal sequence number.
+         */
+        suffix = toCheck.substr(len, toCheck.length() - len);
+        ptr = NULL;
+        checkID = strtol(suffix.c_str(), &ptr, 10);
+        if (ptr != NULL && *ptr != '\0') {
+            LOG_WARN(CL_LOG, "Expecting a number but got %s", suffix.c_str());
+            throw ClusterException( "Expecting a number but got " + suffix );
+        }
+
+        /*
+         * Compare to my bid -- if smaller, then a preceding leader exists.
+         */
+        if (checkID < bid) {
+            SAFE_CALL_ZK((exists = m_zk.nodeExists(toCheck,
+                                                   &m_zkEventAdapter,
+                                                   &m_precLeaderExistsHandler)),
+                         "Checking for preceding leader %s failed: %s",
+                         toCheck.c_str(),
+                         false,
+                         true);
+            if (exists) {
+                /*
+                 * This is informational so not fatal if it fails.
+                 */
+                SAFE_CALL_ZK((val = m_zk.getNodeData(toCheck)),
+                             "Getting name of preceding leader in %s failed: %s",
+                             toCheck.c_str(),
+                             true,
+                             true);
+                LOG_WARN(CL_LOG,
+                         "Found preceding leader %s value %s, "
+                         "%s is not the leader",
+                         toCheck.c_str(), 
+                         val.c_str(),
+                         np->getKey().c_str() );
+
+                /*
+                 * This node did not become the leader.
+                 */
+                return false;
+            }
+        }
+    }
+
+    LOG_WARN(CL_LOG,
+             "Found no preceding leader, %s is the leader!",
+             np->getKey().c_str() );
+
+    return true;
+}
+
+/*
+ * Is the leader known within the group containing this node.
+ */
+bool
+Factory::isLeaderKnown(Node *np)
+{
+    TRACE(CL_LOG, "isLeaderKnown");
+
+    return np->getGroup()->isLeaderKnown();
+}
+
+/*
+ * Denote that the leader of the group in which this node
+ * is a member is unknown.
+ */
+void
+Factory::leaderIsUnknown(Node *np)
+{
+    TRACE(CL_LOG, "leaderIsUnknown");
+
+    np->getGroup()->updateLeader(NULL);
+}
+
+/*
+ * The server represented by the given node, and that owns the
+ * given bid, is no longer the leader of its group.
+ */
+void
+Factory::giveUpLeadership(Node *np, int64_t bid)
+{
+    TRACE(CL_LOG, "giveUpLeadership");
+
+    Group *grp = np->getGroup();
+
+    /*
+     * Delete the current leader node.
+     */
+    SAFE_CALL_ZK(m_zk.deleteNode(grp->getCurrentLeaderNodeName()),
+                 "Could not delete current leader for %s: %s",
+                 grp->getKey().c_str(),
+                 true,
+                 true);
+
+    /*
+     * Delete the leadership bid for this node.
+     */
+    char buf[100];
+
+    snprintf(buf, 100, "%lld", bid);
+    string sbid = grp->getLeadershipBidPrefix() + buf;
+
+    SAFE_CALL_ZK(m_zk.deleteNode(sbid),
+                 "Could not delete bid for current leader %s: %s",
+                 np->getKey().c_str(),
+                 true,
+                 true);
+}
+
+/*
+ * Methods to prepare strings for leadership protocol.
+ */
+string
+Factory::getCurrentLeaderNodeName(const string &gkey)
+{
+    return
+        gkey +
+        PATHSEPARATOR +
+        LEADERSHIP +
+        PATHSEPARATOR +
+        CURRENTLEADER;
+}
+string
+Factory::getLeadershipBidsNodeName(const string &gkey)
+{
+    return
+        gkey +
+        PATHSEPARATOR +
+        LEADERSHIP +
+        PATHSEPARATOR +
+        BIDS;
+}
+string
+Factory::getLeadershipBidPrefix(const string &gkey)
+{
+    return
+        getLeadershipBidsNodeName(gkey) +
+        PATHSEPARATOR +
+        BIDPREFIX;
+}
+
 /*
  * Register a timer handler.
  */
@@ -2651,9 +2907,9 @@ Factory::handleNotifyableReady(Notifyable *np,
      */
     if (np == NULL) {
         LOG_WARN(CL_LOG,
-                  "Punting on event: %d on %s",
-                  etype,
-                  path.c_str());
+                 "Punting on event: %d on %s",
+                 etype,
+                 path.c_str());
         return EN_NO_EVENT;
     }
 
@@ -2681,16 +2937,16 @@ Factory::handleNotifyableExists(Notifyable *np,
      */
     if (np == NULL) {
         LOG_WARN(CL_LOG,
-                  "Punting on event: %d on %s",
-                  etype,
-                  path.c_str());
+                 "Punting on event: %d on %s",
+                 etype,
+                 path.c_str());
         return EN_NO_EVENT;
     }
 
     LOG_WARN(CL_LOG,
-              "Got exists event: %d on notifyable: \"%s\"",
-              etype,
-              np->getKey().c_str());
+             "Got exists event: %d on notifyable: \"%s\"",
+             etype,
+             np->getKey().c_str());
 
     /*
      * Re-establish interest in the existence of this notifyable.
@@ -2703,15 +2959,15 @@ Factory::handleNotifyableExists(Notifyable *np,
      */
     if (etype == DELETED_EVENT) {
         LOG_WARN(CL_LOG,
-                  "Deleted event for path: %s",
-                  path.c_str());
+                 "Deleted event for path: %s",
+                 path.c_str());
         np->setReady(false);
         return EN_NOTIFYABLE_DELETED;
     }
     if (etype == CREATED_EVENT) {
         LOG_WARN(CL_LOG,
-                  "Created event for path: %s",
-                  path.c_str());
+                 "Created event for path: %s",
+                 path.c_str());
         establishNotifyableReady(np);
         return EN_NOTIFYABLE_CREATED;
     }
@@ -2754,9 +3010,9 @@ Factory::handleGroupsChange(Notifyable *np,
      */
     if (np == NULL) {
         LOG_WARN(CL_LOG,
-                  "Punting on event: %d on %s",
-                  etype,
-                  path.c_str());
+                 "Punting on event: %d on %s",
+                 etype,
+                 path.c_str());
         return EN_NO_EVENT;
     }
 
@@ -2770,8 +3026,8 @@ Factory::handleGroupsChange(Notifyable *np,
     Application *app = dynamic_cast<Application *>(np);
     if (app == NULL) {
         LOG_FATAL(CL_LOG,
-                   "Expected application object for %s",
-                   path.c_str());
+                  "Expected application object for %s",
+                  path.c_str());
         return EN_NO_EVENT;
     }
 
@@ -2798,15 +3054,15 @@ Factory::handleDistributionsChange(Notifyable *np,
      */
     if (np == NULL) {
         LOG_WARN(CL_LOG,
-                  "Punting on event: %d on %s",
-                  etype,
-                  path.c_str());
+                 "Punting on event: %d on %s",
+                 etype,
+                 path.c_str());
         return EN_NO_EVENT;
     }
 
     LOG_WARN(CL_LOG,
-              "Got dists change event for : \"%s\"",
-              np->getKey().c_str());
+             "Got dists change event for : \"%s\"",
+             np->getKey().c_str());
 
     /*
      * Convert to application object.
@@ -2814,8 +3070,8 @@ Factory::handleDistributionsChange(Notifyable *np,
     Application *app = dynamic_cast<Application *>(np);
     if (app == NULL) {
         LOG_FATAL(CL_LOG,
-                   "Expected application object for %s",
-                   path.c_str());
+                  "Expected application object for %s",
+                  path.c_str());
         return EN_NO_EVENT;
     }
 
@@ -2845,15 +3101,15 @@ Factory::handleNodesChange(Notifyable *np,
      */
     if (np == NULL) {
         LOG_WARN(CL_LOG,
-                  "Punting on event: %d on %s",
-                  etype,
-                  path.c_str());
+                 "Punting on event: %d on %s",
+                 etype,
+                 path.c_str());
         return EN_NO_EVENT;
     }
 
     LOG_WARN(CL_LOG,
-              "Got nodes change event for : \"%s\"",
-              np->getKey().c_str());
+             "Got nodes change event for : \"%s\"",
+             np->getKey().c_str());
 
     /*
      * Convert to a group object.
@@ -2861,8 +3117,8 @@ Factory::handleNodesChange(Notifyable *np,
     Group *grp = dynamic_cast<Group *>(np);
     if (grp == NULL) {
         LOG_FATAL(CL_LOG,
-                   "Expected group object for %s",
-                   path.c_str());
+                  "Expected group object for %s",
+                  path.c_str());
         return EN_NO_EVENT;
     }
 
@@ -2996,6 +3252,152 @@ Factory::handleMasterSetStateChange(Notifyable *np,
 }
 
 /*
+ * Handle change in the leadership of a group.
+ */
+Event
+Factory::handleLeadershipChange(Notifyable *np,
+                                int etype,
+                                const string &path)
+{
+    TRACE( CL_LOG, "handleLeadershipChange" );
+
+    /*
+     * If there's no notifyable, punt.
+     */
+    if (np == NULL) {
+        LOG_WARN(CL_LOG,
+                 "Punting on event: %d on %s",
+                 etype,
+                 path.c_str());
+        return EN_NO_EVENT;
+    }
+
+    bool exists = false;
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(path,
+                                           &m_zkEventAdapter,
+                                           &m_leadershipChangeHandler)),
+                 "Could not determine whether node %s exists: %s",
+                 path.c_str(),
+                 false,
+                 true);
+
+    Group *grp = dynamic_cast<Group *>(np);
+    if (!exists) {
+        grp->updateLeader(NULL);
+    }
+    else {
+        string lname = "";
+        SAFE_CALL_ZK((lname = m_zk.getNodeData(path,
+                                               &m_zkEventAdapter,
+                                               &m_leadershipChangeHandler)),
+                     "Could not read current leader for group %s: %s",
+                     grp->getKey().c_str(),
+                     false,
+                     true);
+        if (lname == "") {
+            grp->updateLeader(NULL);
+        }
+        else {
+            grp->updateLeader(getNode(lname, grp, true, false));
+        }
+    }
+
+    return EN_GRP_LEADERSHIP;
+}
+
+/*
+ * Handle existence change for preceding leader of
+ * a group. This is called whenever a preceding leader
+ * being watched by a server in this process abdicates.
+ */
+Event
+Factory::handlePrecLeaderExistsChange(Notifyable *np,
+                                      int etype,
+                                      const string &path)
+{
+    TRACE(CL_LOG, "handlePrecLeaderExistsChange");
+
+    /*
+     * If there's no notifyable, punt.
+     */
+    if (np == NULL) {
+        LOG_WARN(CL_LOG,
+                 "Punting on event: %d on %s",
+                 etype,
+                 path.c_str());
+        return EN_NO_EVENT;
+    }
+
+    Server *sp;
+    LeadershipElectionMultimap c;
+    LeadershipIterator i;
+    LeadershipElectionMultimapRange r;
+
+    {
+        Locker l1(&m_lwLock);
+
+        /*
+         * Make our own copy of the watches map.
+         */
+        c = m_leadershipWatches;
+
+        /*
+         * And remove the key from the watches map.
+         */
+        r = m_leadershipWatches.equal_range(path);
+        m_leadershipWatches.erase(r.first, r.second);
+    }
+
+    /*
+     * Find the range containing the watches for the
+     * node we got notified about (there may be several
+     * because there can be several Server instances in
+     * this process).
+     */
+    r = c.equal_range(path);
+
+    /*
+     * Make all interested Servers participate in the
+     * election again.
+     */
+    Group *grp = dynamic_cast<Group *>(np);
+    Group *grp1;
+
+    for (i = r.first; i != r.second; i++) {
+        /*
+         * Sanity check -- the path is the same...
+         */
+        if ((*i).first != path) {
+            LOG_FATAL(CL_LOG,
+                      "Internal error: bad leadership watch (bid) %s vs %s",
+                      path.c_str(), (*i).first.c_str());
+            ::abort();
+        }
+
+        sp = (*i).second;
+
+        /*
+         * Sanity check -- the Server must be in this group...
+         */
+        grp1 = sp->getMyNode()->getGroup();
+        if (grp != grp1) {
+            LOG_FATAL(CL_LOG,
+                      "Internal error: bad leadership watch (grp) %s vs %s",
+                      grp->getKey().c_str(), grp1->getKey().c_str());
+            ::abort();
+        }
+        
+        /*
+         * Try to make this Server the leader. Ignore the result, we
+         * must give everyone a chance.
+         */
+        (void) sp->tryToBecomeLeader();
+    }
+
+    return EN_GRP_LEADERSHIP;
+}
+
+/*
  * Special handler for synchronization that waits until the zk event
  * is propogated through the m_eventAdapter before returning.  This
  * ensures that all zk events prior to this point are visible by each
@@ -3022,7 +3424,6 @@ Factory::handleSynchronizeChange(Notifyable *np,
  */
 void
 Factory::reestablishConnectionAndState(const char *what)
-    throw(ClusterException)
 {
     /* TBD -- Real implementation */
     throw ClusterException(what);

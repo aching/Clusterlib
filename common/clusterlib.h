@@ -327,6 +327,23 @@ class Factory
     IdList getNodeNames(Group *grp);
 
     /*
+     * Leadership protocol.
+     */
+    Node *getLeader(Group *grp);
+    int64_t placeBid(Node *np);
+    bool tryToBecomeLeader(Node *np, int64_t bid);
+    bool isLeaderKnown(Node *np);
+    void leaderIsUnknown(Node *np);
+    void giveUpLeadership(Node *np, int64_t bid);
+
+    /*
+     * Methods to prepare strings for leadership protocol.
+     */
+    string getCurrentLeaderNodeName(const string &gkey);
+    string getLeadershipBidsNodeName(const string &gkey);
+    string getLeadershipBidPrefix(const string &gkey);
+
+    /*
      * Retrieve (and potentially create) instances of
      * objects representing applications, groups, nodes,
      * and distributions.
@@ -554,6 +571,22 @@ class Factory
                                      const string &path);
 
     /*
+     * Handle changes in the leadership of a
+     * group.
+     */
+    Event handleLeadershipChange(Notifyable *np,
+                                 int etype,
+                                 const string &path);
+
+    /*
+     * Handle existence change for preceding leader of
+     * a group.
+     */
+    Event handlePrecLeaderExistsChange(Notifyable *np,
+                                       int etype,
+                                       const string &path);
+
+    /*
      * Handle changes in synchronization of a zookeeper path.
      */
     Event handleSynchronizeChange(Notifyable *np,
@@ -564,8 +597,7 @@ class Factory
      * Re-establish connection with ZooKeeper and re-establish
      * all the watches.
      */
-    void reestablishConnectionAndState(const char *msg)
-	throw(ClusterException);
+    void reestablishConnectionAndState(const char *msg);
 
   private:
 
@@ -579,6 +611,12 @@ class Factory
      */
     ClientList m_clients;
     Mutex m_clLock;
+
+    /*
+     * The registry of leadership election watches.
+     */
+    LeadershipElectionMultimap m_leadershipWatches;
+    Mutex m_lwLock;
 
     /*
      * The registry of cached properties maps.
@@ -698,6 +736,8 @@ class Factory
     FactoryEventHandler m_nodesChangeHandler;
     FactoryEventHandler m_nodeClientStateChangeHandler;
     FactoryEventHandler m_nodeMasterSetStateChangeHandler;
+    FactoryEventHandler m_leadershipChangeHandler;
+    FactoryEventHandler m_precLeaderExistsHandler;
     FactoryEventHandler m_synchronizeChangeHandler;
 };
 
@@ -970,6 +1010,51 @@ class FactoryOps
     IdList getNodeNames(Group *grp)
     {
         return mp_f->getNodeNames(grp);
+    }
+
+    /*
+     * Group leadership protocol.
+     */
+    Node *getLeader(Group *grp)
+    {
+        return mp_f->getLeader(grp);
+    }
+    int64_t placeBid(Node *np)
+    {
+        return mp_f->placeBid(np);
+    }
+    bool tryToBecomeLeader(Node *np, int64_t bid)
+    {
+        return mp_f->tryToBecomeLeader(np, bid);
+    }
+    bool isLeaderKnown(Node *np)
+    {
+        return mp_f->isLeaderKnown(np);
+    }
+    void leaderIsUnknown(Node *np)
+    {
+        mp_f->leaderIsUnknown(np);
+    }
+    void giveUpLeadership(Node *np, int64_t bid)
+    {
+        mp_f->giveUpLeadership(np, bid);
+    }
+
+    /*
+     * Helper methods to prepare strings for leadership
+     * protocol.
+     */
+    string getCurrentLeaderNodeName(const string &gkey)
+    {
+        return mp_f->getCurrentLeaderNodeName(gkey);
+    }
+    string getLeadershipBidsNodeName(const string &gkey)
+    {
+        return mp_f->getLeadershipBidsNodeName(gkey);
+    }
+    string getLeadershipBidPrefix(const string &gkey)
+    {
+        return mp_f->getLeadershipBidPrefix(gkey);
     }
 
   private:

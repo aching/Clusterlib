@@ -27,6 +27,8 @@ Group *
 Application::getGroup(const string &groupName,
 		      bool create)
 {
+    TRACE(CL_LOG, "getGroup");
+
     Group *grp;
 
     /*
@@ -72,6 +74,8 @@ DataDistribution *
 Application::getDistribution(const string &distName,
 			     bool create)
 {
+    TRACE(CL_LOG, "getDistribution");
+
     DataDistribution *dist;
 
     /*
@@ -102,8 +106,7 @@ Application::getDistribution(const string &distName,
     /*
      * Object not found.
      */
-    throw ClusterException(string ("") +
-                           "Cannot find distribution object " +
+    throw ClusterException("Cannot find distribution object " +
                            distName);
 }
 
@@ -113,7 +116,7 @@ Application::getDistribution(const string &distName,
 void
 Application::updateCachedRepresentation()
 {
-    TRACE( CL_LOG, "updateCachedRepresentation" );
+    TRACE(CL_LOG, "updateCachedRepresentation");
 
     if (cachingGroups()) {
         recacheGroups();
@@ -129,7 +132,7 @@ Application::updateCachedRepresentation()
 void
 Application::recacheGroups()
 {
-    TRACE( CL_LOG, "recacheGroups" );
+    TRACE(CL_LOG, "recacheGroups");
 }
 
 /*
@@ -139,7 +142,7 @@ Application::recacheGroups()
 void
 Application::recacheDists()
 {
-    TRACE( CL_LOG, "recacheDists" );
+    TRACE(CL_LOG, "recacheDists");
 }
 
 };	/* End of 'namespace clusterlib' */

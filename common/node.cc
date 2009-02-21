@@ -24,6 +24,7 @@ namespace clusterlib
 void
 Node::updateCachedRepresentation()
 {
+    TRACE(CL_LOG, "updateCachedRepresentation");
 };
 
 };	/* End of 'namespace clusterlib' */

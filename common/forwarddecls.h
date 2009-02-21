@@ -94,6 +94,25 @@ typedef map<string, Properties *>	      	PropertiesMap;
 typedef map<TimerId, TimerEventPayload *>	TimerRegistry;
 
 /*
+ * Support structures for multimap element comparison.
+ */
+struct ltstr
+{
+    bool operator()(string s1, string s2) const
+    {
+        return strcmp(s1.c_str(), s2.c_str()) < 0;
+    }
+};
+
+/*
+ * Multimaps.
+ */
+typedef multimap<string, Server *, ltstr>	LeadershipElectionMultimap;
+typedef LeadershipElectionMultimap::iterator	LeadershipIterator;
+typedef pair<LeadershipIterator, LeadershipIterator>
+						LeadershipElectionMultimapRange;
+
+/*
  * Type used for passing flags.
  */
 typedef unsigned int ServerFlags;

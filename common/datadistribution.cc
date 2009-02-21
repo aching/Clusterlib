@@ -80,7 +80,7 @@ DataDistribution::DataDistribution(Application *app,
       m_shardsVersion(-2),
       m_manualOverridesVersion(-2)
 {
-    TRACE( CL_LOG, "DataDistribution" );
+    TRACE(CL_LOG, "DataDistribution");
     
     /*
      * Set up the hash function to use.
@@ -105,14 +105,14 @@ DataDistribution::DataDistribution(Application *app,
 void
 DataDistribution::unmarshall(const string &marshalledData)
 {
-    TRACE( CL_LOG, "unmarshall" );
+    TRACE(CL_LOG, "unmarshall");
 
     vector<string> components;
     
     /*
      * The marshalled form is "shards\nmanualOverrides"
      */
-    split( components, marshalledData, is_any_of( "\n" ) ); 
+    split(components, marshalledData, is_any_of("\n")); 
     if (components.size() != 2) {
         throw ClusterException("Invalid data. Expecting 2 top "
                                "level components");
@@ -132,7 +132,7 @@ DataDistribution::unmarshall(const string &marshalledData)
 void
 DataDistribution::unmarshallShards(const string &marshalledShards)
 {
-    TRACE( CL_LOG, "unmarshallShards" );
+    TRACE(CL_LOG, "unmarshallShards");
 
     vector<string> components;
     vector<string> shardComponents;
@@ -150,10 +150,9 @@ DataDistribution::unmarshallShards(const string &marshalledShards)
         if (shardComponents.size() != 5) {
 	    stringstream s;
 	    s << shardComponents.size();
-	    LOG_WARN( CL_LOG,
-		      "shardComponents (%d component(s)) = %s", 
-		      shardComponents.size(),
-		      i->c_str());
+	    LOG_WARN(CL_LOG,
+                     "shardComponents (%d component(s)) = %s", 
+                     shardComponents.size(), i->c_str());
             throw ClusterException("Malformed shard \"" +
                                    *i +
                                    "\", expecting 5 components " +
@@ -192,7 +191,7 @@ DataDistribution::unmarshallShards(const string &marshalledShards)
 void
 DataDistribution::unmarshallOverrides(const string &marshalledOverrides)
 {
-    TRACE( CL_LOG, "unmarshallOverrides" );
+    TRACE(CL_LOG, "unmarshallOverrides");
 
     vector<string> components;
     vector<string> moComponents;
@@ -258,7 +257,7 @@ DataDistribution::unmarshallOverrides(const string &marshalledOverrides)
 string
 DataDistribution::marshall()
 {
-    TRACE( CL_LOG, "marshall" );
+    TRACE(CL_LOG, "marshall");
 
     return marshallShards() + "\n" + marshallOverrides();
 };
@@ -270,7 +269,7 @@ DataDistribution::marshall()
 string
 DataDistribution::marshallShards()
 {
-    TRACE( CL_LOG, "marshallShards" );
+    TRACE(CL_LOG, "marshallShards");
 
     string res = "";
     ShardList::iterator i;
@@ -345,7 +344,7 @@ DataDistribution::marshallShards()
 string
 DataDistribution::marshallOverrides()
 {
-    TRACE( CL_LOG, "marshallOverrides" );
+    TRACE(CL_LOG, "marshallOverrides");
 
     string res = "";
     ManualOverridesMap::iterator i;
@@ -421,7 +420,7 @@ DataDistribution::marshallOverrides()
 void
 DataDistribution::updateCachedRepresentation()
 {
-    TRACE( CL_LOG, "updateCachedRepresentation" );
+    TRACE(CL_LOG, "updateCachedRepresentation");
 
     /*
      * Must lock before asking the repository for the values
@@ -474,7 +473,7 @@ DataDistribution::updateCachedRepresentation()
 Node *
 DataDistribution::map(const string &key)
 {
-    TRACE( CL_LOG, "map" );
+    TRACE(CL_LOG, "map");
 
     Notifyable *ntp;
     DataDistribution *dp = this;
@@ -543,7 +542,7 @@ DataDistribution::hashWork(const string &key)
 string
 DataDistribution::matchesManualOverride(const string &key)
 {
-    TRACE( CL_LOG, "matchesManualOverrides" );
+    TRACE(CL_LOG, "matchesManualOverrides");
 
 #ifdef	ENABLING_MANUAL_OVERRIDES
     /*
@@ -574,7 +573,7 @@ DataDistribution::matchesManualOverride(const string &key)
 bool
 DataDistribution::isCovered()
 {
-    TRACE( CL_LOG, "isCovered" );
+    TRACE(CL_LOG, "isCovered");
 
     ShardList::iterator i;
 
@@ -600,7 +599,7 @@ DataDistribution::isCovered()
 void
 DataDistribution::setShards(vector<HashRange> &upperBounds)
 {
-    TRACE( CL_LOG, "setShards" );
+    TRACE(CL_LOG, "setShards");
 
     ShardList::iterator i;
     vector<HashRange>::iterator j;
@@ -632,8 +631,7 @@ DataDistribution::setShards(vector<HashRange> &upperBounds)
      */
     for (i = m_shards.begin(), j = upperBounds.begin(); i != m_shards.end(); i++, j++) {
         if (*j <= s) {
-            throw ClusterException(string("") +
-                                   "Invalid shard boundaries in setShards");
+            throw ClusterException("Invalid shard boundaries in setShards");
         }
         (*i)->setBeginRange(s);
         (*i)->setEndRange(*j);
@@ -647,14 +645,14 @@ DataDistribution::setShards(vector<HashRange> &upperBounds)
 uint32_t
 DataDistribution::getShardIndex(const string &key)
 {
-    TRACE( CL_LOG, "getShardIndex" );
+    TRACE(CL_LOG, "getShardIndex");
 
     return getShardIndex(hashWork(key));
 }
 uint32_t
 DataDistribution::getShardIndex(HashRange hash)
 {
-    TRACE( CL_LOG, "getShardIndex" );
+    TRACE(CL_LOG, "getShardIndex");
 
     /*
      * Use the shard mapping. This is a linear search; better efficiency
@@ -689,7 +687,7 @@ DataDistribution::getShardDetails(uint32_t shardIndex,
                                   HashRange *hiP,
                                   bool *isForwardedP)
 {
-    TRACE( CL_LOG, "getShardDetails" );
+    TRACE(CL_LOG, "getShardDetails");
 
     Locker l(getShardsLock());
     if (shardIndex >= m_shards.size()) {
@@ -724,26 +722,24 @@ DataDistribution::getShardDetails(uint32_t shardIndex,
 void
 DataDistribution::reassignShard(uint32_t shardIndex, Notifyable *ntp)
 {
-    TRACE( CL_LOG, "reassignShard" );
+    TRACE(CL_LOG, "reassignShard");
 
     Locker l(getShardsLock());
 
     if (shardIndex >= m_shards.size()) {
-        throw ClusterException(string("") +
-                               "Shard index out of range in reassignShard");
+        throw ClusterException("Shard index out of range in reassignShard");
     }
     m_shards[shardIndex]->reassign(ntp);
 }
 void
 DataDistribution::reassignShard(uint32_t shardIndex, const string &key)
 {
-    TRACE( CL_LOG, "reassignShard" );
+    TRACE(CL_LOG, "reassignShard");
 
     Locker l(getShardsLock());
 
     if (shardIndex >= m_shards.size()) {
-        throw ClusterException(string("") +
-                               "Shard index out of range in reassignShard");
+        throw ClusterException("Shard index out of range in reassignShard");
     }
     m_shards[shardIndex]->reassign(key);
 }
@@ -755,7 +751,7 @@ void
 DataDistribution::reassignManualOverride(const string &pattern,
                                          Notifyable *ntp)
 {
-    TRACE( CL_LOG, "reassignManualOverride" );
+    TRACE(CL_LOG, "reassignManualOverride");
 
     Locker l(getManualOverridesLock());
     ManualOverride *mo = m_manualOverrides[pattern];
@@ -771,14 +767,14 @@ void
 DataDistribution::reassignManualOverride(const string &pattern,
                                          const string &key)
 {
-    TRACE( CL_LOG, "reassignManualOverride" );
+    TRACE(CL_LOG, "reassignManualOverride");
 
     Locker l(getManualOverridesLock());
     ManualOverride *mo = m_manualOverrides[pattern];
 
     if (mo == NULL) {
-        mo = m_manualOverrides[pattern] =
-            new ManualOverride(this, NULL, "");
+        mo = new ManualOverride(this, NULL, "");
+        m_manualOverrides[pattern] = mo;
     }
     mo->reassign(key);
 }
@@ -789,7 +785,7 @@ DataDistribution::reassignManualOverride(const string &pattern,
 void
 DataDistribution::publish()
 {
-    TRACE( CL_LOG, "publish" );
+    TRACE(CL_LOG, "publish");
 
     Locker s(getShardsLock());
     Locker m(getManualOverridesLock());
@@ -797,14 +793,14 @@ DataDistribution::publish()
     string marshalledShards = marshallShards();
     string marshalledOverrides = marshallOverrides();
 
-    LOG_INFO( CL_LOG,  
-	      "Tried to set data distribution for node %s to (%s, %s) "
-	      "with versions (%d, %d)\n",
-	      getKey().c_str(), 
-	      marshalledShards.c_str(),
-	      marshalledOverrides.c_str(),
-	      getShardsVersion(),
-	      getManualOverridesVersion());
+    LOG_INFO(CL_LOG,
+             "Tried to set data distribution for node %s to (%s, %s) "
+             "with versions (%d, %d)\n",
+             getKey().c_str(), 
+             marshalledShards.c_str(),
+             marshalledOverrides.c_str(),
+             getShardsVersion(),
+             getManualOverridesVersion());
 
     getDelegate()->updateDistribution(getKey(), 
                                       marshalledShards,
@@ -859,8 +855,7 @@ ManualOverride::determineForwarding()
     } else if (mp_dist->getDelegate()->isDistKey(m_key)) {
         m_isForwarded = true;
     } else {
-        throw ClusterException(string("") +
-                               "Key: \"" +
+        throw ClusterException("Key: \"" +
                                m_key +
                                "\" does not denote a node " +
                                "or distribution!");

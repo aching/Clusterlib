@@ -26,7 +26,7 @@ Application *
 Client::getApplication(const string &appName,
                        bool create)
 {
-    TRACE( CL_LOG, "getApplication" );
+    TRACE(CL_LOG, "getApplication");
 
     Application *app = mp_f->getApplication(appName, create);
 
@@ -41,8 +41,7 @@ Client::getApplication(const string &appName,
     /*
      * Could not find the application object.
      */
-    throw ClusterException(string("") + 
-                           "Cannot " +
+    throw ClusterException(string("Cannot ") +
                            (create ? "find or create " : "find ") +
                            "application " +
                            appName);
@@ -55,18 +54,13 @@ Client::getApplication(const string &appName,
 void
 Client::consumeClusterEvents()
 {
-    TRACE( CL_LOG, "consumeClusterEvents" );
+    TRACE(CL_LOG, "consumeClusterEvents");
 
     ClusterEventPayload *cp;
     
-#ifdef	VERY_VERBOSE_DEBUG
-    cerr << "Hello from consumeClusterEvents" 
-         << " this: "
-         << this
-         << ", thread: "
-         << pthread_self()
-         << endl;
-#endif
+    LOG_INFO(CL_LOG,
+             "Hello from consumeClusterEvents, this: 0x%x, thread: 0x%x",
+             (int) this, (int) pthread_self());
 
     for (;;) {
 	cp = m_queue.take();
@@ -87,6 +81,8 @@ Client::registerTimer(TimerEventHandler *tp,
                       uint64_t afterTime,
                       ClientData data)
 {
+    TRACE(CL_LOG, "registerTimer");
+
     return mp_f->registerTimer(tp, afterTime, data);
 }
 
@@ -99,6 +95,8 @@ Client::registerTimer(TimerEventHandler *tp,
 bool
 Client::cancelTimer(TimerId id)
 {
+    TRACE(CL_LOG, "cancelTimer");
+
     return mp_f->cancelTimer(id);
 }
 

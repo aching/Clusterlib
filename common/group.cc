@@ -27,6 +27,8 @@ Node *
 Group::getNode(const string &nodeName, 
 	       bool create)
 {
+    TRACE(CL_LOG, "getNode");
+
     Node *np;
 
     /*
@@ -55,8 +57,7 @@ Group::getNode(const string &nodeName,
         return np;
     }
 
-    throw ClusterException(string("") +
-                           "Cannot find node object " +
+    throw ClusterException("Cannot find node object " +
                            nodeName);
 }
 
@@ -66,7 +67,7 @@ Group::getNode(const string &nodeName,
 void
 Group::updateCachedRepresentation()
 {
-    TRACE( CL_LOG, "updateCachedRepresentation" );
+    TRACE(CL_LOG, "updateCachedRepresentation");
 
     if (cachingNodes()) {
         recacheNodes();
@@ -79,7 +80,78 @@ Group::updateCachedRepresentation()
 void
 Group::recacheNodes()
 {
-    TRACE( CL_LOG, "recacheNodes" );
+    TRACE(CL_LOG, "recacheNodes");
+}
+
+/*
+ * Return the node representing the group leader,
+ * if any.
+ */
+Node *
+Group::getLeader()
+{
+    TRACE(CL_LOG, "getLeader");
+
+    Locker l1(getLeadershipLock());
+
+    if (mp_leader == NULL) {
+        if (m_leaderIsKnown == false) {
+            updateLeader(getDelegate()->getLeader(this));
+        }
+    }
+    return mp_leader;
+}
+
+/*
+ * Update the leader.
+ */
+void
+Group::updateLeader(Node *lp)
+{
+    Locker l1(getLeadershipLock());
+
+    mp_leader = lp;
+    m_leaderIsKnown =
+        (lp == NULL)
+        ? false
+        : true;
+}
+
+/*
+ * Methods to manage strings used in leadership protocol.
+ */
+void
+Group::initializeStringsForLeadershipProtocol()
+{
+    Locker l1(getLeadershipLock());
+
+    if (!m_leadershipStringsInitialized) {
+        m_leadershipStringsInitialized = true;
+        m_currentLeaderNodeName =
+            getDelegate()->getCurrentLeaderNodeName(getKey());
+        m_leadershipBidsNodeName = 
+            getDelegate()->getLeadershipBidsNodeName(getKey());
+        m_leadershipBidPrefix = 
+            getDelegate()->getLeadershipBidPrefix(getKey());
+    }
+}
+string
+Group::getCurrentLeaderNodeName()
+{
+    initializeStringsForLeadershipProtocol();
+    return m_currentLeaderNodeName;
+}
+string
+Group::getLeadershipBidsNodeName()
+{
+    initializeStringsForLeadershipProtocol();
+    return m_leadershipBidsNodeName;
+}
+string
+Group::getLeadershipBidPrefix()
+{
+    initializeStringsForLeadershipProtocol();
+    return m_leadershipBidPrefix;
 }
 
 };	/* End of 'namespace clusterlib' */

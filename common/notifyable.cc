@@ -116,8 +116,7 @@ Notifyable::getProperties(bool create)
     /*
      * Object not found.
      */
-    throw ClusterException(string("") +
-                           "Cannot find properties object " +
+    throw ClusterException("Cannot find properties object " +
                            propertiesName);
 
 };

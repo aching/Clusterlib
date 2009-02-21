@@ -679,10 +679,10 @@ class Timer
     {
         m_lock.lock();
         typename QueueType::iterator pos = 
-            lower_bound( m_queue.begin(), m_queue.end(), absTime );
+            lower_bound(m_queue.begin(), m_queue.end(), absTime);
         TimerId id = m_currentEventID++;
         TimerEvent<T> event(id, absTime, userData); 
-        m_queue.insert( pos, event );
+        m_queue.insert(pos, event);
         m_lock.notify();
         m_lock.unlock();
         return id;
@@ -696,7 +696,7 @@ class Timer
     static int64_t getCurrentTimeMillis()
     {
         struct timeval now;
-        gettimeofday( &now, NULL );
+        gettimeofday(&now, NULL);
         return now.tv_sec * 1000LL + now.tv_usec / 1000;
     }
 
@@ -808,7 +808,7 @@ void EventSource<E>::fireEventToAllListeners(const E &event)
          i != m_listeners.end(); 
          ++i) 
     {
-        fireEvent( *i, event );
+        fireEvent(*i, event);
     }
 }
 
@@ -822,7 +822,7 @@ void EventSource<E>::fireEvent(EventListener<E> *listener, const E &event)
               (uint32_t) listener, 
               (uint32_t) pthread_self());
 
-    listener->eventReceived( *this, event );
+    listener->eventReceived(*this, event);
 }
 
 /*
