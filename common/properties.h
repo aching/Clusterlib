@@ -45,7 +45,18 @@ class Properties
     {
 	getKeyValMapLock()->Release();
     }
-        
+
+    /**
+     * \brief Get the keys of all the properties.
+     * 
+     * This function is safe to call without a lock as it acquires the
+     * lock while getting the property keys and returns them as a
+     * vector.
+     *
+     * @return the vector of property keys
+     */
+    vector<string> getPropertyKeys() const;
+         
     /**
      * \brief Gets a value associated with the given property.
      * 
@@ -127,13 +138,6 @@ class Properties
      */
     virtual void updateCachedRepresentation();
 
-    /**
-     * \brief Get the keys of all the properties.
-     * 
-     * @return the vector of property keys
-     */
-    vector<string> getPropertyKeys() const;
- 
     /**
      * \brief Converts this properties map into a string.
      * 

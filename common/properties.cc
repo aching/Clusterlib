@@ -74,7 +74,21 @@ Properties::publish()
     setKeyValVersion(finalVersion);
 }
 
+vector<string>
+Properties::getPropertyKeys() const
+{
+    vector<string> keys;
 
+    Locker(getKeyValMapLock());
+    for (KeyValMap::const_iterator i = m_keyValMap.begin();
+         i != m_keyValMap.end(); 
+         ++i) {
+        keys.push_back(i->first);
+    }
+    
+    return keys;
+}
+        
 string 
 Properties::getProperty(const string &name)
 {
@@ -98,21 +112,6 @@ Properties::getProperty(const string &name)
     return prop->getProperty(name);
 }
 
-vector<string>
-Properties::getPropertyKeys() const
-{
-    vector<string> keys;
-
-    Locker(getKeyValMapLock());
-    for (KeyValMap::const_iterator i = m_keyValMap.begin();
-         i != m_keyValMap.end(); 
-         ++i) {
-        keys.push_back(i->first);
-    }
-    
-    return keys;
-}
-        
 string 
 Properties::marshall() const
 {
