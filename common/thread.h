@@ -23,22 +23,15 @@ class Thread
   public:
     typedef void* (*ThreadFunc) (void*);
     Thread() 
-        : _ctx(NULL),
-          _func(NULL)
+        : _ctx(NULL), 
+          _func(NULL) 
     {
         memset(&mThread, 0, sizeof(mThread));
     }
     ~Thread() { }
 
     void Create(void* ctx, ThreadFunc func);
-    void Join()
-    {
-        //avoid SEGFAULT because of unitialized mThread
-        //in case Create(...) was never called
-        if (_func != NULL) {
-            pthread_join(mThread, 0);
-        }
-    }
+    void Join();
   private:
     pthread_t mThread;  
     void *_ctx;
@@ -76,7 +69,7 @@ class CXXThread
     CXXThread() : ctx(0) {}
     ~CXXThread() { if (ctx) delete ctx; }
 
-    void Create(T& obj, FuncPtr func)
+    void Create(T& obj, FuncPtr func) 
     {
         assert(ctx == 0);
         ctx = new ThreadContext<T>(obj, func);

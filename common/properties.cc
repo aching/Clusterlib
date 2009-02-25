@@ -53,23 +53,25 @@ Properties::publish()
 
     Locker k(getKeyValMapLock());
     string marshalledKeyValMap = marshall();
-    
-    LOG_INFO(CL_LOG,
-	     "Tried to set node %s to %s with version %d\n",
-             getKey().c_str(),
+    int32_t finalVersion;
+
+    LOG_INFO(CL_LOG,  
+             "Tried to set node %s to %s with version %d\n",
+             getKey().c_str(), 
              marshalledKeyValMap.c_str(), 
              getKeyValVersion());
 	
     getDelegate()->updateProperties(getKey(),
 				    marshalledKeyValMap,
-				    getKeyValVersion());
+				    getKeyValVersion(),
+                                    finalVersion);
     
-    /*
+    /* 
      * Since we should have the lock, the data should be identical to
      * the zk data.  When the lock is released, clusterlib events will
-     * try to push this change again. 
+     * try to push this change again.  
      */
-    setKeyValVersion(getKeyValVersion() + 1);
+    setKeyValVersion(finalVersion);
 }
 
 
@@ -95,16 +97,31 @@ Properties::getProperty(const string &name)
     
     return prop->getProperty(name);
 }
+
+vector<string>
+Properties::getPropertyKeys() const
+{
+    vector<string> keys;
+
+    Locker(getKeyValMapLock());
+    for (KeyValMap::const_iterator i = m_keyValMap.begin();
+         i != m_keyValMap.end(); 
+         ++i) {
+        keys.push_back(i->first);
+    }
+    
+    return keys;
+}
         
 string 
 Properties::marshall() const
 {
     string res;
     for (KeyValMap::const_iterator i = m_keyValMap.begin();
-         i != m_keyValMap.end();
+         i != m_keyValMap.end(); 
          ++i) {
-        res.append( i->first ).append( "=" ).append( i->second );
-	res.append( ";" );
+        res.append(i->first).append("=").append(i->second);
+	res.append(";");
     }
     return res;
 }
@@ -119,7 +136,7 @@ Properties::unmarshall(const string &marshalledKeyValMap)
     }
     KeyValMap keyValMap;
     for (vector<string>::iterator i = nameValueList.begin();
-         i != nameValueList.end() - 1;
+         i != nameValueList.end() - 1; 
          ++i) {
         if (*i != "") {
             vector<string> pair;

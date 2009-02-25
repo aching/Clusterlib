@@ -542,7 +542,6 @@ Factory::dispatchEvents()
 
     unsigned int eventSeqId = 0;
     bool sentEndEvent = false;
-    GenericEvent ge;
 
     LOG_DEBUG(CL_LOG,
               "Hello from dispatchEvents(), this: 0x%x, thread: %d",
@@ -563,7 +562,7 @@ Factory::dispatchEvents()
              * Get the next event and send it off to the
              * correct handler.
              */
-            ge = m_eventAdapter.getNextEvent();
+            GenericEvent ge(m_eventAdapter.getNextEvent());
 
             LOG_DEBUG(CL_LOG,
                       "[%d, 0x%x] dispatchEvents() received event of "
@@ -612,7 +611,7 @@ Factory::dispatchEvents()
                               zp->getState(),
                               (unsigned int) zp->getContext());
                     
-                    if ((zp->getType() == SESSION_EVENT) &&
+                    if ((zp->getType() == ZOO_SESSION_EVENT) &&
                         (zp->getPath().compare(SYNC) != 0)) {
                         dispatchSessionEvent(zp);
                     } 
@@ -748,8 +747,8 @@ Factory::dispatchSessionEvent(zk::ZKWatcherEvent *ze)
               ze->getState(),
               ze->getPath().c_str());
 
-    if ((ze->getState() == ASSOCIATING_STATE) ||
-        (ze->getState() == CONNECTING_STATE)) {
+    if ((ze->getState() == ZOO_ASSOCIATING_STATE) ||
+        (ze->getState() == ZOO_CONNECTING_STATE)) {
         /*
          * Not really clear what to do here.
          * For now do nothing.
@@ -757,7 +756,7 @@ Factory::dispatchSessionEvent(zk::ZKWatcherEvent *ze)
 #ifdef	VERY_VERY_VERBOSE
         LOG_TRACE(CL_LOG, "Do nothing.");
 #endif
-    } else if (ze->getState() == CONNECTED_STATE) {
+    } else if (ze->getState() == ZOO_CONNECTED_STATE) {
         /*
          * Mark as connected.
          */
@@ -771,7 +770,7 @@ Factory::dispatchSessionEvent(zk::ZKWatcherEvent *ze)
          * now connected.
          */
         m_eventSyncLock.lockedNotify();
-    } else if (ze->getState() == EXPIRED_SESSION_STATE) {
+    } else if (ze->getState() == ZOO_EXPIRED_SESSION_STATE) {
         /*
          * We give up on SESSION_EXPIRED.
          */
@@ -1145,10 +1144,12 @@ Factory::updateDistribution(const string &key,
 void
 Factory::updateProperties(const string &key,
 			  const string &properties,
-			  int32_t versionNumber)
+			  int32_t versionNumber,
+                          int32_t &finalVersionNumber)
 {
     TRACE(CL_LOG, "updateProperties");
-    
+
+    Stat stat;
     bool exists = false;
 
     SAFE_CALL_ZK((exists = m_zk.nodeExists(key)),
@@ -1163,7 +1164,10 @@ Factory::updateProperties(const string &key,
                      true,
                      true);
     }
-    SAFE_CALL_ZK(m_zk.setNodeData(key, properties, versionNumber),
+    SAFE_CALL_ZK(m_zk.setNodeData(key, 
+                                  properties, 
+                                  versionNumber, 
+                                  &stat),
                  "Setting of %s failed: %s",
                  key.c_str(),
                  false,
@@ -1175,6 +1179,8 @@ Factory::updateProperties(const string &key,
                  key.c_str(),
                  false,
                  true);
+
+    finalVersionNumber = stat.version;
 }
 
 /*
@@ -2544,7 +2550,7 @@ Factory::placeBid(Node *np)
         tmp;
     int64_t bid = 0;
 
-    SAFE_CALL_ZK((bid = m_zk.createSequence(pfx, value, EPHEMERAL, true)),
+    SAFE_CALL_ZK((bid = m_zk.createSequence(pfx, value, ZOO_EPHEMERAL, true)),
                  "Bidding with prefix %s to become leader failed: %s",
                  pfx.c_str(),
                  true,
@@ -2957,14 +2963,14 @@ Factory::handleNotifyableExists(Notifyable *np,
     /*
      * Now decide what to do with the event.
      */
-    if (etype == DELETED_EVENT) {
+    if (etype == ZOO_DELETED_EVENT) {
         LOG_WARN(CL_LOG,
                  "Deleted event for path: %s",
                  path.c_str());
         np->setReady(false);
         return EN_NOTIFYABLE_DELETED;
     }
-    if (etype == CREATED_EVENT) {
+    if (etype == ZOO_CREATED_EVENT) {
         LOG_WARN(CL_LOG,
                  "Created event for path: %s",
                  path.c_str());
@@ -3173,21 +3179,21 @@ Factory::handlePropertiesChange(Notifyable *np,
     /*
      * Now decide what to do with the event.
      */
-    if (etype == DELETED_EVENT) {
+    if (etype == ZOO_DELETED_EVENT) {
 	LOG_WARN(CL_LOG,
                  "handlePropertiesChange: Deleted event for path: %s",
                  path.c_str());
 	np->setReady(false);
 	return EN_NOTIFYABLE_DELETED;
     }
-    if (etype == CREATED_EVENT) {
+    if (etype == ZOO_CREATED_EVENT) {
 	LOG_WARN(CL_LOG,
                  "handlePropertiesChange: Created event for path: %s",
                  path.c_str());
 	establishNotifyableReady(np);
 	return EN_NOTIFYABLE_CREATED;
     }
-    if (etype == CHANGED_EVENT) {
+    if (etype == ZOO_CHANGED_EVENT) {
 	LOG_WARN(CL_LOG,
                  "handlePropertiesChange: Changed event for path: %s",
                  path.c_str());

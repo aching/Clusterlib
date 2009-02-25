@@ -98,7 +98,7 @@ class EventSource
      */
     void addListener(EventListener<E> *listener)
     {
-        m_listeners.insert( listener );
+        m_listeners.insert(listener);
     }
         
     /**
@@ -108,7 +108,7 @@ class EventSource
      */
     void removeListener(EventListener<E> *listener)
     {
-        m_listeners.erase( listener );
+        m_listeners.erase(listener);
     }
         
     /**
@@ -165,6 +165,11 @@ class AbstractEventWrapper
      * \brief Returns the underlying wrapee's data.
      */
     virtual void *getWrapee() = 0;
+
+    /**
+     * \brief Clone functionality for deep copy.
+     */
+    virtual AbstractEventWrapper *clone() const = 0;
 };
 
 /**
@@ -179,9 +184,13 @@ class EventWrapper
         : m_e(e)
     {
     }
+    ~EventWrapper() {}
     void *getWrapee()
     {
         return &m_e;
+    }
+    virtual AbstractEventWrapper *clone() const {
+        return new EventWrapper(m_e);
     }
   private:
     E m_e;
@@ -197,13 +206,14 @@ class GenericEvent
     /**
      * \brief Constructor.
      */
-    GenericEvent() : m_type(0) {}
+    GenericEvent() : m_type(0), mp_eventWrapper(NULL) {}
 
     /**
      * \brief Constructor.
      * 
      * @param type the type of this event
-     * @param eventWarpper the wrapper around event's data
+     * @param eventWrapper the wrapper around event's data 
+     *                     (transfers ownership to this object)
      */
     GenericEvent(int type, AbstractEventWrapper *eventWrapper)
         : m_type(type),
@@ -211,6 +221,17 @@ class GenericEvent
     {
     }
         
+    ~GenericEvent()
+    {
+        delete mp_eventWrapper;
+    }
+
+    GenericEvent(const GenericEvent &ge)
+    {
+        m_type = ge.getType();
+        mp_eventWrapper = ge.mp_eventWrapper->clone();
+    }
+
     /**
      * \brief Returns the type of this event.
      * 
@@ -226,6 +247,11 @@ class GenericEvent
     void *getEvent() const { return mp_eventWrapper->getWrapee(); }
         
   private:
+    /**
+     * No assignment operator allowed
+     */
+    GenericEvent &operator = (const GenericEvent &ge);
+
     /**
      * The event type.
      */
@@ -263,9 +289,10 @@ class EventListenerAdapter
         
     void eventReceived(const EventSource<E> &source, const E &e)
     {
+        LOG_DEBUG(EV_LOG, "EventListenerAdapter::eventReceived: before fire");
         AbstractEventWrapper *wrapper = new EventWrapper<E>(e);
         GenericEvent event(type, wrapper);
-        fireEventToAllListeners( event );
+        fireEventToAllListeners(event);
     }
 };        
 
@@ -291,7 +318,7 @@ class SynchronousEventAdapter
                   (uint32_t) this, 
                   (uint32_t) pthread_self());
         
-        m_queue.put( e );
+        m_queue.put(e);
     }
 
     /**
@@ -302,6 +329,7 @@ class SynchronousEventAdapter
      */
     E getNextEvent()
     {
+        LOG_DEBUG(EV_LOG, "SynchronousEventAdapter::getNextEvent: starting");
         return m_queue.take();
     }
         
@@ -638,7 +666,7 @@ class Timer
         : m_currentEventID(0),
           m_terminating(false)
     {
-        m_workerThread.Create( *this, &Timer<T>::sendAlarms );
+        m_workerThread.Create(*this, &Timer<T>::sendAlarms);
     }
         
     /**
@@ -662,7 +690,7 @@ class Timer
      */
     TimerId scheduleAfter(int64_t timeFromNow, const T &userData)
     {
-        return scheduleAt( getCurrentTimeMillis() + timeFromNow, userData );
+        return scheduleAt(getCurrentTimeMillis() + timeFromNow, userData);
     }
 
     /**
@@ -714,7 +742,7 @@ class Timer
         typename QueueType::iterator i;
         for (i = m_queue.begin(); i != m_queue.end(); ++i) {
             if (eventID == i->getID()) {
-                m_queue.erase( i );
+                m_queue.erase(i);
                 canceled = true;
                 break;
             }
@@ -739,7 +767,7 @@ class Timer
             //1 step - wait until there is an event in the queue
             if (m_queue.empty()) {
                 //wait up to 100ms to get next event
-                m_lock.wait( 100 );
+                m_lock.wait(100);
             }
             bool fire = false;
             if (!m_queue.empty()) {
@@ -755,11 +783,11 @@ class Timer
                     //is canceled)
                     fire = true;    
                 } else {
-                    m_lock.wait( timeToWait );
+                    m_lock.wait(timeToWait);
                 }
                 m_lock.unlock();
                 if (fire) {
-                    fireEventToAllListeners( event );
+                    fireEventToAllListeners(event);
                 }
             } else {
                 m_lock.unlock();
@@ -822,6 +850,7 @@ void EventSource<E>::fireEvent(EventListener<E> *listener, const E &event)
               (uint32_t) listener, 
               (uint32_t) pthread_self());
 
+    assert(listener);
     listener->eventReceived(*this, event);
 }
 

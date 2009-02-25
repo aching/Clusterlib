@@ -41,7 +41,7 @@ class ClusterlibProperties : public MPITestFixture {
     /* Runs after all tests */
     virtual void tearDown() 
     {
-	cout << "delete called " << endl;
+	cerr << "delete called " << endl;
 	delete _factory;
         _factory = NULL;
     }
@@ -66,7 +66,7 @@ class ClusterlibProperties : public MPITestFixture {
 		_properties0->acquireLock();
                 string val = _properties0->getProperty("test");
 		CPPUNIT_ASSERT(val == "v1");
-		cout << "Got correct test = v1" << endl;
+		cerr << "Got correct test = v1" << endl;
                 _properties0->setProperty("test", "v2");
 		_properties0->publish();
                 _properties0->releaseLock();
@@ -74,9 +74,9 @@ class ClusterlibProperties : public MPITestFixture {
 	    waitsForOrder(_factory, 1, 0);
 	    if (getRank() == 0) {
                 string val = _properties0->getProperty("test");
-		cout << "Got value " << val << " (should be v2)" << endl;
+		cerr << "Got value " << val << " (should be v2)" << endl;
                 CPPUNIT_ASSERT(val == "v2");
-                cout << "Got correct test = v2" << endl;
+                cerr << "Got correct test = v2" << endl;
 	    }
 	}
     }

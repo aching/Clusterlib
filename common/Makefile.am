@@ -14,7 +14,6 @@ libcluster_a_SOURCES = \
 	notifyable.cc \
 	event.cc \
 	group.cc \
-	log.cc \
 	node.cc \
 	notifyable.cc \
 	thread.cc \

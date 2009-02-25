@@ -1,0 +1,172 @@
+{
+   <insert a suppression name here>
+   Memcheck:Param
+   socketcall.sendto(msg)
+   fun:sendto
+   fun:getaddrinfo
+   fun:getaddrs
+   fun:zookeeper_init
+   fun:_ZN2zk16ZooKeeperAdapter9reconnectEv
+   fun:_ZN10clusterlib7FactoryC1ERKSs
+   fun:_ZN20ClusterlibProperties5setUpEv
+   fun:_ZNK7CppUnit21TestCaseMethodFunctorclEv
+   fun:_ZN7CppUnit16DefaultProtector7protectERKNS_7FunctorERKNS_16ProtectorContextE
+   fun:_ZNK7CppUnit14ProtectorChain14ProtectFunctorclEv
+   fun:_ZN7CppUnit14ProtectorChain7protectERKNS_7FunctorERKNS_16ProtectorContextE
+   fun:_ZN7CppUnit10TestResult7protectERKNS_7FunctorEPNS_4TestERKSs
+}
+
+{
+   <insert a suppression name here>
+   Memcheck:Addr4
+   fun:ia_deserialize_int
+   fun:deserialize_Stat
+   fun:deserialize_SetDataResponse
+   fun:zookeeper_process
+   fun:do_io
+   fun:start_thread
+   fun:clone
+}
+
+{
+   <insert a suppression name here>
+   Memcheck:Addr4
+   fun:ia_deserialize_int
+   fun:deserialize_Stat
+   fun:deserialize_GetDataResponse
+   fun:zookeeper_process
+   fun:do_io
+   fun:start_thread
+   fun:clone
+}
+
+{
+   <insert a suppression name here>
+   Memcheck:Leak
+   fun:malloc
+   fun:apr_allocator_create
+   fun:apr_pool_initialize
+   fun:apr_initialize
+   fun:_ZN7log4cxx7helpers14APRInitializerC1Ev
+   fun:_ZN7log4cxx7helpers14APRInitializer11getInstanceEv
+   fun:_ZN7log4cxx7helpers14APRInitializer10initializeEv
+   fun:_ZN7log4cxx7helpers10ObjectImplC2Ev
+   fun:_ZN7log4cxx7helpers14CharsetDecoderC2Ev
+   fun:_ZN7log4cxx7helpers14CharsetDecoder20createDefaultDecoderEv
+   fun:_ZN7log4cxx7helpers14CharsetDecoder17getDefaultDecoderEv
+   fun:_ZN7log4cxx7helpers10Transcoder6decodeERKSsRSs
+}
+
+{
+   <insert a suppression name here>
+   Memcheck:Leak
+   fun:malloc
+   fun:apr_pool_create_ex
+   fun:apr_pool_initialize
+   fun:apr_initialize
+   fun:_ZN7log4cxx7helpers14APRInitializerC1Ev
+   fun:_ZN7log4cxx7helpers14APRInitializer11getInstanceEv
+   fun:_ZN7log4cxx7helpers14APRInitializer10initializeEv
+   fun:_ZN7log4cxx7helpers10ObjectImplC2Ev
+   fun:_ZN7log4cxx7helpers14CharsetDecoderC2Ev
+   fun:_ZN7log4cxx7helpers14CharsetDecoder20createDefaultDecoderEv
+   fun:_ZN7log4cxx7helpers14CharsetDecoder17getDefaultDecoderEv
+   fun:_ZN7log4cxx7helpers10Transcoder6decodeERKSsRSs
+}
+
+{
+   <insert a suppression name here>
+   Memcheck:Leak
+   fun:malloc
+   fun:nss_parse_service_list
+   fun:__nss_database_lookup
+   obj:*
+   fun:getpwuid_r@@GLIBC_2.1.2
+   fun:zookeeper_init
+   fun:_ZN2zk16ZooKeeperAdapter9reconnectEv
+   fun:_ZN10clusterlib7FactoryC1ERKSs
+   fun:_ZN20ClusterlibProperties5setUpEv
+   fun:_ZNK7CppUnit21TestCaseMethodFunctorclEv
+   fun:_ZN7CppUnit16DefaultProtector7protectERKNS_7FunctorERKNS_16ProtectorContextE
+   fun:_ZNK7CppUnit14ProtectorChain14ProtectFunctorclEv
+}
+
+{
+   <insert a suppression name here>
+   Memcheck:Leak
+   fun:malloc
+   fun:__nss_lookup_function
+   obj:*
+   fun:getpwuid_r@@GLIBC_2.1.2
+   fun:zookeeper_init
+   fun:_ZN2zk16ZooKeeperAdapter9reconnectEv
+   fun:_ZN10clusterlib7FactoryC1ERKSs
+   fun:_ZN20ClusterlibProperties5setUpEv
+   fun:_ZNK7CppUnit21TestCaseMethodFunctorclEv
+   fun:_ZN7CppUnit16DefaultProtector7protectERKNS_7FunctorERKNS_16ProtectorContextE
+   fun:_ZNK7CppUnit14ProtectorChain14ProtectFunctorclEv
+   fun:_ZN7CppUnit14ProtectorChain7protectERKNS_7FunctorERKNS_16ProtectorContextE
+}
+
+{
+   <insert a suppression name here>
+   Memcheck:Leak
+   fun:calloc
+   fun:create_watcher_object
+   fun:activateWatcher
+   fun:zookeeper_process
+   fun:do_io
+   fun:start_thread
+   fun:clone
+}
+
+{
+   <insert a suppression name here>
+   Memcheck:Leak
+   fun:malloc
+   fun:tsearch
+   fun:__nss_lookup_function
+   obj:*
+   fun:getpwuid_r@@GLIBC_2.1.2
+   fun:zookeeper_init
+   fun:_ZN2zk16ZooKeeperAdapter9reconnectEv
+   fun:_ZN10clusterlib7FactoryC1ERKSs
+   fun:_ZN20ClusterlibProperties5setUpEv
+   fun:_ZNK7CppUnit21TestCaseMethodFunctorclEv
+   fun:_ZN7CppUnit16DefaultProtector7protectERKNS_7FunctorERKNS_16ProtectorContextE
+   fun:_ZNK7CppUnit14ProtectorChain14ProtectFunctorclEv
+}
+
+{
+   <insert a suppression name here>
+   Memcheck:Leak
+   fun:calloc
+   fun:_dl_allocate_tls
+   fun:pthread_create@@GLIBC_2.1
+   fun:_ZN10clusterlib6Thread6CreateEPvPFS1_S1_E
+   fun:_ZN2zk16ZooKeeperAdapterC1ENS_15ZooKeeperConfigEPN10clusterlib13EventListenerINS_14ZKWatcherEventEEEb
+   fun:_ZN10clusterlib7FactoryC1ERKSs
+   fun:_ZN20ClusterlibProperties5setUpEv
+   fun:_ZNK7CppUnit21TestCaseMethodFunctorclEv
+   fun:_ZN7CppUnit16DefaultProtector7protectERKNS_7FunctorERKNS_16ProtectorContextE
+   fun:_ZNK7CppUnit14ProtectorChain14ProtectFunctorclEv
+   fun:_ZN7CppUnit14ProtectorChain7protectERKNS_7FunctorERKNS_16ProtectorContextE
+   fun:_ZN7CppUnit10TestResult7protectERKNS_7FunctorEPNS_4TestERKSs
+}
+
+{
+   <insert a suppression name here>
+   Memcheck:Leak
+   fun:calloc
+   fun:getTSData
+   fun:get_format_log_buffer
+   fun:format_log_message
+   fun:zookeeper_init
+   fun:_ZN2zk16ZooKeeperAdapter9reconnectEv
+   fun:_ZN10clusterlib7FactoryC1ERKSs
+   fun:_ZN20ClusterlibProperties5setUpEv
+   fun:_ZNK7CppUnit21TestCaseMethodFunctorclEv
+   fun:_ZN7CppUnit16DefaultProtector7protectERKNS_7FunctorERKNS_16ProtectorContextE
+   fun:_ZNK7CppUnit14ProtectorChain14ProtectFunctorclEv
+   fun:_ZN7CppUnit14ProtectorChain7protectERKNS_7FunctorERKNS_16ProtectorContextE
+}

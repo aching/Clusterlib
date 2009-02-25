@@ -10,7 +10,7 @@
 #define __ZKADAPTER_H__
 
 extern "C" {
-#include <zookeeper/zookeeper.h>
+#include <c-client-src/zookeeper.h>
 }
 
 namespace zk {
@@ -308,7 +308,7 @@ class ZooKeeperAdapter
         /**
          * \brief The global function that handles all ZK asynchronous notifications.
          */
-        friend void zkWatcher(zhandle_t *, int, int, const char *);
+        friend void zkWatcher(zhandle_t *, int, int, const char *, void *);
         
         /**
          * \brief The type representing the user's context.
@@ -517,7 +517,10 @@ class ZooKeeperAdapter
          * 
          * @throw ZooKeeperException if the operation has failed
          */
-        void setNodeData(const string &path, const string &value, int version = -1);
+        void setNodeData(const string &path, 
+                         const string &value, 
+                         int version = -1,
+                         Stat *stat = NULL);
         
         /**
          * \brief Validates the given path to a node in ZK.

@@ -25,7 +25,7 @@ class Notifyable
     /*
      * Compare two Notifyable instances.
      */
-    bool operator==(Notifyable &other)
+    bool operator==(const Notifyable &other)
     {
         return (other.getKey() == getKey()) ? true : false;
     }
@@ -84,19 +84,19 @@ class Notifyable
     /*
      * Get the name of the Notifyable.
      */
-    string getName() { return m_name; }
+    string getName() const { return m_name; }
 
     /*
      * Return the string identifying the represented
      * cluster object.
      */
-    string getKey() { return m_key; }
+    string getKey() const { return m_key; }
 
     /*
      * Is this notifyable "ready"? (according to the
      * ready protocol)
      */
-    bool isReady() { return m_ready; }
+    bool isReady() const { return m_ready; }
 
     /*
      * Get the properties for this node

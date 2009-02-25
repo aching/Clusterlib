@@ -385,7 +385,8 @@ class Factory
                             int32_t manualOverridesVersion);
     void updateProperties(const string &key,
 			  const string &properties,
-			  int32_t versionNumber);
+			  int32_t versionNumber,
+                          int32_t &finalVersionNumber);
     void updateNodeClientState(const string &key,
                                const string &cs);
     void updateNodeClientStateDesc(const string &key,
@@ -853,11 +854,13 @@ class FactoryOps
     }
     void updateProperties(const string &key,
 			  const string &properties,
-			  int32_t versionNumber)
+			  int32_t versionNumber,
+                          int32_t &finalVersionNumber)
     {
 	mp_f->updateProperties(key,
 			       properties,
-			       versionNumber);
+			       versionNumber,
+                               finalVersionNumber);
     }	
 
     void updateNodeClientState(const string &key,

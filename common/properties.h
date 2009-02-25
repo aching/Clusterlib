@@ -128,6 +128,13 @@ class Properties
     virtual void updateCachedRepresentation();
 
     /**
+     * \brief Get the keys of all the properties.
+     * 
+     * @return the vector of property keys
+     */
+    vector<string> getPropertyKeys() const;
+ 
+    /**
      * \brief Converts this properties map into a string.
      * 
      * @return the string representation of this object

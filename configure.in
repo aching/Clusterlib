@@ -193,7 +193,7 @@ AC_SUBST(MPICH_LIB)
 
 ### ZooKeeper ###
 
-ZOOKEEPER_VERSION="2.2.0"
+ZOOKEEPER_VERSION="3.1.0"
 
 AC_MSG_CHECKING(location of ZooKeeper headers and libraries)
 AC_ARG_WITH(zookeeper_root,
