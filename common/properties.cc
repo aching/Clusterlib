@@ -80,10 +80,10 @@ Properties::getPropertyKeys() const
     vector<string> keys;
 
     Locker(getKeyValMapLock());
-    for (KeyValMap::const_iterator i = m_keyValMap.begin();
-         i != m_keyValMap.end(); 
-         ++i) {
-        keys.push_back(i->first);
+    for (KeyValMap::const_iterator kvIt = m_keyValMap.begin();
+         kvIt != m_keyValMap.end(); 
+         ++kvIt) {
+        keys.push_back(kvIt->first);
     }
     
     return keys;
@@ -94,9 +94,9 @@ Properties::getProperty(const string &name)
 {
     Locker(getKeyValMapLock());
 
-    map<string, string>::const_iterator i = m_keyValMap.find(name);    
-    if (i != m_keyValMap.end()) {
-	return i->second;
+    map<string, string>::const_iterator ssIt = m_keyValMap.find(name);
+    if (ssIt != m_keyValMap.end()) {
+	return ssIt->second;
     }
     
     string parent = getDelegate()->removeObjectFromKey(getKey());
@@ -116,10 +116,10 @@ string
 Properties::marshall() const
 {
     string res;
-    for (KeyValMap::const_iterator i = m_keyValMap.begin();
-         i != m_keyValMap.end(); 
-         ++i) {
-        res.append(i->first).append("=").append(i->second);
+    for (KeyValMap::const_iterator kvIt = m_keyValMap.begin();
+         kvIt != m_keyValMap.end(); 
+         ++kvIt) {
+        res.append(kvIt->first).append("=").append(kvIt->second);
 	res.append(";");
     }
     return res;
@@ -134,21 +134,21 @@ Properties::unmarshall(const string &marshalledKeyValMap)
         return false;
     }
     KeyValMap keyValMap;
-    for (vector<string>::iterator i = nameValueList.begin();
-         i != nameValueList.end() - 1; 
-         ++i) {
-        if (*i != "") {
+    for (vector<string>::iterator sIt = nameValueList.begin();
+         sIt != nameValueList.end() - 1; 
+         ++sIt) {
+        if (*sIt != "") {
             vector<string> pair;
-            split(pair, *i, is_any_of("="));
+            split(pair, *sIt, is_any_of("="));
             if (pair.size() != 2) {
 		stringstream s;
 		s << pair.size();
 		LOG_WARN(CL_LOG,
                          "key-val pair (%d component(s)) = %s", 
                          pair.size(),
-                         i->c_str());
+                         (*sIt).c_str());
 		throw ClusterException("Malformed property \"" +
-				       *i +
+				       *sIt +
 				       "\", expecting 2 components " +
 				       "and instead got " + s.str().c_str());
             }

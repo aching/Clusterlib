@@ -72,8 +72,8 @@ class Application
     /*
      * Constructor used by Factory.
      */
-    Application(const string &name, const string &key, FactoryOps *f)
-        : Notifyable(f, key, name),
+    Application(const string &name, const string &key, FactoryOps *fp)
+        : Notifyable(fp, key, name),
           m_cachingGroups(false),
           m_cachingDists(false)
     {
@@ -142,4 +142,3 @@ class Application
 };	/* End of 'namespace clusterlib' */
 
 #endif	/* !_APPLICATION_H_ */
-

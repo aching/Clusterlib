@@ -121,8 +121,8 @@ class Properties
      * Constructor used by the factory.
      */
     Properties(const string &key,
-	       FactoryOps *f)
-        : Notifyable(f, key, ""),
+	       FactoryOps *fp)
+        : Notifyable(fp, key, ""),
 	  m_keyValMapVersion(-2)
     {
 	updateCachedRepresentation();

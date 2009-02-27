@@ -60,8 +60,7 @@ Application::getGroup(const string &groupName,
     /*
      * Object not found.
      */
-    throw ClusterException(string("") +
-                           "Cannot find group object " +
+    throw ClusterException(string("Cannot find group object ") +
                            groupName);
 };
 
@@ -76,7 +75,7 @@ Application::getDistribution(const string &distName,
 {
     TRACE(CL_LOG, "getDistribution");
 
-    DataDistribution *dist;
+    DataDistribution *distp;
 
     /*
      * If it is already cached, return the
@@ -85,9 +84,9 @@ Application::getDistribution(const string &distName,
     {
         Locker l1(getDistributionMapLock());
 
-        dist = m_distributions[distName];
-        if (dist != NULL) {
-            return dist;
+        distp = m_distributions[distName];
+        if (distp != NULL) {
+            return distp;
         }
     }
 
@@ -95,18 +94,18 @@ Application::getDistribution(const string &distName,
      * If it's not yet cached, load the distribution
      * from the cluster, cache it, and return it.
      */
-    dist = getDelegate()->getDistribution(distName, this, create);
-    if (dist != NULL) {
+    distp = getDelegate()->getDistribution(distName, this, create);
+    if (distp != NULL) {
         Locker l2(getDistributionMapLock());
         
-        m_distributions[distName] = dist;
-        return dist;
+        m_distributions[distName] = distp;
+        return distp;
     }
 
     /*
      * Object not found.
      */
-    throw ClusterException("Cannot find distribution object " +
+    throw ClusterException(string("Cannot find distribution object ") +
                            distName);
 }
 
@@ -133,6 +132,15 @@ void
 Application::recacheGroups()
 {
     TRACE(CL_LOG, "recacheGroups");
+
+    Locker l(getGroupMapLock());
+    IdList gnames = getDelegate()->getGroupNames(this);
+    IdList::iterator gnIt;
+
+    m_groups.clear();
+    for (gnIt = gnames.begin(); gnIt != gnames.end(); gnIt++) {
+        (void) getGroup(*gnIt, false);
+    }
 }
 
 /*
@@ -143,6 +151,15 @@ void
 Application::recacheDists()
 {
     TRACE(CL_LOG, "recacheDists");
+
+    Locker l(getDistributionMapLock());
+    IdList dnames = getDelegate()->getDistributionNames(this);
+    IdList::iterator dnIt;
+
+    m_distributions.clear();
+    for (dnIt = dnames.begin(); dnIt != dnames.end(); dnIt++) {
+        (void) getDistribution(*dnIt, false);
+    }
 }
 
 };	/* End of 'namespace clusterlib' */

@@ -37,7 +37,7 @@ class Mutex
     {
         pthread_mutex_lock(&mutex);
     }
-    int  TryLock()
+    int32_t  TryLock()
     {
         return pthread_mutex_trylock(&mutex);
     }
@@ -88,7 +88,7 @@ class Cond
         pthread_cond_wait(&_cond, &mutex.mutex);
     }
 
-    bool Wait(Mutex& mutex, long long int timeout)
+    bool Wait(Mutex& mutex, uint64_t timeout)
     {
         struct timeval now;
         gettimeofday( &now, NULL );
@@ -136,7 +136,7 @@ class Lock
         m_cond.Wait( m_mutex );
     }
 
-    bool wait(long long int timeout)
+    bool wait(int64_t timeout)
     {
         return m_cond.Wait( m_mutex, timeout );
     }
@@ -153,7 +153,7 @@ class Lock
         m_mutex.Unlock();
     }
 
-    bool lockedWait(long long int timeout)
+    bool lockedWait(int64_t timeout)
     {
         bool res;
 

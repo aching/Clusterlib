@@ -177,11 +177,11 @@ class DataDistribution
     /*
      * Constants for identifying the various parts of a shard definition.
      */
-    static const int SC_LOWBOUND_IDX;
-    static const int SC_HIBOUND_IDX;
-    static const int SC_APPNAME_IDX;
-    static const int SC_GROUPNAME_IDX;
-    static const int SC_NODENAME_IDX;
+    static const int32_t SC_LOWBOUND_IDX;
+    static const int32_t SC_HIBOUND_IDX;
+    static const int32_t SC_APPNAME_IDX;
+    static const int32_t SC_GROUPNAME_IDX;
+    static const int32_t SC_NODENAME_IDX;
 
     /*
      * Retrieve the application object in which this
@@ -436,7 +436,7 @@ class DataDistribution
     /*
      * Which hash function to use.
      */
-    int m_hashFnIndex;
+    int32_t m_hashFnIndex;
 
     /*
      * If using a user supplied hash function, store

@@ -30,7 +30,7 @@ class Client
      * Register a timer handler to be called after
      * a specified delay.
      */
-    TimerId registerTimer(TimerEventHandler *tp,
+    TimerId registerTimer(TimerEventHandler *tehp,
                           uint64_t afterTime,
                           ClientData data);
 
@@ -38,6 +38,12 @@ class Client
      * Cancel a previously registered timer.
      */
     bool cancelTimer(TimerId id);
+
+    /*
+     * Register and cancel a cluster event handler.
+     */
+    void registerHandler(ClusterEventHandler *cehp);
+    bool cancelHandler(ClusterEventHandler *cehp);
 
   protected:
     /*
@@ -48,9 +54,14 @@ class Client
     /*
      * Constructor used by the factory.
      */
-    Client(FactoryOps *f)
-        : mp_f(f)
+    Client(FactoryOps *fp)
+        : mp_f(fp)
     {
+        /*
+         * Empty out the handlers table.
+         */
+        m_eventHandlers.clear();
+
         /*
          * Create the thread to dispatch cluster events to
          * specific user program handlers. The clusterlib cache
@@ -63,9 +74,9 @@ class Client
      * Send an event to this client.
      */
 
-    void sendEvent(ClusterEventPayload *pp)
+    void sendEvent(ClusterEventPayload *cehp)
     {
-        m_queue.put(pp);
+        m_queue.put(cehp);
     }
 
     /*
@@ -91,6 +102,17 @@ class Client
      */
     void consumeClusterEvents();
 
+    /*
+     * Get the event handlers registry lock.
+     */
+    Mutex *getEventHandlersLock() { return &m_eventHandlersLock; }
+
+    /*
+     * Dispatch all handlers registered for this combo of event and
+     * Notifyable.
+     */
+    void dispatchHandlers(Notifyable *np, Event e);
+
   private:
     /*
      * The factory delegate instance we're using.
@@ -107,6 +129,12 @@ class Client
      * The thread consuming the events.
      */
     CXXThread<Client> m_eventThread;
+
+    /*
+     * Map of user event handlers.
+     */
+    EventHandlersMultimap m_eventHandlers;
+    Mutex m_eventHandlersLock;
 };
 
 };	/* End of 'namespace clusterlib' */

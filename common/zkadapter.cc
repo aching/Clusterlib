@@ -58,7 +58,7 @@ class RetryHandler {
      * @return whether the error code has been handled and the caller should 
      *         retry an operation the caused this error
      */
-    bool handleRC(int rc)
+    bool handleRC(int32_t rc)
     {
         TRACE(LOG, "handleRC");
 
@@ -86,7 +86,7 @@ class RetryHandler {
     /**
      * The number of outstanding retries.
      */
-    int retries;    
+    int32_t retries;    
         
     /**
      * Checks whether the given error entitles this adapter
@@ -94,7 +94,7 @@ class RetryHandler {
      * 
      * @param zkErrorCode one of the ZK error code
      */
-    static bool retryOnError(int zkErrorCode)
+    static bool retryOnError(int32_t zkErrorCode)
     {
         return (zkErrorCode == ZCONNECTIONLOSS ||
                 zkErrorCode == ZOPERATIONTIMEOUT);
@@ -103,9 +103,9 @@ class RetryHandler {
     
     
 //the implementation of the global ZK event watcher
-void zkWatcher(zhandle_t *zh, 
-               int type, 
-               int state, 
+void zkWatcher(zhandle_t *zhp, 
+               int32_t type, 
+               int32_t state, 
                const char *path, 
                void *watcherCtx)
 {
@@ -125,11 +125,11 @@ void zkWatcher(zhandle_t *zh,
               type, 
               state, 
               sPath.c_str(), 
-              (unsigned int) zoo_get_context(zh));
+              (unsigned int) zoo_get_context(zhp));
 
-    ZooKeeperAdapter *zka = (ZooKeeperAdapter *)zoo_get_context(zh);
-    if (zka != NULL) {
-        zka->enqueueEvent(type, state, sPath);
+    ZooKeeperAdapter *zkap = (ZooKeeperAdapter *)zoo_get_context(zhp);
+    if (zkap != NULL) {
+        zkap->enqueueEvent(type, state, sPath);
     } else {
         LOG_ERROR(LOG,
                   "Skipping ZK event (type: %d, state: %d, path: '%s'), "
@@ -145,7 +145,7 @@ void zkWatcher(zhandle_t *zh,
 // =======================================================================
 
 ZooKeeperAdapter::ZooKeeperAdapter(ZooKeeperConfig config, 
-                                   ZKEventListener *listener,
+                                   ZKEventListener *lp,
                                    bool establishConnection) 
     : m_zkConfig(config),
       mp_zkHandle(NULL), 
@@ -160,8 +160,8 @@ ZooKeeperAdapter::ZooKeeperAdapter(ZooKeeperConfig config,
     //enforce setting up appropriate ZK log level
     static InitZooKeeperLogging INIT_ZK_LOGGING;
     
-    if (listener != NULL) {
-        addListener(listener);
+    if (lp != NULL) {
+        addListener(lp);
     }
 
     //start the event dispatcher thread
@@ -279,36 +279,36 @@ struct sync_completion {
     pthread_mutex_t mutex;
     pthread_cond_t cond;
     bool done;
-    int rc;
+    int32_t rc;
     ZooKeeperAdapter *zk;
 };
 
-static void waitCompletion(int rc, const char *value, const void *data)
+static void waitCompletion(int32_t rc, const char *value, const void *data)
 {
-    int ret;
+    int32_t ret;
     
-    struct sync_completion *sc = (struct sync_completion *) data;
-    sc->rc = rc;
-    ret = pthread_mutex_lock(&sc->mutex);
+    struct sync_completion *scp = (struct sync_completion *) data;
+    scp->rc = rc;
+    ret = pthread_mutex_lock(&scp->mutex);
     if (ret) {
 	throw ZooKeeperException("Unable to lock mutex", 
                                  ret,
-                                 sc->zk->getState() == 
+                                 scp->zk->getState() == 
                                  ZooKeeperAdapter::AS_CONNECTED);
     }
-    sc->done =true;
-    ret = pthread_cond_signal(&sc->cond);
+    scp->done =true;
+    ret = pthread_cond_signal(&scp->cond);
     if (ret) {
 	throw ZooKeeperException("Unable to wait cond", 
                                  ret,
-                                 sc->zk->getState() == 
+                                 scp->zk->getState() == 
                                  ZooKeeperAdapter::AS_CONNECTED);
     }    
-    ret = pthread_mutex_unlock(&sc->mutex);
+    ret = pthread_mutex_unlock(&scp->mutex);
     if (ret) {
 	throw ZooKeeperException("Unable to unlock mutex", 
                                  ret,
-                                 sc->zk->getState() == 
+                                 scp->zk->getState() == 
                                  ZooKeeperAdapter::AS_CONNECTED);
     }
 }
@@ -322,7 +322,7 @@ ZooKeeperAdapter::sync(const string &path,
 
     validatePath(path);
 
-    int rc = ZINVALIDSTATE, ret;
+    int32_t rc = ZINVALIDSTATE, ret;
     struct sync_completion sc;
     RetryHandler rh(m_zkConfig);
     do {
@@ -416,8 +416,8 @@ ZooKeeperAdapter::sync(const string &path,
 }
 
 void
-ZooKeeperAdapter::handleAsyncEvent(int type, 
-				   int state, 
+ZooKeeperAdapter::handleAsyncEvent(int32_t type, 
+				   int32_t state, 
 				   const string &path)
 {
     TRACE(LOG, "handleAsyncEvent");
@@ -479,8 +479,8 @@ ZooKeeperAdapter::handleAsyncEvent(int type,
 
 /** If there is no context, forward events to all listeners */
 void
-ZooKeeperAdapter::handleEventInContext(int type,
-				       int state,
+ZooKeeperAdapter::handleEventInContext(int32_t type,
+				       int32_t state,
 				       const string &path,
 				       const Listener2Context &listeners)
 {
@@ -530,7 +530,9 @@ ZooKeeperAdapter::handleEventInContext(int type,
 }
 
 void 
-ZooKeeperAdapter::enqueueEvent(int type, int state, const string &path)
+ZooKeeperAdapter::enqueueEvent(int32_t type,
+                               int32_t state,
+                               const string &path)
 {
     TRACE(LOG, "enqueueEvents");
 
@@ -686,13 +688,13 @@ void
 ZooKeeperAdapter::waitUntilConnected() 
 {
     TRACE(LOG, "waitUntilConnected");    
-    long long int timeout = getRemainingConnectTimeout();
+    int64_t timeout = getRemainingConnectTimeout();
     LOG_INFO(LOG,
              "Waiting up to %lld ms until a connection to ZK is established",
              timeout);
     bool connected;
     if (timeout > 0) {
-        long long int toWait = timeout;
+        int64_t toWait = timeout;
         while (m_state != AS_CONNECTED && toWait > 0) {
             //check if session expired and reconnect if so
             if (m_state == AS_SESSION_EXPIRED) {
@@ -785,18 +787,18 @@ ZooKeeperAdapter::verifyConnection()
 bool
 ZooKeeperAdapter::createNode(const string &path, 
                              const string &value, 
-                             int flags, 
+                             int32_t flags, 
                              bool createAncestors,
                              string &returnPath) 
 {
     TRACE(LOG, "createNode (internal)");
     validatePath(path);
     
-    const int MAX_PATH_LENGTH = 1024;
+    const int32_t MAX_PATH_LENGTH = 1024;
     char realPath[MAX_PATH_LENGTH];
     realPath[0] = 0;
     
-    int rc;
+    int32_t rc;
     RetryHandler rh(m_zkConfig);
     do {
         verifyConnection();
@@ -864,7 +866,7 @@ ZooKeeperAdapter::createNode(const string &path,
 bool
 ZooKeeperAdapter::createNode(const string &path,
                              const string &value,
-                             int flags,
+                             int32_t flags,
                              bool createAncestors) 
 {
     TRACE(LOG, "createNode");
@@ -876,7 +878,7 @@ ZooKeeperAdapter::createNode(const string &path,
 int64_t
 ZooKeeperAdapter::createSequence(const string &path,
                                  const string &value,
-                                 int flags,
+                                 int32_t flags,
                                  bool createAncestors) 
 {
     TRACE(LOG, "createSequence");
@@ -916,13 +918,13 @@ ZooKeeperAdapter::createSequence(const string &path,
 bool
 ZooKeeperAdapter::deleteNode(const string &path,
                              bool recursive,
-                             int version)
+                             int32_t version)
 {
     TRACE(LOG, "deleteNode");
 
     validatePath(path);
         
-    int rc;
+    int32_t rc;
     RetryHandler rh(m_zkConfig);
     do {
         verifyConnection();
@@ -983,7 +985,7 @@ ZooKeeperAdapter::nodeExists(const string &path,
     }
     memset(stat, 0, sizeof(Stat));
 
-    int rc;
+    int32_t rc;
     RetryHandler rh(m_zkConfig);
     do {
         verifyConnection();
@@ -1043,7 +1045,7 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
     String_vector children;
     memset(&children, 0, sizeof(children));
 
-    int rc;
+    int32_t rc;
     RetryHandler rh(m_zkConfig);
     do {
         verifyConnection();
@@ -1080,7 +1082,7 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
                                  rc,
                                  m_state == AS_CONNECTED);
     } else {
-        for (int i = 0; i < children.count; ++i) {
+        for (int32_t i = 0; i < children.count; ++i) {
             //convert each child's path from relative to absolute 
             string absPath(path);
             if (path != "/") {
@@ -1109,7 +1111,7 @@ ZooKeeperAdapter::getNodeData(const string &path,
 
     validatePath(path);
    
-    const int MAX_DATA_LENGTH = 128 * 1024;
+    const int32_t MAX_DATA_LENGTH = 128 * 1024;
     char buffer[MAX_DATA_LENGTH];
     memset(buffer, 0, MAX_DATA_LENGTH);
     struct Stat tmpStat;
@@ -1118,8 +1120,8 @@ ZooKeeperAdapter::getNodeData(const string &path,
     }
     memset(stat, 0, sizeof(Stat));
     
-    int rc;
-    int len;
+    int32_t rc;
+    int32_t len;
     RetryHandler rh(m_zkConfig);
     do {
         verifyConnection();
@@ -1164,14 +1166,14 @@ ZooKeeperAdapter::getNodeData(const string &path,
 void
 ZooKeeperAdapter::setNodeData(const string &path,
                               const string &value,
-                              int version,
+                              int32_t version,
                               Stat *stat)
 {
     TRACE(LOG, "setNodeData");
 
     validatePath(path);
 
-    int rc;
+    int32_t rc;
     RetryHandler rh(m_zkConfig);
     do {
         verifyConnection();

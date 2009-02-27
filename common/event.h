@@ -215,7 +215,7 @@ class GenericEvent
      * @param eventWrapper the wrapper around event's data 
      *                     (transfers ownership to this object)
      */
-    GenericEvent(int type, AbstractEventWrapper *eventWrapper)
+    GenericEvent(int32_t type, AbstractEventWrapper *eventWrapper)
         : m_type(type),
           mp_eventWrapper(eventWrapper)
     {
@@ -237,7 +237,7 @@ class GenericEvent
      * 
      * @return type of this event
      */
-    int getType() const { return m_type; }
+    int32_t getType() const { return m_type; }
         
     /**
      * \brief Returns the event's data.
@@ -255,7 +255,7 @@ class GenericEvent
     /**
      * The event type.
      */
-    int m_type;
+    int32_t m_type;
 
     /**
      * The event represented as abstract wrapper.
@@ -270,7 +270,7 @@ class GenericEvent
  * Essentially this class listens on incoming events and fires them 
  * as {@link GenericEvent}s.
  */
-template<typename E, const int type>
+template<typename E, const int32_t type>
 class EventListenerAdapter
     : public virtual EventListener<E>,
       public virtual EventSource<GenericEvent>
@@ -357,6 +357,132 @@ class SynchronousEventAdapter
     BlockingQueue<E> m_queue;
 };
 
+template<typename E>
+void EventSource<E>::fireEventToAllListeners(const E &event)
+{
+    for (typename EventListeners::iterator eIt = m_listeners.begin(); 
+         eIt != m_listeners.end(); 
+         ++eIt) 
+    {
+        fireEvent(*eIt, event);
+    }
+}
+
+template<typename E>
+void EventSource<E>::fireEvent(EventListener<E> *lp, const E &event)
+{
+    LOG_DEBUG(EV_LOG,
+              "fireEvent: Sending event: event 0x%x, listener 0x%x, "
+              "thread %u", 
+              (uint32_t) &event, 
+              (uint32_t) lp, 
+              (uint32_t) pthread_self());
+
+    assert(lp);
+    lp->eventReceived(*this, event);
+}
+
+/*
+ * This is a helper class for handling events using a member function.
+ */
+template<class T>
+class EventHandler
+{
+  public:
+    /*
+     * Define the type of the member function to invoke.
+     */
+    typedef Event (T::*EventMethod)(Notifyable *np,
+                                    int32_t etype,
+                                    const string &path);
+
+    /*
+     * Constructor.
+     */
+    EventHandler(T *objp, EventMethod handler)
+        : mp_obj(objp),    
+          m_handler(handler)
+    {
+    };
+
+    /*
+     * Deliver the event.
+     */
+    Event deliver(Notifyable *np, 
+                  int32_t etype,
+                  const string &path)
+    {
+        return ((*mp_obj).*m_handler)(np, etype, path);
+    };
+
+    /*
+     * Retrieve the object on which the method
+     * is being called.
+     */
+    T *getObject() { return mp_obj; }
+
+  private:
+    /*
+     * The instance.
+     */
+    T *mp_obj;
+
+    /*
+     * The handler method to call.
+     */
+    EventMethod m_handler;
+};
+
+/*
+ * Generic types for delivering events. Events are
+ * delivered to a Factory object.
+ */
+typedef EventHandler<Factory> FactoryEventHandler;
+
+/*
+ * Payload for delivering events from ZooKeeper to clients of
+ * Clusterlib.
+ */
+class ClusterEventPayload
+{
+  public:
+    /*
+     * Constructor.
+     */
+    ClusterEventPayload(Notifyable *np, Event e)
+        : mp_np(np),
+          m_e(e)
+    {
+    }
+
+    /*
+     * Destructor.
+     */
+    virtual ~ClusterEventPayload() {}
+
+    /*
+     * Retrieve fields.
+     */
+    Event getEvent() { return m_e; }
+    Notifyable *getTarget() { return mp_np; }
+
+  private:
+    /*
+     * The target object clients are being notified about.
+     */
+    Notifyable *mp_np;
+
+    /*
+     * The event that clients are being notified about.
+     */
+    Event m_e;
+};
+
+/*
+ * Typedef for blocking queue of pointers to cluster event payload objects.
+ */
+typedef BlockingQueue<ClusterEventPayload *> ClusterEventPayloadQueue;
+
 /***********************************************************************/
 /*                                                                     */
 /* Below are user level event handling definitions.                    */
@@ -372,81 +498,27 @@ class SynchronousEventAdapter
 /*
  * Various event notification constants.
  */
-const int EN_NO_EVENT =			0;
+const int32_t EN_NOEVENT =			0;
 
-const int EN_NOTIFYABLE_CREATED =	(1<<0);
-const int EN_NOTIFYABLE_DELETED =	(1<<1);
-const int EN_NOTIFYABLE_READY =		(1<<2);
+const int32_t EN_CREATED =			(1<<0);
+const int32_t EN_DELETED =			(1<<1);
+const int32_t EN_READY =			(1<<2);
 
-const int EN_APP_GROUPSCHANGE =		(1<<3);
-const int EN_APP_DISTSCHANGE =		(1<<4);
+const int32_t EN_GROUPSCHANGE =			(1<<3);
+const int32_t EN_DISTSCHANGE =			(1<<4);
 
-const int EN_GRP_MEMBERSHIP =		(1<<5);
-const int EN_GRP_LEADERSHIP =		(1<<6);
+const int32_t EN_MEMBERSHIPCHANGE =		(1<<5);
+const int32_t EN_LEADERSHIPCHANGE =		(1<<6);
 
-const int EN_NODE_HEALTHCHANGE =	(1<<7);
-const int EN_NODE_CONNECTCHANGE =	(1<<8);
-const int EN_NODE_MASTERSTATECHANGE =	(1<<9);
+const int32_t EN_HEALTHCHANGE =			(1<<7);
+const int32_t EN_CONNECTCHANGE =		(1<<8);
+const int32_t EN_MASTERSTATECHANGE =		(1<<9);
 
-const int EN_DIST_CHANGE =		(1<<10);
-
-const int EN_PROP_CHANGE =		(1<<11);
-
-/*
- * An event type.
- */
-typedef int Event;
+const int32_t EN_DISTCHANGE =			(1<<10);
+const int32_t EN_PROPCHANGE =			(1<<11);
 
 /*
- * Class for passing events+handler to clients.
- */
-class ClientEvent
-{
-  public:
-    /*
-     * Constructor.
-     */
-    ClientEvent(ClusterEventHandler *rp,
-                Notifyable *np,
-                Event e)
-        : mp_rp(rp),
-          mp_np(np),
-          m_e(e)
-    {
-    }
-
-    /*
-     * Accessors.
-     */
-    ClusterEventHandler *getHandler() { return mp_rp; }
-    Notifyable *getNotifyable() { return mp_np; }
-    Event getEvent() { return m_e; }
-
-  private:
-    /*
-     * The event handler object.
-     */
-    ClusterEventHandler *mp_rp;
-
-    /*
-     * The Notifyable instance for which the event is
-     * being delivered.
-     */
-    Notifyable *mp_np;
-
-    /*
-     * The actual event.
-     */
-    Event m_e;
-};
-
-/*
- * Typedef for client event delivery queue.
- */
-typedef BlockingQueue<ClientEvent *> ClientEventQueue;
-
-/*
- * Interface for event handler. Must be derived
+ * Interface for cluster event handler. Must be derived
  * to define specific behavior for handling events.
  */
 class ClusterEventHandler
@@ -455,7 +527,12 @@ class ClusterEventHandler
     /*
      * Constructor.
      */
-    ClusterEventHandler()
+    ClusterEventHandler(Notifyable *np,
+                        Event mask,
+                        ClientData cd)
+        : mp_np(np),
+          m_mask(mask),
+          m_cd(cd)
     {
     }
 
@@ -465,102 +542,42 @@ class ClusterEventHandler
     virtual ~ClusterEventHandler() {}
 
     /*
+     * Accessors.
+     */
+    Notifyable *getNotifyable() { return mp_np; }
+    Event getMask() { return m_mask; }
+    ClientData getClientData() { return m_cd; }
+
+    void setNotifyable(Notifyable *np) { mp_np = np; }
+    void setMask(Event e) { m_mask = e; }
+    void setClienData(ClientData cd) { m_cd = cd; }
+
+    Event addEvent(Event a) { m_mask |= a; return m_mask; }
+    Event removeEvent(Event a) { m_mask &= (~a); return m_mask; }
+
+    /*
      * Handle the event -- this must be
      * implemented by subclasses.
      */
-    virtual void handleClusterEvent(Notifyable *np, Event e)
-        = 0;
-};
-
-/*
- * Class for recording interest in events.
- */
-class ClusterEventInterest
-{
-  public:
-   /*
-    * Constructor.
-    */
-    ClusterEventInterest(ClusterEventHandler *handler,
-                         Event mask,
-                         void *clientData)
-        : m_mask(mask),
-          mp_handler(handler),
-          mp_data(clientData)
-    {
-    }
-
-    /*
-     * Deliver the specific event.
-     */
-    void deliverNotification(Event e, Notifyable *np)
-    {
-        // mp_handler->deliverNotification(e, np, mp_data);
-    }
-
-    /*
-     * Get the handler object.
-     */
-    ClusterEventHandler *getHandler() { return mp_handler; }
-
-    /*
-     * Add/remove events to the set we're interested in.
-     */
-    Event addEvents(Event mask)
-    {
-        m_mask |= mask;
-        return m_mask;
-    }
-    Event removeEvents(Event mask)
-    {
-        m_mask &= (~(mask));
-        return m_mask;
-    }
-
-    /*
-     * Is the event one we're interested in?
-     */
-    bool matchEvent(Event e)
-    {
-        return ((m_mask & e) == 0) ? false : true;
-    }
-
-    /*
-     * Get the set of events this interest is for.
-     */
-    Event getEvents() { return m_mask; }
-
-    /*
-     * Set the clientData.
-     */
-    void *setClientData(void *newCLD)
-    {
-        void *oldCLD = mp_data;
-        mp_data = newCLD;
-        return oldCLD;
-    }
+    virtual void handleClusterEvent(Event e) = 0;
 
   private:
     /*
-     * The events of interest.
+     * The Notifyable this handler is for.
+     */
+    Notifyable *mp_np;
+
+    /*
+     * The events (a mask) that this handler is for.
      */
     Event m_mask;
 
     /*
-     * The handler to invoke.
+     * Arbitrary data to pass to the handler for each
+     * event as it is triggered.
      */
-    ClusterEventHandler *mp_handler;
-
-    /*
-     * Arbitrary data to pass to deliverNotification().
-     */
-    void *mp_data;
+    ClientData m_cd;
 };
-    
-/*
- * A list of EventHandler instances.
- */
-typedef vector<ClusterEventInterest *> ClusterEventInterests;
 
 /*---------------------------------------------------------------------*/
 /*                                                                     */
@@ -827,132 +844,6 @@ class Timer
      * Whether {@link #m_workerThread}  is terminating.
      */
     volatile bool m_terminating;
-};
-
-template<typename E>
-void EventSource<E>::fireEventToAllListeners(const E &event)
-{
-    for (typename EventListeners::iterator i = m_listeners.begin(); 
-         i != m_listeners.end(); 
-         ++i) 
-    {
-        fireEvent(*i, event);
-    }
-}
-
-template<typename E>
-void EventSource<E>::fireEvent(EventListener<E> *listener, const E &event)
-{
-    LOG_DEBUG(EV_LOG,
-              "fireEvent: Sending event: event 0x%x, listener 0x%x, "
-              "thread %u", 
-              (uint32_t) &event, 
-              (uint32_t) listener, 
-              (uint32_t) pthread_self());
-
-    assert(listener);
-    listener->eventReceived(*this, event);
-}
-
-/*
- * This is a helper class for handling events using a member function.
- */
-template<class T>
-class EventHandler
-{
-  public:
-    /*
-     * Define the type of the member function to invoke.
-     */
-    typedef Event (T::*EventMethod)(Notifyable *np,
-                                    int etype,
-                                    const string &path);
-
-    /*
-     * Constructor.
-     */
-    EventHandler(T *obj, EventMethod handler)
-        : mp_obj(obj),    
-          m_handler(handler)
-    {
-    };
-
-    /*
-     * Deliver the event.
-     */
-    Event deliver(Notifyable *np, 
-                  int etype,
-                  const string &path)
-    {
-        return ((*mp_obj).*m_handler)(np, etype, path);
-    };
-
-    /*
-     * Retrieve the object on which the method
-     * is being called.
-     */
-    T *getObject() { return mp_obj; }
-
-  private:
-    /*
-     * The instance.
-     */
-    T *mp_obj;
-
-    /*
-     * The handler method to call.
-     */
-    EventMethod m_handler;
-};
-
-/*
- * Generic types for delivering events. Events are
- * delivered to a Factory object.
- */
-typedef EventHandler<Factory> FactoryEventHandler;
-
-/*
- * Typedef for blocking queue of pointers to cluster event payload objects.
- */
-typedef BlockingQueue<ClusterEventPayload *> ClusterEventPayloadQueue;
-
-/*
- * Payload for delivering events from ZooKeeper to clients of
- * Clusterlib.
- */
-class ClusterEventPayload
-{
-  public:
-    /*
-     * Constructor.
-     */
-    ClusterEventPayload(Notifyable *np, Event e)
-        : mp_np(np),
-          m_e(e)
-    {
-    }
-
-    /*
-     * Destructor.
-     */
-    virtual ~ClusterEventPayload() {}
-
-    /*
-     * Retrieve fields.
-     */
-    Event getEvent() { return m_e; }
-    Notifyable *getTarget() { return mp_np; }
-
-  private:
-    /*
-     * The target object clients are being notified about.
-     */
-    Notifyable *mp_np;
-
-    /*
-     * The event that clients are being notified about.
-     */
-    Event m_e;
 };
 
 /*

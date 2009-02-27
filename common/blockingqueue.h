@@ -53,7 +53,7 @@ class BlockingQueue
          * 
          * @return the number of elements in this queue
          */
-        int size() const;
+        int32_t size() const;
         
         /**
          * \brief Returns whether this queue is empty or not.
@@ -90,7 +90,7 @@ class BlockingQueue
 template<class E>
 int BlockingQueue<E>::size() const
 {
-    int size;
+    int32_t size;
     m_mutex.Acquire();
     size = m_queue.size();
     m_mutex.Release();

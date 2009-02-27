@@ -45,14 +45,14 @@ namespace clusterlib
 /*
  * Constructor.
  */
-Server::Server(FactoryOps *f,
+Server::Server(FactoryOps *fp,
                const string &appName,
                const string &grpName,
                const string &nodeName,
                HealthChecker *healthChecker,
                ServerFlags flags)
-    : Client(f),
-      mp_f(f),
+    : Client(fp),
+      mp_f(fp),
       m_appName(appName),
       m_grpName(grpName),
       m_nodeName(nodeName),
@@ -152,8 +152,8 @@ Server::checkHealth()
 {
     TRACE(CL_LOG, "checkHealth");
     
-    int lastPeriod = m_checkFrequencyHealthy;   /* Initially.   */
-    int curPeriod = m_checkFrequencyHealthy;    /* Initially.   */
+    int32_t lastPeriod = m_checkFrequencyHealthy;   /* Initially.   */
+    int32_t curPeriod = m_checkFrequencyHealthy;    /* Initially.   */
 
     while (!m_healthCheckerTerminating) {
         LOG_DEBUG(CL_LOG, "About to check health");
@@ -222,7 +222,7 @@ Server::checkHealth()
         /*
          * We don't care whether wait times out or not.
          */
-        int waitTime;
+        int32_t waitTime;
         if (curPeriod > 0) {
             lastPeriod = curPeriod;
             waitTime = curPeriod;
@@ -288,7 +288,7 @@ Server::tryToBecomeLeader()
      * Initialization.
      */
     if (m_myBid == -1) {
-        m_myBid = mp_f->placeBid(mp_node);
+        m_myBid = mp_f->placeBid(mp_node, this);
     }
     LOG_INFO(CL_LOG, "My leader bid: %lld", m_myBid);
 
@@ -331,19 +331,19 @@ Server::giveUpLeadership()
     int64_t myBid = m_myBid;
 
     /*
-     * I never bid, so cannot be the leader.
+     * Revert to not having a leadership bid.
+     */
+    m_myBid = -1;
+
+    /*
+     * If the previous bid was -1, I never bid, so I
+     * cannot be the leader.
      */
     if (myBid == -1) {
         return;
     }
 
-    /*
-     * If I *am* the leader, give it up.
-     */
-    if (amITheLeader()) {
-        m_myBid = -1;
-        mp_f->giveUpLeadership(mp_node, myBid);
-    }
+    mp_f->giveUpLeadership(mp_node, myBid);
 }
 
 };	/* End of 'namespace clusterlib' */

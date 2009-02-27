@@ -87,6 +87,11 @@ class Group
     bool isLeaderKnown() { return m_leaderIsKnown; }
 
     /*
+     * Get the leadership lock for this group.
+     */
+    Mutex *getLeadershipLock() { return &m_leadershipLock; }
+
+    /*
      * Get strings for leadership protocol.
      */
     void initializeStringsForLeadershipProtocol();
@@ -125,11 +130,6 @@ class Group
      * Get the address of the lock for the node map.
      */
     Mutex *getNodeMapLock() { return &m_nodeMapLock; }
-
-    /*
-     * Get the address of the lock for the leadership protocol.
-     */
-    Mutex *getLeadershipLock() { return &m_leadershipLock; }
 
   private:
     /*

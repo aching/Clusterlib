@@ -41,7 +41,7 @@ class ZooKeeperException :
          * @param errorCode the ZK error code associated with this exception
          */
         ZooKeeperException(const string &msg,
-                           int errorCode,
+                           int32_t errorCode,
                            bool connected = true)
             throw()
             : m_zkErrorCode(errorCode), m_connected(connected) 
@@ -67,7 +67,7 @@ class ZooKeeperException :
         /**
          * \brief Returns the ZK error code.
          */
-        int getZKErrorCode() const {
+        int32_t getZKErrorCode() const {
             return m_zkErrorCode;
         }
 
@@ -89,7 +89,7 @@ class ZooKeeperException :
         /**
          * The optional error code received from ZK.
          */
-        int m_zkErrorCode;
+        int32_t m_zkErrorCode;
 
 	/**
          * Whether the ZooKeeper connection is open.
@@ -113,9 +113,9 @@ class ZooKeeperConfig
          * @param connectTimeout the connect timeout, in milliseconds;
          */
         ZooKeeperConfig(const string &hosts, 
-                        int leaseTimeout, 
+                        int32_t leaseTimeout, 
                         bool autoReconnect = true, 
-                        long long int connectTimeout = 15000) :
+                        int64_t connectTimeout = 15000) :
             m_hosts(hosts), m_leaseTimeout(leaseTimeout), 
                   m_autoReconnect(autoReconnect), m_connectTimeout(connectTimeout) {}
         
@@ -127,7 +127,7 @@ class ZooKeeperConfig
         /**
          * \brief Returns the lease timeout.
          */
-        int getLeaseTimeout() const { return m_leaseTimeout; }
+        int32_t getLeaseTimeout() const { return m_leaseTimeout; }
         
         /**
          * \brief Returns whether {@link ZooKeeperAdapter} should attempt 
@@ -140,7 +140,7 @@ class ZooKeeperConfig
          * 
          * @return the connect timeout
          */
-        long long int getConnectTimeout() const { return m_connectTimeout; }
+        int64_t getConnectTimeout() const { return m_connectTimeout; }
                   
     private:
         
@@ -152,7 +152,7 @@ class ZooKeeperConfig
         /**
          * The ZK lease timeout.
          */
-        const int m_leaseTimeout;
+        const int32_t m_leaseTimeout;
         
         /**
          * True if this adapater should attempt to autoreconnect in case 
@@ -164,7 +164,7 @@ class ZooKeeperConfig
          * How long to wait, in milliseconds, before a connection 
          * is established to ZK.
          */
-        const long long int m_connectTimeout;
+        const int64_t m_connectTimeout;
         
 };
 
@@ -199,12 +199,14 @@ class ZKWatcherEvent
          * @param path the corresponding path, may be empty for some event types
          * @param context the user specified context; possibly NULL
          */
-        ZKWatcherEvent(int type, int state, const string &path, 
+        ZKWatcherEvent(int32_t type,
+                       int32_t state,
+                       const string &path, 
                        ContextType context = NULL) :
             m_type(type), m_state(state), m_path(path), mp_context(context) {}
         
-        int getType() const { return m_type; }
-        int getState() const { return m_state; }
+        int32_t getType() const { return m_type; }
+        int32_t getState() const { return m_state; }
         string const &getPath() const { return m_path; }
         ContextType getContext() const { return mp_context; }
         
@@ -220,7 +222,7 @@ class ZKWatcherEvent
          * CHANGED_EVENT, CHILD_EVENT, SESSION_EVENT or NOTWATCHING_EVENT. 
          * See zookeeper.h for more details.
          */
-        const int m_type;
+        const int32_t m_type;
         
         /**
          * The state of ZK at the time of sending this event.
@@ -228,7 +230,7 @@ class ZKWatcherEvent
          * CONNECTED_STATE, EXPIRED_SESSION_STATE or AUTH_FAILED_STATE.
          * See {@file zookeeper.h} for more details.
          */
-        const int m_state;
+        const int32_t m_state;
         
         /**
          * The corresponding path of the node in subject. It may be empty

@@ -60,8 +60,8 @@ class Server
      * \brief Retrieve the current number of seconds to wait till running
      * the health check again.
      */
-    int getHeartBeatPeriod();
-    int getUnhealthyHeartBeatPeriod();
+    int32_t getHeartBeatPeriod();
+    int32_t getUnhealthyHeartBeatPeriod();
 
     /**
      * \brief Enables or disables the health checking and 
@@ -114,7 +114,7 @@ class Server
         /**
          * Get the heart beat check period.
          */
-    int getHeartBeatCheckPeriod();
+    int32_t getHeartBeatCheckPeriod();
     
   private:
     /*
@@ -173,10 +173,10 @@ class Server
     /**
      * How often to call {@link #mpHealthChecker->checkHealth}, in seconds.
      */
-    volatile int m_checkFrequencyHealthy;
-    volatile int m_checkFrequencyUnhealthy;
+    volatile int32_t m_checkFrequencyHealthy;
+    volatile int32_t m_checkFrequencyUnhealthy;
     volatile double m_heartBeatMultiple;
-    volatile int m_heartBeatCheckPeriod;
+    volatile int32_t m_heartBeatCheckPeriod;
 
     /*
      * Whether the checkHealth thread should terminate

@@ -21,15 +21,14 @@ namespace clusterlib
 /*
  * Constructor.
  */
-Notifyable::Notifyable(FactoryOps *f,
+Notifyable::Notifyable(FactoryOps *fp,
                        const string &key,
                        const string &name)
-    : mp_f(f),
+    : mp_f(fp),
       m_key(key),
       m_name(name),
       m_ready(false)
 {
-    m_interests.clear();
     mp_f->establishNotifyableReady(this);
 };
 
@@ -38,45 +37,6 @@ Notifyable::Notifyable(FactoryOps *f,
  */
 Notifyable::~Notifyable()
 {
-    ClusterEventInterests::iterator i;
-    Locker l(getInterestsLock());
-
-    for (i = m_interests.begin();
-         i != m_interests.end();
-         i++) {
-        delete (*i);
-    }
-    m_interests.clear();
-};
-
-/*
- * Notification mechanism.
- */
-void
-Notifyable::notify(const Event e)
-{
-    ClusterEventInterests::iterator i;
-    ClusterEventInterests interests;
-
-    {
-        /*
-         * Make a copy of the current notification interests
-         * list to protect against side effects. Suggested by
-         * ruslanm@yahoo-inc.com, thanks!
-         */
-        Locker l(getInterestsLock());
-
-        interests = m_interests;
-    }
-
-    /*
-     * Deliver the event to all interested "user-land" clients.
-     */
-    for (i = interests.begin(); i != interests.end(); i++) {
-        if ((*i)->matchEvent(e)) {
-            (*i)->deliverNotification(e, this);
-        }
-    }
 };
 
 Properties *
@@ -84,7 +44,9 @@ Notifyable::getProperties(bool create)
 {
     Properties *prop;
 
-    /* TODO:  Check to see if this is a properties key, should reject this. */
+    /* 
+     * TODO: Check to see if this is a properties key, should reject this.
+     */
     string propertiesName = mp_f->createPropertiesKey(getKey());
 
     /*
@@ -116,7 +78,7 @@ Notifyable::getProperties(bool create)
     /*
      * Object not found.
      */
-    throw ClusterException("Cannot find properties object " +
+    throw ClusterException(string("Cannot find properties object ") +
                            propertiesName);
 
 };

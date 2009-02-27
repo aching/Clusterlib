@@ -19,11 +19,11 @@ namespace clusterlib
  * Constants for identifying the various parts of a shard
  * specification.
  */
-const int DataDistribution::SC_LOWBOUND_IDX	= 0;
-const int DataDistribution::SC_HIBOUND_IDX	= 1;
-const int DataDistribution::SC_APPNAME_IDX	= 2;
-const int DataDistribution::SC_GROUPNAME_IDX	= 3;
-const int DataDistribution::SC_NODENAME_IDX	= 4;
+const int32_t DataDistribution::SC_LOWBOUND_IDX		= 0;
+const int32_t DataDistribution::SC_HIBOUND_IDX		= 1;
+const int32_t DataDistribution::SC_APPNAME_IDX		= 2;
+const int32_t DataDistribution::SC_GROUPNAME_IDX	= 3;
+const int32_t DataDistribution::SC_NODENAME_IDX		= 4;
 
 static HashRange
 jenkinsHashImpl(const string &key)
@@ -71,12 +71,12 @@ DataDistribution::s_hashFunctions[] =
 DataDistribution::DataDistribution(Application *app,
                                    const string &name,
                                    const string &key,
-                                   FactoryOps *f,
-                                   HashFunction *fn)
-    : Notifyable(f, key, name),
+                                   FactoryOps *fp,
+                                   HashFunction *fnp)
+    : Notifyable(fp, key, name),
       mp_app(app),
       m_hashFnIndex(DD_HF_JENKINS),
-      mp_hashFnPtr(fn),
+      mp_hashFnPtr(fnp),
       m_shardsVersion(-2),
       m_manualOverridesVersion(-2)
 {
@@ -136,7 +136,7 @@ DataDistribution::unmarshallShards(const string &marshalledShards)
 
     vector<string> components;
     vector<string> shardComponents;
-    vector<string>::iterator i;
+    vector<string>::iterator sIt;
     Shard *nsp;
 
     /* No shards defined */
@@ -145,16 +145,16 @@ DataDistribution::unmarshallShards(const string &marshalledShards)
     }
 
     split(components, marshalledShards, is_any_of(";"));
-    for (i = components.begin(); i != components.end() - 1; i++) {
-        split(shardComponents, *i, is_any_of(","));
+    for (sIt = components.begin(); sIt != components.end() - 1; sIt++) {
+        split(shardComponents, *sIt, is_any_of(","));
         if (shardComponents.size() != 5) {
 	    stringstream s;
 	    s << shardComponents.size();
 	    LOG_WARN(CL_LOG,
                      "shardComponents (%d component(s)) = %s", 
-                     shardComponents.size(), i->c_str());
+                     shardComponents.size(), (*sIt).c_str());
             throw ClusterException("Malformed shard \"" +
-                                   *i +
+                                   *sIt +
                                    "\", expecting 5 components " +
 				   "and instead got " + s.str().c_str());
         }
@@ -173,7 +173,7 @@ DataDistribution::unmarshallShards(const string &marshalledShards)
                         atoll(shardComponents[SC_HIBOUND_IDX].c_str()));
         if (nsp == NULL) {
             throw ClusterException("Could not create shard \"" +
-                                   *i +
+                                   *sIt +
                                    "\"");
         }
 
@@ -195,9 +195,9 @@ DataDistribution::unmarshallOverrides(const string &marshalledOverrides)
 
     vector<string> components;
     vector<string> moComponents;
-    vector<string>::iterator i;
+    vector<string>::iterator sIt;
     Node *np;
-    DataDistribution *dp;
+    DataDistribution *distp;
 
     /* No manual overrides defined */
     if (marshalledOverrides.empty()) {
@@ -205,8 +205,8 @@ DataDistribution::unmarshallOverrides(const string &marshalledOverrides)
     }
 
     split(components, marshalledOverrides, is_any_of(";"));
-    for (i = components.begin(); i != components.end(); i++) {
-        split(moComponents, *i, is_any_of(","));
+    for (sIt = components.begin(); sIt != components.end(); sIt++) {
+        split(moComponents, *sIt, is_any_of(","));
         if (moComponents.size() == 4) {
             np = getDelegate()->getNode(moComponents[1],
                                         moComponents[2],
@@ -215,7 +215,7 @@ DataDistribution::unmarshallOverrides(const string &marshalledOverrides)
             if (np == NULL) {
                 throw ClusterException("Could not find node for manual "
                                        "override \"" +
-                                       *i +
+                                       *sIt +
                                        "\"");
             }
 
@@ -227,12 +227,12 @@ DataDistribution::unmarshallOverrides(const string &marshalledOverrides)
                                      np,
                                      np->getKey());
         } else if (moComponents.size() == 3) {
-            dp = getDelegate()->getDistribution(moComponents[1],
-                                                moComponents[2]);
-            if (dp == NULL) {
+            distp = getDelegate()->getDistribution(moComponents[1],
+                                                   moComponents[2]);
+            if (distp == NULL) {
                 throw ClusterException("Could not find distribution for "
                                        "manual override \"" +
-                                       *i +
+                                       *sIt +
                                        "\"");
             }
 
@@ -241,11 +241,11 @@ DataDistribution::unmarshallOverrides(const string &marshalledOverrides)
              */
             m_manualOverrides[moComponents[0]]
                 = new ManualOverride(this,
-                                     dp,
-                                     dp->getKey());
+                                     distp,
+                                     distp->getKey());
         } else {
             throw ClusterException("Malformed manual override \"" +
-                                   *i +
+                                   *sIt +
                                    "\", expecting 3 or 4 components");
         }
     }                                   
@@ -272,11 +272,11 @@ DataDistribution::marshallShards()
     TRACE(CL_LOG, "marshallShards");
 
     string res = "";
-    ShardList::iterator i;
+    ShardList::iterator sIt;
     char buf[1024];
     Notifyable *ntp;
     Node *np;
-    DataDistribution *dp;
+    DataDistribution *distp;
     const char *appName = getApplication()->getName().c_str();
     const char *distName;
     const char *nodeName;
@@ -284,49 +284,49 @@ DataDistribution::marshallShards()
     const char *dAppName;
 
     Locker l(getShardsLock());
-    for (i = m_shards.begin(); i != m_shards.end(); i++) {
-        if ((*i)->isForwarded()) {
+    for (sIt = m_shards.begin(); sIt != m_shards.end(); sIt++) {
+        if ((*sIt)->isForwarded()) {
             /*
              * This shard forwards to another data distribution.
              */
-            ntp = (*i)->getNotifyable();
+            ntp = (*sIt)->getNotifyable();
             if (ntp == NULL) {
                 distName =
-                    getDelegate()->distNameFromKey((*i)->getKey()).c_str();
+                    getDelegate()->distNameFromKey((*sIt)->getKey()).c_str();
                 dAppName =
-                    getDelegate()->appNameFromKey((*i)->getKey()).c_str();
+                    getDelegate()->appNameFromKey((*sIt)->getKey()).c_str();
             } else {
-                dp = dynamic_cast<DataDistribution *>(ntp);
-                distName = dp->getName().c_str();
-                dAppName = dp->getApplication()->getName().c_str();
+                distp = dynamic_cast<DataDistribution *>(ntp);
+                distName = distp->getName().c_str();
+                dAppName = distp->getApplication()->getName().c_str();
             }
             snprintf(buf,
                      1024,
                      "%lld,%lld,%s,%s;",
-                     (*i)->beginRange(),
-                     (*i)->endRange(),
+                     (*sIt)->beginRange(),
+                     (*sIt)->endRange(),
                      dAppName,
                      distName);
         } else {
             /*
              * This shard points at a node.
              */
-            ntp = (*i)->getNotifyable();
+            ntp = (*sIt)->getNotifyable();
             if (ntp != NULL) {
                 np = dynamic_cast<Node *>(ntp);
                 nodeName = np->getName().c_str();
                 groupName = np->getGroup()->getName().c_str();
             } else {
-                nodeName = getDelegate()->nodeNameFromKey(
-		    (*i)->getKey()).c_str();
-                groupName = getDelegate()->groupNameFromKey(
-		    (*i)->getKey()).c_str();
+                nodeName =
+                    getDelegate()->nodeNameFromKey((*sIt)->getKey()).c_str();
+                groupName =
+                    getDelegate()->groupNameFromKey((*sIt)->getKey()).c_str();
             }
             snprintf(buf,
                      1024,
                      "%lld,%lld,%s,%s,%s;",
-                     (*i)->beginRange(),
-                     (*i)->endRange(),
+                     (*sIt)->beginRange(),
+                     (*sIt)->endRange(),
                      appName,
                      groupName,
                      nodeName);
@@ -347,11 +347,11 @@ DataDistribution::marshallOverrides()
     TRACE(CL_LOG, "marshallOverrides");
 
     string res = "";
-    ManualOverridesMap::iterator i;
+    ManualOverridesMap::iterator moIt;
     char buf[1024];
     Notifyable *ntp;
     Node *np;
-    DataDistribution *dp;
+    DataDistribution *distp;
     const char *appName = getApplication()->getName().c_str();
     const char *dAppName;
     const char *distName;
@@ -359,52 +359,54 @@ DataDistribution::marshallOverrides()
     const char *nodeName;
 
     Locker l(getManualOverridesLock());
-    for (i = m_manualOverrides.begin();
-         i != m_manualOverrides.end(); 
-         i++) {
-        if ((*i).second->isForwarded()) {
+    for (moIt = m_manualOverrides.begin();
+         moIt != m_manualOverrides.end(); 
+         moIt++) {
+        if ((*moIt).second->isForwarded()) {
             /*
              * This manual override forwards to another
              * data distribution.
              */
-            ntp = (*i).second->getNotifyable();
+            ntp = (*moIt).second->getNotifyable();
             if (ntp == NULL) {
                 distName =
-                    getDelegate()->distNameFromKey((*i).second->getKey()).c_str();
+                    getDelegate()
+                        ->distNameFromKey((*moIt).second->getKey()).c_str();
                 dAppName =
-                    getDelegate()->appNameFromKey((*i).second->getKey()).c_str();
+                    getDelegate()
+                        ->appNameFromKey((*moIt).second->getKey()).c_str();
             } else {
-                dp = dynamic_cast<DataDistribution *>(ntp);
-                distName = dp->getName().c_str();
-                dAppName = dp->getApplication()->getName().c_str();
+                distp = dynamic_cast<DataDistribution *>(ntp);
+                distName = distp->getName().c_str();
+                dAppName = distp->getApplication()->getName().c_str();
             }
             snprintf(buf,
                      1024,
                      "%s,%s,%s;",
-                     (*i).first.c_str(),
+                     (*moIt).first.c_str(),
                      dAppName,
                      distName);
         } else {
             /*
              * This manual override forwards to a node.
              */
-            ntp = (*i).second->getNotifyable();
+            ntp = (*moIt).second->getNotifyable();
             if (ntp != NULL) {
                 np = dynamic_cast<Node *>(ntp);
                 nodeName = np->getName().c_str();
                 groupName = np->getGroup()->getName().c_str();
             } else {
                 nodeName =
-                    getDelegate()->nodeNameFromKey(
-			(*i).second->getKey()).c_str();
+                    getDelegate()
+                       ->nodeNameFromKey((*moIt).second->getKey()).c_str();
                 groupName = 
-                    getDelegate()->groupNameFromKey(
-			(*i).second->getKey()).c_str();
+                    getDelegate()
+		        ->groupNameFromKey((*moIt).second->getKey()).c_str();
             }
             snprintf(buf,
                      1024,
                      "%s,%s,%s,%s;",
-                     (*i).first.c_str(),
+                     (*moIt).first.c_str(),
                      appName,
                      groupName,
                      nodeName);
@@ -431,19 +433,19 @@ DataDistribution::updateCachedRepresentation()
     Locker s(getShardsLock());
     Locker m(getManualOverridesLock());
 
-    int shardsVersion, overridesVersion;
+    int32_t shardsVersion, overridesVersion;
     string shards = getDelegate()->loadShards(getKey(),
                                               shardsVersion);
     string overrides = getDelegate()->loadManualOverrides(getKey(),
                                                           overridesVersion);
-    ShardList::iterator si;
-    ManualOverridesMap::iterator mi;
+    ShardList::iterator sIt;
+    ManualOverridesMap::iterator moIt;
 
     {
 	/* Only update if this is a newer version **/
 	if (shardsVersion > getShardsVersion()) {
-	    for (si = m_shards.begin(); si != m_shards.end(); si++) {
-		delete *si;
+	    for (sIt = m_shards.begin(); sIt != m_shards.end(); sIt++) {
+		delete *sIt;
 	    }
 	    m_shards.clear();
 	    unmarshallShards(shards);
@@ -454,10 +456,10 @@ DataDistribution::updateCachedRepresentation()
     {
 	/* Only update if this is a newer version **/
 	if (overridesVersion > getManualOverridesVersion()) {
-	    for (mi = m_manualOverrides.begin();
-		 mi != m_manualOverrides.end();
-		 mi++) {
-		delete (*mi).second;
+	    for (moIt = m_manualOverrides.begin();
+		 moIt != m_manualOverrides.end();
+		 moIt++) {
+		delete (*moIt).second;
 	    }
 	    m_manualOverrides.clear();
 	    unmarshallOverrides(overrides);
@@ -476,7 +478,7 @@ DataDistribution::map(const string &key)
     TRACE(CL_LOG, "map");
 
     Notifyable *ntp;
-    DataDistribution *dp = this;
+    DataDistribution *distp = this;
     uint32_t idx;
 
     for (;;) {
@@ -506,13 +508,13 @@ DataDistribution::map(const string &key)
          * Use the shard mapping, we didn't find a manual
          * override.
          */
-        idx = dp->getShardIndex(dp->hashWork(key));
-        ntp = dp->m_shards[idx]->loadNotifyable();
-        if (dp->m_shards[idx]->isForwarded()) {
+        idx = distp->getShardIndex(distp->hashWork(key));
+        ntp = distp->m_shards[idx]->loadNotifyable();
+        if (distp->m_shards[idx]->isForwarded()) {
             /*
              * Follow the forwarding chain.
              */
-            dp = dynamic_cast<DataDistribution *>(ntp);
+            distp = dynamic_cast<DataDistribution *>(ntp);
         } else {
             return dynamic_cast<Node *>(ntp);
         }
@@ -575,19 +577,21 @@ DataDistribution::isCovered()
 {
     TRACE(CL_LOG, "isCovered");
 
-    ShardList::iterator i;
+    ShardList::iterator sIt;
 
     Locker l(getShardsLock());
     HashRange s;
 
-    for (i = m_shards.begin(), s = 0; i != m_shards.end(); i++) {
-        if (s != (*i)->beginRange()) {
+    for (sIt = m_shards.begin(), s = 0;
+         sIt != m_shards.end();
+         sIt++) {
+        if (s != (*sIt)->beginRange()) {
             return false;
         }
-        if ((*i)->loadNotifyable() == NULL) {
+        if ((*sIt)->loadNotifyable() == NULL) {
             return false;
         }
-        s = (*i)->endRange() + 1;
+        s = (*sIt)->endRange() + 1;
     }
 
     return true;
@@ -601,12 +605,12 @@ DataDistribution::setShards(vector<HashRange> &upperBounds)
 {
     TRACE(CL_LOG, "setShards");
 
-    ShardList::iterator i;
-    vector<HashRange>::iterator j;
+    ShardList::iterator sIt;
+    vector<HashRange>::iterator vIt;
 
     Locker l(getShardsLock());
     HashRange s = 0;
-    unsigned int oldSize, newSize;
+    uint32_t oldSize, newSize;
 
     /*
      * Resize the shard vector to be as large
@@ -615,27 +619,34 @@ DataDistribution::setShards(vector<HashRange> &upperBounds)
     oldSize = m_shards.size();
     newSize = upperBounds.size();
     if (oldSize > newSize) {
-        for (i = m_shards.begin() + newSize; i != m_shards.end(); i++) {
-            delete (*i);
+        for (sIt = m_shards.begin() + newSize;
+             sIt != m_shards.end();
+             sIt++) {
+            delete (*sIt);
         }
     }
     m_shards.resize(newSize);
     if (newSize > oldSize) {
-        for (i = m_shards.begin() + oldSize; i != m_shards.end(); i++) {
-            *i = new Shard(this, NULL, 0, 0);
+        for (sIt = m_shards.begin() + oldSize;
+             sIt != m_shards.end();
+             sIt++) {
+            *sIt = new Shard(this, NULL, 0, 0);
         }
     }
 
     /*
      * Set all lower and upper bounds.
      */
-    for (i = m_shards.begin(), j = upperBounds.begin(); i != m_shards.end(); i++, j++) {
-        if (*j <= s) {
+    for (sIt = m_shards.begin(),
+             vIt= upperBounds.begin();
+         sIt != m_shards.end();
+         sIt++, vIt++) {
+        if (*vIt <= s) {
             throw ClusterException("Invalid shard boundaries in setShards");
         }
-        (*i)->setBeginRange(s);
-        (*i)->setEndRange(*j);
-        s = (*j) + 1;
+        (*sIt)->setBeginRange(s);
+        (*sIt)->setEndRange(*vIt);
+        s = (*vIt) + 1;
     }
 }
 
@@ -660,12 +671,14 @@ DataDistribution::getShardIndex(HashRange hash)
      * faster algorithm that relies on the shards being sorted in
      * increasing hash range order.
      */
-    ShardList::iterator i;
-    unsigned int j;
+    ShardList::iterator sIt;
+    uint32_t j;
 
     Locker l(getShardsLock());
-    for (i = m_shards.begin(), j = 0; i != m_shards.end(); j++, i++) {
-        if ((*i)->covers(hash)) {
+    for (sIt = m_shards.begin(), j = 0;
+         sIt != m_shards.end();
+         j++, sIt++) {
+        if ((*sIt)->covers(hash)) {
             return j;
         }
     }
@@ -754,13 +767,13 @@ DataDistribution::reassignManualOverride(const string &pattern,
     TRACE(CL_LOG, "reassignManualOverride");
 
     Locker l(getManualOverridesLock());
-    ManualOverride *mo = m_manualOverrides[pattern];
+    ManualOverride *mop = m_manualOverrides[pattern];
 
-    if (mo == NULL) {
-        mo = m_manualOverrides[pattern] =
+    if (mop == NULL) {
+        mop = m_manualOverrides[pattern] =
             new ManualOverride(this, ntp, "");
     }
-    mo->reassign(ntp);
+    mop->reassign(ntp);
 }
 
 void
@@ -770,13 +783,13 @@ DataDistribution::reassignManualOverride(const string &pattern,
     TRACE(CL_LOG, "reassignManualOverride");
 
     Locker l(getManualOverridesLock());
-    ManualOverride *mo = m_manualOverrides[pattern];
+    ManualOverride *mop = m_manualOverrides[pattern];
 
-    if (mo == NULL) {
-        mo = new ManualOverride(this, NULL, "");
-        m_manualOverrides[pattern] = mo;
+    if (mop == NULL) {
+        mop = new ManualOverride(this, NULL, "");
+        m_manualOverrides[pattern] = mop;
     }
-    mo->reassign(key);
+    mop->reassign(key);
 }
 
 /*

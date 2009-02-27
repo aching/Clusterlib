@@ -7,6 +7,8 @@ should be changed as necessary.
 * Code defensively, we don't know anything about the caller and
   cannot rely on the sanity of any arguments passed through a
   public interface.
+* Functions should check their arguments. Do not rely on the
+  caller having already checked for you!
 * Code for the future. If a condition depends on a conclusion
   reached before it (depending on how far before it of course)
   it might make sense to recheck the assumption where you're
@@ -20,6 +22,9 @@ should be changed as necessary.
 * Minimize the functionality!!! Don't add anything w/o a use case.
 * DO NOT EVER make instance variables public. All instance variable
   should only be manipulated by getters and setters.
+* Specifically, use getFrobLock() to obtain pointers to locks (mutexes)
+  for use in AutoLock constructors, rather than taking the address of
+  an instance variable, e.g. &m_frobLock.
 * Use inner classes for concepts that are only used elsewhere within
   the same class. Otherwise it deserves a top-level class.
 * Use friend declarations SPARINGLY, and for good reason. If it can
@@ -31,6 +36,12 @@ Do not declare exceptions as part of the declaration of a method or
 function, C++ exception declarations only add complexity and provide
 no benefit.
 
+- 64-bit vs 32-bit
+
+* Avoid variable size entities where possible.
+* Always specify the size of any integer variable, use explicit
+  sized types like int32_t and uint64_t.
+
 - Synchronization
 
 * Locking is your responsibility. If an instance variable needs to
@@ -38,9 +49,18 @@ no benefit.
   possible.
 * Use auto-locks so that locks are released automatically under all
   circumstances.
+* Code extremely defensively for synchronization problems. If it can
+  occur, it will! Some synchronization problems cannot be eliminated
+  in an efficient enough manner and we may decide to avoid them by
+  specifying usage conventions. Example: do not unregister interests
+  in a Notifyable from a different thread than the one that originally
+  registered the interest.
 
 - Identifier Names
 
+* PLEASE do not use single letter variable names; try to make them
+  function-informative. Iterator names should end with 'It', and pointer
+  variable names should end with 'p'.
 * Names of classes begin with an uppercase letter (for example, Canvas).
 * Both member and non-member functions begin with an lowercase letter
   (for example, textStyle).

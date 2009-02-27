@@ -134,16 +134,16 @@ const string ClusterlibStrings::MASTER = "master";
 /* 
  * All indices use for parsing ZK node names
  */
-const int ClusterlibInts::CLUSTERLIB_INDEX = 1;
-const int ClusterlibInts::VERSION_NAME_INDEX = 2;
-const int ClusterlibInts::APP_INDEX = 3;
-const int ClusterlibInts::APP_NAME_INDEX = 4;
-const int ClusterlibInts::GROUP_INDEX = 5;
-const int ClusterlibInts::GROUP_NAME_INDEX = 6;
-const int ClusterlibInts::DIST_INDEX = 5;
-const int ClusterlibInts::DIST_NAME_INDEX = 6;
-const int ClusterlibInts::NODE_TYPE_INDEX = 7;
-const int ClusterlibInts::NODE_NAME_INDEX = 8;
+const int32_t ClusterlibInts::CLUSTERLIB_INDEX = 1;
+const int32_t ClusterlibInts::VERSION_NAME_INDEX = 2;
+const int32_t ClusterlibInts::APP_INDEX = 3;
+const int32_t ClusterlibInts::APP_NAME_INDEX = 4;
+const int32_t ClusterlibInts::GROUP_INDEX = 5;
+const int32_t ClusterlibInts::GROUP_NAME_INDEX = 6;
+const int32_t ClusterlibInts::DIST_INDEX = 5;
+const int32_t ClusterlibInts::DIST_NAME_INDEX = 6;
+const int32_t ClusterlibInts::NODE_TYPE_INDEX = 7;
+const int32_t ClusterlibInts::NODE_NAME_INDEX = 8;
 
 /*
  * Constructor of Factory.
@@ -372,7 +372,7 @@ void
 Factory::synchronize()
 {
     TRACE(CL_LOG, "synchronize");
-    int syncId = 0;
+    int32_t syncId = 0;
 
     /* 
      * Simple algorithm to ensure that each synchronize() called by
@@ -380,7 +380,7 @@ Factory::synchronize()
      * 2^64 sync operations in progress, this will not be a problem.
      */
     {
-        AutoLock l1(m_syncLock);
+        Locker l1(getSyncLock());
         if ((m_syncId < m_syncIdCompleted) ||
             (m_syncId == numeric_limits<int64_t>::max())) {
             throw ClusterException("synchronize: sync invariant not "
@@ -409,10 +409,12 @@ Factory::synchronize()
                  true,
                  true);
 
-    /* Wait for notification of the event to be received by *
-     * m_eventAdapter. */
+    /* 
+     * Wait for notification of the event to be received by *
+     * m_eventAdapter.
+     */
     {
-        AutoLock l1(m_syncLock);
+        Locker l1(getSyncLock());
         while (syncId > m_syncIdCompleted) {
             m_syncCond.Wait(m_syncLock);
         }
@@ -434,7 +436,7 @@ Factory::addClient(Client *clp)
 {
     TRACE(CL_LOG, "addClient");
 
-    Locker l(&m_clLock);
+    Locker l(getClientsLock());
     
     m_clients.push_back(clp);
 }
@@ -444,15 +446,15 @@ Factory::removeClient(Client *clp)
 {
     TRACE(CL_LOG, "removeClient");
 
-    Locker l(&m_clLock);
-    ClientList::iterator i = find(m_clients.begin(),
-                                  m_clients.end(),
-                                  clp);
+    Locker l(getClientsLock());
+    ClientList::iterator clIt = find(m_clients.begin(),
+                                     m_clients.end(),
+                                     clp);
 
-    if (i == m_clients.end()) {
+    if (clIt == m_clients.end()) {
         return;
     }
-    m_clients.erase(i);
+    m_clients.erase(clIt);
 }
 
 void
@@ -460,10 +462,13 @@ Factory::removeAllClients()
 {
     TRACE(CL_LOG, "removeAllClients");
 
-    Locker l(&m_clLock);
-    ClientList::iterator it = m_clients.begin();
-    for (; it != m_clients.end(); it++) {
-	delete *it;
+    Locker l(getClientsLock());
+    ClientList::iterator clIt;
+    for (clIt  = m_clients.begin();
+         clIt != m_clients.end();
+         clIt++)
+    {
+	delete *clIt;
     }
     m_clients.clear();
 }
@@ -476,10 +481,14 @@ Factory::removeAllDataDistributions()
 {
     TRACE(CL_LOG, "removeAllDataDistributions");
 
-    Locker l(&m_ddLock);
-    DataDistributionMap::iterator it = m_dataDistributions.begin();
-    for (; it != m_dataDistributions.end(); it++) {
-	delete it->second;
+    Locker l(getDataDistributionsLock());
+    DataDistributionMap::iterator ddIt;
+
+    for (ddIt = m_dataDistributions.begin();
+         ddIt != m_dataDistributions.end();
+         ddIt++)
+    {
+	delete ddIt->second;
     }
     m_dataDistributions.clear();
 }
@@ -488,10 +497,14 @@ Factory::removeAllProperties()
 {
     TRACE(CL_LOG, "removeAllProperties");
 
-    Locker l(&m_propLock);
-    PropertiesMap::iterator it = m_properties.begin();
-    for (; it != m_properties.end(); it++) {
-	delete it->second;
+    Locker l(getPropertiesLock());
+    PropertiesMap::iterator pIt;
+
+    for (pIt = m_properties.begin();
+         pIt != m_properties.end();
+         pIt++)
+    {
+	delete pIt->second;
     }
     m_properties.clear();
 }
@@ -500,10 +513,14 @@ Factory::removeAllApplications()
 {
     TRACE(CL_LOG, "removeAllApplications");
 
-    Locker l(&m_appLock);
-    ApplicationMap::iterator it = m_applications.begin();
-    for (; it != m_applications.end(); it++) {
-	delete it->second;
+    Locker l(getApplicationsLock());
+    ApplicationMap::iterator aIt;
+
+    for (aIt = m_applications.begin();
+         aIt != m_applications.end();
+         aIt++)
+    {
+	delete aIt->second;
     }
     m_applications.clear();
 }
@@ -512,10 +529,14 @@ Factory::removeAllGroups()
 {
     TRACE(CL_LOG, "removeAllGroups");
 
-    Locker l(&m_grpLock);
-    GroupMap::iterator it = m_groups.begin();
-    for (; it != m_groups.end(); it++) {
-	delete it->second;
+    Locker l(getGroupsLock());
+    GroupMap::iterator gIt;
+
+    for (gIt = m_groups.begin();
+         gIt != m_groups.end();
+         gIt++)
+    {
+	delete gIt->second;
     }
     m_groups.clear();
 }
@@ -524,10 +545,14 @@ Factory::removeAllNodes()
 {
     TRACE(CL_LOG, "removeAllNodes");
 
-    Locker l(&m_nodeLock);
-    NodeMap::iterator it = m_nodes.begin();
-    for (; it != m_nodes.end(); it++) {
-	delete it->second;
+    Locker l(getNodesLock());
+    NodeMap::iterator nIt;
+
+    for (nIt = m_nodes.begin();
+         nIt != m_nodes.end();
+         nIt++)
+    {
+	delete nIt->second;
     }
     m_nodes.clear();
 }
@@ -540,7 +565,7 @@ Factory::dispatchEvents()
 {
     TRACE(CL_LOG, "dispatchEvents");
 
-    unsigned int eventSeqId = 0;
+    uint32_t eventSeqId = 0;
     bool sentEndEvent = false;
 
     LOG_DEBUG(CL_LOG,
@@ -654,15 +679,19 @@ Factory::dispatchEvents()
  * Dispatch a timer event.
  */
 void
-Factory::dispatchTimerEvent(ClusterlibTimerEvent *te)
+Factory::dispatchTimerEvent(ClusterlibTimerEvent *tep)
 {
     TRACE(CL_LOG, "dispatchTimerEvent");
 
-    if (te == NULL) {
+    if (tep == NULL) {
         m_timerEventQueue.put(NULL);
     } else {
-        TimerEventPayload *tp = (TimerEventPayload *) te->getUserData();
+        TimerEventPayload *tp = (TimerEventPayload *) tep->getUserData();
         m_timerEventQueue.put(tp);
+
+        /*
+         * NOTE: SHOULD WE DELETE tep HERE?
+         */
     }
 }
 
@@ -678,16 +707,16 @@ Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
 	throw ClusterException("Unexpected NULL ZKWatcherEvent");
     }
 
-    FactoryEventHandler *cp =
+    FactoryEventHandler *fehp =
         (FactoryEventHandler *) zp->getContext();
     ClusterEventPayload *cep, *cepp;
-    ClientList::iterator i;
+    ClientList::iterator clIt;
     char buf[1024];
 
     /*
      * Protect against NULL context.
      */
-    if (cp == NULL) {
+    if (fehp == NULL) {
         snprintf(buf,
                  1024,
                  "type: %d, state: %d, path: %s",
@@ -708,7 +737,7 @@ Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
      * If NULL is returned, the event is not propagated
      * to clients.
      */
-    cep = updateCachedObject(cp, zp);
+    cep = updateCachedObject(fehp, zp);
     if (cep == NULL) {
         LOG_DEBUG(CL_LOG, 
                   "dispatchZKEvent: NULL cluster event payload "
@@ -722,11 +751,13 @@ Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
      * the affected clusterlib repository object.
      */
     {
-        Locker l(&m_clLock);
+        Locker l(getClientsLock());
 
-        for (i = m_clients.begin(); i != m_clients.end(); i++) {
+        for (clIt = m_clients.begin();
+             clIt != m_clients.end(); 
+             clIt++) {
             cepp = new ClusterEventPayload(*cep);
-            (*i)->sendEvent(cepp);
+            (*clIt)->sendEvent(cepp);
         }
     }
     delete cep;
@@ -737,18 +768,18 @@ Factory::dispatchZKEvent(zk::ZKWatcherEvent *zp)
  * are in fact handled directly, here.
  */
 void
-Factory::dispatchSessionEvent(zk::ZKWatcherEvent *ze)
+Factory::dispatchSessionEvent(zk::ZKWatcherEvent *zep)
 {
     TRACE(CL_LOG, "dispatchSessionEvent");
 
     LOG_DEBUG(CL_LOG,
               "dispatchSessionEvent: (type: %d, state: %d, path: %s)",
-              ze->getType(), 
-              ze->getState(),
-              ze->getPath().c_str());
+              zep->getType(), 
+              zep->getState(),
+              zep->getPath().c_str());
 
-    if ((ze->getState() == ZOO_ASSOCIATING_STATE) ||
-        (ze->getState() == ZOO_CONNECTING_STATE)) {
+    if ((zep->getState() == ZOO_ASSOCIATING_STATE) ||
+        (zep->getState() == ZOO_CONNECTING_STATE)) {
         /*
          * Not really clear what to do here.
          * For now do nothing.
@@ -756,7 +787,7 @@ Factory::dispatchSessionEvent(zk::ZKWatcherEvent *ze)
 #ifdef	VERY_VERY_VERBOSE
         LOG_TRACE(CL_LOG, "Do nothing.");
 #endif
-    } else if (ze->getState() == ZOO_CONNECTED_STATE) {
+    } else if (zep->getState() == ZOO_CONNECTED_STATE) {
         /*
          * Mark as connected.
          */
@@ -770,7 +801,7 @@ Factory::dispatchSessionEvent(zk::ZKWatcherEvent *ze)
          * now connected.
          */
         m_eventSyncLock.lockedNotify();
-    } else if (ze->getState() == ZOO_EXPIRED_SESSION_STATE) {
+    } else if (zep->getState() == ZOO_EXPIRED_SESSION_STATE) {
         /*
          * We give up on SESSION_EXPIRED.
          */
@@ -789,8 +820,8 @@ Factory::dispatchSessionEvent(zk::ZKWatcherEvent *ze)
         LOG_WARN(CL_LOG,
                  "Session event with unknown state "
                  "(type: %d, state: %d)",
-                 ze->getType(), 
-                 ze->getState());
+                 zep->getType(), 
+                 zep->getState());
     }
 }
 
@@ -804,7 +835,7 @@ Factory::dispatchEndEvent()
 {
     TRACE(CL_LOG, "dispatchEndEvent");
 
-    ClientList::iterator i;
+    ClientList::iterator clIt;
 
     /*
      * Send a terminate signal to the timer
@@ -816,8 +847,10 @@ Factory::dispatchEndEvent()
      * Send a terminate signal to all registered
      * client-specific cluster event handler threads.
      */
-    for (i = m_clients.begin(); i != m_clients.end(); i++) {
-        (*i)->sendEvent(NULL);
+    for (clIt = m_clients.begin();
+         clIt != m_clients.end();
+         clIt++) {
+        (*clIt)->sendEvent(NULL);
     }
 
     return true;
@@ -832,7 +865,7 @@ Factory::consumeTimerEvents()
 {
     TRACE(CL_LOG, "consumeTimerEvents");
 
-    TimerEventPayload *pp;
+    TimerEventPayload *tepp;
 
 #ifdef	VERY_VERY_VERBOSE
     LOG_WARN(CL_LOG,
@@ -843,13 +876,13 @@ Factory::consumeTimerEvents()
 
     try {
         for (;;) {
-            pp = m_timerEventQueue.take();
+            tepp = m_timerEventQueue.take();
 
             /*
              * If we received the terminate signal,
              * then exit from the loop.
              */
-            if (pp == NULL) {
+            if (tepp == NULL) {
                 LOG_INFO(CL_LOG,
                          "Received terminate signal, finishing loop");
                 return;
@@ -859,21 +892,21 @@ Factory::consumeTimerEvents()
              * Dispatch the event to its handler, if the
              * event hadn't been cancelled.
              */
-            if (!pp->cancelled()) {
-                pp->getHandler()->handleTimerEvent(pp->getId(),
-                                                   pp->getData());
+            if (!tepp->cancelled()) {
+                tepp->getHandler()->handleTimerEvent(tepp->getId(),
+                                                     tepp->getData());
             }
 
             LOG_INFO(CL_LOG,
                      "Serviced timer %d, handler 0x%x, client data 0x%x",
-                     pp->getId(), 
-                     (int) pp->getHandler(),
-                     (int) pp->getData());
+                     tepp->getId(), 
+                     (int) tepp->getHandler(),
+                     (int) tepp->getData());
 
             /*
              * Deallocate the payload object.
              */
-            delete pp;
+            delete tepp;
         }
     } catch (zk::ZooKeeperException &zke) {
         LOG_ERROR(CL_LOG, "ZooKeeperException: %s", zke.what());
@@ -896,8 +929,16 @@ Factory::getApplication(const string &name, bool create)
     string key = createAppKey(name);
     Application *app;
 
+    /*
+     * Do not allow empty names, and names containing '/'.
+     */
+    if ((name == "") || (name.find('/') < name.length())) {
+        return NULL;
+    }
+
     {
-        Locker l(&m_appLock);
+        Locker l(getApplicationsLock());
+
         app = m_applications[key];
         if (app != NULL) {
             return app;
@@ -917,21 +958,31 @@ Factory::getDistribution(const string &distName,
                          Application *app,
                          bool create)
 {
+    /*
+     * Do not allow empty names, and names containing '/'.
+     */
+    if ((distName == "") || (distName.find('/') < distName.length())) {
+        return NULL;
+    }
+
     if (app == NULL) {
         return NULL;
     }
+
     string key = createDistKey(app->getName(), distName);
+    DataDistribution *distp;
 
     {
-        Locker l(&m_ddLock);
-        DataDistribution *dist = m_dataDistributions[key];
-        if (dist != NULL) {
-            return dist;
+        Locker l(getDataDistributionsLock());
+
+        distp = m_dataDistributions[key];
+        if (distp != NULL) {
+            return distp;
         }
     }
-    DataDistribution *dist = loadDistribution(distName, key, app);
-    if (dist != NULL) {
-        return dist;
+    distp = loadDistribution(distName, key, app);
+    if (distp != NULL) {
+        return distp;
     }
     if (create == true) {
         return createDistribution(distName, key, "", "", app);
@@ -956,8 +1007,9 @@ Factory::getProperties(const string &key,
     }
 
     {
-        Locker l(&m_propLock);
+        Locker l(getPropertiesLock());
         Properties *prop = m_properties[key];
+
         if (prop != NULL) {
             return prop;
         }
@@ -976,6 +1028,13 @@ Factory::getGroup(const string &groupName,
                   Application *app,
                   bool create)
 {
+    /*
+     * Do not allow empty names, and names containing '/'.
+     */
+    if ((groupName == "") || (groupName.find('/') < groupName.length())) {
+        return NULL;
+    }
+
     if (app == NULL) {
         return NULL;
     }
@@ -983,8 +1042,9 @@ Factory::getGroup(const string &groupName,
     Group *grp;
 
     {
-        Locker l(&m_grpLock);
+        Locker l(getGroupsLock());
         grp = m_groups[key];
+
         if (grp != NULL) {
             return grp;
         }
@@ -1013,6 +1073,13 @@ Factory::getNode(const string &nodeName,
                  bool managed,
                  bool create)
 {
+    /*
+     * Do not allow empty names, and names containing '/'.
+     */
+    if ((nodeName == "") || (nodeName.find('/') < nodeName.length())) {
+        return NULL;
+    }
+
     if (grp == NULL) {
         return NULL;
     }
@@ -1027,8 +1094,9 @@ Factory::getNode(const string &nodeName,
     Node *np;
 
     {
-        Locker l(&m_nodeLock);
+        Locker l(getNodesLock());
         np = m_nodes[key];
+
         if (np != NULL) {
             return np;
         }
@@ -1760,7 +1828,7 @@ Factory::loadApplication(const string &name,
     vector<string> zkNodes;
     Application *app;
     bool exists = false;
-    Locker l(&m_appLock);
+    Locker l(getApplicationsLock());
 
     app = m_applications[key];
     if (app != NULL) {
@@ -1812,18 +1880,18 @@ Factory::loadDistribution(const string &name,
 {
     TRACE(CL_LOG, "loadDataDistribution");
 
-    DataDistribution *dp;
+    DataDistribution *distp;
     bool exists = false;
 
     /*
      * Ensure that we have a cached object for this data
      * distribution in the cache.
      */
-    Locker l(&m_ddLock);
+    Locker l(getDataDistributionsLock());
 
-    dp = m_dataDistributions[key];
-    if (dp != NULL) {
-        return dp;
+    distp = m_dataDistributions[key];
+    if (distp != NULL) {
+        return distp;
     }
 
     SAFE_CALL_ZK((exists = m_zk.nodeExists(key)),
@@ -1834,21 +1902,21 @@ Factory::loadDistribution(const string &name,
     if (!exists) {
         return NULL;
     }
-    dp = new DataDistribution(app, name, key, mp_ops);
-    m_dataDistributions[key] = dp;
+    distp = new DataDistribution(app, name, key, mp_ops);
+    m_dataDistributions[key] = distp;
 
     /*
      * Set up event notifications and load the data
      * from the repository.
      */
-    dp->updateCachedRepresentation();
+    distp->updateCachedRepresentation();
 
     /*
      * Set up the 'ready' protocol.
      */
-    establishNotifyableReady(dp);
+    establishNotifyableReady(distp);
 
-    return dp;
+    return distp;
 }
 
 string
@@ -1904,7 +1972,7 @@ Factory::loadProperties(const string &key)
 
     Properties *prop;
     bool exists = false;
-    Locker l(&m_propLock);
+    Locker l(getPropertiesLock());
 
     prop = m_properties[key];
     if (prop != NULL) {
@@ -1963,7 +2031,7 @@ Factory::loadGroup(const string &name,
 
     Group *grp;
     bool exists = false;
-    Locker l(&m_grpLock);
+    Locker l(getGroupsLock());
 
     grp = m_groups[key];
     if (grp != NULL) {
@@ -2022,7 +2090,7 @@ Factory::loadNode(const string &name,
 
     Node *np;
     bool exists = false;
-    Locker l(&m_nodeLock);
+    Locker l(getNodesLock());
 
     np = m_nodes[key];
     if (np != NULL) {
@@ -2138,7 +2206,7 @@ Factory::createDistribution(const string &name,
 {
     TRACE(CL_LOG, "createDataDistribution");
 
-    DataDistribution *dp;
+    DataDistribution *distp;
     bool created = false;
     bool exists = false;
 
@@ -2182,7 +2250,7 @@ Factory::createDistribution(const string &name,
      * establish all the event notifications, and add the
      * object to the cache.
      */
-    dp = loadDistribution(name, key, app);
+    distp = loadDistribution(name, key, app);
 
     /*
      * If we created the data distribution in the
@@ -2198,7 +2266,7 @@ Factory::createDistribution(const string &name,
                      true);
     }
 
-    return dp;
+    return distp;
 }
 
 Properties *
@@ -2241,7 +2309,7 @@ Factory::createProperties(const string &key)
 	/*                                                                
 	 * Scope the lock to the shortest sequence possible.
 	 */
-	Locker l(&m_propLock);
+	Locker l(getPropertiesLock());
 	
 	prop = m_properties[key];
 	if (prop != NULL) {
@@ -2532,7 +2600,7 @@ Factory::getLeader(Group *grp)
 }
 
 int64_t
-Factory::placeBid(Node *np)
+Factory::placeBid(Node *np, Server *sp)
 {
     TRACE(CL_LOG, "placeBid");
 
@@ -2555,6 +2623,10 @@ Factory::placeBid(Node *np)
                  pfx.c_str(),
                  true,
                  true);
+
+    Locker l1(getLeadershipWatchesLock());
+    m_leadershipWatches.insert(pair<const string, Server *>(np->getKey(), sp));
+
     return bid;
 }
 
@@ -2567,7 +2639,8 @@ Factory::tryToBecomeLeader(Node *np, int64_t bid)
 {
     TRACE(CL_LOG, "tryToBecomeLeader");
 
-    IdList l;
+    IdList list;
+    IdList::iterator iIt;
     Group *grp = np->getGroup();
     string lnn = grp->getCurrentLeaderNodeName();
     string bnn = grp->getLeadershipBidsNodeName();
@@ -2576,7 +2649,7 @@ Factory::tryToBecomeLeader(Node *np, int64_t bid)
     string val = "";
     string suffix = "";
     string toCheck = "";
-    int len = pfx.length();
+    int32_t len = pfx.length();
     const char *cppfx = pfx.c_str();
     char *ptr;
     int64_t checkID;
@@ -2586,15 +2659,13 @@ Factory::tryToBecomeLeader(Node *np, int64_t bid)
      * If there's already a different leader, then I'm not the leader.
      */
 
-    SAFE_CALL_ZK((m_zk.getNodeChildren(l, bnn)),
+    SAFE_CALL_ZK((m_zk.getNodeChildren(list, bnn)),
                  "Getting bids for group %s failed: %s",
                  grp->getKey().c_str(),
                  true,
                  true);
-    for (IdList::iterator i = l.begin();
-         i != l.end();
-         i++) {
-        toCheck = *i;
+    for (iIt = list.begin(); iIt != list.end(); iIt++) {
+        toCheck = *iIt;
 
         /*
          * Skip any random strings that are not
@@ -2610,7 +2681,7 @@ Factory::tryToBecomeLeader(Node *np, int64_t bid)
         suffix = toCheck.substr(len, toCheck.length() - len);
         ptr = NULL;
         checkID = strtol(suffix.c_str(), &ptr, 10);
-        if (ptr != NULL && *ptr != '\0') {
+        if ((ptr != NULL) && (*ptr != '\0')) {
             LOG_WARN(CL_LOG, "Expecting a number but got %s", suffix.c_str());
             throw ClusterException( "Expecting a number but got " + suffix );
         }
@@ -2635,7 +2706,7 @@ Factory::tryToBecomeLeader(Node *np, int64_t bid)
                              toCheck.c_str(),
                              true,
                              true);
-                LOG_WARN(CL_LOG,
+                LOG_INFO(CL_LOG,
                          "Found preceding leader %s value %s, "
                          "%s is not the leader",
                          toCheck.c_str(), 
@@ -2652,7 +2723,7 @@ Factory::tryToBecomeLeader(Node *np, int64_t bid)
 
     LOG_WARN(CL_LOG,
              "Found no preceding leader, %s is the leader!",
-             np->getKey().c_str() );
+             np->getKey().c_str());
 
     return true;
 }
@@ -2682,7 +2753,8 @@ Factory::leaderIsUnknown(Node *np)
 
 /*
  * The server represented by the given node, and that owns the
- * given bid, is no longer the leader of its group.
+ * given bid, is no longer the leader of its group (if it ever
+ * was).
  */
 void
 Factory::giveUpLeadership(Node *np, int64_t bid)
@@ -2692,13 +2764,27 @@ Factory::giveUpLeadership(Node *np, int64_t bid)
     Group *grp = np->getGroup();
 
     /*
-     * Delete the current leader node.
+     * Ensure that our view of the leader is not updated by
+     * any other thread.
      */
-    SAFE_CALL_ZK(m_zk.deleteNode(grp->getCurrentLeaderNodeName()),
-                 "Could not delete current leader for %s: %s",
-                 grp->getKey().c_str(),
-                 true,
-                 true);
+    {
+        Locker l1(grp->getLeadershipLock());
+        if (grp->getLeader() == np) {
+            /*
+             * Delete the current leader node.
+             */
+            SAFE_CALL_ZK(m_zk.deleteNode(grp->getCurrentLeaderNodeName()),
+                         "Could not delete current leader for %s: %s",
+                         grp->getKey().c_str(),
+                         true,
+                         true);
+
+            /*
+             * We no longer know who the leader of this group is.
+             */
+            grp->updateLeader(NULL);
+        }
+    }
 
     /*
      * Delete the leadership bid for this node.
@@ -2711,7 +2797,7 @@ Factory::giveUpLeadership(Node *np, int64_t bid)
     SAFE_CALL_ZK(m_zk.deleteNode(sbid),
                  "Could not delete bid for current leader %s: %s",
                  np->getKey().c_str(),
-                 true,
+                 false,
                  true);
 }
 
@@ -2755,13 +2841,13 @@ Factory::registerTimer(TimerEventHandler *handler,
                        uint64_t afterTime,
                        ClientData data)
 {
-    TimerEventPayload *pp =
+    TimerEventPayload *tepp =
         new TimerEventPayload(afterTime, handler, data);
-    TimerId id = m_timerEventSrc.scheduleAfter(afterTime, pp);
-    pp->updateTimerId(id);
+    TimerId id = m_timerEventSrc.scheduleAfter(afterTime, tepp);
+    tepp->updateTimerId(id);
 
-    Locker l(&m_timerRegistryLock);
-    m_timerRegistry[id] = pp;
+    Locker l(getTimersLock());
+    m_timerRegistry[id] = tepp;
 
     return id;
 }
@@ -2772,14 +2858,14 @@ Factory::registerTimer(TimerEventHandler *handler,
 bool
 Factory::cancelTimer(TimerId id)
 {
-    Locker l(&m_timerRegistryLock);
-    TimerEventPayload *pp = m_timerRegistry[id];
+    Locker l(getTimersLock());
+    TimerEventPayload *tepp = m_timerRegistry[id];
 
-    if (pp == NULL) {
+    if (tepp == NULL) {
         return false;
     }
 
-    pp->cancel();
+    tepp->cancel();
     if (m_timerEventSrc.cancelAlarm(id)) {
         return true;
     }
@@ -2793,7 +2879,7 @@ Factory::cancelTimer(TimerId id)
 void
 Factory::forgetTimer(TimerId id)
 {
-    Locker l(&m_timerRegistryLock);
+    Locker l(getTimersLock());
 
     delete m_timerRegistry[id];
     m_timerRegistry.erase(id);
@@ -2805,12 +2891,12 @@ Factory::forgetTimer(TimerId id)
  * clients.
  */
 ClusterEventPayload *
-Factory::updateCachedObject(FactoryEventHandler *cp,
+Factory::updateCachedObject(FactoryEventHandler *fehp,
                             zk::ZKWatcherEvent *ep)
 {
     TRACE(CL_LOG, "updateCachedObject");
 
-    if (cp == NULL) {
+    if (fehp == NULL) {
         throw ClusterException("NULL FactoryEventHandler!");
     }
     if (ep == NULL) {
@@ -2818,13 +2904,13 @@ Factory::updateCachedObject(FactoryEventHandler *cp,
     }
 
     const string path = ep->getPath();
-    int etype = ep->getType();
+    int32_t etype = ep->getType();
     vector<string> components;
     Notifyable *np;
 
     LOG_INFO(CL_LOG,
               "updateCachedObject: (0x%x, 0x%x, %s)",
-              (int) cp,
+              (int) fehp,
               (int) ep,
 	      path.c_str());
 
@@ -2864,9 +2950,9 @@ Factory::updateCachedObject(FactoryEventHandler *cp,
      * should also return the kind of user-level event that this
      * event represents.
      */
-    Event e = cp->deliver(np, etype, path);
+    Event e = fehp->deliver(np, etype, path);
     
-    if (e == EN_NO_EVENT) {
+    if (e == EN_NOEVENT) {
         return NULL;
     }
     return new ClusterEventPayload(np, e);
@@ -2903,7 +2989,7 @@ Factory::establishNotifyableReady(Notifyable *np)
  */
 Event
 Factory::handleNotifyableReady(Notifyable *np,
-                               int etype,
+                               int32_t etype,
                                const string &path)
 {
     TRACE(CL_LOG, "handleNotifyableReady");
@@ -2916,7 +3002,7 @@ Factory::handleNotifyableReady(Notifyable *np,
                  "Punting on event: %d on %s",
                  etype,
                  path.c_str());
-        return EN_NO_EVENT;
+        return EN_NOEVENT;
     }
 
     LOG_WARN(CL_LOG, 
@@ -2924,7 +3010,7 @@ Factory::handleNotifyableReady(Notifyable *np,
               np->getKey().c_str());
 
     (void) establishNotifyableReady(np);
-    return EN_NOTIFYABLE_READY;
+    return EN_READY;
 }
 
 /*
@@ -2933,7 +3019,7 @@ Factory::handleNotifyableReady(Notifyable *np,
  */
 Event
 Factory::handleNotifyableExists(Notifyable *np,
-                                int etype,
+                                int32_t etype,
                                 const string &path)
 {
     TRACE(CL_LOG, "handleNotifyableExists");
@@ -2946,7 +3032,7 @@ Factory::handleNotifyableExists(Notifyable *np,
                  "Punting on event: %d on %s",
                  etype,
                  path.c_str());
-        return EN_NO_EVENT;
+        return EN_NOEVENT;
     }
 
     LOG_WARN(CL_LOG,
@@ -2968,20 +3054,20 @@ Factory::handleNotifyableExists(Notifyable *np,
                  "Deleted event for path: %s",
                  path.c_str());
         np->setReady(false);
-        return EN_NOTIFYABLE_DELETED;
+        return EN_DELETED;
     }
     if (etype == ZOO_CREATED_EVENT) {
         LOG_WARN(CL_LOG,
                  "Created event for path: %s",
                  path.c_str());
         establishNotifyableReady(np);
-        return EN_NOTIFYABLE_CREATED;
+        return EN_CREATED;
     }
 
     /*
      * SHOULD NOT HAPPEN!
      */
-    return EN_NO_EVENT;
+    return EN_NOEVENT;
 }
 
 /*
@@ -2989,15 +3075,15 @@ Factory::handleNotifyableExists(Notifyable *np,
  */
 Event
 Factory::handleApplicationsChange(Notifyable *np,
-                                  int etype,
+                                  int32_t etype,
                                   const string &path)
 {
     TRACE(CL_LOG, "handleApplicationsChange");
 
     /*
-     * For now return EN_NO_EVENT.
+     * For now return EN_NOEVENT.
      */
-    return EN_NO_EVENT;
+    return EN_NOEVENT;
 }
 
 /*
@@ -3006,7 +3092,7 @@ Factory::handleApplicationsChange(Notifyable *np,
  */
 Event
 Factory::handleGroupsChange(Notifyable *np,
-                            int etype,
+                            int32_t etype,
                             const string &path)
 {
     TRACE(CL_LOG, "handleGroupsChange");
@@ -3019,7 +3105,7 @@ Factory::handleGroupsChange(Notifyable *np,
                  "Punting on event: %d on %s",
                  etype,
                  path.c_str());
-        return EN_NO_EVENT;
+        return EN_NOEVENT;
     }
 
     LOG_WARN(CL_LOG,
@@ -3034,14 +3120,14 @@ Factory::handleGroupsChange(Notifyable *np,
         LOG_FATAL(CL_LOG,
                   "Expected application object for %s",
                   path.c_str());
-        return EN_NO_EVENT;
+        return EN_NOEVENT;
     }
 
     if (app->cachingGroups()) {
         app->recacheGroups();
     }
 
-    return EN_APP_GROUPSCHANGE;
+    return EN_GROUPSCHANGE;
 }
 
 /*
@@ -3050,7 +3136,7 @@ Factory::handleGroupsChange(Notifyable *np,
  */
 Event
 Factory::handleDistributionsChange(Notifyable *np,
-                                   int etype,
+                                   int32_t etype,
                                    const string &path)
 {
     TRACE(CL_LOG, "handleDistributionsChange");
@@ -3063,7 +3149,7 @@ Factory::handleDistributionsChange(Notifyable *np,
                  "Punting on event: %d on %s",
                  etype,
                  path.c_str());
-        return EN_NO_EVENT;
+        return EN_NOEVENT;
     }
 
     LOG_WARN(CL_LOG,
@@ -3078,7 +3164,7 @@ Factory::handleDistributionsChange(Notifyable *np,
         LOG_FATAL(CL_LOG,
                   "Expected application object for %s",
                   path.c_str());
-        return EN_NO_EVENT;
+        return EN_NOEVENT;
     }
 
     /*
@@ -3089,7 +3175,7 @@ Factory::handleDistributionsChange(Notifyable *np,
         app->recacheDists();
     }
 
-    return EN_APP_DISTSCHANGE;
+    return EN_DISTSCHANGE;
 }
 
 /*
@@ -3097,7 +3183,7 @@ Factory::handleDistributionsChange(Notifyable *np,
  */
 Event
 Factory::handleNodesChange(Notifyable *np,
-                           int etype,
+                           int32_t etype,
                            const string &path)
 {
     TRACE(CL_LOG, "handleNodesChange");
@@ -3110,7 +3196,7 @@ Factory::handleNodesChange(Notifyable *np,
                  "Punting on event: %d on %s",
                  etype,
                  path.c_str());
-        return EN_NO_EVENT;
+        return EN_NOEVENT;
     }
 
     LOG_WARN(CL_LOG,
@@ -3125,7 +3211,7 @@ Factory::handleNodesChange(Notifyable *np,
         LOG_FATAL(CL_LOG,
                   "Expected group object for %s",
                   path.c_str());
-        return EN_NO_EVENT;
+        return EN_NOEVENT;
     }
 
     /*
@@ -3136,7 +3222,7 @@ Factory::handleNodesChange(Notifyable *np,
         grp->recacheNodes();
     }
 
-    return EN_GRP_MEMBERSHIP;
+    return EN_MEMBERSHIPCHANGE;
 }
 
 /*
@@ -3144,7 +3230,7 @@ Factory::handleNodesChange(Notifyable *np,
  */
 Event
 Factory::handlePropertiesChange(Notifyable *np,
-                                int etype,
+                                int32_t etype,
                                 const string &path)
 {
     TRACE(CL_LOG, "handlePropertiesChange");
@@ -3157,7 +3243,7 @@ Factory::handlePropertiesChange(Notifyable *np,
                  "Punting on event: %d on %s",
                  etype,
                  path.c_str());
-        return EN_NO_EVENT;
+        return EN_NOEVENT;
     }
 
     LOG_DEBUG(CL_LOG,
@@ -3184,24 +3270,24 @@ Factory::handlePropertiesChange(Notifyable *np,
                  "handlePropertiesChange: Deleted event for path: %s",
                  path.c_str());
 	np->setReady(false);
-	return EN_NOTIFYABLE_DELETED;
+	return EN_DELETED;
     }
     if (etype == ZOO_CREATED_EVENT) {
 	LOG_WARN(CL_LOG,
                  "handlePropertiesChange: Created event for path: %s",
                  path.c_str());
 	establishNotifyableReady(np);
-	return EN_NOTIFYABLE_CREATED;
+	return EN_CREATED;
     }
     if (etype == ZOO_CHANGED_EVENT) {
 	LOG_WARN(CL_LOG,
                  "handlePropertiesChange: Changed event for path: %s",
                  path.c_str());
 	np->updateCachedRepresentation();
-	return EN_PROP_CHANGE;
+	return EN_PROPCHANGE;
     }
 
-    return EN_NO_EVENT;
+    return EN_NOEVENT;
 }
 
 /*
@@ -3209,12 +3295,12 @@ Factory::handlePropertiesChange(Notifyable *np,
  */
 Event
 Factory::handleShardsChange(Notifyable *np,
-                            int etype,
+                            int32_t etype,
                             const string &path)
 {
     TRACE(CL_LOG, "handleShardsChange");
 
-    return EN_NO_EVENT;
+    return EN_NOEVENT;
 }
 
 /*
@@ -3222,12 +3308,12 @@ Factory::handleShardsChange(Notifyable *np,
  */
 Event
 Factory::handleManualOverridesChange(Notifyable *np,
-                                     int etype,
+                                     int32_t etype,
                                      const string &path)
 {
     TRACE(CL_LOG, "handleManualOverridesChange");
 
-    return EN_NO_EVENT;
+    return EN_NOEVENT;
 }
 
 /*
@@ -3235,12 +3321,12 @@ Factory::handleManualOverridesChange(Notifyable *np,
  */
 Event
 Factory::handleClientStateChange(Notifyable *np,
-                                 int etype,
+                                 int32_t etype,
                                  const string &path)
 {
     TRACE(CL_LOG, "handleClientStateChange");
 
-    return EN_NO_EVENT;
+    return EN_NOEVENT;
 }
 
 /*
@@ -3249,12 +3335,12 @@ Factory::handleClientStateChange(Notifyable *np,
  */
 Event
 Factory::handleMasterSetStateChange(Notifyable *np,
-                                    int etype,
+                                    int32_t etype,
                                     const string &path)
 {
     TRACE(CL_LOG, "handleMasterSetStateChange");
 
-    return EN_NO_EVENT;
+    return EN_NOEVENT;
 }
 
 /*
@@ -3262,7 +3348,7 @@ Factory::handleMasterSetStateChange(Notifyable *np,
  */
 Event
 Factory::handleLeadershipChange(Notifyable *np,
-                                int etype,
+                                int32_t etype,
                                 const string &path)
 {
     TRACE( CL_LOG, "handleLeadershipChange" );
@@ -3275,7 +3361,7 @@ Factory::handleLeadershipChange(Notifyable *np,
                  "Punting on event: %d on %s",
                  etype,
                  path.c_str());
-        return EN_NO_EVENT;
+        return EN_NOEVENT;
     }
 
     bool exists = false;
@@ -3308,7 +3394,7 @@ Factory::handleLeadershipChange(Notifyable *np,
         }
     }
 
-    return EN_GRP_LEADERSHIP;
+    return EN_LEADERSHIPCHANGE;
 }
 
 /*
@@ -3318,7 +3404,7 @@ Factory::handleLeadershipChange(Notifyable *np,
  */
 Event
 Factory::handlePrecLeaderExistsChange(Notifyable *np,
-                                      int etype,
+                                      int32_t etype,
                                       const string &path)
 {
     TRACE(CL_LOG, "handlePrecLeaderExistsChange");
@@ -3331,27 +3417,27 @@ Factory::handlePrecLeaderExistsChange(Notifyable *np,
                  "Punting on event: %d on %s",
                  etype,
                  path.c_str());
-        return EN_NO_EVENT;
+        return EN_NOEVENT;
     }
 
     Server *sp;
-    LeadershipElectionMultimap c;
-    LeadershipIterator i;
-    LeadershipElectionMultimapRange r;
+    LeadershipElectionMultimap copy;
+    LeadershipIterator leIt;
+    LeadershipElectionMultimapRange range;
 
     {
-        Locker l1(&m_lwLock);
+        Locker l1(getLeadershipWatchesLock());
 
         /*
          * Make our own copy of the watches map.
          */
-        c = m_leadershipWatches;
+        copy = m_leadershipWatches;
 
         /*
          * And remove the key from the watches map.
          */
-        r = m_leadershipWatches.equal_range(path);
-        m_leadershipWatches.erase(r.first, r.second);
+        range = m_leadershipWatches.equal_range(path);
+        m_leadershipWatches.erase(range.first, range.second);
     }
 
     /*
@@ -3360,7 +3446,7 @@ Factory::handlePrecLeaderExistsChange(Notifyable *np,
      * because there can be several Server instances in
      * this process).
      */
-    r = c.equal_range(path);
+    range = copy.equal_range(path);
 
     /*
      * Make all interested Servers participate in the
@@ -3369,21 +3455,33 @@ Factory::handlePrecLeaderExistsChange(Notifyable *np,
     Group *grp = dynamic_cast<Group *>(np);
     Group *grp1;
 
-    for (i = r.first; i != r.second; i++) {
+    for (leIt = range.first; 
+         leIt != range.second;
+         leIt++) {
         /*
-         * Sanity check -- the path is the same...
+         * Sanity check -- the path must be the same.
          */
-        if ((*i).first != path) {
+        if ((*leIt).first != path) {
             LOG_FATAL(CL_LOG,
                       "Internal error: bad leadership watch (bid) %s vs %s",
-                      path.c_str(), (*i).first.c_str());
+                      path.c_str(), (*leIt).first.c_str());
             ::abort();
         }
 
-        sp = (*i).second;
+        sp = (*leIt).second;
 
         /*
-         * Sanity check -- the Server must be in this group...
+         * Sanity check -- the Server must not be NULL.
+         */
+        if (sp == NULL) {
+            LOG_FATAL(
+		CL_LOG,
+                "Internal error: leadership watch (bid) with NULL server");
+            ::abort();
+        }
+
+        /*
+         * Sanity check -- the Server must be in this group.
          */
         grp1 = sp->getMyNode()->getGroup();
         if (grp != grp1) {
@@ -3400,7 +3498,7 @@ Factory::handlePrecLeaderExistsChange(Notifyable *np,
         (void) sp->tryToBecomeLeader();
     }
 
-    return EN_GRP_LEADERSHIP;
+    return EN_LEADERSHIPCHANGE;
 }
 
 /*
@@ -3411,7 +3509,7 @@ Factory::handlePrecLeaderExistsChange(Notifyable *np,
  */
 Event
 Factory::handleSynchronizeChange(Notifyable *np,
-                                 int etype,
+                                 int32_t etype,
                                  const string &path)
 {
     {
@@ -3421,7 +3519,7 @@ Factory::handleSynchronizeChange(Notifyable *np,
     }
 
     LOG_DEBUG(CL_LOG, "handleSynchronizeChange: sent conditional signal");
-    return EN_NO_EVENT;
+    return EN_NOEVENT;
 }
 
 /*

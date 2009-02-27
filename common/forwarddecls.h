@@ -20,8 +20,8 @@ namespace clusterlib
 /*
  * Define the types associated with a hash function.
  */
-typedef unsigned long long HashRange;
-typedef int32_t            HashFunctionId;
+typedef uint64_t HashRange;
+typedef int32_t  HashFunctionId;
 typedef HashRange (HashFunction)(const string &key);
 
 /*
@@ -30,6 +30,11 @@ typedef HashRange (HashFunction)(const string &key);
  * objects.
  */
 typedef void *ClientData;
+
+/*
+ * An event type.
+ */
+typedef int32_t Event;
 
 /*
  * Some types that must be declared early, to be able to define
@@ -107,15 +112,21 @@ struct ltstr
 /*
  * Multimaps.
  */
-typedef multimap<string, Server *, ltstr>	LeadershipElectionMultimap;
+typedef multimap<const string, Server *, ltstr>	LeadershipElectionMultimap;
 typedef LeadershipElectionMultimap::iterator	LeadershipIterator;
 typedef pair<LeadershipIterator, LeadershipIterator>
 						LeadershipElectionMultimapRange;
 
+typedef multimap<const string, ClusterEventHandler *, ltstr>
+						EventHandlersMultimap;
+typedef EventHandlersMultimap::iterator		EventHandlersIterator;
+typedef pair<EventHandlersIterator, EventHandlersIterator>
+						EventHandlersMultimapRange;
+
 /*
  * Type used for passing flags.
  */
-typedef unsigned int ServerFlags;
+typedef uint32_t ServerFlags;
 
 /*
  * Values for ServerFlags. Can be combined by

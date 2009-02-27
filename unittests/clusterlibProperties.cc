@@ -35,7 +35,7 @@ class ClusterlibProperties : public MPITestFixture {
 	_group0 = _app0->getGroup("bar-servers", true);
 	CPPUNIT_ASSERT(_group0 != NULL);
 	_node0 = _group0->getNode("server-0", true);
-	CPPUNIT_ASSERT(_group0 != NULL);
+	CPPUNIT_ASSERT(_node0 != NULL);
     }
 
     /* Runs after all tests */

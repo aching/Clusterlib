@@ -156,16 +156,16 @@ class ClusterlibInts {
     /* 
      * All indices use for parsing ZK node names
      */
-    static const int CLUSTERLIB_INDEX;
-    static const int VERSION_NAME_INDEX;
-    static const int APP_INDEX;
-    static const int APP_NAME_INDEX;
-    static const int GROUP_INDEX;
-    static const int GROUP_NAME_INDEX;
-    static const int DIST_INDEX;
-    static const int DIST_NAME_INDEX;
-    static const int NODE_TYPE_INDEX;
-    static const int NODE_NAME_INDEX;
+    static const int32_t CLUSTERLIB_INDEX;
+    static const int32_t VERSION_NAME_INDEX;
+    static const int32_t APP_INDEX;
+    static const int32_t APP_NAME_INDEX;
+    static const int32_t GROUP_INDEX;
+    static const int32_t GROUP_NAME_INDEX;
+    static const int32_t DIST_INDEX;
+    static const int32_t DIST_NAME_INDEX;
+    static const int32_t NODE_TYPE_INDEX;
+    static const int32_t NODE_NAME_INDEX;
 };
 
 /*
@@ -284,9 +284,9 @@ class Factory
     /*
      * Dispatch timer, zk, and session events.
      */
-    void dispatchTimerEvent(ClusterlibTimerEvent *te);
-    void dispatchZKEvent(zk::ZKWatcherEvent *ze);
-    void dispatchSessionEvent(zk::ZKWatcherEvent *ze);
+    void dispatchTimerEvent(ClusterlibTimerEvent *tep);
+    void dispatchZKEvent(zk::ZKWatcherEvent *zep);
+    void dispatchSessionEvent(zk::ZKWatcherEvent *zep);
     bool dispatchEndEvent();
 
     /*
@@ -295,7 +295,7 @@ class Factory
      * prototypical cluster event payload to send to clients.
      */
     ClusterEventPayload *updateCachedObject(FactoryEventHandler *cp,
-                                            zk::ZKWatcherEvent *zp);
+                                            zk::ZKWatcherEvent *zep);
 
     /*
      * This method consumes timer events. It runs in a separate
@@ -310,19 +310,22 @@ class Factory
 
     /*
      * Retrieve a list of all (currently known) group names within
-     * the given application.
+     * the given application. This also establishes a watch on
+     * group changes.
      */
     IdList getGroupNames(Application *app);
 
     /*
      * Retrieve a list of all (currently known) distribution
-     * names within the given application.
+     * names within the given application. This also establishes
+     * a watch on distribution changes.
      */
     IdList getDistributionNames(Application *app);
 
     /*
      * Retrieve a list of all (currently known) node names
-     * within the given group.
+     * within the given group. This also establishes a
+     * watch on node changes.
      */
     IdList getNodeNames(Group *grp);
 
@@ -330,7 +333,7 @@ class Factory
      * Leadership protocol.
      */
     Node *getLeader(Group *grp);
-    int64_t placeBid(Node *np);
+    int64_t placeBid(Node *np, Server *sp);
     bool tryToBecomeLeader(Node *np, int64_t bid);
     bool isLeaderKnown(Node *np);
     void leaderIsUnknown(Node *np);
@@ -489,25 +492,38 @@ class Factory
 		     Group *grp);
 
     /*
+     * Get various locks.
+     */
+    Mutex *getClientsLock() { return &m_clLock; }
+    Mutex *getLeadershipWatchesLock() { return &m_lwLock; }
+    Mutex *getPropertiesLock() { return &m_propLock; }
+    Mutex *getDataDistributionsLock() { return &m_ddLock; }
+    Mutex *getApplicationsLock() { return &m_appLock; }
+    Mutex *getGroupsLock() { return &m_grpLock; }
+    Mutex *getNodesLock() { return &m_nodeLock; }
+    Mutex *getTimersLock() { return &m_timerRegistryLock; }
+    Mutex *getSyncLock() { return &m_syncLock; }
+
+    /*
      * Implement ready protocol for notifyables.
      */
     bool establishNotifyableReady(Notifyable *np);
     Event handleNotifyableReady(Notifyable *np,
-                                int etype,
+                                int32_t etype,
                                 const string &path);
 
     /*
      * Handle existence events on notifyables.
      */
     Event handleNotifyableExists(Notifyable *np,
-                                 int etype,
+                                 int32_t etype,
                                  const string &path);
 
     /*
      * Handle changes in the set of applications.
      */
     Event handleApplicationsChange(Notifyable *np,
-                                   int etype,
+                                   int32_t etype,
                                    const string &path);
 
     /*
@@ -515,7 +531,7 @@ class Factory
      * an application.
      */
     Event handleGroupsChange(Notifyable *np,
-                             int etype,
+                             int32_t etype,
                              const string &path);
 
     /*
@@ -523,28 +539,28 @@ class Factory
      * in an application.
      */
     Event handleDistributionsChange(Notifyable *np,
-                                    int etype,
+                                    int32_t etype,
                                     const string &path);
 
     /*
      * Handle changes in the set of nodes in a group.
      */
     Event handleNodesChange(Notifyable *np,
-                            int etype,
+                            int32_t etype,
                             const string &path);
 
     /*
      * Handle changes in a property list.
      */
     Event handlePropertiesChange(Notifyable *np,
-                                 int etype,
+                                 int32_t etype,
                                  const string &path);
 
     /*
      * Handle changes in shards of a distribution.
      */
     Event handleShardsChange(Notifyable *np,
-                             int etype,
+                             int32_t etype,
                              const string &path);
 
     /*
@@ -552,7 +568,7 @@ class Factory
      * a distribution.
      */
     Event handleManualOverridesChange(Notifyable *np,
-                                      int etype,
+                                      int32_t etype,
                                       const string &path);
 
     /*
@@ -560,7 +576,7 @@ class Factory
      * a node.
      */
     Event handleClientStateChange(Notifyable *np,
-                                  int etype,
+                                  int32_t etype,
                                   const string &path);
 
     /*
@@ -568,7 +584,7 @@ class Factory
      * for a node.
      */
     Event handleMasterSetStateChange(Notifyable *np,
-                                     int etype,
+                                     int32_t etype,
                                      const string &path);
 
     /*
@@ -576,7 +592,7 @@ class Factory
      * group.
      */
     Event handleLeadershipChange(Notifyable *np,
-                                 int etype,
+                                 int32_t etype,
                                  const string &path);
 
     /*
@@ -584,14 +600,14 @@ class Factory
      * a group.
      */
     Event handlePrecLeaderExistsChange(Notifyable *np,
-                                       int etype,
+                                       int32_t etype,
                                        const string &path);
 
     /*
      * Handle changes in synchronization of a zookeeper path.
      */
     Event handleSynchronizeChange(Notifyable *np,
-                                  int etype,
+                                  int32_t etype,
                                   const string &path);
 
     /*
@@ -1022,9 +1038,9 @@ class FactoryOps
     {
         return mp_f->getLeader(grp);
     }
-    int64_t placeBid(Node *np)
+    int64_t placeBid(Node *np, Server *sp)
     {
-        return mp_f->placeBid(np);
+        return mp_f->placeBid(np, sp);
     }
     bool tryToBecomeLeader(Node *np, int64_t bid)
     {
@@ -1070,7 +1086,7 @@ class FactoryOps
     /*
      * Constructor used by Factory.
      */
-    FactoryOps(Factory *f) : mp_f(f) {};
+    FactoryOps(Factory *fp) : mp_f(fp) {};
 
     /*
      * Default constructor throws an exception.

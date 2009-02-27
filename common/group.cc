@@ -81,6 +81,15 @@ void
 Group::recacheNodes()
 {
     TRACE(CL_LOG, "recacheNodes");
+
+    Locker l(getNodeMapLock());
+    IdList nnames = getDelegate()->getNodeNames(this);
+    IdList::iterator nnIt;
+
+    m_nodes.clear();
+    for (nnIt = nnames.begin(); nnIt != nnames.end(); nnIt++) {
+        (void) getNode(*nnIt, false);
+    }
 }
 
 /*

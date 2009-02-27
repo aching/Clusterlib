@@ -31,57 +31,6 @@ class Notifyable
     }
 
     /*
-     * Notify the notifyable object.
-     */
-    virtual void notify(const Event e);
-
-    /*
-     * Register an event handler for a set of events.
-     */
-    void registerInterest(ClusterEventHandler *cehp,
-                          Event mask,
-                          void *clientData)
-    {
-        ClusterEventInterests::iterator i;
-        Locker l(getInterestsLock());
-
-        for (i = m_interests.begin();
-             i != m_interests.end();
-             i++) {
-            if ((*i)->getHandler() == cehp) {
-                (*i)->addEvents(mask);
-                (*i)->setClientData(clientData);
-                return;
-            }
-        }
-        m_interests.push_back(new ClusterEventInterest(cehp,
-                                                       mask,
-                                                       clientData));
-    };
-
-    /*
-     * Unregister an event handler for a set of events.
-     */
-    void unregisterInterest(ClusterEventHandler *cehp, Event mask)
-    {
-        ClusterEventInterests::iterator i;
-        ClusterEventInterest *pi;
-        Locker l(getInterestsLock());
-
-        for (i = m_interests.begin();
-             i != m_interests.end();
-             i++) {
-            if ((*i)->getHandler() == cehp) {
-                if ((*i)->removeEvents(mask) == 0) {
-                    pi = (*i);
-                    m_interests.erase(i);
-                    delete pi;
-                }
-            }
-        }
-    }
-
-    /*
      * Get the name of the Notifyable.
      */
     string getName() const { return m_name; }
@@ -112,7 +61,7 @@ class Notifyable
     /*
      * Constructor.
      */
-    Notifyable(FactoryOps *f,
+    Notifyable(FactoryOps *fp,
                const string &key,
                const string &name);
 
@@ -145,11 +94,6 @@ class Notifyable
 
   private:
     /*
-     * Retrieve the handlers lock.
-     */
-    Mutex *getInterestsLock() { return &m_interestsLock; }
-
-    /*
      * Default constructor.
      */
     Notifyable() 
@@ -174,13 +118,6 @@ class Notifyable
      * The name of the Notifyable.
      */
     const string m_name;
-
-    /*
-     * The vector of notification receivers associated with
-     * this notifyable.
-     */
-    ClusterEventInterests m_interests;
-    Mutex m_interestsLock;
 
     /*
      * Is this notifyable "ready" according to the ready
