@@ -2490,7 +2490,8 @@ Factory::getApplicationNames()
         ROOTNODE +
         CLUSTERLIB +
         PATHSEPARATOR +
-        CLUSTERLIBVERSION;
+        CLUSTERLIBVERSION +
+        APPLICATIONS;
 
     list.clear();
     SAFE_CALL_ZK(m_zk.getNodeChildren(list,
@@ -2501,6 +2502,12 @@ Factory::getApplicationNames()
                  key.c_str(),
                  true,
                  true);
+
+    for (IdList::iterator iIt = list.begin(); iIt != list.end(); ++iIt) {
+        // Remove the key prefix
+        *iIt = iIt->substr(key.length() + PATHSEPARATOR.length());
+    }
+
     return list;
 }
 IdList
@@ -2523,6 +2530,12 @@ Factory::getGroupNames(Application *app)
                  key.c_str(),
                  true,
                  true);
+
+    for (IdList::iterator iIt = list.begin(); iIt != list.end(); ++iIt) {
+        // Remove the key prefix
+        *iIt = iIt->substr(key.length() + PATHSEPARATOR.length());
+    }
+
     return list;
 }
 IdList
@@ -2545,6 +2558,12 @@ Factory::getDistributionNames(Application *app)
                  key.c_str(),
                  true,
                  true);
+
+    for (IdList::iterator iIt = list.begin(); iIt != list.end(); ++iIt) {
+        // Remove the key prefix
+        *iIt = iIt->substr(key.length() + PATHSEPARATOR.length());
+    }
+
     return list;
 }
 IdList
@@ -2567,6 +2586,12 @@ Factory::getNodeNames(Group *grp)
                  key.c_str(),
                  true,
                  true);
+
+    for (IdList::iterator iIt = list.begin(); iIt != list.end(); ++iIt) {
+        // Remove the key prefix
+        *iIt = iIt->substr(key.length() + PATHSEPARATOR.length());
+    }
+
     return list;
 }
 

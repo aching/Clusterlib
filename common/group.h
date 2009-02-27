@@ -69,6 +69,7 @@ class Group
           mp_app(app),
           mp_leader(NULL),
           m_leaderIsKnown(false),
+          m_leadershipStringsInitialized(false),
           m_cachingNodes(false)
     {
         m_nodes.clear();
