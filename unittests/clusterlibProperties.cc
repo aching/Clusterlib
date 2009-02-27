@@ -1,4 +1,7 @@
 #include "MPITestFixture.h"
+#include "testparams.h"
+
+extern TestParams globalTestParams;
 
 class MyHealthChecker : public clusterlib::HealthChecker {
   public:
@@ -26,7 +29,8 @@ class ClusterlibProperties : public MPITestFixture {
     /* Runs prior to all tests */
     virtual void setUp() 
     {
-	_factory = new clusterlib::Factory("localhost:2181");
+	_factory = new clusterlib::Factory(
+            globalTestParams.getZkServerPortList());
 	CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
 	CPPUNIT_ASSERT(_client0 != NULL);

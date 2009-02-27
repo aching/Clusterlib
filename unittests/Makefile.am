@@ -19,6 +19,7 @@ test_LDADD = \
 CXXFLAGS = @BASE_CXXFLAGS@ $(CPPUNIT_CFLAGS) -DMPICH_IGNORE_CXX_SEEK 
 test_SOURCES = \
 	test.cc \
+	testparams.cc \
 	clusterlibClient.cc \
 	clusterlibProperties.cc 
 

@@ -2,14 +2,27 @@
 #include <cppunit/extensions/TestFactoryRegistry.h>
 #include <cppunit/ui/text/TestRunner.h>
 #include <mpi.h>
+#include "testparams.h"
 
 using namespace std;
 
 const string debugExt = ".out";
 
+/* Global test parameters to be used in all tests */
+TestParams globalTestParams;
+
 int main(int argc, char* argv[]) {
     /* MPI initialization */
     MPI::Init(argc, argv);
+
+    /* Parse arguments */
+    globalTestParams.setMyId(MPI::COMM_WORLD.Get_rank());
+    globalTestParams.setNumProcs(MPI::COMM_WORLD.Get_size());
+    globalTestParams.rootParseArgs(argc, argv);
+    if (globalTestParams.scatterArgs() != 0) {
+        MPI::Finalize();
+        return -1;
+    }
 
     /* Redirect all stderr log4cxxx messaging to the same files */
     stringstream fileStringStream;
