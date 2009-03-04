@@ -28,8 +28,11 @@
 	try { \
 	    _action ; done = true; \
 	} catch (zk::ZooKeeperException &ze) { \
-	    if (!ze.isConnected()) { \
-		reestablishConnectionAndState(ze.what()); \
+	    if (m_shutdown) { \
+		LOG_WARN(CL_LOG, "Call to ZK during shutdown!"); \
+		done = true; \
+	    } else if (!ze.isConnected()) { \
+		throw ClusterException(ze.what()); \
 	    } else if (_warning) { \
 		LOG_WARN(CL_LOG, _message, _node, ze.what()); \
 		if (_once) { \
@@ -155,6 +158,7 @@ const int32_t ClusterlibInts::NODE_NAME_INDEX = 8;
 Factory::Factory(const string &registry)
     : m_syncId(0),
       m_syncIdCompleted(0),
+      m_endEventDispatched(false),
       m_config(registry, 3000),
       m_zk(m_config, NULL, false),
       m_timerEventAdapter(m_timerEventSrc),
@@ -269,6 +273,9 @@ Factory::~Factory()
 {
     TRACE(CL_LOG, "~Factory");
 
+    injectEndEvent();
+    waitForThreads();
+
     removeAllClients();
     removeAllDataDistributions();
     removeAllProperties();
@@ -287,6 +294,34 @@ Factory::~Factory()
     }
 };
 
+/*
+ * Inject an END event so that all threads and clients
+ * event loops will finish up in an orderly fashion.
+ */
+void
+Factory::injectEndEvent()
+{
+    TRACE(CL_LOG, "injectEndEvent");
+
+    Locker l(getEndEventLock());
+
+    if (m_endEventDispatched) {
+        return;
+    }
+    m_zk.injectEndEvent();
+}
+
+/*
+ * Wait for all my threads.
+ */
+void
+Factory::waitForThreads()
+{
+    TRACE(CL_LOG, "waitForThreads");
+
+    m_eventThread.Join();
+    m_timerHandlerThread.Join();
+}
 
 /*
  * Create a client.
@@ -362,8 +397,6 @@ Factory::createServer(const string &app,
         return NULL;
     }
 };
-
-
 
 /*
  * Try to synchronize with the underlying data store.
@@ -566,7 +599,6 @@ Factory::dispatchEvents()
     TRACE(CL_LOG, "dispatchEvents");
 
     uint32_t eventSeqId = 0;
-    bool sentEndEvent = false;
 
     LOG_DEBUG(CL_LOG,
               "Hello from dispatchEvents(), this: 0x%x, thread: %d",
@@ -654,23 +686,17 @@ Factory::dispatchEvents()
          * registered clients that there will
          * be no more events coming.
          */
-        sentEndEvent = dispatchEndEvent();
+        dispatchEndEvent();
     } catch (zk::ZooKeeperException &zke) {
         LOG_ERROR(CL_LOG, "ZooKeeperException: %s", zke.what());
-        if (!sentEndEvent) {
-            dispatchEndEvent();
-        }
+        dispatchEndEvent();
         throw ClusterException(zke.what());
     } catch (ClusterException &ce) {
-        if (!sentEndEvent) {
-            dispatchEndEvent();
-        }
+        dispatchEndEvent();
         throw ClusterException(ce.what());
     } catch (std::exception &stde) {
         LOG_ERROR(CL_LOG, "Unknown exception: %s", stde.what());
-        if (!sentEndEvent) {
-            dispatchEndEvent();
-        }
+        dispatchEndEvent();
         throw ClusterException(stde.what());
     }
 }
@@ -688,10 +714,6 @@ Factory::dispatchTimerEvent(ClusterlibTimerEvent *tep)
     } else {
         TimerEventPayload *tp = (TimerEventPayload *) tep->getUserData();
         m_timerEventQueue.put(tp);
-
-        /*
-         * NOTE: SHOULD WE DELETE tep HERE?
-         */
     }
 }
 
@@ -838,6 +860,21 @@ Factory::dispatchEndEvent()
     ClientList::iterator clIt;
 
     /*
+     * If the end event was already dispatched, don't do
+     * it again.
+     */
+    {
+        Locker l(getEndEventLock());
+
+        if (m_endEventDispatched) {
+            LOG_WARN(CL_LOG,
+                     "Attempt to dispatch END event more than once!");
+            return false;
+        }
+        m_endEventDispatched = true;
+    }
+
+    /*
      * Send a terminate signal to the timer
      * event handler thread.
      */
@@ -906,7 +943,13 @@ Factory::consumeTimerEvents()
             /*
              * Deallocate the payload object.
              */
-            delete tepp;
+
+            {
+                Locker l(getTimersLock());
+
+                m_timerRegistry.erase(tepp->getId());
+                delete tepp;
+            }
         }
     } catch (zk::ZooKeeperException &zke) {
         LOG_ERROR(CL_LOG, "ZooKeeperException: %s", zke.what());
@@ -2866,12 +2909,12 @@ Factory::registerTimer(TimerEventHandler *handler,
                        uint64_t afterTime,
                        ClientData data)
 {
+    Locker l(getTimersLock());
     TimerEventPayload *tepp =
         new TimerEventPayload(afterTime, handler, data);
     TimerId id = m_timerEventSrc.scheduleAfter(afterTime, tepp);
-    tepp->updateTimerId(id);
 
-    Locker l(getTimersLock());
+    tepp->updateTimerId(id);
     m_timerRegistry[id] = tepp;
 
     return id;
@@ -2895,19 +2938,6 @@ Factory::cancelTimer(TimerId id)
         return true;
     }
     return false;
-}
-
-/*
- * Forget a timer ID. Used when the event is finally
- * delivered (whether or not it is cancelled).
- */
-void
-Factory::forgetTimer(TimerId id)
-{
-    Locker l(getTimersLock());
-
-    delete m_timerRegistry[id];
-    m_timerRegistry.erase(id);
 }
 
 /*
@@ -3545,17 +3575,6 @@ Factory::handleSynchronizeChange(Notifyable *np,
 
     LOG_DEBUG(CL_LOG, "handleSynchronizeChange: sent conditional signal");
     return EN_NOEVENT;
-}
-
-/*
- * Re-establish the ZooKeeper connection and
- * re-initialize all the watches.
- */
-void
-Factory::reestablishConnectionAndState(const char *what)
-{
-    /* TBD -- Real implementation */
-    throw ClusterException(what);
 }
 
 };	/* End of 'namespace clusterlib' */

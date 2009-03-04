@@ -272,7 +272,6 @@ class Factory
                           uint64_t afterTime,
                           ClientData data);
     bool cancelTimer(TimerId id);
-    void forgetTimer(TimerId id);
     
     /*
      * Dispatch all events. Reads from the
@@ -503,6 +502,7 @@ class Factory
     Mutex *getNodesLock() { return &m_nodeLock; }
     Mutex *getTimersLock() { return &m_timerRegistryLock; }
     Mutex *getSyncLock() { return &m_syncLock; }
+    Mutex *getEndEventLock() { return &m_endEventLock; }
 
     /*
      * Implement ready protocol for notifyables.
@@ -611,10 +611,10 @@ class Factory
                                   const string &path);
 
     /*
-     * Re-establish connection with ZooKeeper and re-establish
-     * all the watches.
+     * Orderly termination mechanism.
      */
-    void reestablishConnectionAndState(const char *msg);
+    void injectEndEvent();
+    void waitForThreads();
 
   private:
 
@@ -678,6 +678,14 @@ class Factory
     int64_t m_syncIdCompleted;
     Mutex m_syncLock;
     Cond m_syncCond;
+
+    /*
+     * Remember whether an END event has been dispatched
+     * so that all threads wind down. Can do this only
+     * once!!!
+     */
+    bool m_endEventDispatched;
+    Mutex m_endEventLock;
 
     /*
      * The ZooKeeper config object.

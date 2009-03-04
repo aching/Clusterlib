@@ -83,7 +83,13 @@ class Client
      * Make the destructor protected so it can only be invoked
      * from derived classes.
      */
-    virtual ~Client() {}
+    virtual ~Client()
+    {
+        /*
+         * Wait till all events have been handled.
+         */
+        m_eventThread.Join();
+    }
 
   private:
     /*

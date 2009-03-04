@@ -477,6 +477,17 @@ ZooKeeperAdapter::handleAsyncEvent(int32_t type,
     }
 }
 
+/*
+ * Inject a terminating event -- we simulate SESSION_EXPIRED.
+ */
+void
+ZooKeeperAdapter::injectEndEvent()
+{
+    m_events.put(ZKWatcherEvent(ZOO_SESSION_EVENT,
+                                ZOO_EXPIRED_SESSION_STATE,
+                                ""));
+}
+
 /** If there is no context, forward events to all listeners */
 void
 ZooKeeperAdapter::handleEventInContext(int32_t type,
@@ -556,11 +567,9 @@ ZooKeeperAdapter::processEvents()
                          m_state);
                 m_stateLock.lock();
                 if (source.getState() == ZOO_CONNECTED_STATE) {
-                    m_connected = true;
                     resetRemainingConnectTimeout();
                     setState(AS_CONNECTED);
                 } else if (source.getState() == ZOO_CONNECTING_STATE) {
-                    m_connected = false;
                     setState(AS_CONNECTING);
                 } else if (source.getState() == ZOO_EXPIRED_SESSION_STATE) {
                     LOG_INFO(LOG, "Received EXPIRED_SESSION event");
@@ -673,9 +682,10 @@ ZooKeeperAdapter::setState(AdapterState newState)
                  m_state, 
                  newState);
         m_state = newState;
+        m_connected = (newState == AS_CONNECTED);
         m_stateLock.notify();
     } else {
-        LOG_TRACE(LOG, 
+        LOG_TRACE(LOG,
                   "New state same as the current: %d", 
                   newState);
     }

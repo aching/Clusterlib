@@ -393,6 +393,11 @@ class ZooKeeperAdapter
 	bool sync(const string &path,
                   ZKEventListener *listener,
                   void *context);
+
+        /**
+         * \brief Simulate a SESSION_EXPIRED event so that the connection ends.
+         */
+        void injectEndEvent();
         
         /**
          * \brief Creates a new node identified by the given path. 
