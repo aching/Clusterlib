@@ -18,6 +18,16 @@
 namespace clusterlib
 {
 
+ApplicationMap 
+Client::getApplications()
+{
+    Locker l(getApplicationMapLock());
+    
+    m_cachingApplications = true;
+    recacheApplications();
+    return m_applications;
+}
+
 /*
  * Retrieve a named application. Load it from the
  * cluster as needed.
@@ -28,23 +38,65 @@ Client::getApplication(const string &appName,
 {
     TRACE(CL_LOG, "getApplication");
 
-    Application *app = mp_f->getApplication(appName, create);
+    Application *app;
 
     /*
-     * If the application object is found,
-     * just return it.
+     * If it is already cached, return the
+     * cached application object.
      */
+    {
+        Locker l1(getApplicationMapLock());
+
+        ApplicationMap::const_iterator appIt = m_applications.find(appName);
+        if (appIt != m_applications.end()) {
+            return appIt->second;
+        }
+    }
+
+    /*
+     * If it is not yet cached, load the
+     * application from the cluster, cache it,
+     * and return the object.
+     */
+    app = getDelegate()->getApplication(appName, create);
     if (app != NULL) {
+        Locker l2(getApplicationMapLock());
+
+        m_applications[appName] = app;
         return app;
     }
 
     /*
      * Could not find the application object.
      */
+    LOG_FATAL(CL_LOG,
+              "getApplication: Cannot find or create application %s "
+              "with create %u",
+              appName.c_str(),
+              create);
+
     throw ClusterException(string("Cannot ") +
                            (create ? "find or create " : "find ") +
                            "application " +
                            appName);
+}
+
+/*
+ * Refresh the cache of applications in this factory.
+ */
+void
+Client::recacheApplications()
+{
+    TRACE(CL_LOG, "recacheApplications");
+
+    Locker l(getApplicationMapLock());
+    IdList anames = getDelegate()->getApplicationNames();
+    IdList::iterator anIt;
+
+    m_applications.clear();
+    for (anIt = anames.begin(); anIt != anames.end(); anIt++) {
+        (void) getApplication(*anIt, false);
+    }
 }
 
 /*

@@ -24,8 +24,18 @@ main(int ac, char **av)
         cerr << "factory = " << f << endl;
         clusterlib::Client *c = f->createClient();
         cerr << "client = " << c << endl;
-        clusterlib::Application *app0 = c->getApplication("foo", true);
+        clusterlib::Application *app0 = c->getApplication("app-foo", true);
         cerr << "app0 = " << app0 << endl;
+        c->getApplication("app-bar", true);
+
+        clusterlib::ApplicationMap appMap = c->getApplications();
+        clusterlib::ApplicationMap::iterator appIt;
+        for (appIt = appMap.begin(); appIt != appMap.end(); appIt++) {
+            cerr << "app name: " << appIt->first << " pointer " 
+                 <<  appIt->second << endl;
+                
+        }
+
 	clusterlib::Group *grp0 = app0->getGroup("bar-servers", true);
 	cerr << "grp0 = " << grp0 << endl;
 	grp0 = app0->getGroup("bar-clients", true);
@@ -41,31 +51,26 @@ main(int ac, char **av)
 
 	MyHealthChecker check;
 	
-	clusterlib::Server *s0 = f->createServer("foo",
-						 "bar-servers",
+	clusterlib::Server *s0 = f->createServer(grp0,
 						 "zops-0",
 						 &check,
 						 SF_CREATEREG | SF_MANAGED);
         cerr << "server = " << s0 << endl;
 
-	clusterlib::Server *s1 = f->createServer("foo",
-						 "bar-servers",
+	clusterlib::Server *s1 = f->createServer(grp0,
 						 "zops-1",
 						 &check,
 						 SF_CREATEREG | SF_MANAGED);
-
         cerr << "server = " << s1 << endl;
 
-	clusterlib::Server *s2 = f->createServer("foo",
-			    "bar-servers",
-			    "zops-2",
-			    &check,
-			    SF_CREATEREG | SF_MANAGED);
-
+	clusterlib::Server *s2 = f->createServer(grp0,
+                                                 "zops-2",
+                                                 &check,
+                                                 SF_CREATEREG | SF_MANAGED);
         cerr << "server = " << s2 << endl;
 
 	clusterlib::DataDistribution *dst = 
-	    app0->getDistribution("dist", true);
+	    app0->getDataDistribution("dist", true);
 	cerr << "dist name = " << dst->getName() << endl;
 	cerr << "dist key = " << dst->getKey() << endl;
 
@@ -76,25 +81,31 @@ main(int ac, char **av)
 
 	dst->acquireLock();
 	dst->setShards(shards);
-	dst->reassignShard(0, dynamic_cast<clusterlib::Notifyable *>(s0));
-	dst->reassignShard(1, dynamic_cast<clusterlib::Notifyable *>(s1));
-	dst->reassignShard(2, dynamic_cast<clusterlib::Notifyable *>(s2));
+	dst->reassignShard(
+            0, 
+            dynamic_cast<clusterlib::Notifyable *>(s0->getMyNode()));
+	dst->reassignShard(
+            1, 
+            dynamic_cast<clusterlib::Notifyable *>(s1->getMyNode()));
+	dst->reassignShard(
+            2, 
+            dynamic_cast<clusterlib::Notifyable *>(s2->getMyNode()));
 	dst->publish();
 	dst->releaseLock();
 
-        clusterlib::Application *app1 = dst->getApplication();
+        clusterlib::Application *app1 = dst->getMyApplication();
         if (app0 != app1) {
             throw
                 clusterlib::ClusterException("app->dist->app non-equivalence");
         }
 
-        clusterlib::Group *grp2 = node0->getGroup();
+        clusterlib::Group *grp2 = node0->getMyGroup();
         if (grp1 != grp2) {
             throw
                 clusterlib::ClusterException(
 		    "group->node->group non-equivalence");
         }
-        app1 = grp0->getApplication();
+        app1 = grp0->getMyApplication();
         if (app0 != app1) {
             throw
                clusterlib::ClusterException("app->group->app non-equivalence");
@@ -103,7 +114,7 @@ main(int ac, char **av)
 	clusterlib::Properties *prop0 = app1->getProperties();
 	prop0->acquireLock();
 
-	string test = prop0->getProperty("test");
+	string test = prop0->getProperty("test", true);
 	cerr << "(app1) test (test) = " << test
 	     << " and should be empty (if this is the first time running) "
 	     << endl;
@@ -113,12 +124,12 @@ main(int ac, char **av)
 	prop0->publish();
 	prop0->releaseLock();
 
-	string test2 = prop0->getProperty("test");
+	string test2 = prop0->getProperty("test", true);
 	cerr << "(app1) test2 (test) = " << test2
 	     << " and should be passed " << endl;
 
 	clusterlib::Properties *prop1 = app0->getProperties();
-	string test3 = prop1->getProperty("test");
+	string test3 = prop1->getProperty("test", true);
 	cerr << "(app0) test3 (test) = " << test3
 	     << " and should be passed " << endl;
 	
@@ -128,15 +139,15 @@ main(int ac, char **av)
 	prop0->publish();
 	prop0->releaseLock();
 
-	test3 = prop1->getProperty("test");
+	test3 = prop1->getProperty("test", true);
 	cerr << "(app0) test3 (test) = " << test3 
 	     << " and should be good " << endl;
-	test3 = prop1->getProperty("avery");
+	test3 = prop1->getProperty("avery", true);
 	cerr << "(app0) test3 (avery) = " << test3 
 	     << " and should be ching " << endl;
 
 	clusterlib::Properties *prop2 = node0->getProperties();
-	test3 = prop2->getProperty("test");
+	test3 = prop2->getProperty("test", true);
 	cerr << "(node) test3 (test) = " << test3 
 	     << " and should be good " << endl;
 
@@ -145,11 +156,11 @@ main(int ac, char **av)
 	prop2->publish();
 	prop2->releaseLock();
 
-	test3 = prop2->getProperty("test");
+	test3 = prop2->getProperty("test", true);
 	cerr << "(node) test3 (test) = " << test3 
 	     << " and should be node " << endl;
 
-	test3 = prop1->getProperty("test");
+	test3 = prop1->getProperty("test", true);
 	cerr << "(app) test3 (test) = " << test3 
 	     << " and should be good " << endl;
 

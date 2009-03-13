@@ -41,8 +41,8 @@ using namespace std;
 #include "notifyable.h"
 #include "clusterclient.h"
 #include "clusterserver.h"
-#include "application.h"
 #include "group.h"
+#include "application.h"
 #include "node.h"
 #include "datadistribution.h"
 #include "properties.h"
@@ -160,12 +160,19 @@ class ClusterlibInts {
     static const int32_t VERSION_NAME_INDEX;
     static const int32_t APP_INDEX;
     static const int32_t APP_NAME_INDEX;
-    static const int32_t GROUP_INDEX;
-    static const int32_t GROUP_NAME_INDEX;
-    static const int32_t DIST_INDEX;
-    static const int32_t DIST_NAME_INDEX;
-    static const int32_t NODE_TYPE_INDEX;
-    static const int32_t NODE_NAME_INDEX;
+
+    /*
+     * Number of components in an Application key
+     */
+    static const int32_t APP_COMPONENTS_COUNT;
+
+    /*
+     * Minimum components necessary to represent each respective key
+     */
+    static const int32_t DIST_COMPONENTS_MIN_COUNT;
+    static const int32_t PROP_COMPONENTS_MIN_COUNT;
+    static const int32_t GROUP_COMPONENTS_MIN_COUNT;
+    static const int32_t NODE_COMPONENTS_MIN_COUNT;
 };
 
 /*
@@ -187,6 +194,11 @@ class Factory
     virtual ~Factory();
 
     /*
+     * Get the applications available
+     */
+    ApplicationMap getApplications();
+
+    /*
      * Create a cluster client object.
      */
     Client *createClient();
@@ -196,9 +208,8 @@ class Factory
      * create the needed registration if createReg
      * is set to true.
      */
-    Server *createServer(const string &app,
-                         const string &group,
-                         const string &node,
+    Server *createServer(Group *group,
+                         const string &nodeName,
                          HealthChecker *checker,
                          ServerFlags flags);
 
@@ -302,26 +313,26 @@ class Factory
      */
     void consumeTimerEvents();
 
-    /*
+    /**
      * Retrieve a list of all (currently known) applications.
      */
     IdList getApplicationNames();
 
-    /*
+    /**
      * Retrieve a list of all (currently known) group names within
      * the given application. This also establishes a watch on
      * group changes.
      */
-    IdList getGroupNames(Application *app);
+    IdList getGroupNames(Group *grp);
 
-    /*
+    /**
      * Retrieve a list of all (currently known) distribution
      * names within the given application. This also establishes
      * a watch on distribution changes.
      */
-    IdList getDistributionNames(Application *app);
+    IdList getDataDistributionNames(Group *grp);
 
-    /*
+    /**
      * Retrieve a list of all (currently known) node names
      * within the given group. This also establishes a
      * watch on node changes.
@@ -350,37 +361,35 @@ class Factory
      * objects representing applications, groups, nodes,
      * and distributions.
      */
-    Application *getApplication(const string &name,
-                                bool create);
+    Application *getApplication(const string &appName,
+                                bool create = false);
 
-    Group *getGroup(const string &name,
-                    Application *app,
-                    bool create);
-    Group *getGroup(const string &appName,
-                    const string &grpName,
-                    bool create);
+    /** 
+     * Get a group from a parent group key. 
+     *
+     * @param groupName name of the group under the parent
+     * @param groupKey key to this parent group
+     * @param create if true try to create it if it doesn't exist
+     * @return NULL if not found or creation failed, otherwise the pointer 
+     *         to the Group
+     */
+    Group *getGroup(const string &groupName,
+                    Group *parentGroup,
+                    bool create = false);
 
-    Node *getNode(const string &name,
-                  Group *grp,
+    Node *getNode(const string &nodeName,
+                  Group *parentGroup,
                   bool managed,
-                  bool create);
-    Node *getNode(const string &appName,
-                  const string &grpName,
-                  const string &nodeName,
-                  bool managed,
-                  bool create);
+                  bool create = false);
 
-    DataDistribution *getDistribution(const string &name,
-                                      Application *app,
-                                      bool create);
-    DataDistribution *getDistribution(const string &appName,
-                                      const string &distName,
-                                      bool create);
+    DataDistribution *getDataDistribution(const string &distName,
+                                      Group *parentGroup,
+                                      bool create = false);
 
-    Properties *getProperties(const string &key,
-			      bool create);
+    Properties *getProperties(Notifyable *parent,
+			      bool create = false);
 
-    void updateDistribution(const string &key,
+    void updateDataDistribution(const string &key,
                             const string &shards,
                             const string &manualOverrides,
 			    int32_t shardsVersion,
@@ -396,74 +405,331 @@ class Factory
     void updateNodeMasterSetState(const string &key,
                                   const string &ms);
 
-    Application *getApplicationFromKey(const string &key,
-                                       bool create);
-    DataDistribution *getDistributionFromKey(const string &key,
-                                             bool create);
-    Group *getGroupFromKey(const string &key,
-                           bool create);
-    Node *getNodeFromKey(const string &key, bool create);
+    /**
+     * Get the notifyable represented by this key.  If this key does
+     * not represent a Notifyable, keep stripping off sections of the
+     * key until a Notifyable is found or the key is empty.
+     *
+     * @param key the key that should contain a clusterlib object
+     * @param create try to create this object if it does not exist?
+     * @return NULL if no Notifyable can be found, else the Notifyable *
+     */
+    Notifyable *getNotifyableFromKey(const string &key, bool create = false);
 
-    string createNodeKey(const string &appName,
-                         const string &groupName,
+    /**
+     * Get the notifyable represented by these components.  If the
+     * components does not represent a Notifyable, keep stripping off
+     * sections of the components until a Notifyable is found or the
+     * components run out of elements.
+     *
+     * @param components Should represent the Notifyable object
+     * @param elements The number of elements to use in the components
+                       (-1 for all)
+     * @param create try to create this object if it does not exist?
+     */
+    Notifyable *getNotifyableFromComponents(const vector<string> &components,
+                                            int32_t elements = -1, 
+                                            bool create = false);
+
+    /**
+     * Get the exact application represented by this key
+     *
+     * @param key should represent the Application object
+     * @param create try to create this object if it does not exist?
+     * @return NULL if cannot be found, else the Application *
+     */
+    Application *getApplicationFromKey(const string &key,
+                                       bool create = false);
+    /**
+     * Get the exact Application represented by these components.
+     *
+     * @param components Should represent the Application object
+     * @param elements The number of elements to use in the components
+                       (-1 for all)
+     * @param create try to create this object if it does not exist?
+     * @return NULL if cannot be found, else the Application *
+     */
+    Application *getApplicationFromComponents(const vector<string> &components,
+                                              int32_t elements = -1, 
+                                              bool create = false);
+    /**
+     * Get the exact data distribution represented by this key
+     *
+     * @param key should represent the DataDistribution object
+     * @param create try to create this object if it does not exist?
+     * @return NULL if cannot be found, else the DataDistribution *
+     */
+    DataDistribution *getDataDistributionFromKey(const string &key,
+                                                 bool create = false);
+
+    /**
+     * Get the exact DataDistribution represented by these components.
+     *
+     * @param components Should represent the DataDistribution object
+     * @param elements The number of elements to use in the components
+                       (-1 for all)
+     * @param create try to create this object if it does not exist?
+     * @return NULL if cannot be found, else the DataDistribution *
+     */
+    DataDistribution *getDataDistributionFromComponents(
+        const vector<string> &components,
+        int32_t elements = -1, 
+        bool create = false);
+
+    /**
+     * Get the exact properties represented by this key
+     *
+     * @param key should represent the Properties object
+     * @param create try to create this object if it does not exist?
+     * @return NULL if cannot be found, else the Properties *
+     */
+    Properties *getPropertiesFromKey(const string &key,
+                                     bool create = false);
+
+    /**
+     * Get the exact Properties represented by these components.
+     *
+     * @param components Should represent the Properties object
+     * @param elements The number of elements to use in the components
+                       (-1 for all)
+     * @param create try to create this object if it does not exist?
+     * @return NULL if cannot be found, else the Properties *
+     */
+    Properties *getPropertiesFromComponents(
+        const vector<string> &components,
+        int32_t elements = -1, 
+        bool create = false);
+
+    /**
+     * Get the exact group or application represented by this key.
+     *
+     * @param key should represent the Group/Applications object
+     * @param create try to create this object if it does not exist?
+     * @return NULL if cannot be found, else the Group *
+     */
+    Group *getGroupFromKey(const string &key,
+                           bool create = false);
+
+
+    /**
+     * Get the exact Group/Applications represented by these components.
+     *
+     * @param components Should represent the Group object
+     * @param elements The number of elements to use in the components
+                       (-1 for all)
+     * @param create try to create this object if it does not exist?
+     * @return NULL if cannot be found, else the Group *
+     */
+    Group *getGroupFromComponents(
+        const vector<string> &components,
+        int32_t elements = -1, 
+        bool create = false);
+
+    /**
+     * Get the node represented exactly by this key
+     *
+     * @param key should represent the Node object
+     * @param create try to create this object if it does not exist?
+     * @return NULL if cannot be found, else the Node *
+     */
+    Node *getNodeFromKey(const string &key, bool create = false);
+
+    /**
+     * Get the exact Node represented by these components.
+     *
+     * @param components Should represent the Node object
+     * @param elements The number of elements to use in the components
+                       (-1 for all)
+     * @param create try to create this object if it does not exist?
+     * @return NULL if cannot be found, else the Node *
+     */
+    Node *getNodeFromComponents(
+        const vector<string> &components,
+        int32_t elements = -1, 
+        bool create = false);
+
+
+    /* 
+     * Generate valid keys for various clusterlib objects given that
+     * the inputs are valid.  Does not create the objects or check
+     * that they exist. 
+     */
+    string createNodeKey(const string &groupKey,
                          const string &nodeName,
                          bool managed);
-    string createGroupKey(const string &appName,
+    string createGroupKey(const string &groupKey,
                           const string &groupName);
     string createAppKey(const string &appName);
-    string createDistKey(const string &appName,
+    string createDistKey(const string &groupKey,
                          const string &distName);
     string createPropertiesKey(const string &notifyableKey);
 
-    bool isNodeKey(const string &key, bool *managedP = NULL);
-    bool hasNodeKeyPrefix(const string &key, bool *managedP = NULL);
-    bool hasNodeKeyPrefix(vector<string> &components, bool *managedP = NULL);
-    string getNodeKeyPrefix(const string &key, bool *managedP = NULL);
-    string getNodeKeyPrefix(vector<string> &components);
+    /**
+     * Checks if the components (assumed from a split) make up a valid
+     * key, not if an actual Application exists for that key.
+     * 
+     * @param components A vector of components in the key parsed by split
+     *                   (i.e. first component should be "")
+     * @param elements The number of elements to check with (should 
+     *                 be <= components.size()).  If it is -1, then use 
+     *                 components.size().
+     * @return true if key is valid, false if not valid
+     */
+    bool isApplicationKey(const vector<string> &components, 
+                          int32_t elements = -1);
 
+    /**
+     * Checks if the key is valid, not if an actual Application exists
+     * for that key.
+     * 
+     * @param key A key to test if it is an application
+     * @return true if key is valid, false if not valid
+     */
+    bool isApplicationKey(const string &key);
+
+    /**
+     * Checks if the components (assumed from a split) make up a valid
+     * key, not if an actual DataDistribution exists for that key.
+     * 
+     * @param components A vector of components in the key parsed by split
+     *                   (i.e. first component should be "")
+     * @param elements The number of elements to check with (should 
+     *                 be <= components.size()).  If it is -1, then use 
+     *                 components.size().
+     * @return true if key is valid, false if not valid
+     */
+    bool isDataDistributionKey(const vector<string> &components, 
+                               int32_t elements = -1);
+
+    /**
+     * Checks if the key is valid, not if an actual DataDistribution exists
+     * for that key.
+     * 
+     * @param key A key to test if it is an application
+     * @return true if key is valid, false if not valid
+     */
+    bool isDataDistributionKey(const string &key);
+
+    /**
+     * Checks if the components (assumed from a split) make up a valid
+     * key, not if an actual Group exists for that key.
+     * 
+     * @param components A vector of components in the key parsed by split
+     *                   (i.e. first component should be "")
+     * @param elements The number of elements to check with (should 
+     *                 be <= components.size()).  If it is -1, then use 
+     *                 components.size().
+     * @return true if key is valid, false if not valid
+     */
+    bool isGroupKey(const vector<string> &components, 
+                    int32_t elements = -1);
+
+    /**
+     * Checks if the key is valid, not if an actual Group exists
+     * for that key.
+     * 
+     * @param key A key to test if it is an application
+     * @return true if key is valid, false if not valid
+     */
     bool isGroupKey(const string &key);
-    bool hasGroupKeyPrefix(const string &key);
-    bool hasGroupKeyPrefix(vector<string> &components);
-    string getGroupKeyPrefix(const string &key);
-    string getGroupKeyPrefix(vector<string> &components);
 
-    bool isAppKey(const string &key);
-    bool hasAppKeyPrefix(const string &key);
-    bool hasAppKeyPrefix(vector<string> &components);
-    string getAppKeyPrefix(const string &key);
-    string getAppKeyPrefix(vector<string> &components);
+    /**
+     * Checks if the components (assumed from a split) make up a valid
+     * key, not if an actual Properties exists for that key.
+     * 
+     * @param components A vector of components in the key parsed by split
+     *                   (i.e. first component should be "")
+     * @param elements The number of elements to check with (should 
+     *                 be <= components.size()).  If it is -1, then use 
+     *                 components.size().
+     * @return true if key is valid, false if not valid
+     */
+    bool isPropertiesKey(const vector<string> &components, 
+                         int32_t elements = -1);
 
-    bool isDistKey(const string &key);
-    bool hasDistKeyPrefix(const string &key);
-    bool hasDistKeyPrefix(vector<string> &components);
-    string getDistKeyPrefix(const string &key);
-    string getDistKeyPrefix(vector<string> &components);
+    /**
+     * Checks if the key is valid, not if an actual Properties exists
+     * for that key.
+     * 
+     * @param key A key to test if it is an application
+     * @return true if key is valid, false if not valid
+     */
+    bool isPropertiesKey(const string &key);
 
-    bool hasPropertiesKeyPrefix(const string &key);
-    bool hasPropertiesKeyPrefix(vector<string> &components);
+    /**
+     * Checks if the components (assumed from a split) make up a valid
+     * key, not if an actual Node exists for that key.
+     * 
+     * @param components A vector of components in the key parsed by split
+     *                   (i.e. first component should be "")
+     * @param elements The number of elements to check with (should 
+     *                 be <= components.size()).  If it is -1, then use 
+     *                 components.size().
+     * @return true if key is valid, false if not valid
+     */
+    bool isNodeKey(const vector<string> &components, 
+                   int32_t elements = -1);
 
-    string appNameFromKey(const string &key);
-    string distNameFromKey(const string &key);
-    string groupNameFromKey(const string &key);
-    string nodeNameFromKey(const string &key);
+    /**
+     * Checks if the key is valid, not if an actual Node exists
+     * for that key.
+     * 
+     * @param key A key to test if it is an application
+     * @return true if key is valid, false if not valid
+     */
+    bool isNodeKey(const string &key);
 
+    /**
+     * Remove the leaf node and returns the closest clusterlib
+     * Notifyable object key.  For example, if the initial key is
+     * .../nodes/foo-server/properties, it will return
+     * .../nodes/foo-server.  If the key is
+     * .../group/client/nodes/foo-server, it will return
+     * .../group/client.  If the key is .../applications/foo-app, it
+     * will return an empty string since they is nothing left. The key
+     * must not end in a PATHSEPARATOR.
+     *
+     * @param key a path to be trimmed
+     * @return trimmed key or empty string if no parent clusterlib object key
+     */
     string removeObjectFromKey(const string &key);
+
+    /**
+     * Remove the leaf node and returns the closest clusterlib
+     * Notifyable object key.  For example, if the initial components form
+     * .../nodes/foo-server/properties, it will return elements that include
+     * .../nodes/foo-server.  If the components form 
+     * .../group/client/nodes/foo-server, it will return elements that include
+     * .../group/client.  If the components are .../applications/foo-app, it
+     * will return an empty string since they is nothing left. The key
+     * must not end in a PATHSEPARATOR.
+     *
+     * @param components A vector of components in the key parsed by split
+     *                   (i.e. first component should be "")
+     * @param elements The number of elements to check with (should 
+     *                 be <= components.size()).  If it is -1, then use 
+     *                 components.size().
+     * @return size of the trimmed key or -1 if no Notifyable parent possible
+     */
+    int32_t removeObjectFromComponents(const vector<string> &components, 
+                                       int32_t elements = -1);
 
     /*
      * Load entities from ZooKeeper.
      */
     Application *loadApplication(const string &name,
                                  const string &key);
-    DataDistribution *loadDistribution(const string &name,
-                                       const string &key,
-                                       Application *app);
-    Properties* loadProperties(const string &key);
-    Group *loadGroup(const string &name,
-                     const string &key,
-                     Application *app);
-    Node *loadNode(const string &name,
-                   const string &key,
-                   Group *grp);
+    DataDistribution *loadDataDistribution(const string &distName,
+                                       const string &distKey,
+                                       Group *parentGroup);
+    Properties* loadProperties(const string &key,
+                               Notifyable *parent);
+    Group *loadGroup(const string &groupName,
+                     const string &groupKey,
+                     Group *parentGroup);
+    Node *loadNode(const string &nodeName,
+                   const string &nodeKey,
+                   Group *parentGroup);
 
     string loadShards(const string &key, int32_t &version);
     string loadManualOverrides(const string &key, int32_t &version);
@@ -474,21 +740,22 @@ class Factory
      */
     Application *createApplication(const string &name, 
 				   const string &key);
-    DataDistribution *createDistribution(
+    DataDistribution *createDataDistribution(
 	const string &name,
 	const string &key,
         const string &marshalledShards,
         const string &marshalledManualOverrides,
-        Application *app);
+        Group *parentGroup);
     Properties *createProperties(
-	const string &key);
+	const string &key,
+        Notifyable *parent);
     Group *createGroup(
-	const string &name,
-	const string &key, 
-	Application *app);
+	const string &groupName,
+	const string &groupKey,
+        Group *parentGroup);
     Node *createNode(const string &name,
 		     const string &key, 
-		     Group *grp);
+		     Group *parentGroup);
 
     /*
      * Get various locks.
@@ -507,22 +774,22 @@ class Factory
     /*
      * Implement ready protocol for notifyables.
      */
-    bool establishNotifyableReady(Notifyable *np);
-    Event handleNotifyableReady(Notifyable *np,
+    bool establishNotifyableReady(Notifyable *ntp);
+    Event handleNotifyableReady(Notifyable *ntp,
                                 int32_t etype,
                                 const string &path);
 
     /*
      * Handle existence events on notifyables.
      */
-    Event handleNotifyableExists(Notifyable *np,
+    Event handleNotifyableExists(Notifyable *ntp,
                                  int32_t etype,
                                  const string &path);
 
     /*
      * Handle changes in the set of applications.
      */
-    Event handleApplicationsChange(Notifyable *np,
+    Event handleApplicationsChange(Notifyable *ntp,
                                    int32_t etype,
                                    const string &path);
 
@@ -530,7 +797,7 @@ class Factory
      * Handle changes in the set of groups in
      * an application.
      */
-    Event handleGroupsChange(Notifyable *np,
+    Event handleGroupsChange(Notifyable *ntp,
                              int32_t etype,
                              const string &path);
 
@@ -538,28 +805,28 @@ class Factory
      * Handle changes in the set of distributions
      * in an application.
      */
-    Event handleDistributionsChange(Notifyable *np,
+    Event handleDataDistributionsChange(Notifyable *ntp,
                                     int32_t etype,
                                     const string &path);
 
     /*
      * Handle changes in the set of nodes in a group.
      */
-    Event handleNodesChange(Notifyable *np,
+    Event handleNodesChange(Notifyable *ntp,
                             int32_t etype,
                             const string &path);
 
     /*
      * Handle changes in a property list.
      */
-    Event handlePropertiesChange(Notifyable *np,
+    Event handlePropertiesChange(Notifyable *ntp,
                                  int32_t etype,
                                  const string &path);
 
     /*
      * Handle changes in shards of a distribution.
      */
-    Event handleShardsChange(Notifyable *np,
+    Event handleShardsChange(Notifyable *ntp,
                              int32_t etype,
                              const string &path);
 
@@ -567,7 +834,7 @@ class Factory
      * Handle changes in manual overrides in
      * a distribution.
      */
-    Event handleManualOverridesChange(Notifyable *np,
+    Event handleManualOverridesChange(Notifyable *ntp,
                                       int32_t etype,
                                       const string &path);
 
@@ -575,7 +842,7 @@ class Factory
      * Handle changes in client-reported state for
      * a node.
      */
-    Event handleClientStateChange(Notifyable *np,
+    Event handleClientStateChange(Notifyable *ntp,
                                   int32_t etype,
                                   const string &path);
 
@@ -583,7 +850,7 @@ class Factory
      * Handle changes in master-set desired state
      * for a node.
      */
-    Event handleMasterSetStateChange(Notifyable *np,
+    Event handleMasterSetStateChange(Notifyable *ntp,
                                      int32_t etype,
                                      const string &path);
 
@@ -591,7 +858,7 @@ class Factory
      * Handle changes in the leadership of a
      * group.
      */
-    Event handleLeadershipChange(Notifyable *np,
+    Event handleLeadershipChange(Notifyable *ntp,
                                  int32_t etype,
                                  const string &path);
 
@@ -599,14 +866,14 @@ class Factory
      * Handle existence change for preceding leader of
      * a group.
      */
-    Event handlePrecLeaderExistsChange(Notifyable *np,
+    Event handlePrecLeaderExistsChange(Notifyable *ntp,
                                        int32_t etype,
                                        const string &path);
 
     /*
      * Handle changes in synchronization of a zookeeper path.
      */
-    Event handleSynchronizeChange(Notifyable *np,
+    Event handleSynchronizeChange(Notifyable *ntp,
                                   int32_t etype,
                                   const string &path);
 
@@ -801,55 +1068,32 @@ class FactoryOps
         return mp_f->getApplication(name, create);
     }
 
-    Group *getGroup(const string &name,
-                    Application *app,
+    Group *getGroup(const string &groupName,
+                    Group *parentGroup,
                     bool create = false)
     {
-        return mp_f->getGroup(name, app, create);
-    }
-    Group *getGroup(const string &appName,
-                    const string &grpName,
-                    bool create = false)
-    {
-        return mp_f->getGroup(appName, grpName, create);
+        return mp_f->getGroup(groupName, parentGroup, create);
     }
 
-    Node *getNode(const string &name, 
-                  Group *grp,
+    Node *getNode(const string &nodeName, 
+                  Group *parentGroup,
                   bool managed = true,
                   bool create = false)
     {
-        return mp_f->getNode(name, grp, managed, create);
-    }
-    Node *getNode(const string &appName,
-                  const string &grpName,
-                  const string &nodeName,
-                  bool managed = true,
-                  bool create = false)
-    {
-        return mp_f->getNode(appName,
-                             grpName,
-                             nodeName,
-                             managed,
-                             create);
+        return mp_f->getNode(nodeName, parentGroup, managed, create);
     }
 
-    DataDistribution *getDistribution(const string &name,
-                                      Application *app,
+    DataDistribution *getDataDistribution(const string &name,
+                                      Group *group,
                                       bool create = false)
     {
-        return mp_f->getDistribution(name, app, create);
-    }
-    DataDistribution *getDistribution(const string &appName,
-                                      const string &distName,
-                                      bool create = false)
-    {
-        return mp_f->getDistribution(appName, distName, create);
+        return mp_f->getDataDistribution(name, group, create);
     }
     
-    Properties *getProperties(const string &key, bool create = false)
+    Properties *getProperties(Notifyable *parent, 
+                              bool create = false)
     {
-	return mp_f->getProperties(key, create);
+	return mp_f->getProperties(parent, create);
     }
 
     string loadShards(const string &key, int32_t &version)
@@ -864,13 +1108,13 @@ class FactoryOps
 	return mp_f->loadKeyValMap(key, version);
     }
 
-    void updateDistribution(const string &key,
+    void updateDataDistribution(const string &key,
                             const string &shards,
                             const string &manualOverrides,
 			    int32_t shardsVersion,
                             int32_t manualOverridesVersion)
     {
-        mp_f->updateDistribution(key,
+        mp_f->updateDataDistribution(key,
                                  shards,
                                  manualOverrides,
                                  shardsVersion,
@@ -903,15 +1147,24 @@ class FactoryOps
         mp_f->updateNodeMasterSetState(key, ms);
     }
 
+    Notifyable *getNotifyableFromKey(const string &key, bool create = false)
+    {
+        return mp_f->getNotifyableFromKey(key, create);
+    }
     Application *getApplicationFromKey(const string &key,
                                        bool create = false)
     {
         return mp_f->getApplicationFromKey(key, create);
     }
-    DataDistribution *getDistributionFromKey(const string &key,
+    DataDistribution *getDataDistributionFromKey(const string &key,
                                              bool create = false)
     {
-        return mp_f->getDistributionFromKey(key, create);
+        return mp_f->getDataDistributionFromKey(key, create);
+    }
+    Properties *getPropertiesFromKey(const string &key,
+                                     bool create = false)
+    {
+        return mp_f->getPropertiesFromKey(key, create);
     }
     Group *getGroupFromKey(const string &key,
                            bool create = false)
@@ -924,86 +1177,31 @@ class FactoryOps
         return mp_f->getNodeFromKey(key, create);
     }
     
-    string createNodeKey(const string &appName,
-                         const string &groupName,
+    string createNodeKey(const string &groupKey,
                          const string &nodeName,
                          bool managed)
     {
-        return mp_f->createNodeKey(appName,
-                                   groupName,
+        return mp_f->createNodeKey(groupKey,
                                    nodeName,
                                    managed);
     }
-    string createGroupKey(const string &appName,
+    string createGroupKey(const string &groupKey,
                           const string &groupName)
     {
-        return mp_f->createGroupKey(appName, groupName);
+        return mp_f->createGroupKey(groupKey, groupName);
     }
     string createAppKey(const string &appName)
     {
         return mp_f->createAppKey(appName);
     }
-    string createDistKey(const string &appName,
+    string createDistKey(const string &groupKey,
                          const string &distName)
     {
-        return mp_f->createDistKey(appName, distName);
+        return mp_f->createDistKey(groupKey, distName);
     }
-    string createPropertiesKey(const string &propertiesKey)
+    string createPropertiesKey(const string &notifyableKey)
     {
-	return mp_f->createPropertiesKey(propertiesKey);
-    }
-
-    bool isNodeKey(const string &key, bool *managedP = NULL)
-    {
-        return mp_f->isNodeKey(key, managedP);
-    }
-    bool hasNodeKeyPrefix(const string &key, bool *managedP = NULL)
-    {
-        return mp_f->hasNodeKeyPrefix(key, managedP);
-    }
-    bool isGroupKey(const string &key)
-    {
-        return mp_f->isGroupKey(key);
-    }
-    bool hasGroupKeyPrefix(const string &key)
-    {
-        return mp_f->hasGroupKeyPrefix(key);
-    }
-    bool isAppKey(const string &key)
-    {
-        return mp_f->isAppKey(key);
-    }
-    bool hasAppKeyPrefix(const string &key)
-    {
-        return mp_f->hasAppKeyPrefix(key);
-    }
-    bool isDistKey(const string &key)
-    {
-        return mp_f->isDistKey(key);
-    }
-    bool hasDistKeyPrefix(const string &key)
-    {
-        return mp_f->hasDistKeyPrefix(key);
-    }
-    bool hasPropertiesKeyPrefix(const string &key)
-    {
-        return mp_f->hasPropertiesKeyPrefix(key);
-    }
-    string appNameFromKey(const string &key)
-    {
-        return mp_f->appNameFromKey(key);
-    }
-    string distNameFromKey(const string &key)
-    {
-        return mp_f->distNameFromKey(key);
-    }
-    string groupNameFromKey(const string &key)
-    {
-        return mp_f->groupNameFromKey(key);
-    }
-    string nodeNameFromKey(const string &key)
-    {
-        return mp_f->nodeNameFromKey(key);
+	return mp_f->createPropertiesKey(notifyableKey);
     }
 
     string removeObjectFromKey(const string &key)
@@ -1014,9 +1212,9 @@ class FactoryOps
     /*
      * Establish the ready protocol.
      */
-    bool establishNotifyableReady(Notifyable *np)
+    bool establishNotifyableReady(Notifyable *ntp)
     {
-        return mp_f->establishNotifyableReady(np);
+        return mp_f->establishNotifyableReady(ntp);
     }
 
     /*
@@ -1026,13 +1224,13 @@ class FactoryOps
     {
         return mp_f->getApplicationNames();
     }
-    IdList getGroupNames(Application *app)
+    IdList getGroupNames(Group *grp)
     {
-        return mp_f->getGroupNames(app);
+        return mp_f->getGroupNames(grp);
     }
-    IdList getDistributionNames(Application *app)
+    IdList getDataDistributionNames(Group *grp)
     {
-        return mp_f->getDistributionNames(app);
+        return mp_f->getDataDistributionNames(grp);
     }
     IdList getNodeNames(Group *grp)
     {

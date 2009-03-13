@@ -65,12 +65,16 @@ class Properties
      * internal clusterlib events sytem from modifying this object
      * data while it is being accessed.  If the calling process is
      * only reading, this procedure will implicitly hold the lock to
-     * provide consistent results to the user.
+     * provide consistent results to the user.  If searchParent is
+     * true, there are not guarantees provided to the user about the
+     * consistency between properties fetched from various higher
+     * levels in the hierarchy.
      *
      * @param name the property name
+     * @param searchParent try the parent for the property as well?
      * @return the value of the given propery or an empty string
      */
-    string getProperty(const string &name);
+    string getProperty(const string &name, bool searchParent = false);
         
     /**
      * \brief Sets value of the given property.
@@ -78,13 +82,25 @@ class Properties
      * In most cases, the calling process should hold the lock prior
      * to calling this function to prevent another process or the
      * internal clusterlib events sytem from modifying this object
-     * data.
+     * data.  Until publish() is called, this change is only local.
      *
      * @param name the property name for which to set value
      * @param value the value to be set
      */
     void setProperty(const string &name, 
 		     const string &value);
+
+    /**
+     * \brief Deletes the property name.
+     * 
+     * In most cases, the calling process should hold the lock prior
+     * to calling this function to prevent another process or the
+     * internal clusterlib events sytem from modifying this object
+     * data.  Until publish() is called, this change is only local.
+     *
+     * @param name the property name to be deleted
+     */
+    void deleteProperty(const string &name);
 
     /**
      * \brief Push the key-value map to the storage.
@@ -109,6 +125,11 @@ class Properties
 	m_keyValMap.clear();
 	releaseLock();
     }
+
+    /**
+     * \brief Do not allow getProperties() on a Properties object (throw)
+     */
+    virtual Properties *getProperties(bool create = false);
     
   protected:
     /*
@@ -120,21 +141,22 @@ class Properties
     /*
      * Constructor used by the factory.
      */
-    Properties(const string &key,
+    Properties(Notifyable *parent, 
+               const string &key,
 	       FactoryOps *fp)
-        : Notifyable(fp, key, ""),
+        : Notifyable(fp, key, "", parent),
 	  m_keyValMapVersion(-2)
     {
-	updateCachedRepresentation();
     }
 
-    /*
+    /**
      * Update the cached representation of this node.
      * 
      * \brief The clusterlib event system uses this to update the
      * m_keyValMap when it changes.
      *
-     * Since the client cannot call this directly, it must w
+     * The appropriate handler calls this when it notices that
+     * Properties has changed.
      */
     virtual void updateCachedRepresentation();
 
@@ -160,6 +182,22 @@ class Properties
     void setKeyValVersion(int32_t version) { m_keyValMapVersion = version; }
 
     Mutex *getKeyValMapLock() { return &m_keyValMapMutex; }
+
+  private:
+    /*
+     * Make the default constructor private so it cannot be called.
+     */
+    Properties()
+        : Notifyable(NULL, "", "", NULL)
+    {
+        throw ClusterException("Someone called the Properties default "
+                               "constructor!");
+    }
+
+    /*
+     * Make the destructor private also.
+     */
+    virtual ~Properties() {}
 
   private:
     /**                                                                        

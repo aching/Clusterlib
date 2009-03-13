@@ -141,13 +141,19 @@ const int32_t ClusterlibInts::CLUSTERLIB_INDEX = 1;
 const int32_t ClusterlibInts::VERSION_NAME_INDEX = 2;
 const int32_t ClusterlibInts::APP_INDEX = 3;
 const int32_t ClusterlibInts::APP_NAME_INDEX = 4;
-const int32_t ClusterlibInts::GROUP_INDEX = 5;
-const int32_t ClusterlibInts::GROUP_NAME_INDEX = 6;
-const int32_t ClusterlibInts::DIST_INDEX = 5;
-const int32_t ClusterlibInts::DIST_NAME_INDEX = 6;
-const int32_t ClusterlibInts::NODE_TYPE_INDEX = 7;
-const int32_t ClusterlibInts::NODE_NAME_INDEX = 8;
 
+/*
+ * Number of components in an Application key
+ */
+const int32_t ClusterlibInts::APP_COMPONENTS_COUNT = 5;
+
+/*
+ * Minimum components necessary to represent each respective key
+ */
+const int32_t ClusterlibInts::DIST_COMPONENTS_MIN_COUNT = 7;
+const int32_t ClusterlibInts::PROP_COMPONENTS_MIN_COUNT = 6;
+const int32_t ClusterlibInts::GROUP_COMPONENTS_MIN_COUNT = 5;
+const int32_t ClusterlibInts::NODE_COMPONENTS_MIN_COUNT = 7;
 /*
  * Constructor of Factory.
  *
@@ -182,7 +188,7 @@ Factory::Factory(const string &registry)
           &Factory::handleGroupsChange),
       m_distributionsChangeHandler(
 	  this,
-          &Factory::handleDistributionsChange),
+          &Factory::handleDataDistributionsChange),
       m_shardsChangeHandler(
 	  this,
           &Factory::handleShardsChange),
@@ -358,9 +364,8 @@ Factory::createClient()
  * Create a server.
  */
 Server *
-Factory::createServer(const string &app,
-                      const string &group,
-                      const string &node,
+Factory::createServer(Group *group,
+                      const string &nodeName,
                       HealthChecker *checker,
                       ServerFlags flags)
 {
@@ -379,20 +384,18 @@ Factory::createServer(const string &app,
      */
     try {
         Server *sp = new Server(mp_ops,
-                                app,
                                 group,
-                                node,
+                                nodeName,
                                 checker,
                                 flags);
         addClient(sp);
         return sp;
     } catch (ClusterException &e) {
 	LOG_WARN(CL_LOG, 
-                 "Couldn't create server with app %s, "
+                 "Couldn't create server with "
                  "group %s, node %s because: %s", 
-                 app.c_str(), 
-                 group.c_str(), 
-                 node.c_str(), 
+                 group->getName().c_str(), 
+                 nodeName.c_str(), 
                  e.what());
         return NULL;
     }
@@ -967,149 +970,150 @@ Factory::consumeTimerEvents()
  * Factory's cache.
  */
 Application *
-Factory::getApplication(const string &name, bool create)
+Factory::getApplication(const string &appName, bool create)
 {
-    string key = createAppKey(name);
+    string key = createAppKey(appName);
     Application *app;
 
     /*
      * Do not allow empty names, and names containing '/'.
      */
-    if ((name == "") || (name.find('/') < name.length())) {
+    if ((appName == "") || (appName.find('/') != string::npos)) {
         return NULL;
     }
 
     {
         Locker l(getApplicationsLock());
 
-        app = m_applications[key];
-        if (app != NULL) {
-            return app;
+        ApplicationMap::const_iterator appIt = m_applications.find(key);
+        if (appIt != m_applications.end()) {
+            return appIt->second;
         }
     }
-    app = loadApplication(name, key);
+    app = loadApplication(appName, key);
     if (app != NULL) {
         return app;
     }
     if (create == true) {
-        return createApplication(name, key);
+        return createApplication(appName, key);
     }
     return NULL;
 }
+
 DataDistribution *
-Factory::getDistribution(const string &distName,
-                         Application *app,
-                         bool create)
+Factory::getDataDistribution(const string &distName,
+                             Group *parentGroup,
+                             bool create)
 {
     /*
      * Do not allow empty names, and names containing '/'.
      */
-    if ((distName == "") || (distName.find('/') < distName.length())) {
+    if ((distName == "") || (distName.find('/') != string::npos)) {
         return NULL;
     }
 
-    if (app == NULL) {
+    if (parentGroup == NULL) {
         return NULL;
     }
 
-    string key = createDistKey(app->getName(), distName);
+    string key = createDistKey(parentGroup->getKey(), distName);
     DataDistribution *distp;
 
     {
         Locker l(getDataDistributionsLock());
 
-        distp = m_dataDistributions[key];
-        if (distp != NULL) {
-            return distp;
+        DataDistributionMap::const_iterator distIt = 
+            m_dataDistributions.find(key);
+        if (distIt != m_dataDistributions.end()) {
+            return distIt->second;
         }
     }
-    distp = loadDistribution(distName, key, app);
+    distp = loadDataDistribution(distName, key, parentGroup);
     if (distp != NULL) {
         return distp;
     }
     if (create == true) {
-        return createDistribution(distName, key, "", "", app);
+        return createDataDistribution(distName, key, "", "", parentGroup);
     }
     return NULL;
 }
-DataDistribution *
-Factory::getDistribution(const string &distName,
-                         const string &appName,
-                         bool create)
-{
-    return getDistribution(distName,
-                           getApplication(appName, false),
-                           create);
-}
+
 Properties *
-Factory::getProperties(const string &key,
+Factory::getProperties(Notifyable *parent,
 		       bool create)
 {
-    if (key.empty()) {
+    TRACE(CL_LOG, "getProperties");
+
+    LOG_DEBUG(CL_LOG,
+              "getProperties: parent %s, create %d",
+              parent->getKey().c_str(),
+              create);
+
+    if (parent == NULL) {
         return NULL;
     }
 
+    string key = createPropertiesKey(parent->getKey());
+    Properties *prop = NULL;
+
     {
         Locker l(getPropertiesLock());
-        Properties *prop = m_properties[key];
-
-        if (prop != NULL) {
-            return prop;
+        PropertiesMap::const_iterator propIt = m_properties.find(key);
+        if (propIt != m_properties.end()) {
+            return propIt->second;
         }
     }
-    Properties *prop = loadProperties(key);
+    prop = loadProperties(key, parent);
     if (prop != NULL) {
         return prop;
     }
     if (create == true) {
-        return createProperties(key);
+        return createProperties(key, parent);
     }
     return NULL;
 }
+
 Group *
 Factory::getGroup(const string &groupName,
-                  Application *app,
+                  Group *parentGroup,
                   bool create)
 {
+    TRACE(CL_LOG, "getGroup");
+
     /*
      * Do not allow empty names, and names containing '/'.
      */
-    if ((groupName == "") || (groupName.find('/') < groupName.length())) {
+    if (groupName.empty() ||
+        (groupName.find('/') != string::npos)) {
+        LOG_WARN(CL_LOG,
+                 "getGroup: Problems with groupName %s",
+                 groupName.c_str());
         return NULL;
     }
+    
+    if (parentGroup == NULL) {
+        return NULL;
+    }
+    string groupKey = createGroupKey(parentGroup->getKey(), groupName);
 
-    if (app == NULL) {
-        return NULL;
-    }
-    string key = createGroupKey(app->getName(), groupName);
     Group *grp;
-
     {
         Locker l(getGroupsLock());
-        grp = m_groups[key];
-
-        if (grp != NULL) {
-            return grp;
+        GroupMap::const_iterator groupIt = m_groups.find(groupKey);
+        if (groupIt != m_groups.end()) {
+            return groupIt->second;
         }
     }
-    grp = loadGroup(groupName, key, app);
+    grp = loadGroup(groupName, groupKey, parentGroup);
     if (grp != NULL) {
         return grp;
     }
     if (create == true) {
-        return createGroup(groupName, key, app);
+        return createGroup(groupName, groupKey, parentGroup);
     }
     return NULL;
 }
-Group *
-Factory::getGroup(const string &appName,
-                  const string &groupName,
-                  bool create)
-{
-    return getGroup(groupName,
-                    getApplication(appName, create),
-                    create);
-}
+
 Node *
 Factory::getNode(const string &nodeName,
                  Group *grp,
@@ -1119,29 +1123,27 @@ Factory::getNode(const string &nodeName,
     /*
      * Do not allow empty names, and names containing '/'.
      */
-    if ((nodeName == "") || (nodeName.find('/') < nodeName.length())) {
+    if ((nodeName == "") || (nodeName.find('/') != string::npos)) {
         return NULL;
     }
 
     if (grp == NULL) {
         return NULL;
     }
-    Application *app = grp->getApplication();
+    Application *app = grp->getMyApplication();
     if (app == NULL) {
         return NULL;
     }
-    string key = createNodeKey(app->getName(),
-                               grp->getName(),
+    string key = createNodeKey(grp->getKey(),
                                nodeName,
                                managed);
     Node *np;
 
     {
         Locker l(getNodesLock());
-        np = m_nodes[key];
-
-        if (np != NULL) {
-            return np;
+        NodeMap::const_iterator nodeIt = m_nodes.find(key);
+        if (nodeIt != m_nodes.end()) {
+            return nodeIt->second;
         }
     }
     np = loadNode(nodeName, key, grp);
@@ -1153,30 +1155,18 @@ Factory::getNode(const string &nodeName,
     }
     return NULL;
 }
-Node *
-Factory::getNode(const string &appName,
-                 const string &groupName,
-                 const string &nodeName,
-                 bool managed,
-                 bool create)
-{
-    return getNode(nodeName,
-                   getGroup(appName, groupName, false),
-                   managed,
-                   create);
-}
 
 /*
  * Update the fields of a distribution in the clusterlib repository.
  */
 void
-Factory::updateDistribution(const string &key,
+Factory::updateDataDistribution(const string &key,
                             const string &shards,
                             const string &manualOverrides,
                             int32_t shardsVersion,
 			    int32_t manualOverridesVersion)
 {
-    TRACE(CL_LOG, "updateDistribution");
+    TRACE(CL_LOG, "updateDataDistribution");
     
     string snode = 
 	key +
@@ -1410,59 +1400,360 @@ Factory::updateNodeMasterSetState(const string &key,
 /*
  * Get (& potentially load) cache objects given a key.
  */
+
+Notifyable *
+Factory::getNotifyableFromKey(const string &key, bool create)
+{
+    TRACE(CL_LOG, "getNotifyableFromKey");
+
+    LOG_DEBUG(CL_LOG, "getNotifyableFromKey: key %s", key.c_str());
+
+    vector<string> components;
+    split(components, key, is_any_of(PATHSEPARATOR));
+    return getNotifyableFromComponents(components, -1, create);
+}
+
+Notifyable *
+Factory::getNotifyableFromComponents(const vector<string> &components,
+                                     int32_t elements, 
+                                     bool create)
+{
+    TRACE(CL_LOG, "getNotifyableFromComponents");
+
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+    Notifyable *ntp = NULL;    
+    int32_t clusterObjectElements = elements;
+
+    LOG_DEBUG(CL_LOG, "getNotifyableFromComponents: elements %d", elements);
+    while (clusterObjectElements >= ClusterlibInts::APP_COMPONENTS_COUNT) {
+        ntp = getApplicationFromComponents(components,
+                                           clusterObjectElements, 
+                                           create);
+        if (ntp) {
+            LOG_DEBUG(CL_LOG, 
+                      "getNotifyableFromComponents: found Application");
+            return ntp;
+        }
+        ntp = getPropertiesFromComponents(components,
+                                          clusterObjectElements, 
+                                          create);
+        if (ntp) {
+            LOG_DEBUG(CL_LOG, 
+                      "getNotifyableFromComponents: found Properties");
+            return ntp;
+        }
+        ntp = getDataDistributionFromComponents(components,
+                                                clusterObjectElements, 
+                                                create);
+        if (ntp) {
+            LOG_DEBUG(CL_LOG, 
+                      "getNotifyableFromComponents: found DataDistribution");
+            return ntp;
+        }
+        ntp = getGroupFromComponents(components,
+                                     clusterObjectElements, 
+                                     create);
+        if (ntp) {
+            LOG_DEBUG(CL_LOG, 
+                      "getNotifyableFromComponents: found Group");
+            return ntp;
+        }
+        ntp = getNodeFromComponents(components, 
+                                    clusterObjectElements, 
+                                    create);
+        if (ntp) {
+            LOG_DEBUG(CL_LOG, 
+                      "getNotifyableFromComponents: found Node");
+            return ntp;
+        }
+
+        clusterObjectElements = removeObjectFromComponents(
+            components, 
+            clusterObjectElements);
+    }
+
+    return NULL;
+}
+
+
 Application *
 Factory::getApplicationFromKey(const string &key, bool create)
 {
-    vector<string> components;
+    TRACE(CL_LOG, "getApplicationFromKey");
 
+    vector<string> components;
     split(components, key, is_any_of(PATHSEPARATOR));
-    if (hasAppKeyPrefix(components)) {
-        return getApplication(components[APP_NAME_INDEX], create);
-    }
-    return NULL;
+    return getApplicationFromComponents(components, -1, create);
 }
-DataDistribution *
-Factory::getDistributionFromKey(const string &key, bool create)
+
+Application *
+Factory::getApplicationFromComponents(const vector<string> &components, 
+                                      int32_t elements,
+                                      bool create)
 {
-    vector<string> components;
-
-    split(components, key, is_any_of(PATHSEPARATOR));
-    if (hasDistKeyPrefix(components)) {
-        return getDistribution(components[DIST_NAME_INDEX],
-                               getApplication(components[APP_NAME_INDEX], 
-                                              false),
-                               create);
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
     }
-    return NULL;
+
+    if (!isApplicationKey(components, elements)) {
+        LOG_DEBUG(CL_LOG, 
+                  "getApplicationFromComponents: Couldn't find key"
+                  " with %d elements",
+                  elements);
+        return NULL;
+    }
+
+    LOG_DEBUG(CL_LOG, 
+              "getApplicationFromComponents: application name = %s", 
+              components.at(elements - 1).c_str());
+
+    return getApplication(components.at(elements - 1), create);    
 }
+
+DataDistribution *
+Factory::getDataDistributionFromKey(const string &key, bool create)
+{
+    TRACE(CL_LOG, "getDataDistributionFromKey");
+
+    vector<string> components;
+    split(components, key, is_any_of(PATHSEPARATOR));
+    return getDataDistributionFromComponents(components, -1, create);
+}
+
+DataDistribution *
+Factory::getDataDistributionFromComponents(const vector<string> &components, 
+                                           int32_t elements,
+                                           bool create)
+{
+    TRACE(CL_LOG, "getDataDistributionFromComponents");
+
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+    if (!isDataDistributionKey(components, elements)) {
+        LOG_DEBUG(CL_LOG, 
+                  "getDataDistributionFromComponents: Couldn't find key"
+                  " with %d elements",
+                  elements);
+        return NULL;
+    }
+    
+    int32_t parentGroupCount = 
+        removeObjectFromComponents(components, elements);
+    if (parentGroupCount == -1) {
+        return NULL;
+    }
+    Group *parent = getGroupFromComponents(components,
+                                           parentGroupCount,
+                                           create);
+    if (parent == NULL) {
+        LOG_WARN(CL_LOG, "getDataDistributionFromComponents: Tried to get "
+                 "parent with name %s",
+                 components.at(parentGroupCount - 1).c_str());
+        return NULL;
+    }
+
+    LOG_DEBUG(CL_LOG, 
+              "getDataDistributionFromComponents: parent key = %s, "
+              "distribution name = %s", 
+              parent->getKey().c_str(),
+              components.at(elements - 1).c_str());
+
+    return getDataDistribution(components.at(elements - 1),
+                               parent,
+                               create);
+}
+
+Properties *
+Factory::getPropertiesFromKey(const string &key, bool create)
+{
+    TRACE(CL_LOG, "getPropertiesFromKey");
+
+    vector<string> components;
+    split(components, key, is_any_of(PATHSEPARATOR));
+    return getPropertiesFromComponents(components, -1, create);
+}
+
+Properties *
+Factory::getPropertiesFromComponents(const vector<string> &components, 
+                                     int32_t elements,
+                                     bool create)
+{
+    TRACE(CL_LOG, "getPropertiesFromComponents");
+
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+   if (!isPropertiesKey(components, elements)) {
+        LOG_DEBUG(CL_LOG, 
+                  "getPropertiesFromComponents: Couldn't find key"
+                  " with %d elements",
+                  elements);
+        return NULL;
+    }
+    
+    int32_t parentGroupCount = 
+        removeObjectFromComponents(components, elements);
+    if (parentGroupCount == -1) {
+        return NULL;
+    }
+    Notifyable *parent = getNotifyableFromComponents(components,
+                                                     parentGroupCount,
+                                                     create);
+    if (parent == NULL) {
+        LOG_WARN(CL_LOG, "getPropertiesFromComponents: Tried to get "
+                 "parent with name %s",
+                 components.at(parentGroupCount - 1).c_str());
+        return NULL;
+    }
+
+    LOG_DEBUG(CL_LOG, 
+              "getPropertiesFromComponents: parent key = %s, "
+              "properties name = %s", 
+              parent->getKey().c_str(),
+              components.at(elements - 1).c_str());
+    
+    return getProperties(parent,
+                         create);
+}
+
 Group *
 Factory::getGroupFromKey(const string &key, bool create)
 {
-    vector<string> components;
+    TRACE(CL_LOG, "getGroupFromKey");
 
+    vector<string> components;
     split(components, key, is_any_of(PATHSEPARATOR));
-    if (hasGroupKeyPrefix(components)) {
-        return getGroup(components[GROUP_NAME_INDEX],
-                        getApplication(components[APP_NAME_INDEX], false),
-                        create);
-    }
-    return NULL;
+    return getGroupFromComponents(components, -1, create);
 }
+
+Group *
+Factory::getGroupFromComponents(const vector<string> &components, 
+                               int32_t elements,
+                               bool create)
+{
+    TRACE(CL_LOG, "getGroupFromComponents");
+
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+    /* 
+     * Could be either an Application or a Group, need to check both.
+     * If is a Group and not an Application, then it must have a
+     * parent that is either an Application or Group.  If the parent
+     * is a Group, this function will call itself recursively.
+     */
+    if (isApplicationKey(components, elements)) {
+        return getApplicationFromComponents(components, elements, create);
+    }
+    
+    if (!isGroupKey(components, elements)) {
+        LOG_DEBUG(CL_LOG, 
+                  "getGroupFromComponents: Couldn't find key"
+                  " with %d elements",
+                  elements);
+        return NULL;
+    }
+
+    int32_t parentGroupCount = 
+        removeObjectFromComponents(components, elements);
+    if (parentGroupCount == -1) {
+        return NULL;
+    }
+    Group *parent = getGroupFromComponents(components,
+                                           parentGroupCount,
+                                           create);
+    if (parent == NULL) {
+        LOG_WARN(CL_LOG, "getGroupFromComponents: Tried to get "
+                 "parent with name %s",
+                 components.at(parentGroupCount - 1).c_str());
+        return NULL;
+    }
+    
+    LOG_DEBUG(CL_LOG, 
+              "getGroupFromComponents: parent key = %s, group name = %s", 
+              parent->getKey().c_str(),
+              components.at(elements - 1).c_str());
+
+    return getGroup(components.at(elements - 1),
+                   parent,
+                   create);
+}
+
 Node *
 Factory::getNodeFromKey(const string &key, bool create)
 {
-    vector<string> components;
+    TRACE(CL_LOG, "getNodeFromKey");
 
+    vector<string> components;
     split(components, key, is_any_of(PATHSEPARATOR));
-    if (hasNodeKeyPrefix(components)) {
-        return getNode(components[NODE_NAME_INDEX],
-                       getGroup(components[APP_NAME_INDEX],
-                                components[GROUP_NAME_INDEX],
-                                false),
-                       (components[NODE_TYPE_INDEX] == "nodes") ? true : false,
-                       create);
+    return getNodeFromComponents(components, -1, create);
+}
+
+Node *
+Factory::getNodeFromComponents(const vector<string> &components, 
+                               int32_t elements,
+                               bool create)
+{
+    TRACE(CL_LOG, "getNodeFromComponents");
+
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
     }
-    return NULL;
+
+    if (!isNodeKey(components, elements)) {
+        LOG_DEBUG(CL_LOG, 
+                  "getNodeFromComponents: Couldn't find key"
+                  " with %d elements",
+                  elements);
+        return NULL;
+    }
+    
+    int32_t parentGroupCount = 
+        removeObjectFromComponents(components, elements);
+    if (parentGroupCount == -1) {
+        return NULL;
+    }
+    Group *parent = getGroupFromComponents(components,
+                                           parentGroupCount,
+                                           create);
+    if (parent == NULL) {
+        LOG_WARN(CL_LOG, "getNodeFromComponents: Tried to get "
+                 "parent with name %s",
+                 components.at(parentGroupCount - 1).c_str());
+        return NULL;
+    }
+
+    LOG_DEBUG(CL_LOG, 
+              "getNodeFromComponents: parent key = %s, node name = %s", 
+              parent->getKey().c_str(),
+              components.at(elements - 1).c_str());
+    
+    return getNode(components.at(elements - 1),
+                   parent,
+                   ((components.at(elements - 2)) == ClusterlibStrings::NODES),
+                   create);
 }
 
 
@@ -1470,13 +1761,12 @@ Factory::getNodeFromKey(const string &key, bool create)
  * Key creation and recognition.
  */
 string
-Factory::createNodeKey(const string &appName,
-                       const string &groupName,
+Factory::createNodeKey(const string &groupKey,
                        const string &nodeName,
                        bool managed)
 {
     string res =
-        createGroupKey(appName, groupName) +
+        groupKey +
         PATHSEPARATOR +
         (managed ? NODES : UNMANAGEDNODES) +
         PATHSEPARATOR +
@@ -1487,11 +1777,11 @@ Factory::createNodeKey(const string &appName,
 }
 
 string
-Factory::createGroupKey(const string &appName,
+Factory::createGroupKey(const string &groupKey,
                         const string &groupName)
 {
     string res = 
-        createAppKey(appName) +
+        groupKey +
         PATHSEPARATOR +
         GROUPS +
         PATHSEPARATOR +
@@ -1519,11 +1809,11 @@ Factory::createAppKey(const string &appName)
 }
 
 string
-Factory::createDistKey(const string &appName,
+Factory::createDistKey(const string &groupKey,
                        const string &distName)
 {
     string res =
-        createAppKey(appName) +
+        groupKey +
         PATHSEPARATOR +
         DISTRIBUTIONS +
         PATHSEPARATOR +
@@ -1546,316 +1836,439 @@ Factory::createPropertiesKey(const string &notifyableKey)
 }
 
 bool
-Factory::isNodeKey(const string &key, bool *managedP)
+Factory::isApplicationKey(const vector<string> &components, int32_t elements)
 {
-    return true;
-}
-bool
-Factory::hasNodeKeyPrefix(const string &key, bool *managedP)
-{
-    vector<string> components;
+    TRACE(CL_LOG, "isApplicationKey");
 
-    split(components, key, is_any_of(PATHSEPARATOR));
-    return hasNodeKeyPrefix(components, managedP);
-}
-bool
-Factory::hasNodeKeyPrefix(vector<string> &components, bool *managedP)
-{
-    if ((components.size() < 8) ||
-        (hasGroupKeyPrefix(components) == false) ||
-        ((components[NODE_TYPE_INDEX] != NODES) &&
-         (components[NODE_TYPE_INDEX] != UNMANAGEDNODES))) {
+    if (elements > static_cast<int32_t>(components.size())) {
+        LOG_FATAL(CL_LOG,
+                  "isApplicationKey: elements %d > size of components %u",
+                  elements,
+                  components.size());
+        throw ClusterException("isApplicationKey: elements > size of "
+                               "components");
+    }
+
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+    if (elements != ClusterlibInts::APP_COMPONENTS_COUNT) {
         return false;
     }
-    if (managedP != NULL) {
-        *managedP = ((components[NODE_TYPE_INDEX] == NODES) ? true : false);
-    }
-    return true;
-}
-string
-Factory::getNodeKeyPrefix(const string &key, bool *managedP)
-{
-    vector<string> components;
 
-    split(components, key, is_any_of(PATHSEPARATOR));
-    if (hasNodeKeyPrefix(components, managedP) == false) {
-        return string("");
-    }
-    return getNodeKeyPrefix(components);
-}
-string
-Factory::getNodeKeyPrefix(vector<string> &components)
-{
-    return
-        getGroupKeyPrefix(components) +
-        PATHSEPARATOR +
-        NODES +
-        PATHSEPARATOR +
-        components[NODE_NAME_INDEX];
+    if ((components.at(CLUSTERLIB_INDEX) != ClusterlibStrings::CLUSTERLIB) ||
+        (components.at(APP_INDEX) != ClusterlibStrings::APPLICATIONS)) {
+        return false;
+    } 
+
+    return true;    
 }
 
 bool
-Factory::hasPropertiesKeyPrefix(const string &key)
+Factory::isApplicationKey(const string &key)
 {
-    vector<string> components;
+    TRACE(CL_LOG, "isApplicationKey");
 
+    vector<string> components;
     split(components, key, is_any_of(PATHSEPARATOR));
-    return hasPropertiesKeyPrefix(components);
+    return isApplicationKey(components);
 }
+
 bool
-Factory::hasPropertiesKeyPrefix(vector<string> &components)
+Factory::isDataDistributionKey(const vector<string> &components, 
+                               int32_t elements)
 {
-    if ((components.size() < 5) ||
-        (hasAppKeyPrefix(components) == false) ||
-        (components.back().compare(PROPERTIES))) {
+    TRACE(CL_LOG, "isDataDistributionKey");
+    
+    if (elements > static_cast<int32_t>(components.size())) {
+        LOG_FATAL(CL_LOG,
+                  "isDataDistributionKey: elements %d > size of components %u",
+                  elements,
+                  components.size());
+        throw ClusterException("isDataDistributionKey: elements > size of "
+                               "components");
+    }
+
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+    /*
+     * Make sure that we have enough elements to have a distribution
+     * and that after the Application key there are an even number of
+     * elements left.
+     */
+    if ((elements < ClusterlibInts::DIST_COMPONENTS_MIN_COUNT) ||
+        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
         return false;
     }
-    return true;
+
+    /*
+     * Check that the elements of the parent group are valid.
+     */
+    if (!isGroupKey(components, elements - 2)) {
+        return false;
+    }
+
+    /*
+     * Check that the second to the last element is DISTRIBUTIONS and
+     * that the distribution name is not empty.
+     */
+    if ((components.at(elements - 2) != ClusterlibStrings::DISTRIBUTIONS) ||
+        (components.at(elements - 1).empty() == true)) {
+        return false;
+    } 
+
+    return true;    
 }
+
+bool
+Factory::isDataDistributionKey(const string &key)
+{
+    TRACE(CL_LOG, "isDataDistributionKey");
+
+    vector<string> components;
+    split(components, key, is_any_of(PATHSEPARATOR));
+    return isDataDistributionKey(components);    
+}
+
+bool
+Factory::isGroupKey(const vector<string> &components, 
+                    int32_t elements)
+{
+    TRACE(CL_LOG, "isGroupKey");
+
+    if (elements > static_cast<int32_t>(components.size())) {
+        LOG_FATAL(CL_LOG,
+                  "isGroupKey: elements %d > size of components %u",
+                  elements,
+                  components.size());
+        throw ClusterException("isGroupKey: elements > size of "
+                               "components");
+    }
+
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+    /*
+     * Make sure that we have enough elements to have a group/app
+     * and that after the Application key there are an even number of
+     * elements left.
+     */
+    if ((elements < ClusterlibInts::GROUP_COMPONENTS_MIN_COUNT) ||
+        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
+        return false;
+    }
+
+    /*
+     * Check that the elements of the parent groups (recursively) and
+     * application are valid.
+     */
+    if (elements == ClusterlibInts::APP_COMPONENTS_COUNT) {
+        if (!isApplicationKey(components, elements)) {
+            return false;
+        }
+    }
+    else if (elements >= ClusterlibInts::APP_COMPONENTS_COUNT + 2) {
+        if (!isGroupKey(components, elements - 2)) {
+            return false;
+        }
+    }
+    else { 
+        /*
+         * Shouldn't happen.
+         */
+        return false;
+    }
+
+    /*
+     * Check that the second to the last element is APPLICATIONS or GROUPS and
+     * that the group name is not empty.
+     */
+    if (((components.at(elements - 2) != ClusterlibStrings::APPLICATIONS) &&
+         (components.at(elements - 2) != ClusterlibStrings::GROUPS)) ||
+        (components.at(elements - 1).empty() == true)) {
+        return false;
+    } 
+
+    return true;    
+}
+
 bool
 Factory::isGroupKey(const string &key)
 {
-    vector<string> components;
+    TRACE(CL_LOG, "isGroupKey");
 
-    split(components, key, is_any_of(PATHSEPARATOR));
-    if ((components.size() != 7) ||
-        (hasGroupKeyPrefix(components) == false)) {
-        return false;
-    }
-    return true;
-}
-bool
-Factory::hasGroupKeyPrefix(const string &key)
-{
     vector<string> components;
-
     split(components, key, is_any_of(PATHSEPARATOR));
-    return hasGroupKeyPrefix(components);
-}
-bool
-Factory::hasGroupKeyPrefix(vector<string> &components)
-{
-    if ((components.size() < 7) ||
-        (hasAppKeyPrefix(components) == false) ||
-        (components[GROUP_NAME_INDEX] != GROUPS)) {
-        return false;
-    }
-    return true;
-}
-string
-Factory::getGroupKeyPrefix(const string &key)
-{
-    vector<string> components;
-
-    split(components, key, is_any_of(PATHSEPARATOR));
-    if (hasGroupKeyPrefix(components) == false) {
-        return string("");
-    }
-    return getGroupKeyPrefix(components);
-}
-string
-Factory::getGroupKeyPrefix(vector<string> &components)
-{
-    return
-        getAppKeyPrefix(components) +
-        PATHSEPARATOR +
-        GROUPS +
-        PATHSEPARATOR +
-        components[GROUP_NAME_INDEX];
+    return isGroupKey(components);    
 }
 
 bool
-Factory::isAppKey(const string &key)
+Factory::isPropertiesKey(const vector<string> &components, 
+                         int32_t elements)
 {
-    vector<string> components;
+    TRACE(CL_LOG, "isPropertiesKey");
 
-    split(components, key, is_any_of(PATHSEPARATOR));
-    if ((components.size() != 5) ||
-        (hasAppKeyPrefix(components) == false)) {
+    if (elements > static_cast<int32_t>(components.size())) {
+        LOG_FATAL(CL_LOG,
+                  "isPropertiesKey: elements %d > size of components %u",
+                  elements,
+                  components.size());
+        throw ClusterException("isPropertiesKey: elements > size of "
+                               "components");
+    }
+    
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+    /*
+     * Make sure that we have enough elements to have a properties
+     * and that after the Application key there are an odd number of
+     * elements left.
+     */
+    if ((elements < ClusterlibInts::PROP_COMPONENTS_MIN_COUNT) ||
+        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 1))  {
         return false;
     }
 
-    return true;
-}
-bool
-Factory::hasAppKeyPrefix(const string &key)
-{
-    vector<string> components;
-
-    split(components, key, is_any_of(PATHSEPARATOR));
-    return hasAppKeyPrefix(components);
-}
-bool
-Factory::hasAppKeyPrefix(vector<string> &components)
-{
-    if ((components.size() < 4) ||
-        (components[CLUSTERLIB_INDEX] != CLUSTERLIB) ||
-        (components[VERSION_NAME_INDEX] != CLUSTERLIBVERSION) ||
-        (components[APP_INDEX] != APPLICATIONS)) {
+    /*
+     * Check that the each of the parent of the properties is a
+     * Notifyable and that their parents are a group or application.
+     */ 
+    if (((components.at(elements - 3) != ClusterlibStrings::APPLICATIONS) &&
+         (components.at(elements - 3) != ClusterlibStrings::GROUPS) &&
+         (components.at(elements - 3) != ClusterlibStrings::DISTRIBUTIONS) &&
+         (components.at(elements - 3) != ClusterlibStrings::UNMANAGEDNODES) &&
+         (components.at(elements - 3) != ClusterlibStrings::NODES)) ||
+        (components.at(elements - 1) != ClusterlibStrings::PROPERTIES)) {
         return false;
     }
-    return true;
-}
-string
-Factory::getAppKeyPrefix(const string &key)
-{
-    vector<string> components;
 
-    split(components, key, is_any_of(PATHSEPARATOR));
-    if (hasAppKeyPrefix(components) == false) {
-        return string("");
+    if (elements >= ClusterlibInts::APP_COMPONENTS_COUNT) {
+        if ((!isGroupKey(components, elements - 1)) &&
+            (!isDataDistributionKey(components, elements - 1)) &&
+            (!isNodeKey(components, elements - 1))) {
+            return false; 
+        }
     }
-    return getAppKeyPrefix(components);
-}
-string
-Factory::getAppKeyPrefix(vector<string> &components)
-{
-    return
-        ROOTNODE +
-        CLUSTERLIB +
-        PATHSEPARATOR +
-        CLUSTERLIBVERSION +
-        PATHSEPARATOR +
-        APPLICATIONS +
-        PATHSEPARATOR +
-        components[APP_NAME_INDEX];
-}
-
-bool
-Factory::isDistKey(const string &key)
-{
-    vector<string> components;
-
-    split(components, key, is_any_of(PATHSEPARATOR));
-    if ((components.size() != 7) ||
-        (hasDistKeyPrefix(components) == false)) {
+    else {
+        /*
+         * Shouldn't happen.
+         */
         return false;
     }
-    return true;
+            
+    return true;    
 }
-bool
-Factory::hasDistKeyPrefix(const string &key)
-{
-    vector<string> components;
 
-    split(components, key, is_any_of(PATHSEPARATOR));
-    return hasDistKeyPrefix(components);
-}
 bool
-Factory::hasDistKeyPrefix(vector<string> &components)
+Factory::isPropertiesKey(const string &key)
 {
-    if ((components.size() < 6) ||
-        (hasAppKeyPrefix(components) == false) ||
-        (components[DIST_INDEX] != DISTRIBUTIONS)) {
+    TRACE(CL_LOG, "isPropertiesKey");
+    
+    vector<string> components;
+    split(components, key, is_any_of(PATHSEPARATOR));
+    return isPropertiesKey(components);    
+}
+
+bool
+Factory::isNodeKey(const vector<string> &components, 
+                   int32_t elements)
+{
+    TRACE(CL_LOG, "isNodeKey");
+
+    if (elements > static_cast<int32_t>(components.size())) {
+        LOG_FATAL(CL_LOG,
+                  "isNodeKey: elements %d > size of components %u",
+                  elements,
+                  components.size());
+        throw ClusterException("isNodeKey: elements > size of "
+                               "components");
+    }
+
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+    /*
+     * Make sure that we have enough elements to have a node
+     * and that after the Application key there are an even number of
+     * elements left.
+     */
+    if ((elements < ClusterlibInts::NODE_COMPONENTS_MIN_COUNT) ||
+        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
         return false;
     }
-    return true;
-}
-string
-Factory::getDistKeyPrefix(const string &key)
-{
-    vector<string> components;
 
-    split(components, key, is_any_of(PATHSEPARATOR));
-    if (hasDistKeyPrefix(components) == false) {
-        return string("");
+    /*
+     * Check that the elements of the parent group are valid.
+     */
+    if (!isGroupKey(components, elements - 2)) {
+        return false;
     }
-    return getDistKeyPrefix(components);
-}
-string
-Factory::getDistKeyPrefix(vector<string> &components)
-{
-    return
-        getAppKeyPrefix(components) +
-        PATHSEPARATOR +
-        DISTRIBUTIONS +
-        PATHSEPARATOR +
-        components[DIST_NAME_INDEX];
+
+    /*
+     * Check that the second to the last element is DISTRIBUTIONS and
+     * that the distribution name is not empty.
+     */
+    if (((components.at(elements - 2) != ClusterlibStrings::NODES) &&
+         (components.at(elements - 2) != ClusterlibStrings::UNMANAGEDNODES)) ||
+        (components.at(elements - 1).empty() == true)) {
+        return false;
+    } 
+
+    return true;    
 }
 
-string
-Factory::appNameFromKey(const string &key)
+bool
+Factory::isNodeKey(const string &key)
 {
+    TRACE(CL_LOG, "isNodeKey");
+
     vector<string> components;
-
     split(components, key, is_any_of(PATHSEPARATOR));
-    if ((components.size() < 4) ||
-        (hasAppKeyPrefix(components) == false)) {
-        return "";
-    }
-    return components[APP_NAME_INDEX];
-}
-string
-Factory::distNameFromKey(const string &key)
-{
-    vector<string> components;
-
-    split(components, key, is_any_of(PATHSEPARATOR));
-    if ((components.size() != 7) ||
-        (hasDistKeyPrefix(components) == false)) {
-        return "";
-    }
-    return components[DIST_NAME_INDEX];
-}
-string
-Factory::groupNameFromKey(const string &key)
-{
-    vector<string> components;
-
-    split(components, key, is_any_of(PATHSEPARATOR));
-    if ((components.size() != 7) ||
-        (hasGroupKeyPrefix(components) == false)) {
-        return "";
-    }
-    return components[GROUP_NAME_INDEX];
-}
-string
-Factory::nodeNameFromKey(const string &key)
-{
-    vector<string> components;
-
-    split(components, key, is_any_of(PATHSEPARATOR));
-    if ((components.size() != 9) ||
-        (hasDistKeyPrefix(components) == false)) {
-        return "";
-    }
-    return components[NODE_NAME_INDEX];
+    return isNodeKey(components);    
 }
 
-/*
- * Remove the name from the key such that it is removed at most once
- * and deepest in the namespace.  Does not remove the CLUSTERLIB,
- * CLUSTERLIBVERSION, APPLICATIONS, PROPERTIES, or the application name.
- */
+
+
 string 
 Factory::removeObjectFromKey(const string &key)
 {
-    string res;
-    vector<string> components;
+    TRACE(CL_LOG, "removeObjectFromKey");
 
-    split(components, key, is_any_of(PATHSEPARATOR));
-    /* Remove the object name and its base name that is not PROPERTIES */
-    if (static_cast<int32_t>(components.size()) > 4) {
-	components.erase(components.begin() + 
-			 static_cast<int32_t>(components.size()) - 2);
-	components.erase(components.begin() + 
-			 static_cast<int32_t>(components.size()) - 2);
-    }
-	 
-    for (vector<string>::const_iterator it = components.begin();
-	 it != components.end(); it++) {
-	res.append(*it);
-	if (it + 1 != components.end()) {
-	    res.append(PATHSEPARATOR);
-	}
+    if (key.empty() ||
+        (key.substr(key.size() - 1) == ClusterlibStrings::PATHSEPARATOR)) {
+        return string();
     }
 
-    LOG_WARN(CL_LOG, 
-              "Changed key %s to %s",
+    string res = key;
+    bool objectFound = false;
+    uint32_t beginPathSeparator = numeric_limits<uint32_t>::max();
+    uint32_t endPathSeparator = numeric_limits<uint32_t>::max();
+    while (objectFound == false) {
+        /*
+         * Get rid of the leaf node 
+         */
+        endPathSeparator = res.rfind(ClusterlibStrings::PATHSEPARATOR);
+        if ((endPathSeparator == string::npos) ||
+            (endPathSeparator == 0)) {
+            return string();
+        }
+        res.erase(endPathSeparator);
+
+        /*
+         * If this key represents a valid Notifyable, then it should
+         * be /APPLICATIONS|GROUPS|NODES|DISTRIBUTIONS/name.
+         */
+        endPathSeparator = res.rfind(ClusterlibStrings::PATHSEPARATOR);
+        if ((endPathSeparator == string::npos) ||
+            (endPathSeparator == 0)) {
+            return string();
+        }
+        beginPathSeparator = res.rfind(ClusterlibStrings::PATHSEPARATOR, 
+                                       endPathSeparator - 1);
+        if ((beginPathSeparator == string::npos) ||
+            (beginPathSeparator == 0)) {
+            return string();
+        }
+        
+        /* 
+         * Try to find a clusterlib object in this portion of the key 
+         */
+        string clusterlibObject = 
+            res.substr(beginPathSeparator + 1, 
+                       endPathSeparator - beginPathSeparator - 1);
+        if ((clusterlibObject.compare(APPLICATIONS) == 0) ||
+            (clusterlibObject.compare(GROUPS) == 0) ||
+            (clusterlibObject.compare(NODES) == 0) ||
+            (clusterlibObject.compare(DISTRIBUTIONS) == 0)) {
+            objectFound = true;
+        }
+    }
+
+    LOG_DEBUG(CL_LOG, 
+              "removeObjectFromKey: Changed key %s to %s",
               key.c_str(), 
-             res.c_str());
+              res.c_str());
 
     return res;
+}
+
+int32_t 
+Factory::removeObjectFromComponents(const vector<string> &components,
+                                    int32_t elements)
+{
+    TRACE(CL_LOG, "removeObjectFromComponents");
+
+    if (components.empty() ||
+        (components.back() == ClusterlibStrings::PATHSEPARATOR)) {
+        return -1;
+    }
+
+    int32_t clusterlibObjectIndex = -1;
+    bool objectFound = false;
+    while (objectFound == false) {
+        /*
+         * Get rid of the leaf node 
+         */
+        elements--;
+        if (elements < 2) {
+            return -1;
+        }
+
+        /*
+         * If this key represents a valid Notifyable, then it should
+         * be /APPLICATIONS|GROUPS|NODES|DISTRIBUTIONS/name.
+         */
+        clusterlibObjectIndex = elements - 2;
+        
+        /* 
+         * Try to find a clusterlib object in this component
+         */
+        if ((components.at(clusterlibObjectIndex).compare(
+                 ClusterlibStrings::APPLICATIONS) == 0) ||
+            (components.at(clusterlibObjectIndex).compare(
+                 ClusterlibStrings::GROUPS) == 0) ||
+            (components.at(clusterlibObjectIndex).compare(
+                 ClusterlibStrings::NODES) == 0) ||
+            (components.at(clusterlibObjectIndex).compare(
+                 ClusterlibStrings::DISTRIBUTIONS) == 0)) {
+            objectFound = true;
+        }
+    }
+
+    LOG_DEBUG(CL_LOG, 
+              "removeObjectFromComponents: Changed key from %s/%s to %s/%s",
+              components.at(elements - 2).c_str(),
+              components.at(elements - 1).c_str(),
+              components.at(clusterlibObjectIndex).c_str(),
+              components.at(clusterlibObjectIndex + 1).c_str());
+
+    /*
+     * +2 since 1 for including the name of the clusterlib object and
+     * 1 since this is the elements count and not the index.
+     */
+    return clusterlibObjectIndex + 2;
 }
 
 /*
@@ -1873,11 +2286,11 @@ Factory::loadApplication(const string &name,
     bool exists = false;
     Locker l(getApplicationsLock());
 
-    app = m_applications[key];
-    if (app != NULL) {
-        return app;
+    ApplicationMap::const_iterator appIt = m_applications.find(key);
+    if (appIt != m_applications.end()) {
+        return appIt->second;
     }
-
+    
     SAFE_CALL_ZK((exists = m_zk.nodeExists(key, 
                                            &m_zkEventAdapter,
                                            &m_notifyableExistsHandler)),
@@ -1917,9 +2330,9 @@ Factory::loadApplication(const string &name,
 }
     
 DataDistribution *
-Factory::loadDistribution(const string &name,
-                          const string &key,
-                          Application *app)
+Factory::loadDataDistribution(const string &distName,
+                          const string &distKey,
+                          Group *parentGroup)
 {
     TRACE(CL_LOG, "loadDataDistribution");
 
@@ -1932,21 +2345,22 @@ Factory::loadDistribution(const string &name,
      */
     Locker l(getDataDistributionsLock());
 
-    distp = m_dataDistributions[key];
-    if (distp != NULL) {
-        return distp;
+    DataDistributionMap::const_iterator distIt = 
+        m_dataDistributions.find(distKey);
+    if (distIt != m_dataDistributions.end()) {
+        return distIt->second;
     }
 
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(key)),
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(distKey)),
                  "Could not determine whether node %s exists: %s",
-                 key.c_str(),
+                 distKey.c_str(),
                  false,
                  true);
     if (!exists) {
         return NULL;
     }
-    distp = new DataDistribution(app, name, key, mp_ops);
-    m_dataDistributions[key] = distp;
+    distp = new DataDistribution(parentGroup, distName, distKey, mp_ops);
+    m_dataDistributions[distKey] = distp;
 
     /*
      * Set up event notifications and load the data
@@ -2009,7 +2423,7 @@ Factory::loadManualOverrides(const string &key, int32_t &version)
 }
 
 Properties *
-Factory::loadProperties(const string &key)
+Factory::loadProperties(const string &key, Notifyable *parent)
 {
     TRACE(CL_LOG, "Properties");
 
@@ -2017,9 +2431,9 @@ Factory::loadProperties(const string &key)
     bool exists = false;
     Locker l(getPropertiesLock());
 
-    prop = m_properties[key];
-    if (prop != NULL) {
-        return prop;
+    PropertiesMap::const_iterator propIt = m_properties.find(key);
+    if (propIt != m_properties.end()) {
+        return propIt->second;
     }
 
     SAFE_CALL_ZK((exists = m_zk.nodeExists(key)),
@@ -2037,8 +2451,9 @@ Factory::loadProperties(const string &key)
                  key.c_str(),
                  false,
                  true);
-    prop = new Properties(key, mp_ops);
+    prop = new Properties(parent, key, mp_ops);
     m_properties[key] = prop;
+    prop->updateCachedRepresentation();
 
     return prop;
 }
@@ -2049,7 +2464,6 @@ Factory::loadKeyValMap(const string &key, int32_t &version)
     Stat stat;
     string kvnode = "";
 
-    version = 0;
     SAFE_CALL_ZK((kvnode = m_zk.getNodeData(key,
                                             &m_zkEventAdapter,
                                             &m_propertiesChangeHandler,
@@ -2058,17 +2472,16 @@ Factory::loadKeyValMap(const string &key, int32_t &version)
                  key.c_str(),
                  false,
                  true);
-    if (kvnode != "") {
-        version = stat.version;
-    }
+
+    version = stat.version;
 
     return kvnode;
 }
 
 Group *
-Factory::loadGroup(const string &name,
-                   const string &key,
-                   Application *app)
+Factory::loadGroup(const string &groupName,
+                   const string &groupKey,
+                   Group *parentGroup)
 {
     TRACE(CL_LOG, "loadGroup");
 
@@ -2076,21 +2489,21 @@ Factory::loadGroup(const string &name,
     bool exists = false;
     Locker l(getGroupsLock());
 
-    grp = m_groups[key];
-    if (grp != NULL) {
-        return grp;
+    GroupMap::const_iterator groupIt = m_groups.find(groupKey);
+    if (groupIt != m_groups.end()) {
+        return groupIt->second;
     }
 
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(key)),
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(groupKey)),
                  "Could not determine whether node %s exists: %s",
-                 key.c_str(),
+                 groupKey.c_str(),
                  true,
                  true);
     if (!exists) {
         return NULL;
     }
-    grp = new Group(app, name, key, mp_ops);
-    m_groups[key] = grp;
+    grp = new Group(groupName, groupKey, mp_ops, parentGroup);
+    m_groups[groupKey] = grp;
 
     /*
      * Update the cached representation and establish
@@ -2103,16 +2516,16 @@ Factory::loadGroup(const string &name,
      * Set up event notifications.
      */
     m_zk.getNodeChildren(zkNodes,
-                         key + PATHSEPARATOR + NODES,
+                         groupKey + PATHSEPARATOR + NODES,
                          &m_groupMembershipChangeHandler);
-    m_zk.nodeExists(key +
+    m_zk.nodeExists(groupKey +
                     PATHSEPARATOR + 
                     LEADERSHIP +
                     PATHSEPARATOR +
                     CURRENTLEADER,
                     &m_zkEventAdapter,
                     &m_groupLeadershipChangeHandler);
-    m_zk.getNodeData(key + PATHSEPARATOR + PROPERTIES,
+    m_zk.getNodeData(groupKey + PATHSEPARATOR + PROPERTIES,
                      &m_zkEventAdapter,
                      &m_propertiesChangeHandler);
 #endif
@@ -2135,9 +2548,9 @@ Factory::loadNode(const string &name,
     bool exists = false;
     Locker l(getNodesLock());
 
-    np = m_nodes[key];
-    if (np != NULL) {
-        return np;
+    NodeMap::const_iterator nodeIt = m_nodes.find(key);
+    if (nodeIt != m_nodes.end()) {
+        return nodeIt->second;
     }
 
     SAFE_CALL_ZK((exists = m_zk.nodeExists(key)),
@@ -2241,11 +2654,11 @@ Factory::createApplication(const string &name, const string &key)
 }
 
 DataDistribution *
-Factory::createDistribution(const string &name,
-			    const string &key,
-                            const string &marshalledShards,
-                            const string &marshalledManualOverrides,
-                            Application *app)
+Factory::createDataDistribution(const string &name,
+                                const string &key,
+                                const string &marshalledShards,
+                                const string &marshalledManualOverrides,
+                                Group *parentGroup)
 {
     TRACE(CL_LOG, "createDataDistribution");
 
@@ -2293,7 +2706,7 @@ Factory::createDistribution(const string &name,
      * establish all the event notifications, and add the
      * object to the cache.
      */
-    distp = loadDistribution(name, key, app);
+    distp = loadDataDistribution(name, key, parentGroup);
 
     /*
      * If we created the data distribution in the
@@ -2313,9 +2726,11 @@ Factory::createDistribution(const string &name,
 }
 
 Properties *
-Factory::createProperties(const string &key) 
+Factory::createProperties(const string &key, Notifyable *parent) 
 {
     TRACE(CL_LOG, "createProperties");
+
+    Properties *prop = NULL;
     bool exists = false;
 
     /*
@@ -2345,36 +2760,23 @@ Factory::createProperties(const string &key)
                  true);
 
     /*
-     * Enter into cache.
+     * Load the properties, which will load the data,
+     * establish all the event notifications, and add the
+     * object to the cache.
      */
-    Properties *prop;
-    {
-	/*                                                                
-	 * Scope the lock to the shortest sequence possible.
-	 */
-	Locker l(getPropertiesLock());
-	
-	prop = m_properties[key];
-	if (prop != NULL) {
-	    LOG_WARN(CL_LOG,
-		     "Tried to create properties that exists!");
-	}
-        SAFE_CALL_ZK(m_zk.nodeExists(key, &m_zkEventAdapter, &m_notifyableExistsHandler),
-                     "Could not determine whether node %s exists: %s",
-                     key.c_str(),
-                     false,
-                     true);
-	prop = new Properties(key, mp_ops);
-    }
+    prop = loadProperties(key, parent);
     
-    return prop;
+    /*
+     * No ready protocol necessary for Properties.
+     */
 
+    return prop;
 }
 
 Group *
-Factory::createGroup(const string &name, 
-		     const string &key, 
-		     Application *app)
+Factory::createGroup(const string &groupName, 
+		     const string &groupKey,
+                     Group *parentGroup)
 {
     TRACE(CL_LOG, "createGroup");
 
@@ -2382,21 +2784,23 @@ Factory::createGroup(const string &name,
     bool created = false;
     bool exists = false;
     
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(key, &m_zkEventAdapter, &m_notifyableExistsHandler)),
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(groupKey, 
+                                           &m_zkEventAdapter, 
+                                           &m_notifyableExistsHandler)),
                  "Could not determine whether node %s exists: %s",
-                 key.c_str(),
+                 groupKey.c_str(),
                  true,
                  true);
     if (!exists) {
-        string nodes = key + PATHSEPARATOR + NODES;
-        string leadership = key + PATHSEPARATOR + LEADERSHIP;
+        string nodes = groupKey + PATHSEPARATOR + NODES;
+        string leadership = groupKey + PATHSEPARATOR + LEADERSHIP;
         string bids = leadership + PATHSEPARATOR + BIDS;
-        string props = key + PATHSEPARATOR + PROPERTIES;
+        string props = groupKey + PATHSEPARATOR + PROPERTIES;
 
         created = true;
-        SAFE_CALL_ZK(m_zk.createNode(key, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(groupKey, "", 0, true),
                      "Could not create node %s: %s",
-                     key.c_str(),
+                     groupKey.c_str(),
                      true,
                      true);
         SAFE_CALL_ZK(m_zk.createNode(nodes, "", 0, true),
@@ -2426,7 +2830,7 @@ Factory::createGroup(const string &name,
      * establish all the event notifications, and add the
      * object to the cache.
      */
-    grp = loadGroup(name, key, app);
+    grp = loadGroup(groupName, groupKey, parentGroup);
     
     /*
      * Trigger the 'ready' protocol if we created the
@@ -2434,9 +2838,9 @@ Factory::createGroup(const string &name,
      * waiting for the group to be ready.
      */
     if (created) {
-        SAFE_CALL_ZK(m_zk.setNodeData(key, "ready", 0),
+        SAFE_CALL_ZK(m_zk.setNodeData(groupKey, "ready", 0),
                      "Could not complete ready protocol for %s: %s",
-                     key.c_str(),
+                     groupKey.c_str(),
                      true,
                      true);
     }
@@ -2534,6 +2938,7 @@ Factory::getApplicationNames()
         CLUSTERLIB +
         PATHSEPARATOR +
         CLUSTERLIBVERSION +
+        PATHSEPARATOR +
         APPLICATIONS;
 
     list.clear();
@@ -2554,13 +2959,17 @@ Factory::getApplicationNames()
     return list;
 }
 IdList
-Factory::getGroupNames(Application *app)
+Factory::getGroupNames(Group *grp)
 {
     TRACE(CL_LOG, "getGroupNames");
 
+    if (grp == NULL) {
+        throw ClusterException("getGroupNames: NULL grp");
+    }
+
     IdList list;
     string key =
-        app->getKey() +
+        grp->getKey() +
         PATHSEPARATOR +
         GROUPS;
 
@@ -2582,13 +2991,17 @@ Factory::getGroupNames(Application *app)
     return list;
 }
 IdList
-Factory::getDistributionNames(Application *app)
+Factory::getDataDistributionNames(Group *grp)
 {
-    TRACE(CL_LOG, "getDistributionNames");
+    TRACE(CL_LOG, "getDataDistributionNames");
+
+    if (grp == NULL) {
+        throw ClusterException("getDataDistributionNames: NULL grp");
+    }
 
     IdList list;
     string key=
-        app->getKey() +
+        grp->getKey() +
         PATHSEPARATOR +
         DISTRIBUTIONS;
 
@@ -2613,6 +3026,10 @@ IdList
 Factory::getNodeNames(Group *grp)
 {
     TRACE(CL_LOG, "getNodeNames");
+
+    if (grp == NULL) {
+        throw ClusterException("getNodeNames: NULL grp");
+    }
 
     IdList list;
     string key =
@@ -2650,6 +3067,10 @@ Factory::getLeader(Group *grp)
 {
     TRACE( CL_LOG, "getLeader" );
 
+    if (grp == NULL) {
+        throw ClusterException("getLeader: NULL grp");
+    }
+
     Node *lp = NULL;
     string lnn = grp->getCurrentLeaderNodeName();
     string ln = "";
@@ -2676,7 +3097,7 @@ Factory::placeBid(Node *np, Server *sp)
 
     snprintf(tmp, 100, "%d", getpid());
 
-    Group *grp = np->getGroup();
+    Group *grp = np->getMyGroup();
     string pfx = grp->getLeadershipBidPrefix();
     string value =
         np->getKey() +
@@ -2709,7 +3130,7 @@ Factory::tryToBecomeLeader(Node *np, int64_t bid)
 
     IdList list;
     IdList::iterator iIt;
-    Group *grp = np->getGroup();
+    Group *grp = np->getMyGroup();
     string lnn = grp->getCurrentLeaderNodeName();
     string bnn = grp->getLeadershipBidsNodeName();
     string pfx = grp->getLeadershipBidPrefix();
@@ -2804,7 +3225,7 @@ Factory::isLeaderKnown(Node *np)
 {
     TRACE(CL_LOG, "isLeaderKnown");
 
-    return np->getGroup()->isLeaderKnown();
+    return np->getMyGroup()->isLeaderKnown();
 }
 
 /*
@@ -2816,7 +3237,7 @@ Factory::leaderIsUnknown(Node *np)
 {
     TRACE(CL_LOG, "leaderIsUnknown");
 
-    np->getGroup()->updateLeader(NULL);
+    np->getMyGroup()->updateLeader(NULL);
 }
 
 /*
@@ -2829,7 +3250,7 @@ Factory::giveUpLeadership(Node *np, int64_t bid)
 {
     TRACE(CL_LOG, "giveUpLeadership");
 
-    Group *grp = np->getGroup();
+    Group *grp = np->getMyGroup();
 
     /*
      * Ensure that our view of the leader is not updated by
@@ -2927,13 +3348,12 @@ bool
 Factory::cancelTimer(TimerId id)
 {
     Locker l(getTimersLock());
-    TimerEventPayload *tepp = m_timerRegistry[id];
-
-    if (tepp == NULL) {
+    TimerRegistry::const_iterator timerIt = m_timerRegistry.find(id);
+    if (timerIt == m_timerRegistry.end()) {
         return false;
     }
 
-    tepp->cancel();
+    timerIt->second->cancel();
     if (m_timerEventSrc.cancelAlarm(id)) {
         return true;
     }
@@ -2960,8 +3380,7 @@ Factory::updateCachedObject(FactoryEventHandler *fehp,
 
     const string path = ep->getPath();
     int32_t etype = ep->getType();
-    vector<string> components;
-    Notifyable *np;
+
 
     LOG_INFO(CL_LOG,
               "updateCachedObject: (0x%x, 0x%x, %s)",
@@ -2969,35 +3388,17 @@ Factory::updateCachedObject(FactoryEventHandler *fehp,
               (int) ep,
 	      path.c_str());
 
-    split(components, path, is_any_of(PATHSEPARATOR));
-    /* Check for matches of the path in reverse order since these are
-     * prefix matches. */
-    if (hasNodeKeyPrefix(components)) {
-        np = getNode(components[NODE_NAME_INDEX],
-                     getGroup(components[APP_NAME_INDEX],
-                              components[GROUP_NAME_INDEX],
-                              false),
-                     false,
-                     false);
-    } else if (hasPropertiesKeyPrefix(components)) {
-	np = getProperties(path,
-			   false);
-    } else if (hasDistKeyPrefix(components)) {
-        np = getDistribution(components[DIST_NAME_INDEX],
-                             getApplication(components[APP_NAME_INDEX], false),
-                             false);
-    } else if (hasGroupKeyPrefix(components)) {
-        np = getGroup(components[GROUP_NAME_INDEX],
-                      getApplication(components[APP_NAME_INDEX], false),
-                      false);
-    } else if (hasAppKeyPrefix(components)) {
-        np = getApplication(components[APP_NAME_INDEX], false);
-    } else if (!path.compare(SYNC)) {
-        /* There is no notifyable for sync */
-        np = NULL;
-    } else {
-        throw ClusterException(string("Unknown event key: ") +
-                               path);
+    Notifyable *ntp;
+    /* SYNC doesn't need to get a Notifyable */
+    if (path.compare(SYNC) == 0) {
+        ntp = NULL;
+    }
+    else {
+        ntp = getNotifyableFromKey(path); 
+        if (ntp == NULL) {
+            throw ClusterException(string("Unknown event : ") +
+                                   path);
+        }
     }
 
     /*
@@ -3005,12 +3406,12 @@ Factory::updateCachedObject(FactoryEventHandler *fehp,
      * should also return the kind of user-level event that this
      * event represents.
      */
-    Event e = fehp->deliver(np, etype, path);
+    Event e = fehp->deliver(ntp, etype, path);
     
     if (e == EN_NOEVENT) {
         return NULL;
     }
-    return new ClusterEventPayload(np, e);
+    return new ClusterEventPayload(ntp, e);
 }
 
 /*
@@ -3018,32 +3419,32 @@ Factory::updateCachedObject(FactoryEventHandler *fehp,
  * is 'ready' according to the 'ready' protocol.
  */
 bool
-Factory::establishNotifyableReady(Notifyable *np)
+Factory::establishNotifyableReady(Notifyable *ntp)
 {
     string ready = "";
 
-    SAFE_CALL_ZK((ready = m_zk.getNodeData(np->getKey(),
+    SAFE_CALL_ZK((ready = m_zk.getNodeData(ntp->getKey(),
                                            &m_zkEventAdapter,
                                            &m_notifyableReadyHandler)),
                  "Reading the value of %s failed: %s",
-                 np->getKey().c_str(),
+                 ntp->getKey().c_str(),
                  true,
                  true);
 
     if (ready == "ready") {
-        np->setReady(true);
+        ntp->setReady(true);
     } else {
-        np->setReady(false);
+        ntp->setReady(false);
     }
 
-    return np->isReady();
+    return ntp->isReady();
 }
 
 /*
  * Implement 'ready' protocol for notifyable objects.
  */
 Event
-Factory::handleNotifyableReady(Notifyable *np,
+Factory::handleNotifyableReady(Notifyable *ntp,
                                int32_t etype,
                                const string &path)
 {
@@ -3052,7 +3453,7 @@ Factory::handleNotifyableReady(Notifyable *np,
     /*
      * If there's no notifyable, punt.
      */
-    if (np == NULL) {
+    if (ntp == NULL) {
         LOG_WARN(CL_LOG,
                  "Punting on event: %d on %s",
                  etype,
@@ -3062,9 +3463,9 @@ Factory::handleNotifyableReady(Notifyable *np,
 
     LOG_WARN(CL_LOG, 
               "handleNotifyableReady(%s)",
-              np->getKey().c_str());
+              ntp->getKey().c_str());
 
-    (void) establishNotifyableReady(np);
+    (void) establishNotifyableReady(ntp);
     return EN_READY;
 }
 
@@ -3073,7 +3474,7 @@ Factory::handleNotifyableReady(Notifyable *np,
  * an existing notifyable.
  */
 Event
-Factory::handleNotifyableExists(Notifyable *np,
+Factory::handleNotifyableExists(Notifyable *ntp,
                                 int32_t etype,
                                 const string &path)
 {
@@ -3082,7 +3483,7 @@ Factory::handleNotifyableExists(Notifyable *np,
     /*
      * If there's no notifyable, punt.
      */
-    if (np == NULL) {
+    if (ntp == NULL) {
         LOG_WARN(CL_LOG,
                  "Punting on event: %d on %s",
                  etype,
@@ -3093,7 +3494,7 @@ Factory::handleNotifyableExists(Notifyable *np,
     LOG_WARN(CL_LOG,
              "Got exists event: %d on notifyable: \"%s\"",
              etype,
-             np->getKey().c_str());
+             ntp->getKey().c_str());
 
     /*
      * Re-establish interest in the existence of this notifyable.
@@ -3108,14 +3509,14 @@ Factory::handleNotifyableExists(Notifyable *np,
         LOG_WARN(CL_LOG,
                  "Deleted event for path: %s",
                  path.c_str());
-        np->setReady(false);
+        ntp->setReady(false);
         return EN_DELETED;
     }
     if (etype == ZOO_CREATED_EVENT) {
         LOG_WARN(CL_LOG,
                  "Created event for path: %s",
                  path.c_str());
-        establishNotifyableReady(np);
+        establishNotifyableReady(ntp);
         return EN_CREATED;
     }
 
@@ -3129,7 +3530,7 @@ Factory::handleNotifyableExists(Notifyable *np,
  * Handle a change in the set of applications
  */
 Event
-Factory::handleApplicationsChange(Notifyable *np,
+Factory::handleApplicationsChange(Notifyable *ntp,
                                   int32_t etype,
                                   const string &path)
 {
@@ -3146,7 +3547,7 @@ Factory::handleApplicationsChange(Notifyable *np,
  * application.
  */
 Event
-Factory::handleGroupsChange(Notifyable *np,
+Factory::handleGroupsChange(Notifyable *ntp,
                             int32_t etype,
                             const string &path)
 {
@@ -3155,7 +3556,7 @@ Factory::handleGroupsChange(Notifyable *np,
     /*
      * If there's no notifyable, punt.
      */
-    if (np == NULL) {
+    if (ntp == NULL) {
         LOG_WARN(CL_LOG,
                  "Punting on event: %d on %s",
                  etype,
@@ -3163,23 +3564,23 @@ Factory::handleGroupsChange(Notifyable *np,
         return EN_NOEVENT;
     }
 
-    LOG_WARN(CL_LOG,
+    LOG_INFO(CL_LOG,
               "Got groups change event for : \"%s\"",
-              np->getKey().c_str());
+              ntp->getKey().c_str());
 
     /*
      * Convert to application object.
      */
-    Application *app = dynamic_cast<Application *>(np);
-    if (app == NULL) {
+    Group *grp = dynamic_cast<Group *>(ntp);
+    if (grp == NULL) {
         LOG_FATAL(CL_LOG,
-                  "Expected application object for %s",
+                  "Expected group object for %s",
                   path.c_str());
         return EN_NOEVENT;
     }
 
-    if (app->cachingGroups()) {
-        app->recacheGroups();
+    if (grp->cachingGroups()) {
+        grp->recacheGroups();
     }
 
     return EN_GROUPSCHANGE;
@@ -3190,16 +3591,16 @@ Factory::handleGroupsChange(Notifyable *np,
  * for an application.
  */
 Event
-Factory::handleDistributionsChange(Notifyable *np,
+Factory::handleDataDistributionsChange(Notifyable *ntp,
                                    int32_t etype,
                                    const string &path)
 {
-    TRACE(CL_LOG, "handleDistributionsChange");
+    TRACE(CL_LOG, "handleDataDistributionsChange");
 
     /*
      * If there's no notifyable, punt.
      */
-    if (np == NULL) {
+    if (ntp == NULL) {
         LOG_WARN(CL_LOG,
                  "Punting on event: %d on %s",
                  etype,
@@ -3207,17 +3608,17 @@ Factory::handleDistributionsChange(Notifyable *np,
         return EN_NOEVENT;
     }
 
-    LOG_WARN(CL_LOG,
+    LOG_INFO(CL_LOG,
              "Got dists change event for : \"%s\"",
-             np->getKey().c_str());
+             ntp->getKey().c_str());
 
     /*
-     * Convert to application object.
+     * Convert to group object.
      */
-    Application *app = dynamic_cast<Application *>(np);
-    if (app == NULL) {
+    Group *grp = dynamic_cast<Group *>(ntp);
+    if (grp == NULL) {
         LOG_FATAL(CL_LOG,
-                  "Expected application object for %s",
+                  "Expected group object for %s",
                   path.c_str());
         return EN_NOEVENT;
     }
@@ -3226,8 +3627,8 @@ Factory::handleDistributionsChange(Notifyable *np,
      * If we are caching the distribution objects,
      * then update the cache.
      */
-    if (app->cachingDists()) {
-        app->recacheDists();
+    if (grp->cachingDists()) {
+        grp->recacheDists();
     }
 
     return EN_DISTSCHANGE;
@@ -3237,7 +3638,7 @@ Factory::handleDistributionsChange(Notifyable *np,
  * Handle a change in the set of nodes in a group.
  */
 Event
-Factory::handleNodesChange(Notifyable *np,
+Factory::handleNodesChange(Notifyable *ntp,
                            int32_t etype,
                            const string &path)
 {
@@ -3246,7 +3647,7 @@ Factory::handleNodesChange(Notifyable *np,
     /*
      * If there's no notifyable, punt.
      */
-    if (np == NULL) {
+    if (ntp == NULL) {
         LOG_WARN(CL_LOG,
                  "Punting on event: %d on %s",
                  etype,
@@ -3256,12 +3657,12 @@ Factory::handleNodesChange(Notifyable *np,
 
     LOG_WARN(CL_LOG,
              "Got nodes change event for : \"%s\"",
-             np->getKey().c_str());
+             ntp->getKey().c_str());
 
     /*
      * Convert to a group object.
      */
-    Group *grp = dynamic_cast<Group *>(np);
+    Group *grp = dynamic_cast<Group *>(ntp);
     if (grp == NULL) {
         LOG_FATAL(CL_LOG,
                   "Expected group object for %s",
@@ -3284,7 +3685,7 @@ Factory::handleNodesChange(Notifyable *np,
  * Handle a change in the value of a property list.
  */
 Event
-Factory::handlePropertiesChange(Notifyable *np,
+Factory::handlePropertiesChange(Notifyable *ntp,
                                 int32_t etype,
                                 const string &path)
 {
@@ -3293,7 +3694,7 @@ Factory::handlePropertiesChange(Notifyable *np,
     /*
      * If there's no notifyable, punt.
      */
-    if (np == NULL) {
+    if (ntp == NULL) {
         LOG_WARN(CL_LOG,
                  "Punting on event: %d on %s",
                  etype,
@@ -3302,9 +3703,10 @@ Factory::handlePropertiesChange(Notifyable *np,
     }
 
     LOG_DEBUG(CL_LOG,
-              "handlePropertiesChange: Got event %d on properties \"%s\"",
+              "handlePropertiesChange: Got event %d on notifyable->key "
+              "properties \"%s\"",
               etype,
-              np->getKey().c_str());
+              ntp->getKey().c_str());
 
     /*
      * Re-establish interest in the existence of this notifyable.
@@ -3321,24 +3723,24 @@ Factory::handlePropertiesChange(Notifyable *np,
      * Now decide what to do with the event.
      */
     if (etype == ZOO_DELETED_EVENT) {
-	LOG_WARN(CL_LOG,
+	LOG_INFO(CL_LOG,
                  "handlePropertiesChange: Deleted event for path: %s",
                  path.c_str());
-	np->setReady(false);
+	ntp->setReady(false);
 	return EN_DELETED;
     }
     if (etype == ZOO_CREATED_EVENT) {
-	LOG_WARN(CL_LOG,
+	LOG_INFO(CL_LOG,
                  "handlePropertiesChange: Created event for path: %s",
                  path.c_str());
-	establishNotifyableReady(np);
+	establishNotifyableReady(ntp);
 	return EN_CREATED;
     }
     if (etype == ZOO_CHANGED_EVENT) {
-	LOG_WARN(CL_LOG,
+	LOG_INFO(CL_LOG,
                  "handlePropertiesChange: Changed event for path: %s",
                  path.c_str());
-	np->updateCachedRepresentation();
+	ntp->updateCachedRepresentation();
 	return EN_PROPCHANGE;
     }
 
@@ -3349,7 +3751,7 @@ Factory::handlePropertiesChange(Notifyable *np,
  * Handle change in shards of a distribution.
  */
 Event
-Factory::handleShardsChange(Notifyable *np,
+Factory::handleShardsChange(Notifyable *ntp,
                             int32_t etype,
                             const string &path)
 {
@@ -3362,7 +3764,7 @@ Factory::handleShardsChange(Notifyable *np,
  * Handle change in manual overrides of a distribution.
  */
 Event
-Factory::handleManualOverridesChange(Notifyable *np,
+Factory::handleManualOverridesChange(Notifyable *ntp,
                                      int32_t etype,
                                      const string &path)
 {
@@ -3375,7 +3777,7 @@ Factory::handleManualOverridesChange(Notifyable *np,
  * Handle change in client-reported state for a node.
  */
 Event
-Factory::handleClientStateChange(Notifyable *np,
+Factory::handleClientStateChange(Notifyable *ntp,
                                  int32_t etype,
                                  const string &path)
 {
@@ -3389,7 +3791,7 @@ Factory::handleClientStateChange(Notifyable *np,
  * a node.
  */
 Event
-Factory::handleMasterSetStateChange(Notifyable *np,
+Factory::handleMasterSetStateChange(Notifyable *ntp,
                                     int32_t etype,
                                     const string &path)
 {
@@ -3402,7 +3804,7 @@ Factory::handleMasterSetStateChange(Notifyable *np,
  * Handle change in the leadership of a group.
  */
 Event
-Factory::handleLeadershipChange(Notifyable *np,
+Factory::handleLeadershipChange(Notifyable *ntp,
                                 int32_t etype,
                                 const string &path)
 {
@@ -3411,7 +3813,7 @@ Factory::handleLeadershipChange(Notifyable *np,
     /*
      * If there's no notifyable, punt.
      */
-    if (np == NULL) {
+    if (ntp == NULL) {
         LOG_WARN(CL_LOG,
                  "Punting on event: %d on %s",
                  etype,
@@ -3428,7 +3830,7 @@ Factory::handleLeadershipChange(Notifyable *np,
                  false,
                  true);
 
-    Group *grp = dynamic_cast<Group *>(np);
+    Group *grp = dynamic_cast<Group *>(ntp);
     if (!exists) {
         grp->updateLeader(NULL);
     }
@@ -3458,7 +3860,7 @@ Factory::handleLeadershipChange(Notifyable *np,
  * being watched by a server in this process abdicates.
  */
 Event
-Factory::handlePrecLeaderExistsChange(Notifyable *np,
+Factory::handlePrecLeaderExistsChange(Notifyable *ntp,
                                       int32_t etype,
                                       const string &path)
 {
@@ -3467,7 +3869,7 @@ Factory::handlePrecLeaderExistsChange(Notifyable *np,
     /*
      * If there's no notifyable, punt.
      */
-    if (np == NULL) {
+    if (ntp == NULL) {
         LOG_WARN(CL_LOG,
                  "Punting on event: %d on %s",
                  etype,
@@ -3507,7 +3909,7 @@ Factory::handlePrecLeaderExistsChange(Notifyable *np,
      * Make all interested Servers participate in the
      * election again.
      */
-    Group *grp = dynamic_cast<Group *>(np);
+    Group *grp = dynamic_cast<Group *>(ntp);
     Group *grp1;
 
     for (leIt = range.first; 
@@ -3538,7 +3940,7 @@ Factory::handlePrecLeaderExistsChange(Notifyable *np,
         /*
          * Sanity check -- the Server must be in this group.
          */
-        grp1 = sp->getMyNode()->getGroup();
+        grp1 = sp->getMyNode()->getMyGroup();
         if (grp != grp1) {
             LOG_FATAL(CL_LOG,
                       "Internal error: bad leadership watch (grp) %s vs %s",
@@ -3563,7 +3965,7 @@ Factory::handlePrecLeaderExistsChange(Notifyable *np,
  * client.
  */
 Event
-Factory::handleSynchronizeChange(Notifyable *np,
+Factory::handleSynchronizeChange(Notifyable *ntp,
                                  int32_t etype,
                                  const string &path)
 {

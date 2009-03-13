@@ -26,14 +26,6 @@ class Server
     Node *getMyNode() { return mp_node; }
 
     /*
-     * Retrieve the names of the node,
-     * group, and application.
-     */
-    string getNodeName() { return m_nodeName; }
-    string getGroupName() { return m_grpName; }
-    string getAppName() { return m_appName; }
-
-    /*
      * Is this server managed?
      */
     bool isManaged()
@@ -97,9 +89,8 @@ class Server
      * Constructor used by Factory.
      */
     Server(FactoryOps *f,
-           const string &app,
-           const string &grp,
-           const string &node,
+           Group *group,
+           const string &nodeName,
            HealthChecker *checker,
            ServerFlags flags);
 
@@ -155,13 +146,6 @@ class Server
      * The factory delegate instance.
      */
     FactoryOps *mp_f;
-
-    /*
-     * The components of my node's key.
-     */
-    string m_appName;
-    string m_grpName;
-    string m_nodeName;
 
 #if 0 // AC - Ifdef'ed out until event system ready
     /**

@@ -18,9 +18,19 @@
 
 namespace clusterlib
 {
-    
+
 /*
- * Update the cached representation of this object.
+ * Do not allow getProperties() on a Properties object
+ */
+Properties *
+Properties::getProperties(bool create)
+{
+    throw ClusterException("getProperties() called on a Properties object!");
+}
+
+/*
+ * Update the cached representation of this object.  Assumed to
+ * already have the lock.
  */
 void 
 Properties::updateCachedRepresentation()
@@ -28,14 +38,11 @@ Properties::updateCachedRepresentation()
     int32_t version;
     string keyValMap = getDelegate()->loadKeyValMap(getKey(), version);
 
-    {
-	Locker l(getKeyValMapLock());
-	/* Only update if this is a newer version */
-	if (version > getKeyValVersion()) {
-	    m_keyValMap.clear();
-	    unmarshall(keyValMap);
-	    m_keyValMapVersion = version;
-	}
+    /* Only update if this is a newer version */
+    if (version > getKeyValVersion()) {
+        m_keyValMap.clear();
+        unmarshall(keyValMap);
+        m_keyValMapVersion = version;
     }
 }
 
@@ -44,6 +51,16 @@ Properties::setProperty(const string &name,
 			const string &value)
 {
     m_keyValMap[name] = value;
+}
+
+void
+Properties::deleteProperty(const string &name)
+{
+    if (m_keyValMap.erase(name) != 1) {
+        LOG_WARN(CL_LOG, 
+                 "deleteProperty: Failed delete with name %s", 
+                 name.c_str());
+    }
 }
 
 void
@@ -90,26 +107,50 @@ Properties::getPropertyKeys() const
 }
         
 string 
-Properties::getProperty(const string &name)
+Properties::getProperty(const string &name, bool searchParent)
 {
     Locker(getKeyValMapLock());
 
-    map<string, string>::const_iterator ssIt = m_keyValMap.find(name);
+    KeyValMap::const_iterator ssIt = m_keyValMap.find(name);
     if (ssIt != m_keyValMap.end()) {
 	return ssIt->second;
     }
-    
-    string parent = getDelegate()->removeObjectFromKey(getKey());
-    if (parent.empty() || (!parent.compare(getKey()))) {
-	return string();
+    else if (searchParent == false) {
+        /*
+         * Don't try the parent if not explicit
+         */
+        return string();
     }
 
-    Properties *prop = getDelegate()->getProperties(parent);
-    if (prop == NULL) {
-	return string();
-    }
+    Properties *prop = NULL;
+    string parentKey = getKey();
+    do {
+        /*
+         * Generate the new parentKey by removing PROPERTIES and one
+         * clusterlib object.
+         */
+        parentKey = getDelegate()->removeObjectFromKey(parentKey);
+        parentKey = getDelegate()->removeObjectFromKey(parentKey);
+     
+        if (parentKey.empty()) {
+            LOG_DEBUG(CL_LOG,
+                      "getProperty: Giving up with new key %s from old key %s",
+                      parentKey.c_str(),
+                      getKey().c_str());
+            return string();
+        }
+        parentKey.append(ClusterlibStrings::PATHSEPARATOR);
+        parentKey.append(ClusterlibStrings::PROPERTIES);
+
+        LOG_DEBUG(CL_LOG,
+                  "getProperty: Trying new key %s from old key %s",
+                  parentKey.c_str(),
+                  getKey().c_str());
+        
+        prop = getDelegate()->getPropertiesFromKey(parentKey);
+    } while (prop == NULL);
     
-    return prop->getProperty(name);
+    return prop->getProperty(name, searchParent);
 }
 
 string 
@@ -143,10 +184,10 @@ Properties::unmarshall(const string &marshalledKeyValMap)
             if (pair.size() != 2) {
 		stringstream s;
 		s << pair.size();
-		LOG_WARN(CL_LOG,
-                         "key-val pair (%d component(s)) = %s", 
-                         pair.size(),
-                         (*sIt).c_str());
+		LOG_FATAL(CL_LOG,
+                          "unmarshall: key-val pair (%d component(s)) = %s", 
+                          pair.size(),
+                          (*sIt).c_str());
 		throw ClusterException("Malformed property \"" +
 				       *sIt +
 				       "\", expecting 2 components " +

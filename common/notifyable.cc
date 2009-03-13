@@ -23,10 +23,12 @@ namespace clusterlib
  */
 Notifyable::Notifyable(FactoryOps *fp,
                        const string &key,
-                       const string &name)
+                       const string &name,
+                       Notifyable *parent)
     : mp_f(fp),
       m_key(key),
       m_name(name),
+      mp_parent(parent),
       m_ready(false)
 {
     mp_f->establishNotifyableReady(this);
@@ -37,17 +39,12 @@ Notifyable::Notifyable(FactoryOps *fp,
  */
 Notifyable::~Notifyable()
 {
-};
+}
 
 Properties *
 Notifyable::getProperties(bool create)
 {
     Properties *prop;
-
-    /* 
-     * TODO: Check to see if this is a properties key, should reject this.
-     */
-    string propertiesName = mp_f->createPropertiesKey(getKey());
 
     /*
      * If it is already cached, return the
@@ -56,9 +53,10 @@ Notifyable::getProperties(bool create)
     {
         Locker l1(getPropertiesMapLock());
 
-        prop = m_properties[propertiesName];
-        if (prop != NULL) {
-            return prop;
+        PropertiesMap::const_iterator propIt = 
+            m_properties.find(getKey());
+        if (propIt != m_properties.end()) {
+            return propIt->second;
         }
     }
 
@@ -67,11 +65,11 @@ Notifyable::getProperties(bool create)
      * properties from the cluster, cache it,
      * and return the object.
      */
-    prop = getDelegate()->getProperties(propertiesName, create);
+    prop = getDelegate()->getProperties(this, create);
     if (prop != NULL) {
         Locker l2(getPropertiesMapLock());
 
-        m_properties[propertiesName] = prop;
+        m_properties[getKey()] = prop;
         return prop;
     }
 
@@ -79,9 +77,79 @@ Notifyable::getProperties(bool create)
      * Object not found.
      */
     throw ClusterException(string("Cannot find properties object ") +
-                           propertiesName);
+                           getKey());
+}
 
-};
+Notifyable *
+Notifyable::getMyParent() const
+{
+    return mp_parent;
+}
+
+Application *
+Notifyable::getMyApplication()
+{
+    string appKey = getKey();
+    Application *app = NULL;
+
+    do {
+        app = getDelegate()->getApplicationFromKey(appKey, false);
+        appKey = getDelegate()->removeObjectFromKey(getKey());
+    }  while ((app == NULL) && (!appKey.empty()));
+
+    return app;
+}
+
+Group *
+Notifyable::getMyGroup()
+{
+    string groupKey = getKey();
+
+    /*
+     * Try to find the group or application (in that order) from the
+     * string working backwards.  Otherwise give up and return NULL.
+     */
+    uint32_t foundGroupKey = groupKey.rfind(ClusterlibStrings::GROUPS);
+    if (foundGroupKey != string::npos) {
+        /* 
+         * Resize groupKey to end at the group name
+         */
+        uint32_t foundGroupName = 
+            groupKey.find(ClusterlibStrings::PATHSEPARATOR, foundGroupKey);
+        if ((foundGroupName != string::npos) &&
+            (foundGroupName != (groupKey.size() - 1))) {
+            foundGroupName = groupKey.find(ClusterlibStrings::PATHSEPARATOR, 
+                                           foundGroupName + 1);
+            groupKey.resize(foundGroupName);
+            return getDelegate()->getGroupFromKey(groupKey, false);
+
+        }
+    }
+
+    foundGroupKey = groupKey.rfind(ClusterlibStrings::APPLICATIONS);
+    if (foundGroupKey != string::npos) {
+        /* 
+         * Resize groupKey to end at the application name
+         */
+        uint32_t foundGroupName = 
+            groupKey.find(ClusterlibStrings::PATHSEPARATOR, foundGroupKey);
+        if ((foundGroupName != string::npos) &&
+            (foundGroupName != (groupKey.size() - 1))) {
+            foundGroupName = groupKey.find(ClusterlibStrings::PATHSEPARATOR, 
+                                           foundGroupName + 1);
+            groupKey.resize(foundGroupName);
+            return getDelegate()->getGroupFromKey(groupKey, false);
+
+        }
+    }
+    
+    LOG_WARN(CL_LOG, 
+             "getMyGroup: Couldn't find a group or application "
+             "with key %s",
+             getKey().c_str());
+
+    return NULL;
+}
 
 };	/* End of 'namespace clusterlib' */
 

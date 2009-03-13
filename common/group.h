@@ -23,34 +23,70 @@ class Group
 {
   public:
     /*
-     * Retrieve the application object for the application
-     * that this group is part of.
-     */
-    Application *getApplication() { return mp_app; }
-
-    /*
-     * Retrieve a node with a given name in this group.
-     */
-    Node *getNode(const string &nodeName, 
-		  bool create = false);
-
-    /*
      * Get the leader node.
      */
     Node *getLeader();
 
-    /*
-     * Retrieve a map of all currently known nodes in this
-     * group.
+    /**
+     * Get the nodes for this object (if it is allowed). If
+     * subclasses do not want to allow getNodes(), override it
+     * and throw a clusterlib exception.
+     * 
+     * @return a map of all the different nodes 
      */
-    NodeMap getNodes() 
-    {
-        Locker l(getNodeMapLock());
+    virtual NodeMap getNodes();
 
-        m_cachingNodes = true;
-        recacheNodes();
-        return m_nodes;
-    }
+    /**
+     * Get the node for this object (if it is allowed). If
+     * subclasses do not want to allow getNode(), override it
+     * and throw a clusterlib exception.
+     * 
+     * @param create create the node if doesn't exist?
+     * @return NULL if no node exists for this notifyable
+     */
+    virtual Node *getNode(const string &nodeName, 
+                          bool create = false);
+
+    /**
+     * Get the groups for this object (if it is allowed). If
+     * subclasses do not want to allow getGroups(), override it
+     * and throw a clusterlib exception.
+     * 
+     * @return a map of all the different groups 
+     */
+    virtual GroupMap getGroups();
+
+    /**
+     * Get the group for this object (if it is allowed). If
+     * subclasses do not want to allow getGroup(), override it
+     * and throw a clusterlib exception.
+     * 
+     * @param create create the group if doesn't exist?
+     * @return NULL if no group exists for this notifyable
+     */
+    virtual Group *getGroup(const string &groupName,
+                            bool create = false);
+
+    /**
+     * Get the distributions for this object (if it is allowed). If
+     * subclasses do not want to allow getDataDistributions(), override it
+     * and throw a clusterlib exception.
+     * 
+     * @return a map of all the different distributions 
+     */
+    virtual DataDistributionMap getDataDistributions();
+
+    /**
+     * Get the distribution for this object (if it is allowed). If
+     * subclasses do not want to allow getDataDistribution(), override it
+     * and throw a clusterlib exception.
+     * 
+     * @param create create the distribution if doesn't exist?
+     * @return NULL if no distribution exists for this notifyable
+     */
+    virtual DataDistribution *getDataDistribution(const string &distName,
+                                                  bool create = false);
+
 
   protected:
     /*
@@ -61,20 +97,21 @@ class Group
     /*
      * Constructor used by the factory.
      */
-    Group(Application *app,
-          const string &name,
+    Group(const string &name,
           const string &key,
-          FactoryOps *f)
-        : Notifyable(f, key, name),
-          mp_app(app),
+          FactoryOps *f,
+          Notifyable *parent)
+        : Notifyable(f, key, name, parent),
           mp_leader(NULL),
           m_leaderIsKnown(false),
           m_leadershipStringsInitialized(false),
-          m_cachingNodes(false)
+          m_cachingNodes(false),
+          m_cachingGroups(false),
+          m_cachingDists(false)
     {
         m_nodes.clear();
-
-        updateCachedRepresentation();
+        m_groups.clear();
+        m_dists.clear();
     }
 
     /*
@@ -101,22 +138,30 @@ class Group
     string getLeadershipBidPrefix();
 
     /*
-     * Are we caching all nodes fully?
+     * Are we caching all nodes, groups, and distributions fully?
      */
     bool cachingNodes() { return m_cachingNodes; }
     void recacheNodes();
+
+    bool cachingGroups() { return m_cachingGroups; }
+    void recacheGroups();
+
+    bool cachingDists() { return m_cachingDists; }
+    void recacheDists();
+
+
 
     /*
      * Update the cached representation of this group.
      */
     virtual void updateCachedRepresentation();
 
-  private:
+  protected:
     /*
      * Make the default constructor private so it cannot be called.
      */
     Group()
-        : Notifyable(NULL, "", "")
+        : Notifyable(NULL, "", "", NULL)
     {
         throw ClusterException("Someone called the Group default "
                                "constructor!");
@@ -128,16 +173,14 @@ class Group
     virtual ~Group() {};
 
     /*
-     * Get the address of the lock for the node map.
+     * Get the addresses of the locks for the node, group, and
+     * distriubution maps.
      */
     Mutex *getNodeMapLock() { return &m_nodeMapLock; }
+    Mutex *getGroupMapLock() { return &m_grpLock; }
+    Mutex *getDataDistributionMapLock() { return &m_distLock; }
 
   private:
-    /*
-     * The application object that contains this group.
-     */
-    Application *mp_app;
-
     /*
      * The leader node, if already cached (should be, if
      * there's a leader).
@@ -161,9 +204,24 @@ class Group
     Mutex m_nodeMapLock;
 
     /*
-     * Are we caching nodes fully?
+     * Map of all groups within this object.
+     */
+    GroupMap m_groups;
+    Mutex m_grpLock;
+
+    /*
+     * Map of all data distributions within this object.
+     */
+    DataDistributionMap m_dists;
+    Mutex m_distLock;
+
+    /*
+     * Variables to remember whether we're caching nodes, groups,
+     * and distributions fully.
      */
     bool m_cachingNodes;
+    bool m_cachingGroups;
+    bool m_cachingDists;
 };
 
 };	/* End of 'namespace clusterlib' */

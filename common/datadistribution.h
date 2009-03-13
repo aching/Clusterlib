@@ -15,22 +15,22 @@
 namespace clusterlib
 {
 
-/*
+/**
  * Base class for Shard, also used directly for manual overrides.
  */
 class ManualOverride
 {
   public:
-    /*
+    /**
      * Get info out.
      */
-    DataDistribution *getDistribution() { return mp_dist; }
-    string getKey() { return m_key; }
+    DataDistribution *getDataDistribution() { return mp_dist; }
+    const string &getKey() { return m_key; }
     bool isForwarded() { return m_isForwarded; }
     Notifyable *getNotifyable() { return mp_notifyable; }
     Notifyable *loadNotifyable();
 
-    /*
+    /**
      * Reassign this shard to a different Notifyable
      */
     void reassign(Notifyable *np)
@@ -50,7 +50,7 @@ class ManualOverride
         determineForwarding();
     }
 
-    /*
+    /**
      * Constructor.
      */
     ManualOverride(DataDistribution *dp,
@@ -67,55 +67,55 @@ class ManualOverride
     }
 
   private:
-    /*
+    /***
      * Determine whether this is a forwarding or final reference.
      */
     void determineForwarding();
 
   private:
-    /*
+    /**
      * The data distribution this shard belongs to.
      */
     DataDistribution *mp_dist;
 
-    /*
+    /**
      * The Notifyable that this data distribution element is assigned to.
      */
     Notifyable *mp_notifyable;
 
-    /*
+    /**
      * The key of the Notifyable -- used in case the
      * pointer is not available.
      */
     string m_key;
 
-    /*
+    /**
      * Is this element forwarded? If yes, then the Notifyable denotes
      * a DataDistribution, otherwise it is a Node.
      */
     bool m_isForwarded;
 };
 
-/*
+/**
  * Definition of class Shard.
  */
 class Shard
     : public virtual ManualOverride
 {
   public:
-    /*
+    /**
      * Get the info out of the shard.
      */
     HashRange beginRange() { return m_beginRange; }
     HashRange endRange() { return m_endRange; }
 
-    /*
+    /**
      * Assign fields into the shard.
      */
     void setBeginRange(HashRange br) { m_beginRange = br; }
     void setEndRange(HashRange er) { m_endRange = er; }
 
-    /*
+    /**
      * Decide whether this piece of work belongs to
      * this shard.
      */
@@ -123,7 +123,7 @@ class Shard
     bool covers(const string &key);
     bool covers(HashRange hash);
 
-    /*
+    /**
      * Constructor.
      */
     Shard(DataDistribution *dist,
@@ -136,7 +136,7 @@ class Shard
     {
     }
 
-    /*
+    /**
      * Constructor.
      */
     Shard(DataDistribution *dist,
@@ -150,21 +150,21 @@ class Shard
     }
 
   private:
-    /*
+    /**
      * The bounds for this shard. The range is beginRange <-> endRange.
      */
     HashRange m_beginRange;
     HashRange m_endRange;
 };
 
-/*
+/**
  * Definition of class DataDistribution.
  */
 class DataDistribution
     : public virtual Notifyable
 {
   public:
-    /*
+    /**
      * Enum of hash functions to use.
      */
     enum HashFunctions {
@@ -174,50 +174,42 @@ class DataDistribution
         DD_HF_END	= 2
     };
 
-    /*
+    /**
      * Constants for identifying the various parts of a shard definition.
      */
     static const int32_t SC_LOWBOUND_IDX;
     static const int32_t SC_HIBOUND_IDX;
-    static const int32_t SC_APPNAME_IDX;
-    static const int32_t SC_GROUPNAME_IDX;
-    static const int32_t SC_NODENAME_IDX;
+    static const int32_t SC_NOTIFYABLEKEY_IDX;
 
-    /*
-     * Retrieve the application object in which this
-     * distribution is contained.
-     */
-    Application *getApplication() { return mp_app; }
-
-    /*
+    /**
      * Find the Node that the key maps to (recursively
      * following forwards).
      */
     Node *map(const string &key);
 
-    /*
+    /**
      * Hash a key.
      */
     HashRange hashWork(const string &key);
 
-    /*
+    /**
      * Return the manual override string that matches this
      * key if one exists (returns the first one found, in
      * an unspecified order) or the empty string if none.
      */
     string matchesManualOverride(const string &key);
 
-    /*
+    /**
      * Return the number of shards in this data distribution.
      */
     uint32_t getShardCount() { return m_shards.size(); }
 
-    /*
+    /**
      * Is the distribution covered (at the time of checking)?
      */
     bool isCovered();
 
-    /*
+    /**
      * Get/set the hash function to use.
      */
     HashFunctionId getHashFunctionIndex() { return m_hashFnIndex; }
@@ -233,7 +225,7 @@ class DataDistribution
         }
     }
 
-    /** 
+    /*** 
      * \brief Get the data distribution locks.
      *
      * Guarantees that the this object's members will not be modified by
@@ -246,7 +238,7 @@ class DataDistribution
 	getManualOverridesLock()->Acquire();
     }
 
-    /** 
+    /*** 
      * \brief Releases the data distribution locks.
      *
      * Releases the lock so that other processes that do not own the
@@ -258,18 +250,18 @@ class DataDistribution
 	getManualOverridesLock()->Release();
     }
         
-    /*
+    /**
      * Assign new shards.
      */
     void setShards(vector<HashRange> &upperBounds);
 
-    /*
+    /**
      * Get the shard index for a work item, or for a hash value.
      */
     uint32_t getShardIndex(const string &workItem);
     uint32_t getShardIndex(HashRange v);
 
-    /*
+    /**
      * Get all info out of a shard.
      */
     Notifyable *getShardDetails(uint32_t shardIndex,
@@ -277,13 +269,13 @@ class DataDistribution
                                 HashRange *hi = NULL,
                                 bool *isForwarded = NULL);
 
-    /*
+    /**
      * Reassign a shard to a different notifyable.
      */
     void reassignShard(uint32_t shardIndex, Notifyable *ntp);
     void reassignShard(uint32_t shardIndex, const string &key);
 
-    /*
+    /**
      * Assign - or reassign - a manual override to a different
      * notifyable.
      */
@@ -292,42 +284,42 @@ class DataDistribution
     void reassignManualOverride(const string &pattern,
                                 const string &key);
 
-    /*
+    /**
      * Remove a manual override.
      */
     bool removeManualOverride(const string &pattern);
 
-    /*
+    /**
      *  Publish any changes to the clusterlib repository.
      */
     void publish();
 
   protected:
-    /*
+    /**
      * Friend declaration of Factory so that it can call the
      * protected constructor.
      */
     friend class Factory;
 
-    /*
+    /**
      * Shard and ManualOverride need access to getDelegate().
      */
     friend class Shard;
     friend class ManualOverride;
 
-    /*
+    /**
      * Constructor used by Factory.
      */
-    DataDistribution(Application *app,
+    DataDistribution(Group *parentGroup, 
                      const string &name,
                      const string &key,
                      FactoryOps *f,
                      HashFunction *fn = NULL);
 
-    /*
+    /**
      * Destructor to clean up shards and manual overrides
      */
-    ~DataDistribution() 
+    virtual ~DataDistribution() 
     {
 	for (ManualOverridesMap::iterator moIt = m_manualOverrides.begin(); 
 	     moIt != m_manualOverrides.end(); moIt++) {
@@ -339,12 +331,12 @@ class DataDistribution
 	}
     }
 
-    /*
+    /**
      * Update the distribution.
      */
     void updateCachedRepresentation();
 
-    /*
+    /**
      * Retrieve the current version number of the
      * shards in this data distribution.
      */
@@ -358,7 +350,7 @@ class DataDistribution
 	m_shardsVersion = version; 
     }
 
-    /*
+    /**
      * Retrieve the current version number of the
      * manualoverrides in this data distribution.
      */
@@ -373,47 +365,47 @@ class DataDistribution
     }
 
   private:
-    /*
+    /**
      * Make the default constructor private so it cannot be called.
      */
     DataDistribution()
-        : Notifyable(NULL, "", "")
+        : Notifyable(NULL, "", "", NULL)
     {
         throw ClusterException("Someone called the DataDistribution "
                                "default constructor!");
     }
 
-    /*
+    /**
      * Unmarshall a string into this data distribution.
      */
     void unmarshall(const string &marshalledDist);
 
-    /*
+    /**
      * Unmarshall a stringified sequence of shards.
      */
     void unmarshallShards(const string &marshalledShards);
 
-    /*
+    /**
      * Unmarshall a stringified sequence of manual overrides.
      */
     void unmarshallOverrides(const string &marshalledOverrides);
 
-    /*
+    /**
      * Marshall a data distribution into a string.
      */
     string marshall();
 
-    /*
+    /**
      * Marshall shards into a string.
      */
     string marshallShards();
 
-    /*
+    /**
      * Marshall manual overrides into a string.
      */
     string marshallOverrides();
 
-    /*
+    /**
      * Retrieve a pointer to the shards lock and
      * manual overrides lock.
      */
@@ -421,24 +413,18 @@ class DataDistribution
     Mutex *getManualOverridesLock() { return &m_manualOverridesLock; }
 
   private:
-    /*
-     * The application object for the application that contains
-     * this distribution.
-     */
-    Application *mp_app;
-
-    /*
+    /**
      * The manual overrides for this data distribution.
      */
     ManualOverridesMap m_manualOverrides;
     Mutex m_manualOverridesLock;
 
-    /*
+    /**
      * Which hash function to use.
      */
     int32_t m_hashFnIndex;
 
-    /*
+    /**
      * If using a user supplied hash function, store
      * a pointer to it here. If using a built-in
      * hash function, store it here from the class-static
@@ -446,24 +432,24 @@ class DataDistribution
      */
     HashFunction *mp_hashFnPtr;
 
-    /*
+    /**
      * Class-static variable holding the array of
      * hash functions.
      */
     static HashFunction *s_hashFunctions[];
 
-    /*
+    /**
      * The shards in this data distribution.
      */
     ShardList m_shards;
     Mutex m_shardsLock;
 
-    /*
+    /**
      * The version number of the shards
      */
     int32_t m_shardsVersion;
 
-    /*
+    /**
      * The version number of the overrides
      */
     int32_t m_manualOverridesVersion;

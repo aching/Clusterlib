@@ -46,7 +46,7 @@ int
 main(int ac, char **av)
 {
     try {
-        clusterlib::Factory *f = new clusterlib::Factory("llf520000:22801");
+        clusterlib::Factory *f = new clusterlib::Factory("wmdev1009:2181");
         cerr << "factory = " << f << endl;
         clusterlib::Client *c = f->createClient();
         cerr << "client = " << c << endl;
@@ -75,12 +75,15 @@ main(int ac, char **av)
              << clusterlib::Factory::getCurrentTimeMillis()
              << endl;        
         
-        sleep(10);
+        sleep(3);
 
         cerr << "After sleep in main thread." << endl;
 
+        clusterlib::Application *app = c->getApplication("app", true);
+        cerr << "app = " << app << endl;
+        clusterlib::Group *grp = app->getGroup("grp", true);
         clusterlib::Server *s =
-            f->createServer("app", "grp", "node", NULL, SF_NONE);
+            f->createServer(grp, "node", NULL, SF_NONE);
         cerr << "server = " << s << endl;
 
         if (s == NULL) {
@@ -88,25 +91,25 @@ main(int ac, char **av)
             exit(99);
         }
 
-        clusterlib::Application *app = s->getApplication("foo");
+        app = s->getApplication("foo");
         cerr << "app = " << app << endl;
 
-        clusterlib::Group *grp = app->getGroup("bar");
+        grp = app->getGroup("bar");
         clusterlib::Node *node = grp->getNode("zop");
-        clusterlib::DataDistribution *dst = app->getDistribution("dist");
+        clusterlib::DataDistribution *dst = app->getDataDistribution("dist");
 
-        clusterlib::Application *app1 = dst->getApplication();
+        clusterlib::Application *app1 = dst->getMyApplication();
         if (app != app1) {
             throw
                 clusterlib::ClusterException("app->dist->app non-equivalence");
         }
-        clusterlib::Group *grp1 = node->getGroup();
+        clusterlib::Group *grp1 = node->getMyGroup();
         if (grp != grp1) {
             throw
                 clusterlib::ClusterException(
 		    "group->node->group non-equivalence");
         }
-        app1 = grp->getApplication();
+        app1 = grp->getMyApplication();
         if (app != app1) {
             throw
                clusterlib::ClusterException("app->group->app non-equivalence");

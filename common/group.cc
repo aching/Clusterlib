@@ -18,6 +18,16 @@
 namespace clusterlib
 {
 
+NodeMap 
+Group::getNodes() 
+{
+    Locker l(getNodeMapLock());
+    
+    m_cachingNodes = true;
+    recacheNodes();
+    return m_nodes;
+}
+
 /*
  * Retrieve a node object. Load it from
  * the cluster if it is not yet in the
@@ -38,9 +48,9 @@ Group::getNode(const string &nodeName,
     {
         Locker l1(getNodeMapLock());
 
-        np = m_nodes[nodeName];
-        if (np != NULL) {
-            return np;
+        NodeMap::const_iterator nodeIt = m_nodes.find(nodeName);
+        if (nodeIt != m_nodes.end()) {
+            return nodeIt->second;
         }
     }
 
@@ -61,6 +71,121 @@ Group::getNode(const string &nodeName,
                            nodeName);
 }
 
+GroupMap
+Group::getGroups()
+{
+    Locker l(getGroupMapLock());
+    
+    m_cachingGroups = true;
+    recacheGroups();
+    return m_groups;
+}
+
+/*
+ * Retrieve a group object. Load it
+ * from the cluster if it is not
+ * yet in the cache.
+ */
+Group *
+Group::getGroup(const string &groupName,
+                     bool create)
+{
+    TRACE(CL_LOG, "getGroup");
+
+    Group *grp;
+
+    /*
+     * If it is already cached, return the
+     * cached group object.
+     */
+    {
+        Locker l1(getGroupMapLock());
+
+        GroupMap::const_iterator groupIt = m_groups.find(groupName);
+        if (groupIt != m_groups.end()) {
+            return groupIt->second;
+        }
+    }
+
+    /*
+     * If it is not yet cached, load the
+     * group from the cluster, cache it,
+     * and return the object.
+     */
+    grp = getDelegate()->getGroup(groupName, 
+                                  dynamic_cast<Group *>(this), 
+                                  create);
+    if (grp != NULL) {
+        Locker l2(getGroupMapLock());
+
+        m_groups[groupName] = grp;
+        return grp;
+    }
+
+    /*
+     * Object not found.
+     */
+    throw ClusterException(string("Cannot find group object ") +
+                           groupName);
+};
+
+DataDistributionMap 
+Group::getDataDistributions()
+{
+    Locker l(getDataDistributionMapLock());
+    
+    m_cachingDists = true;
+    recacheDists();
+    return m_dists;
+}
+
+/*
+ * Retrieve a data distribution object. Load
+ * it from the cluster if it is not yet in
+ * the cache.
+ */
+DataDistribution *
+Group::getDataDistribution(const string &distName,
+                            bool create)
+{
+    TRACE(CL_LOG, "getDataDistribution");
+
+    DataDistribution *distp;
+
+    /*
+     * If it is already cached, return the
+     * cached distribution object.
+     */
+    {
+        Locker l1(getDataDistributionMapLock());
+
+        DataDistributionMap::const_iterator distIt = m_dists.find(distName);
+        if (distIt != m_dists.end()) {
+            return distIt->second;
+        }
+    }
+
+    /*
+     * If it's not yet cached, load the distribution
+     * from the cluster, cache it, and return it.
+     */
+    distp = getDelegate()->getDataDistribution(distName, 
+                                               dynamic_cast<Group *>(this), 
+                                               create);
+    if (distp != NULL) {
+        Locker l2(getDataDistributionMapLock());
+        
+        m_dists[distName] = distp;
+        return distp;
+    }
+
+    /*
+     * Object not found.
+     */
+    throw ClusterException(string("Cannot find distribution object ") +
+                           distName);
+}
+
 /*
  * Update the cached representation of this group.
  */
@@ -71,6 +196,12 @@ Group::updateCachedRepresentation()
 
     if (cachingNodes()) {
         recacheNodes();
+    }
+    if (cachingDists()) {
+        recacheDists();
+    }
+    if (cachingGroups()) {
+        recacheGroups();
     }
 }
 
@@ -89,6 +220,44 @@ Group::recacheNodes()
     m_nodes.clear();
     for (nnIt = nnames.begin(); nnIt != nnames.end(); nnIt++) {
         (void) getNode(*nnIt, false);
+    }
+}
+
+/*
+ * Refresh the cache of groups in this application.
+ */
+void
+Group::recacheGroups()
+{
+    TRACE(CL_LOG, "recacheGroups");
+
+    Locker l(getGroupMapLock());
+    IdList gnames = getDelegate()->getGroupNames(dynamic_cast<Group *>(this));
+    IdList::iterator gnIt;
+
+    m_groups.clear();
+    for (gnIt = gnames.begin(); gnIt != gnames.end(); gnIt++) {
+        (void) getGroup(*gnIt, false);
+    }
+}
+
+/*
+ * Refresh the cache of distributions in this
+ * application.
+ */
+void
+Group::recacheDists()
+{
+    TRACE(CL_LOG, "recacheDists");
+
+    Locker l(getDataDistributionMapLock());
+    IdList dnames = 
+        getDelegate()->getDataDistributionNames(dynamic_cast<Group *>(this));
+    IdList::iterator dnIt;
+
+    m_dists.clear();
+    for (dnIt = dnames.begin(); dnIt != dnames.end(); dnIt++) {
+        (void) getDataDistribution(*dnIt, false);
     }
 }
 

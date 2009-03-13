@@ -84,6 +84,6 @@ int main(int argc, char* argv[]) {
     /* MPI Finalization */
     MPI::Finalize();
 
-    /* Return error code 1 if the one of test failed. */
-    return wasSuccessful ? 0 : 1;
+    /* Return error code -1 if the one of test failed. */
+    return wasSuccessful ? 0 : -1;
 }

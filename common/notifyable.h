@@ -30,27 +30,77 @@ class Notifyable
         return (other.getKey() == getKey()) ? true : false;
     }
 
-    /*
+    /**
      * Get the name of the Notifyable.
+     * 
+     * @return name of the Notifyable
      */
-    string getName() const { return m_name; }
+    const string &getName() const { return m_name; }
 
-    /*
+    /**
      * Return the string identifying the represented
      * cluster object.
+     *
+     * @return key unique key that represents this Notifyable
      */
-    string getKey() const { return m_key; }
+    const string &getKey() const { return m_key; }
 
-    /*
+#if TO_BE_IMPLEMENTED_IF_NECESSARY
+    /**
+     * Get the application name of this notifyable
+     *
+     * @return application this notifyable belongs to
+     */
+    string getMyApplicationName() const;
+
+    /**
+     * Get the group name of this notifyable
+     *
+     * @return group this notifyable belongs to
+     */
+    string getMyGroupName() const;
+
+#endif
+    /**
+     * Get the parent of this Notifyable (if it exists)
+     *
+     * @return pointer to parent or NULL if this is an Application
+     */
+    Notifyable *getMyParent() const;
+    
+    /**
+     * Retrieve the application object that this Notifyable is a part of.  
+     *
+     * @return pointer to the Application or NULL if it doesn't exist
+     */
+    Application *getMyApplication(); 
+
+    /**
+     * Retrieve the group object that this Notifyable is a part of.
+     * If subclasses do not want to allow getMyGroup(), override it
+     * and throw a clusterlib exception.
+     *
+     * @return pointer to the Group or NULL if it doesn't exist
+     */
+    virtual Group *getMyGroup(); 
+
+    /**
      * Is this notifyable "ready"? (according to the
      * ready protocol)
+     *
+     * @return true if this Notifyable is ready for use
      */
     bool isReady() const { return m_ready; }
 
-    /*
-     * Get the properties for this node
+    /**
+     * Get the properties for this object (if it is allowed). If
+     * subclasses do not want to allow getProperties(), override it
+     * and throw a clusterlib exception.
+     * 
+     * @param create create the properties if doesn't exist?
+     * @return NULL if no properties exists for this notifyable
      */
-    Properties *getProperties(bool create = false);
+    virtual Properties *getProperties(bool create = false);
 
   protected:
     /*
@@ -63,7 +113,8 @@ class Notifyable
      */
     Notifyable(FactoryOps *fp,
                const string &key,
-               const string &name);
+               const string &name,
+               Notifyable *parent);
 
     /*
      * Set the "ready" state of this notifyable.
@@ -88,7 +139,7 @@ class Notifyable
         = 0;
 
     /*
-     * Get the address of the lock for the node map.
+     * Get locks associated with the various maps.
      */
     Mutex *getPropertiesMapLock() { return &m_propLock; }
 
@@ -100,7 +151,7 @@ class Notifyable
     {
         throw ClusterException("Someone called the Notifyable "
                                "default constructor!");
-    };
+    }
 
   private:
     /*
@@ -118,6 +169,11 @@ class Notifyable
      * The name of the Notifyable.
      */
     const string m_name;
+
+    /**
+     * The parent notifyable (NULL if no parent)
+     */
+    Notifyable *mp_parent;
 
     /*
      * Is this notifyable "ready" according to the ready

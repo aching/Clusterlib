@@ -36,19 +36,24 @@ class Node
     : public virtual Notifyable
 {
   public:
-    /*
-     * Retrieve the group object for the group that
-     * this node is in.
-     */
-    Group *getGroup() { return mp_group; }
-
-    /*
-     * Is this node the leader of its group?
+    /**
+     * Is this node the leader of its group
+     *
+     * @return true if I am the leader
      */
     bool isLeader()
     {
         return (mp_group->getLeader() == this) ? true : false;
     }
+
+    /**
+     * Easy interface to determine the node's health.  Future work is
+     * to make a more detailed status checking object.  I.e. a Status
+     * subclass of Notifyable.
+     * 
+     * @return true if healthy, false if not
+     */
+    bool isHealthy() { return false; }
 
   protected:
     /*
@@ -64,7 +69,7 @@ class Node
          const string &name,
          const string &key,
          FactoryOps *f)
-        : Notifyable(f, key, name),
+        : Notifyable(f, key, name, group),
           mp_group(group)
     {
     }
@@ -79,7 +84,7 @@ class Node
      * Make the default constructor private so it cannot be called.
      */
     Node()
-        : Notifyable(NULL, "", "")
+        : Notifyable(NULL, "", "", NULL)
     {
         throw ClusterException("Someone called the Node default "
                                "constructor!");
@@ -88,7 +93,7 @@ class Node
     /*
      * Make the destructor private also.
      */
-    ~Node() {}
+    virtual ~Node() {}
 
   private:
     /*

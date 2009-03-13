@@ -46,16 +46,12 @@ namespace clusterlib
  * Constructor.
  */
 Server::Server(FactoryOps *fp,
-               const string &appName,
-               const string &grpName,
+               Group *group,
                const string &nodeName,
                HealthChecker *healthChecker,
                ServerFlags flags)
     : Client(fp),
       mp_f(fp),
-      m_appName(appName),
-      m_grpName(grpName),
-      m_nodeName(nodeName),
       m_checkFrequencyHealthy(1000*60), // Default healthy check of a minute
       m_checkFrequencyUnhealthy(1000*15), // Default unhealthy check of 15 secs
       m_heartBeatMultiple(2.0),
@@ -66,9 +62,8 @@ Server::Server(FactoryOps *fp,
       m_flags(flags),
       m_myBid(-1)
 {
-    mp_node = mp_f->getNode(m_appName,
-                            m_grpName,
-                            m_nodeName,
+    mp_node = mp_f->getNode(nodeName,
+                            group,
                             (m_flags & SF_MANAGED) == SF_MANAGED,
                             (m_flags & SF_CREATEREG) == SF_CREATEREG);
     if (mp_node == NULL) {

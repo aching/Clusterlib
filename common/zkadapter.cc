@@ -198,11 +198,11 @@ ZooKeeperAdapter::validatePath(const string &path)
     TRACE(LOG, "validatePath");
     
     if (path.find("/") != 0) {
-        throw ZooKeeperException(string("Node path must start with '/' but"
-                                         "it was '") +
-                                  path +
-                                  "'",
-                                  m_state == AS_CONNECTED);
+        throw ZooKeeperException(string("Node path must start with '/' but") +
+                                 string(" it was '") +
+                                 path +
+                                 "'",
+                                 m_state == AS_CONNECTED);
     }
     if (path.length() > 1) {
         if (path.rfind("/") == path.length() - 1) {

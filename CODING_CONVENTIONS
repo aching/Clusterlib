@@ -60,11 +60,23 @@ no benefit.
 
 * PLEASE do not use single letter variable names; try to make them
   function-informative. Iterator names should end with 'It', and pointer
-  variable names should end with 'p'.
+  variable names should end with 'P'.
 * Names of classes begin with an uppercase letter (for example, Canvas).
 * Both member and non-member functions begin with an lowercase letter
   (for example, textStyle).
-* Class data members begin with its m (for example, m_nodes). 
+* Class data members begin with its m (for example, m_nodes for instance) and 
+  mp (for example mp_parent for pointers). 
+* Clusterlib objects (i.e. Node, DataDistribution, Application) should use 
+  the full name in any member functions (i.e. createDataDistribution, 
+  loadApplication) and as
+  parameters use abbrieviated names as follows.
+    * Application = app
+    * DataDistribution = dist
+    * Properties = prop
+    * Group = group
+    * Notifyable = nt
+    * Node = node
+    * For pointers, add 'P' to the end of the name
 
 - Control Structures
 
@@ -141,3 +153,28 @@ clusterlib.cc not clusterLib.cc or ClusterLib.cc.
 
 Use -Wall and -Werror to force all warnings to be treated as
 errors. You cannot commit code with warnings.
+
+- Documentation
+
+Use doxygen style comments to document all client visible functions.
+The format is shown in the example below.
+
+/**
+ * Get the properties for this object (if it is allowed). If
+ * subclasses do not want to allow getProperties(), override it
+ * and throw a clusterlib exception.
+ * 
+ * @param create create the properties if doesn't exist?
+ * @return NULL if no properties exists for this notifyable
+ */
+Properties *getProperties(bool create = false);
+
+- Testing
+
+All new features must have unittests to check them before committing
+them.  The unittests are in clusterlib/unittests.
+
+- STL containers
+
+* When the map container is an rvalue, do not use the [], instead use find.
+* When using vector, use at() instead of [].
