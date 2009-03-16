@@ -1,0 +1,261 @@
+#!/usr/bin/perl -w
+
+use Cwd;
+use Getopt::Long;
+
+my $cwd = &getcwd();
+my $mpichDir = '@MPICH_PATH@';
+my $mpdBin = "$mpichDir\/install\/bin/mpd";
+my $mpiExec = "$mpichDir\/install\/bin\/mpiexec";
+my $zookeeperDir = '@ZOOKEEPER_PATH@';
+my $buildDir = '@BUILD_PATH@';
+my $zookeeperServerDir = "$buildDir\/zookeeperServerDir";
+my $zookeeperClientPort = "2221";
+my $zookeeperServerPort = "2222";
+my $zookeeperCfg = "$zookeeperServerDir\/zoo\.cfg";
+my $zookeeperOut = "$zookeeperServerDir\/out";
+my $zookeeperExec = "java -cp $zookeeperDir\/lib/zookeeper.jar:$zookeeperDir\/lib/log4j-1.2.15.jar:conf org.apache.zookeeper.server.quorum.QuorumPeerMain $zookeeperCfg";
+my $zookeeperPid = undef;
+my $globalDebug = undef;
+my $help = undef;
+my $mpdConf = "$ENV{'HOME'}".'/.mpd.conf';
+my $mpdPid = undef;
+my $numProcs = 1;
+my $testBin = undef;
+my $startMpd = undef;
+my $startZookeeper = undef;
+my $killAllMpd = undef;
+my $killAllZookeeper = undef;
+
+# Subroutine prototypes
+sub setCmdPrintExec;
+sub setSystemCmdPrintExec;
+sub parseArgs;
+sub usage;
+sub startMpd;
+sub killAllMpd;
+sub startZookeeper;
+sub killAllZookeeper;
+
+# Parse the arguments
+my $user = getlogin();
+&parseArgs();
+
+# If any of the non-test commands are run do those only then quit
+if ((defined($startMpd)) ||
+    (defined($startZookeeper)) ||
+    (defined($killAllMpd)) ||
+    (defined($killAllZookeeper))) {
+    if (defined($startMpd)) {
+	&startMpd($mpdBin);
+    }
+    if (defined($startZookeeper)) {
+	&startZookeeper($zookeeperExec);
+    }
+    if (defined($killAllMpd)) {
+	&killAllMpd($mpdBin);
+    }
+    if (defined($killAllZookeeper)) {
+	&killAllZookeeper($zookeeperExec);
+    }
+    exit(0);
+}
+
+# If mpd is not running, start it up
+&startMpd($mpdBin);
+
+# If zookeeper is not running, start it up
+&startZookeeper($zookeeperExec);
+
+# Run the actual unittests
+my $ret = &setSystemCmdPrintExec("$mpiExec -n $numProcs $testBin -z $ENV{'HOSTNAME'}\:$zookeeperClientPort");
+
+# Clean up mpd if it wasn't running before;
+if (defined($mpdPid)) {
+    print "\nCleaning up mpd process $mpdPid that this regression started",
+    "...\n";
+    &setSystemCmdPrintExec("kill -9 $mpdPid");
+}
+
+# Clean up zookeeper if it wasn't running before
+if (defined($zookeeperPid)) {
+    print "\nCleaning up zookeeper process $zookeeperPid and directory that ",
+    "this regression started...\n";
+    &setSystemCmdPrintExec("kill -9 $zookeeperPid");
+    &setSystemCmdPrintExec("rm -rf $zookeeperServerDir");
+}
+
+# Exit with correct return code
+print "\nReturning with $ret\n";
+exit($ret);
+
+###############################################################################
+
+# Subroutines
+
+sub setCmdPrintExec()
+{
+    my $cmd = shift;
+    print "command: $cmd\n";
+    if (!defined($globalDebug)) {
+        return eval $cmd;
+    }
+    else {
+        return 0;
+    }
+}
+
+sub setSystemCmdPrintExec()
+{
+    my $cmd = shift;
+    print "system command: $cmd\n";
+    if (!defined($globalDebug)) {
+        return system($cmd);
+    }
+    else {
+        return 0;
+    }
+}
+
+sub parseArgs()
+{
+    GetOptions('help'             => \$help,
+	       'globalDebug'      => \$globalDebug,
+	       'numProcs=s'       => \$numProcs,
+	       'testBin=s'        => \$testBin,
+	       'startMpd'         => \$startMpd,
+	       'startZk'          => \$startZookeeper,
+	       'killAllMpd'       => \$killAllMpd,
+	       'killAllZk'        => \$killAllZookeeper)
+        or usage();
+
+    usage() if (defined($help) ||
+		(((!defined($startMpd)) &&
+		  (!defined($startZookeeper)) &&
+		  (!defined($killAllMpd)) &&
+		  (!defined($killAllZookeeper))) &&
+		 ((!defined($numProcs)) ||
+		  (!defined($testBin)))));
+}
+
+sub usage()
+{
+    (my $cmdName = $0) =~ s/^.*\///;
+
+    print "Usage: $cmdName\n";
+    print "   [--help]           print only this message\n";
+    print "\n";
+    print "   Run the specified test with the following arguments\n";
+    print "   and either use existing mpd and zookeeper processes or\n";
+    print "   start them up automatically\n";
+    print "\n";
+    print "   --testBin (s)      path to the test binary\n";
+    print "   [--numProcs (s)]   how many processes to use (default 1)\n";
+    print "   [--globalDebug]    only show commands (do not execute anything)\n";
+    print "\n";
+    print "   Commands below are for starting/shutting down\n";
+    print "   mpd or zookeeper individually (does not run any tests)\n";
+    print "\n";
+    print "   [--startMpd]       start mpd only\n";
+    print "   [--startZk]        start zookeeper only\n";
+    print "   [--killAllMpd]     start mpd only\n";
+    print "   [--klllAllZk]      start zookeeper only\n";
+
+    exit(1);
+}
+
+sub startMpd()
+{
+    my $bin = shift;
+
+    # Make sure that the .mpd.conf file exists and is set to the right
+    # permissions
+    print "\nChecking for the $user\'s $mpdConf...\n";
+    if (!( -e $mpdConf)) {
+	print "\n$mpdConf not found, creating...\n";
+	&setCmdPrintExec("open(FH, \"> $mpdConf\")");
+	my $mpdSecretWord = "MPD_SECRETWORD=reallySecretive\n";
+	&setCmdPrintExec("print FH \"$mpdSecretWord\"");
+	&setCmdPrintExec('close FH');
+	&setSystemCmdPrintExec("chmod 600 $mpdConf");
+    }
+    else {
+	print "\n$mpdConf found, not creating...\n";
+    }
+
+    # Check for already running mpd
+    my $output = `ps -ef | grep $user | grep python | grep mpd | grep -v grep`;
+    if ($output eq "") {
+	print "\nStarting up mpd ($bin) for user $user...\n";
+	&setSystemCmdPrintExec("$bin \&");
+	# Make sure the process has time to start up
+	sleep(2);
+	$mpdPid = `ps -ef | grep $user | grep python | grep mpd | grep -v grep | awk '{print \$2}'`;
+	chomp($mpdPid);
+	if ($mpdPid eq "") {
+	    print "\nFailed to start up mpd\n";
+	    if (!defined($globalDebug)) {
+		exit(-1);
+	    }
+	}
+    }
+    else {
+	print "\nmpd already running for user $user, not starting...\n";
+    }
+}
+
+sub killAllMpd()
+{
+    my $bin = shift;
+    print "\nCleaning up all mpd processes for user $user...\n";
+    &setSystemCmdPrintExec("pkill -u $user -f $bin ");
+}
+
+sub startZookeeper()
+{
+    my $bin = shift;
+
+    # Check for an already running zookeeper process
+    my $output = `ps -ef | grep $user | grep zookeeper | grep "$zookeeperCfg" | grep -v grep`;
+    if ($output eq "") {
+	print "\nCreating zookeeper directory ($zookeeperServerDir)\n";
+	&setSystemCmdPrintExec("mkdir $zookeeperServerDir");
+	print "\nWriting $zookeeperCfg...\n";
+	&setCmdPrintExec("open(FH, \"> $zookeeperCfg\")");
+	&setCmdPrintExec("print FH \"tickTime=4000\n\"");
+	&setCmdPrintExec("print FH \"dataDir=$zookeeperServerDir\n\"");
+	&setCmdPrintExec("print FH \"clientPort=$zookeeperClientPort\n\"");
+	&setCmdPrintExec("print FH \"initLimit=4\n\"");
+	&setCmdPrintExec("print FH \"syncLimit=4\n\"");
+	&setCmdPrintExec("print FH \"electionAlg=0\n\"");
+	&setCmdPrintExec("print FH \"server\.0=$ENV{'HOSTNAME'}\:$zookeeperServerPort\n\"");
+	&setCmdPrintExec('close FH');
+	&setSystemCmdPrintExec("chmod 777 $zookeeperCfg");
+	print "\nStarting up zookeeper ($zookeeperExec) for user $user...\n";
+	&setCmdPrintExec("chdir(\"$zookeeperServerDir\")");
+	&setSystemCmdPrintExec("$bin \>\& $zookeeperOut \&");
+	&setCmdPrintExec("chdir(\"$cwd\")");
+	# Make sure the process has time to start up
+	sleep(2);
+	$zookeeperPid = `ps -ef | grep $user | grep zookeeper | grep $zookeeperCfg | grep -v grep | awk '{print \$2}'`;
+	chomp($zookeeperPid);
+	if ($zookeeperPid eq "") {
+	    print "\nFailed to start up zookeeperPid\n";
+	    if (!defined($globalDebug)) {
+		exit(-1);
+	    }
+	}
+    }
+    else {
+	print "\nzookeeper already running for user $user, not starting...\n";
+    }
+}
+
+sub killAllZookeeper()
+{
+    my $bin = shift;
+    print "\nCleaning up all zookeeper processes and directory for ",
+    "user $user...\n";
+    &setSystemCmdPrintExec("pkill -u $user -f \"$bin\" ");
+    &setSystemCmdPrintExec("rm -rf $zookeeperServerDir");
+}

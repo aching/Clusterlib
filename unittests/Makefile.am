@@ -5,8 +5,8 @@ INCLUDES = \
 	-I@BOOST_INCLUDES@ \
 	-I@MPICH_INCLUDES@
 METASOURCES = AUTO
-bin_PROGRAMS = test
-test_LDADD = \
+bin_PROGRAMS = unittests
+unittests_LDADD = \
 	$(top_builddir)/common/libcluster.a \
 	@LOG4CXX_LIB@ \
 	@ZOOKEEPER_LIB@ \
@@ -17,7 +17,7 @@ test_LDADD = \
 	@LIB_THREAD_OS@ \
 	@MPICH_LIB@
 CXXFLAGS = @BASE_CXXFLAGS@ $(CPPUNIT_CFLAGS) -DMPICH_IGNORE_CXX_SEEK 
-test_SOURCES = \
+unittests_SOURCES = \
 	test.cc \
 	testparams.cc \
 	clusterlibClient.cc \

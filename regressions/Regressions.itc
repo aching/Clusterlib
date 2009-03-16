@@ -1,8 +1,0 @@
-###
-# Clusterlib Regression Suite
-###
-
-# Common Library
-# Test("../common/regressions/test.sh");
-
-1;

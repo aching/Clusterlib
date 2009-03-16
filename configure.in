@@ -446,4 +446,9 @@ Makefile
 common/Makefile
 example/Makefile
 unittests/Makefile
+unittests/unittestsHelper.pl
+regressions/Regressions.itc
 )
+
+# Make the perl script executable
+chmod +x unittests/unittestsHelper.pl

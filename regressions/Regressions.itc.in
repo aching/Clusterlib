@@ -1,0 +1,7 @@
+###
+# Clusterlib Regression Suite
+###
+
+# Unittesting 
+Test( "../unittests/unittestsHelper.pl --testBin @BUILD_PATH@/unittests/unittests --numProcs 2");
+
