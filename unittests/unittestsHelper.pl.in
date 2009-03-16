@@ -87,6 +87,7 @@ if (defined($zookeeperPid)) {
 
 # Exit with correct return code
 print "\nReturning with $ret\n";
+die if ($ret != 0);
 exit($ret);
 
 ###############################################################################

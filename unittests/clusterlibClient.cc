@@ -128,222 +128,222 @@ class ClusterlibClient
 
     void testClient1()
     {
-        if (getRank() == 0) {
-            cerr << "Test 1" << endl;
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        cerr << "Test 1" << endl;
             
-            /*
-             * Create applications with different names and
-             * observe allowed creation and exceptions.
-             */
-            _app0 = _client0->getApplication("foo-app", true);
-            CPPUNIT_ASSERT(_app0 != NULL);
-            try {
-                _app0 = _client0->getApplication("", false);
-                CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
-            } catch (clusterlib::ClusterException &e) {
-            }
-            try {
-                _app0 = _client0->getApplication("/frob", true);
-                CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
-            } catch (clusterlib::ClusterException &e) {
-            }
-            cerr << "Test 1 end" << endl;
+        /*
+         * Create applications with different names and
+         * observe allowed creation and exceptions.
+         */
+        _app0 = _client0->getApplication("foo-app", true);
+        CPPUNIT_ASSERT(_app0 != NULL);
+        try {
+            _app0 = _client0->getApplication("", false);
+            CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
+        } catch (clusterlib::ClusterException &e) {
         }
+        try {
+            _app0 = _client0->getApplication("/frob", true);
+            CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
+        } catch (clusterlib::ClusterException &e) {
+        }
+        cerr << "Test 1 end" << endl;        
     }
     void testClient2()
     {
-        if (getRank() == 0) {
-            cerr << "Test 2, cp == " << this << endl;
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
 
-            /*
-             * Set up a timer, cancel and observe that it did not
-             * fire.
-             */
-            _fired0 = _cancelled0 = false;
+        cerr << "Test 2, cp == " << this << endl;
 
-            _id0 = _client0->registerTimer(_handler0, 500, this);
-            CPPUNIT_ASSERT(_id0 > -1);
-            CPPUNIT_ASSERT(_fired0 == false);
-            CPPUNIT_ASSERT(_cancelled0 == false);
+        /*
+         * Set up a timer, cancel and observe that it did not
+         * fire.
+         */
+        _fired0 = _cancelled0 = false;
 
-            _cancelled0 = _client0->cancelTimer(_id0);
-            CPPUNIT_ASSERT(_cancelled0 == true);
-            CPPUNIT_ASSERT(_fired0 == false);
+        _id0 = _client0->registerTimer(_handler0, 500, this);
+        CPPUNIT_ASSERT(_id0 > -1);
+        CPPUNIT_ASSERT(_fired0 == false);
+        CPPUNIT_ASSERT(_cancelled0 == false);
 
-            cerr << "Before sleep" << endl;
-            sleep(1);
-            cerr << "After sleep" << endl;
+        _cancelled0 = _client0->cancelTimer(_id0);
+        CPPUNIT_ASSERT(_cancelled0 == true);
+        CPPUNIT_ASSERT(_fired0 == false);
 
-            CPPUNIT_ASSERT(_cancelled0 == true);
-            CPPUNIT_ASSERT(_fired0 == false);
-            cerr << "Test 2 end" << endl;
-        }
+        cerr << "Before sleep" << endl;
+        sleep(1);
+        cerr << "After sleep" << endl;
+
+        CPPUNIT_ASSERT(_cancelled0 == true);
+        CPPUNIT_ASSERT(_fired0 == false);
+        cerr << "Test 2 end" << endl;
     }
     void testClient3()
     {
-        if (getRank() == 0) {
-            cerr << "Test 3, cp == " << this << endl;
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
 
-            /*
-             * Set up a timer, allow it to fire.
-             */
-            _fired0 = _cancelled0 = false;
+        cerr << "Test 3, cp == " << this << endl;
 
-            _id0 = _client0->registerTimer(_handler0, 500, this);
-            CPPUNIT_ASSERT(_id0 > -1);
-            CPPUNIT_ASSERT(_fired0 == false);
-            CPPUNIT_ASSERT(_cancelled0 == false);
+        /*
+         * Set up a timer, allow it to fire.
+         */
+        _fired0 = _cancelled0 = false;
 
-            cerr << "Before sleep" << endl;
-            sleep(1);
-            cerr << "After sleep" << endl;
+        _id0 = _client0->registerTimer(_handler0, 500, this);
+        CPPUNIT_ASSERT(_id0 > -1);
+        CPPUNIT_ASSERT(_fired0 == false);
+        CPPUNIT_ASSERT(_cancelled0 == false);
 
-            CPPUNIT_ASSERT(_fired0 == true);
-            CPPUNIT_ASSERT(_cancelled0 == false);
-            cerr << "Test 3 end" << endl;
-        }
+        cerr << "Before sleep" << endl;
+        sleep(1);
+        cerr << "After sleep" << endl;
+
+        CPPUNIT_ASSERT(_fired0 == true);
+        CPPUNIT_ASSERT(_cancelled0 == false);
+        cerr << "Test 3 end" << endl;
     }
     void testClient4()
     {
-        if (getRank() == 0) {
-            cerr << "Test 4" << endl;
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
 
-            /*
-             * Set up a timer, cancel twice and observe that the 2nd
-             * cancel returns false.
-             */
-            _fired0 = _cancelled0 = false;
+        cerr << "Test 4" << endl;
 
-            _id0 = _client0->registerTimer(_handler0, 1000, this);
-            CPPUNIT_ASSERT(_fired0 == false);
-            CPPUNIT_ASSERT(_cancelled0 == false);
+        /*
+         * Set up a timer, cancel twice and observe that the 2nd
+         * cancel returns false.
+         */
+        _fired0 = _cancelled0 = false;
 
-            _cancelled0 = _client0->cancelTimer(_id0);
-            CPPUNIT_ASSERT(_fired0 == false);
-            CPPUNIT_ASSERT(_cancelled0 == true);
-            cerr << "After first cancel" << endl;
+        _id0 = _client0->registerTimer(_handler0, 1000, this);
+        CPPUNIT_ASSERT(_fired0 == false);
+        CPPUNIT_ASSERT(_cancelled0 == false);
 
-            _cancelled1 = _client0->cancelTimer(_id0);
-            CPPUNIT_ASSERT(_fired0 == false);
-            CPPUNIT_ASSERT(_cancelled1 == false);
-            cerr << "After second cancel" << endl;
+        _cancelled0 = _client0->cancelTimer(_id0);
+        CPPUNIT_ASSERT(_fired0 == false);
+        CPPUNIT_ASSERT(_cancelled0 == true);
+        cerr << "After first cancel" << endl;
 
-            cerr << "Test 4 end" << endl;
-        }
+        _cancelled1 = _client0->cancelTimer(_id0);
+        CPPUNIT_ASSERT(_fired0 == false);
+        CPPUNIT_ASSERT(_cancelled1 == false);
+        cerr << "After second cancel" << endl;
+
+        cerr << "Test 4 end" << endl;
     }
     void testClient5()
     {
-        if (getRank() == 0) {
-            cerr << "Test 5" << endl;
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
 
-            /*
-             * Cancel a non-existent timer, see that it returns false.
-             */
-            _fired0 = _cancelled0 = false;
+        cerr << "Test 5" << endl;
 
-            _cancelled0 = _client0->cancelTimer((clusterlib::TimerId) 10001);
-            CPPUNIT_ASSERT(_cancelled0 == false);
-            cerr << "Test 5 end" << endl;
-        }
+        /*
+         * Cancel a non-existent timer, see that it returns false.
+         */
+        _fired0 = _cancelled0 = false;
+
+        _cancelled0 = _client0->cancelTimer((clusterlib::TimerId) 10001);
+        CPPUNIT_ASSERT(_cancelled0 == false);
+        cerr << "Test 5 end" << endl;
     }
 
     void testClient20()
     {
-        if (getRank() == 0) {
-            cerr << "Test 20" << endl;
-            /*
-             * Register a user event handler.
-             */
-            cerr << "Test 20 end" << endl;
-        }
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        cerr << "Test 20" << endl;
+        /*
+         * Register a user event handler.
+         */
+        cerr << "Test 20 end" << endl;
     }
     void testClient21()
     {
-        if (getRank() == 0) {
-            cerr << "Test 21" << endl;
-            /*
-             * Register a user event handler twice,
-             * see that second registration is silently
-             * ignored.
-             */
-            cerr << "Test 21 end" << endl;
-        }
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        cerr << "Test 21" << endl;
+        /*
+         * Register a user event handler twice,
+         * see that second registration is silently
+         * ignored.
+         */
+        cerr << "Test 21 end" << endl;
     }
     void testClient22()
     {
-        if (getRank() == 0) {
-            cerr << "Test 22" << endl;
-            /*
-             * Register and cancel a user event handler,
-             * see that cancellation is successful.
-             */
-            cerr << "Test 22 end" << endl;
-        }
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+        
+        cerr << "Test 22" << endl;
+        /*
+         * Register and cancel a user event handler,
+         * see that cancellation is successful.
+         */
+        cerr << "Test 22 end" << endl;
     }
     void testClient23()
     {
-        if (getRank() == 0) {
-            cerr << "Test 23" << endl;
-            /*
-             * Register a user event handler, then
-             * cause the event and see that it fired
-             * and the handler was called.
-             */
-            cerr << "Test 23 end" << endl;
-        }
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        cerr << "Test 23" << endl;
+        /*
+         * Register a user event handler, then
+         * cause the event and see that it fired
+         * and the handler was called.
+         */
+        cerr << "Test 23 end" << endl;
     }
     void testClient24()
     {
-        if (getRank() == 0) {
-            cerr << "Test 24" << endl;
-            /*
-             * Register a user event handler, then
-             * cause the event 10 times, see that it
-             * fires 10 times and that the handler was
-             * called 10 times.
-             */
-            cerr << "Test 24 end" << endl;
-        }
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        cerr << "Test 24" << endl;
+        /*
+         * Register a user event handler, then
+         * cause the event 10 times, see that it
+         * fires 10 times and that the handler was
+         * called 10 times.
+         */
+        cerr << "Test 24 end" << endl;
     }
     void testClient25()
     {
-        if (getRank() == 0) {
-            cerr << "Test 25" << endl;
-            /*
-             * Register a user event handler, then
-             * cause the event 5 times, see that it
-             * fired 5 times, cancel the handler and see
-             * that it no longer fires for subsequent
-             * events.
-             */
-            cerr << "Test 25 end" << endl;
-        }
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        cerr << "Test 25" << endl;
+        /*
+         * Register a user event handler, then
+         * cause the event 5 times, see that it
+         * fired 5 times, cancel the handler and see
+         * that it no longer fires for subsequent
+         * events.
+         */
+        cerr << "Test 25 end" << endl;
     }
     void testClient26()
     {
-        if (getRank() == 0) {
-            cerr << "Test 26" << endl;
-            /*
-             * Register two user event handlers, then
-             * cause the event, see that both handlers
-             * are called.
-             */
-            cerr << "Test 26 end" << endl;
-        }
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        cerr << "Test 26" << endl;
+        /*
+         * Register two user event handlers, then
+         * cause the event, see that both handlers
+         * are called.
+         */
+        cerr << "Test 26 end" << endl;
     }
     void testClient27()
     {
-        if (getRank() == 0) {
-            cerr << "Test 27" << endl;
-            /*
-             * Register two user event handlers, then
-             * cause the event, see that both handlers
-             * are called. Then cancel one, cause the
-             * event and see that the other one is still
-             * being called.
-             */
-            cerr << "Test 27 end" << endl;
-        }
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        cerr << "Test 27" << endl;
+        /*
+         * Register two user event handlers, then
+         * cause the event, see that both handlers
+         * are called. Then cancel one, cause the
+         * event and see that the other one is still
+         * being called.
+         */
+        cerr << "Test 27 end" << endl;
     }
 
   private:
