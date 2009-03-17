@@ -46,7 +46,7 @@ int
 main(int ac, char **av)
 {
     try {
-        clusterlib::Factory *f = new clusterlib::Factory("wmdev1009:2181");
+        clusterlib::Factory *f = new clusterlib::Factory("localhost:2221");
         cerr << "factory = " << f << endl;
         clusterlib::Client *c = f->createClient();
         cerr << "client = " << c << endl;

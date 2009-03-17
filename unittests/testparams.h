@@ -10,12 +10,12 @@ class TestParams {
     TestParams() :
         m_myId(-1),
         m_numProcs(-1),
-        m_zkServerPortList("localhost:2181"),
+        m_zkServerPortList("localhost:2221"),
         m_parseArgsState(-1) {}
     TestParams(int32_t myId, int32_t numProcs) :
         m_myId(myId),
         m_numProcs(numProcs),
-        m_zkServerPortList("localhost:2181"),
+        m_zkServerPortList("localhost:2221"),
         m_parseArgsState(-1) {}
     void printUsage(char *exec) const;
     /**

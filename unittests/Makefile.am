@@ -21,6 +21,7 @@ unittests_SOURCES = \
 	test.cc \
 	testparams.cc \
 	clusterlibClient.cc \
-	clusterlibProperties.cc 
+	clusterlibProperties.cc \
+	clusterlibHierarchy.cc
 
 @makefile_inc@

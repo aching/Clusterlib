@@ -5,11 +5,12 @@ using namespace std;
 void TestParams::printUsage(char *exec) const
 {
     cout <<
-"Usage: " << exec << " [OPTION]... [VAR=VALUE]...\n\n"
-" -h  --help            Display this help and exit.\n"
-" -z  --zk_server_port  Zookeeper server port list \n"
-"                       (i.e. wm301:2181,wm302:2181 (default %s).\n"
-         << endl;
+        "Usage: " << exec <<
+        " [OPTION]... [VAR=VALUE]...\n\n"
+        " -h  --help            Display this help and exit.\n"
+        " -z  --zk_server_port  Zookeeper server port list \n"
+        "                       (i.e. wm301:2181,wm302:2181 (default " 
+         << getZkServerPortList() << ")" << endl;
 }
 
 int32_t TestParams::rootParseArgs(int argc, char **argv)

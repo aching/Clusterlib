@@ -83,6 +83,10 @@ Notifyable::getProperties(bool create)
 Notifyable *
 Notifyable::getMyParent() const
 {
+    if (mp_parent == NULL) {
+        throw ClusterException("Cannot getMyParent() with a NULL parent");
+    }
+
     return mp_parent;
 }
 
@@ -94,7 +98,7 @@ Notifyable::getMyApplication()
 
     do {
         app = getDelegate()->getApplicationFromKey(appKey, false);
-        appKey = getDelegate()->removeObjectFromKey(getKey());
+        appKey = getDelegate()->removeObjectFromKey(appKey);
     }  while ((app == NULL) && (!appKey.empty()));
 
     return app;
@@ -105,6 +109,18 @@ Notifyable::getMyGroup()
 {
     string groupKey = getKey();
 
+    if (groupKey.substr(groupKey.size() - 1)
+        == ClusterlibStrings::PATHSEPARATOR) {
+        LOG_FATAL(CL_LOG, "getMyGroup: Key %s ends in a /", groupKey.c_str());
+        throw ClusterException("getMyGroup: Key ends in a /");
+    }
+
+    /*
+     * Remove at least one object to get the underlying group key if
+     * this Notifyable is a Group.
+     */
+    groupKey = getDelegate()->removeObjectFromKey(groupKey);
+
     /*
      * Try to find the group or application (in that order) from the
      * string working backwards.  Otherwise give up and return NULL.
@@ -112,7 +128,7 @@ Notifyable::getMyGroup()
     uint32_t foundGroupKey = groupKey.rfind(ClusterlibStrings::GROUPS);
     if (foundGroupKey != string::npos) {
         /* 
-         * Resize groupKey to end at the group name
+         * Resize groupKey to end at the group name if not already so
          */
         uint32_t foundGroupName = 
             groupKey.find(ClusterlibStrings::PATHSEPARATOR, foundGroupKey);
@@ -120,16 +136,17 @@ Notifyable::getMyGroup()
             (foundGroupName != (groupKey.size() - 1))) {
             foundGroupName = groupKey.find(ClusterlibStrings::PATHSEPARATOR, 
                                            foundGroupName + 1);
-            groupKey.resize(foundGroupName);
+            if (foundGroupName != string::npos) {
+                groupKey.resize(foundGroupName);
+            }
             return getDelegate()->getGroupFromKey(groupKey, false);
-
         }
     }
 
     foundGroupKey = groupKey.rfind(ClusterlibStrings::APPLICATIONS);
     if (foundGroupKey != string::npos) {
         /* 
-         * Resize groupKey to end at the application name
+         * Resize groupKey to end at the application name if not already so
          */
         uint32_t foundGroupName = 
             groupKey.find(ClusterlibStrings::PATHSEPARATOR, foundGroupKey);
@@ -137,9 +154,10 @@ Notifyable::getMyGroup()
             (foundGroupName != (groupKey.size() - 1))) {
             foundGroupName = groupKey.find(ClusterlibStrings::PATHSEPARATOR, 
                                            foundGroupName + 1);
-            groupKey.resize(foundGroupName);
+            if (foundGroupName != string::npos) {
+                groupKey.resize(foundGroupName);
+            }
             return getDelegate()->getGroupFromKey(groupKey, false);
-
         }
     }
     

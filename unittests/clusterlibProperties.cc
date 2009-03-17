@@ -93,6 +93,8 @@ class ClusterlibProperties : public MPITestFixture {
             CPPUNIT_ASSERT(val == "v2");
             cerr << "Got correct test = v2" << endl;
         }
+
+        cerr << "testGetProperties1: done" << endl;
     }
 
     /* 
@@ -206,6 +208,8 @@ class ClusterlibProperties : public MPITestFixture {
             CPPUNIT_ASSERT(val == "v5");
             cerr << "Got correct test = v5" << endl;
         }
+
+        cerr << "testGetProperties2: done" << endl;
     }
 
   private:
