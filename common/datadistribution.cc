@@ -89,11 +89,6 @@ DataDistribution::DataDistribution(Group *parentGroup,
     } else {
         mp_hashFnPtr = s_hashFunctions[m_hashFnIndex];
     }
-
-    /*
-     * Read the data distribution from ZK.
-     */
-    updateCachedRepresentation();
 };
 
 /*
@@ -323,55 +318,101 @@ DataDistribution::marshallOverrides()
 };
 
 /*
- * Update the data distribution from the cluster.
+ * Initialize the data distribution from the cluster.
  */
 void
-DataDistribution::updateCachedRepresentation()
+DataDistribution::initializeCachedRepresentation()
 {
     TRACE(CL_LOG, "updateCachedRepresentation");
+
+    /*
+     * Initialize the shards.
+     */
+    updateShards();
+
+    /*
+     * Initialize the manual overrides.
+     */
+    updateManualOverrides();
+}
+
+/*
+ * Update the cached shards of the data distribution.
+ */
+bool
+DataDistribution::updateShards()
+{
+    TRACE(CL_LOG, "udpateShards");
 
     /*
      * Must lock before asking the repository for the values
      * to ensure that we don't lose intermediate values or
      * values installed after this update.
      */
-
     Locker s(getShardsLock());
+
+    int32_t shardsVersion;
+    string shards = getDelegate()->loadShards(getKey(), shardsVersion);
+    ShardList::iterator sIt;
+
+    /* 
+     * Only update if this is a newer version.
+     */
+    if (shardsVersion > getShardsVersion()) {
+        for (sIt = m_shards.begin(); sIt != m_shards.end(); sIt++) {
+            delete *sIt;
+        }
+        m_shards.clear();
+        unmarshallShards(shards);
+        setShardsVersion(shardsVersion);
+        return true;
+    }
+
+    /*
+     * No change.
+     */
+    return false;
+}
+
+/*
+ * Update the manual overrides of the data distribution.
+ */
+bool
+DataDistribution::updateManualOverrides()
+{
+    TRACE(CL_LOG, "updateManualOverrides");
+
+    /*
+     * Must lock before asking the repository for the values
+     * to ensure that we don't lose intermediate values or
+     * values installed after this update.
+     */
     Locker m(getManualOverridesLock());
 
-    int32_t shardsVersion, overridesVersion;
-    string shards = getDelegate()->loadShards(getKey(),
-                                              shardsVersion);
-    string overrides = getDelegate()->loadManualOverrides(getKey(),
-                                                          overridesVersion);
-    ShardList::iterator sIt;
+    int32_t overridesVersion;
+    string overrides =
+        getDelegate()->loadManualOverrides(getKey(), overridesVersion);
     ManualOverridesMap::iterator moIt;
 
-    {
-	/* Only update if this is a newer version **/
-	if (shardsVersion > getShardsVersion()) {
-	    for (sIt = m_shards.begin(); sIt != m_shards.end(); sIt++) {
-		delete *sIt;
-	    }
-	    m_shards.clear();
-	    unmarshallShards(shards);
-	    setShardsVersion(shardsVersion);
-	}
+    /* 
+     * Only update if this is a newer version.
+     */
+    if (overridesVersion > getManualOverridesVersion()) {
+        for (moIt = m_manualOverrides.begin();
+             moIt != m_manualOverrides.end();
+             moIt++) {
+            delete (*moIt).second;
+        }
+        m_manualOverrides.clear();
+        unmarshallOverrides(overrides);
+        setManualOverridesVersion(overridesVersion);
+        return true;
     }
 
-    {
-	/* Only update if this is a newer version **/
-	if (overridesVersion > getManualOverridesVersion()) {
-	    for (moIt = m_manualOverrides.begin();
-		 moIt != m_manualOverrides.end();
-		 moIt++) {
-		delete (*moIt).second;
-	    }
-	    m_manualOverrides.clear();
-	    unmarshallOverrides(overrides);
-	    setManualOverridesVersion(overridesVersion);
-	}
-    }
+    /*
+     * No change.
+     */
+    return false;
 }
 
 /*

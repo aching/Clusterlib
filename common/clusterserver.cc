@@ -163,8 +163,8 @@ Server::checkHealth()
             m_healthCheckingEnabled) 
         {
             try {
-                //schedule an abort in 10 mins to prevent from a deadlock
 #if 0 // AC - Events aren't ready yet
+                //schedule an abort in 10 mins to prevent from a deadlock
                 LIVE_OR_DIE(report = mp_healthChecker->checkHealth(), 10 * 60 * 1000);
 #else
 		report = mp_healthChecker->checkHealth();		
@@ -183,14 +183,8 @@ Server::checkHealth()
             }
             //check if m_healthCheckingEnabled is still true
             if (m_healthCheckingEnabled) {
-#if 0 // AC - No statistics I'm aware of yet
-                mp_clusterStats->incrHealthReports( 
-                    report.getHealthState() == HealthReport::HS_HEALTHY, 
-                    1 
-                );
-#endif
-                //schedule an abort in 2 mins to prevent from a deadlock
 #if 0 // AC - Events aren't ready yet
+                //schedule an abort in 2 mins to prevent from a deadlock
                 LIVE_OR_DIE(setHealthy( report ), 2 * 60 * 1000);
 #else
 		setHealthy(report);

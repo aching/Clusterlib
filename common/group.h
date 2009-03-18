@@ -22,71 +22,90 @@ class Group
     : public virtual Notifyable
 {
   public:
-    /*
+    /**
      * Get the leader node.
+     *
+     * @return the Node * for the leader of the group, or NULL.
      */
     Node *getLeader();
 
     /**
-     * Get the nodes for this object (if it is allowed). If
-     * subclasses do not want to allow getNodes(), override it
-     * and throw a clusterlib exception.
-     * 
-     * @return a map of all the different nodes 
+     * Get the time at which the leadership of this group
+     * switched last.
+     *
+     * @return the time at which the leadership switched, or -1.
      */
-    virtual NodeMap getNodes();
+    int64_t getLeadershipChangeTime() { return m_leadershipChangeTime; }
+
 
     /**
-     * Get the node for this object (if it is allowed). If
-     * subclasses do not want to allow getNode(), override it
-     * and throw a clusterlib exception.
+     * Get a copy of the map of all the nodes in this group.
      * 
-     * @param create create the node if doesn't exist?
-     * @return NULL if no node exists for this notifyable
+     * @return a copy of the map of all the nodes in this group. 
      */
-    virtual Node *getNode(const string &nodeName, 
-                          bool create = false);
+    NodeMap getNodes() 
+    {
+        Locker l(getNodeMapLock());
+
+        m_cachingNodes = true;
+        recacheNodes();
+        return m_nodes;
+    }
 
     /**
-     * Get the groups for this object (if it is allowed). If
-     * subclasses do not want to allow getGroups(), override it
-     * and throw a clusterlib exception.
+     * Get the named node.
      * 
-     * @return a map of all the different groups 
+     * @param create create the node if doesn't exist
+     * @return NULL if the named node does not exist and create
+     * == false
      */
-    virtual GroupMap getGroups();
+    Node *getNode(const string &nodeName, bool create = false);
 
     /**
-     * Get the group for this object (if it is allowed). If
-     * subclasses do not want to allow getGroup(), override it
-     * and throw a clusterlib exception.
+     * Get a copy of the map of all the groups in this group.
      * 
-     * @param create create the group if doesn't exist?
-     * @return NULL if no group exists for this notifyable
+     * @return a copy of the map of all the groups in this group.
      */
-    virtual Group *getGroup(const string &groupName,
-                            bool create = false);
+    GroupMap getGroups()
+    {
+        Locker l(getGroupMapLock());
+
+        m_cachingGroups = true;
+        recacheGroups();
+        return m_groups;
+    }
 
     /**
-     * Get the distributions for this object (if it is allowed). If
-     * subclasses do not want to allow getDataDistributions(), override it
-     * and throw a clusterlib exception.
+     * Get the named group.
      * 
-     * @return a map of all the different distributions 
+     * @param create create the group if doesn't exist.
+     * @return NULL if the group does not exist and create
+     * == false, else the Group *.
      */
-    virtual DataDistributionMap getDataDistributions();
+    Group *getGroup(const string &groupName, bool create = false);
 
     /**
-     * Get the distribution for this object (if it is allowed). If
-     * subclasses do not want to allow getDataDistribution(), override it
-     * and throw a clusterlib exception.
+     * Get a copy of the map of all distributions in this group.
      * 
-     * @param create create the distribution if doesn't exist?
+     * @return a copy of the map of all the distributions in this group.
+     */
+    DataDistributionMap getDataDistributions()
+    {
+        Locker l(getDataDistributionMapLock());
+
+        m_cachingDists = true;
+        recacheDataDistributions();
+        return m_dists;
+    }
+
+    /**
+     * Get the named distribution.
+     * 
+     * @param create create the distribution if doesn't exist
      * @return NULL if no distribution exists for this notifyable
      */
-    virtual DataDistribution *getDataDistribution(const string &distName,
-                                                  bool create = false);
-
+    DataDistribution *getDataDistribution(const string &distName,
+                                          bool create = false);
 
   protected:
     /*
@@ -104,6 +123,7 @@ class Group
         : Notifyable(f, key, name, parent),
           mp_leader(NULL),
           m_leaderIsKnown(false),
+          m_leadershipChangeTime(0),
           m_leadershipStringsInitialized(false),
           m_cachingNodes(false),
           m_cachingGroups(false),
@@ -113,6 +133,11 @@ class Group
         m_groups.clear();
         m_dists.clear();
     }
+
+    /*
+     * Destructor.
+     */
+    virtual ~Group() {};
 
     /*
      * Update the known leader.
@@ -138,25 +163,34 @@ class Group
     string getLeadershipBidPrefix();
 
     /*
-     * Are we caching all nodes, groups, and distributions fully?
+     * Are we caching all nodes fully?
      */
     bool cachingNodes() { return m_cachingNodes; }
     void recacheNodes();
 
+    /*
+     * Are we caching all groups fully?
+     */
     bool cachingGroups() { return m_cachingGroups; }
     void recacheGroups();
 
-    bool cachingDists() { return m_cachingDists; }
-    void recacheDists();
-
-
+    /*
+     * Are we caching all distributions?
+     */
+    bool cachingDataDistributions() { return m_cachingDists; }
+    void recacheDataDistributions();
 
     /*
-     * Update the cached representation of this group.
+     * Update the time of the latest leadership change.
      */
-    virtual void updateCachedRepresentation();
+    void setLeadershipChangeTime(int64_t t) { m_leadershipChangeTime = t; }
 
-  protected:
+    /*
+     * Initialize the cached representation of this group.
+     */
+    virtual void initializeCachedRepresentation();
+
+  private:
     /*
      * Make the default constructor private so it cannot be called.
      */
@@ -168,17 +202,12 @@ class Group
     }
 
     /*
-     * Make the destructor private also.
-     */
-    virtual ~Group() {};
-
-    /*
-     * Get the addresses of the locks for the node, group, and
-     * distriubution maps.
+     * Get the address of the lock for the node, group, and
+     * distribution maps.
      */
     Mutex *getNodeMapLock() { return &m_nodeMapLock; }
-    Mutex *getGroupMapLock() { return &m_grpLock; }
-    Mutex *getDataDistributionMapLock() { return &m_distLock; }
+    Mutex *getGroupMapLock() { return &m_groupMapLock; }
+    Mutex *getDataDistributionMapLock() { return &m_distMapLock; }
 
   private:
     /*
@@ -187,6 +216,7 @@ class Group
      */
     Node *mp_leader;
     bool m_leaderIsKnown;
+    int64_t m_leadershipChangeTime;
     Mutex m_leadershipLock;
 
     /*
@@ -207,17 +237,16 @@ class Group
      * Map of all groups within this object.
      */
     GroupMap m_groups;
-    Mutex m_grpLock;
+    Mutex m_groupMapLock;
 
     /*
      * Map of all data distributions within this object.
      */
     DataDistributionMap m_dists;
-    Mutex m_distLock;
+    Mutex m_distMapLock;
 
     /*
-     * Variables to remember whether we're caching nodes, groups,
-     * and distributions fully.
+     * Are we caching nodes, groups, or distributions fully?
      */
     bool m_cachingNodes;
     bool m_cachingGroups;

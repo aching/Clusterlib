@@ -20,6 +20,7 @@ CXXFLAGS = @BASE_CXXFLAGS@ $(CPPUNIT_CFLAGS) -DMPICH_IGNORE_CXX_SEEK
 unittests_SOURCES = \
 	test.cc \
 	testparams.cc \
+	clusterlibCache.cc \
 	clusterlibClient.cc \
 	clusterlibProperties.cc \
 	clusterlibHierarchy.cc

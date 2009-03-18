@@ -332,9 +332,9 @@ class DataDistribution
     }
 
     /**
-     * Update the distribution.
+     * Initialize the cached representation of the distribution.
      */
-    void updateCachedRepresentation();
+    void initializeCachedRepresentation();
 
     /**
      * Retrieve the current version number of the
@@ -363,6 +363,15 @@ class DataDistribution
     {
 	m_manualOverridesVersion = version; 
     }
+
+    /**
+     * Update the cached shards or manual overrides from
+     * the repository. Return true if there was actually
+     * a change in the value (as determined by comparing
+     * stored and new version).
+     */
+    bool updateShards();
+    bool updateManualOverrides();
 
   private:
     /**

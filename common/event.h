@@ -510,12 +510,15 @@ const int32_t EN_DISTSCHANGE =			(1<<4);
 const int32_t EN_MEMBERSHIPCHANGE =		(1<<5);
 const int32_t EN_LEADERSHIPCHANGE =		(1<<6);
 
-const int32_t EN_HEALTHCHANGE =			(1<<7);
-const int32_t EN_CONNECTCHANGE =		(1<<8);
-const int32_t EN_MASTERSTATECHANGE =		(1<<9);
+const int32_t EN_CLIENTSTATECHANGE =		(1<<7);
+const int32_t EN_CONNECTED =			(1<<8);
+const int32_t EN_DISCONNECTED =			(1<<9);
+const int32_t EN_MASTERSTATECHANGE =		(1<<10);
 
-const int32_t EN_DISTCHANGE =			(1<<10);
-const int32_t EN_PROPCHANGE =			(1<<11);
+const int32_t EN_SHARDSCHANGE =			(1<<11);
+const int32_t EN_MANUALOVERRIDESCHANGE =	(1<<12);
+
+const int32_t EN_PROPCHANGE =			(1<<13);
 
 /*
  * Interface for cluster event handler. Must be derived

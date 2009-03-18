@@ -59,8 +59,8 @@ class Notifyable
      * @return group this notifyable belongs to
      */
     string getMyGroupName() const;
-
 #endif
+
     /**
      * Get the parent of this Notifyable (if it exists)
      *
@@ -114,7 +114,17 @@ class Notifyable
     Notifyable(FactoryOps *fp,
                const string &key,
                const string &name,
-               Notifyable *parent);
+               Notifyable *parent)
+        : mp_f(fp),
+          m_key(key),
+          m_name(name),
+          mp_parent(parent),
+          mp_myGroup(NULL),
+          mp_myApplication(NULL),
+          mp_myProperties(NULL),
+          m_ready(false)
+    {
+    }
 
     /*
      * Set the "ready" state of this notifyable.
@@ -129,19 +139,19 @@ class Notifyable
     /*
      * Destructor.
      */
-    virtual ~Notifyable();
+    virtual ~Notifyable() {}
 
     /*
-     * Update the cached representation -- must be provided
+     * Initialize the cached representation -- must be provided
      * by subclasses.
      */
-    virtual void updateCachedRepresentation()
+    virtual void initializeCachedRepresentation()
         = 0;
 
     /*
-     * Get locks associated with the various maps.
+     * Get lock associated with cached information.
      */
-    Mutex *getPropertiesMapLock() { return &m_propLock; }
+    Mutex *getChainLock() { return &m_chainLock; }
 
   private:
     /*
@@ -176,16 +186,31 @@ class Notifyable
     Notifyable *mp_parent;
 
     /*
+     * The group this notifyable is in (if any).
+     */
+    Group *mp_myGroup;
+
+    /*
+     * The application this notifyable is in.
+     */
+    Application *mp_myApplication;
+
+    /*
+     * The properties list for this object.
+     */
+    Properties *mp_myProperties;
+
+    /*
+     * Lock for protecting mp_myApplication
+     * and mp_myGroup.
+     */
+    Mutex m_chainLock;
+
+    /*
      * Is this notifyable "ready" according to the ready
      * protocol?
      */
     bool m_ready;
-
-    /*
-     * Map of all properties within this object.
-     */
-    PropertiesMap m_properties;
-    Mutex m_propLock;
 };
 
 };	/* End of 'namespace clusterlib' */

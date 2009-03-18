@@ -19,12 +19,12 @@ namespace clusterlib
 {
 
 /*
- * Update the cached representation of this group.
+ * Initialize the cached representation of this group.
  */
 void
-Application::updateCachedRepresentation()
+Application::initializeCachedRepresentation()
 {
-    Group::updateCachedRepresentation();
+    Group::initializeCachedRepresentation();
 }
 
 };	/* End of 'namespace clusterlib' */

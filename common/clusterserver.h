@@ -20,13 +20,17 @@ class Server
     : public virtual Client
 {
   public:
-    /*
+    /**
      * Retrieve the node object for "my" node.
+     *
+     * @return the Node * for "my" node.
      */
     Node *getMyNode() { return mp_node; }
 
-    /*
+    /**
      * Is this server managed?
+     *
+     * @return true if the server is managed.
      */
     bool isManaged()
     {
@@ -66,11 +70,15 @@ class Server
     /**
      * \brief Participate in the leadership election protocol
      * for the containing group.
+     *
+     * @return true if this server became the leader of its group.
      */
     bool tryToBecomeLeader();
 
     /**
      * \brief Am I the leader of my group?
+     *
+     * @return true if this server is the leader of its group.
      */
     bool amITheLeader();
 
@@ -88,23 +96,28 @@ class Server
     /*
      * Constructor used by Factory.
      */
-    Server(FactoryOps *f,
+    Server(FactoryOps *mp_ops,
            Group *group,
            const string &nodeName,
            HealthChecker *checker,
            ServerFlags flags);
 
+    /*
+     * Destructor.
+     */
+    virtual ~Server();
+
     /**
-     * Get the heart beat checking multiple.
+     * Get the heart beat checking wait multiple and timeout parameters.
      */
     double getHeartBeatMultiple();
     int64_t getHeartBeatTimeout() {
 	return (int64_t) (getHeartBeatMultiple() * getHeartBeatPeriod());
     }
     
-        /**
-         * Get the heart beat check period.
-         */
+    /**
+     * Get the heart beat check period.
+     */
     int32_t getHeartBeatCheckPeriod();
     
   private:
@@ -112,16 +125,12 @@ class Server
      * Make the default constructor private so it
      * cannot be called.
      */
-    Server() : Client(NULL)
+    Server()
+        : Client(NULL)
     {
         throw ClusterException("Someone called the Server "
                                "default constructor!");
     }
-
-    /*
-     * Make the destructor private also.
-     */
-    ~Server();
 
     /*
      * Periodically checks the health of the server.
@@ -134,8 +143,8 @@ class Server
     void setNodeHealth(bool healthy);
 
     /**
-     * \brief Called to signal whenever this cluster's node state *
-     has changed according to {@link #mp_healthChecker}.
+     * \brief Called to signal whenever this cluster's node state 
+     * has changed according to {@link #mp_healthChecker}.
      * 
      * @param report the new health report
      */

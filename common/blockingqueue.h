@@ -20,7 +20,6 @@ namespace clusterlib {
 /**
  * \brief An unbounded blocking queue of elements of type E.
  * 
- * <p>
  * This class is thread safe.
  */
 template <class E>

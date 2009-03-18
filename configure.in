@@ -331,7 +331,7 @@ AC_SUBST(EXPAT_LIB)
 
 ### Default CXXFLAGS ###
 
-BASE_CXXFLAGS="-Wall -Werror -g -O2"
+BASE_CXXFLAGS="-Wall -Werror -g -O0"
 AC_SUBST(BASE_CXXFLAGS)
 
 ### log4cxx ###

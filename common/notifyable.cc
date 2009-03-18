@@ -17,74 +17,36 @@
 
 namespace clusterlib
 {
-
-/*
- * Constructor.
- */
-Notifyable::Notifyable(FactoryOps *fp,
-                       const string &key,
-                       const string &name,
-                       Notifyable *parent)
-    : mp_f(fp),
-      m_key(key),
-      m_name(name),
-      mp_parent(parent),
-      m_ready(false)
-{
-    mp_f->establishNotifyableReady(this);
-};
-
-/*
- * Destructor.
- */
-Notifyable::~Notifyable()
-{
-}
-
 Properties *
 Notifyable::getProperties(bool create)
 {
-    Properties *prop;
+    TRACE(CL_LOG, "getProperties");
+
+    Locker l(getChainLock());
 
     /*
-     * If it is already cached, return the
-     * cached properties object.
+     * If the properties list is already cached, return it.
      */
-    {
-        Locker l1(getPropertiesMapLock());
-
-        PropertiesMap::const_iterator propIt = 
-            m_properties.find(getKey());
-        if (propIt != m_properties.end()) {
-            return propIt->second;
-        }
+    if (mp_myProperties != NULL) {
+        return mp_myProperties;
     }
 
     /*
-     * If it is not yet cached, load the
-     * properties from the cluster, cache it,
-     * and return the object.
+     * Cache it.
      */
-    prop = getDelegate()->getProperties(this, create);
-    if (prop != NULL) {
-        Locker l2(getPropertiesMapLock());
+    mp_myProperties = getDelegate()->getProperties(this, create);
 
-        m_properties[getKey()] = prop;
-        return prop;
-    }
-
-    /*
-     * Object not found.
-     */
-    throw ClusterException(string("Cannot find properties object ") +
-                           getKey());
+    return mp_myProperties;
 }
 
 Notifyable *
 Notifyable::getMyParent() const
 {
+    TRACE(CL_LOG, "getMyParent");
+
     if (mp_parent == NULL) {
-        throw ClusterException("Cannot getMyParent() with a NULL parent");
+        throw ClusterException(string("NULL parent for ") +
+                               getKey());
     }
 
     return mp_parent;
@@ -93,80 +55,57 @@ Notifyable::getMyParent() const
 Application *
 Notifyable::getMyApplication()
 {
+    TRACE(CL_LOG, "getMyApplication");
+
+    Locker l(getChainLock());
     string appKey = getKey();
-    Application *app = NULL;
 
+    /*
+     * If it's cached already, just return it.
+     */
+    if (mp_myApplication != NULL) {
+        return mp_myApplication;
+    }
+
+    /*
+     * Try to find the object.
+     *
+     * An application is its own application, according to the
+     * semantics implemented below...
+     */
     do {
-        app = getDelegate()->getApplicationFromKey(appKey, false);
+        mp_myApplication =
+            getDelegate()->getApplicationFromKey(appKey, false);
         appKey = getDelegate()->removeObjectFromKey(appKey);
-    }  while ((app == NULL) && (!appKey.empty()));
+    }  while ((mp_myApplication == NULL) && (!appKey.empty()));
 
-    return app;
+    return mp_myApplication;
 }
 
 Group *
 Notifyable::getMyGroup()
 {
+    TRACE(CL_LOG, "getMyGroup");
+
+    Locker l(getChainLock());
     string groupKey = getKey();
 
-    if (groupKey.substr(groupKey.size() - 1)
-        == ClusterlibStrings::PATHSEPARATOR) {
-        LOG_FATAL(CL_LOG, "getMyGroup: Key %s ends in a /", groupKey.c_str());
-        throw ClusterException("getMyGroup: Key ends in a /");
+    /*
+     * If it's already cached, just return it.
+     */
+    if (mp_myGroup != NULL) {
+        return mp_myGroup;
     }
 
     /*
-     * Remove at least one object to get the underlying group key if
-     * this Notifyable is a Group.
+     * Try to find the object.
      */
-    groupKey = getDelegate()->removeObjectFromKey(groupKey);
+    do {
+        groupKey = getDelegate()->removeObjectFromKey(groupKey);
+        mp_myGroup = getDelegate()->getGroupFromKey(groupKey, false);
+    } while ((mp_myGroup == NULL) && (!groupKey.empty()));
 
-    /*
-     * Try to find the group or application (in that order) from the
-     * string working backwards.  Otherwise give up and return NULL.
-     */
-    uint32_t foundGroupKey = groupKey.rfind(ClusterlibStrings::GROUPS);
-    if (foundGroupKey != string::npos) {
-        /* 
-         * Resize groupKey to end at the group name if not already so
-         */
-        uint32_t foundGroupName = 
-            groupKey.find(ClusterlibStrings::PATHSEPARATOR, foundGroupKey);
-        if ((foundGroupName != string::npos) &&
-            (foundGroupName != (groupKey.size() - 1))) {
-            foundGroupName = groupKey.find(ClusterlibStrings::PATHSEPARATOR, 
-                                           foundGroupName + 1);
-            if (foundGroupName != string::npos) {
-                groupKey.resize(foundGroupName);
-            }
-            return getDelegate()->getGroupFromKey(groupKey, false);
-        }
-    }
-
-    foundGroupKey = groupKey.rfind(ClusterlibStrings::APPLICATIONS);
-    if (foundGroupKey != string::npos) {
-        /* 
-         * Resize groupKey to end at the application name if not already so
-         */
-        uint32_t foundGroupName = 
-            groupKey.find(ClusterlibStrings::PATHSEPARATOR, foundGroupKey);
-        if ((foundGroupName != string::npos) &&
-            (foundGroupName != (groupKey.size() - 1))) {
-            foundGroupName = groupKey.find(ClusterlibStrings::PATHSEPARATOR, 
-                                           foundGroupName + 1);
-            if (foundGroupName != string::npos) {
-                groupKey.resize(foundGroupName);
-            }
-            return getDelegate()->getGroupFromKey(groupKey, false);
-        }
-    }
-    
-    LOG_WARN(CL_LOG, 
-             "getMyGroup: Couldn't find a group or application "
-             "with key %s",
-             getKey().c_str());
-
-    return NULL;
+    return mp_myGroup;
 }
 
 };	/* End of 'namespace clusterlib' */

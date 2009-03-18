@@ -9,7 +9,7 @@ extern TestParams globalTestParams;
  */
 class ClusterlibClient;
 
-class MyTimerEventHandler 
+class ClientTimerEventHandler 
     : public clusterlib::TimerEventHandler
 {
   public:
@@ -17,13 +17,13 @@ class MyTimerEventHandler
                           clusterlib::ClientData data);
 };
 
-class MyClusterEventHandler
+class ClientClusterEventHandler
     : public clusterlib::ClusterEventHandler
 {
   public:
-    MyClusterEventHandler(clusterlib::Client *cp,
-                          clusterlib::Event mask,
-                          clusterlib::Notifyable *np)
+    ClientClusterEventHandler(clusterlib::Client *cp,
+                              clusterlib::Event mask,
+                              clusterlib::Notifyable *np)
         : clusterlib::ClusterEventHandler(np, mask, cp),
           counter(0),
           lastEvent(clusterlib::EN_NOEVENT)
@@ -101,7 +101,7 @@ class ClusterlibClient
 	CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
 	CPPUNIT_ASSERT(_client0 != NULL);
-        _handler0 = new MyTimerEventHandler();
+        _handler0 = new ClientTimerEventHandler();
         CPPUNIT_ASSERT(_handler0 != NULL);
     }
 
@@ -359,12 +359,12 @@ class ClusterlibClient
     bool _fired1;
     bool _cancelled1;
 
-    MyTimerEventHandler *_handler0;
+    ClientTimerEventHandler *_handler0;
 };
 
 void
-MyTimerEventHandler::handleTimerEvent(clusterlib::TimerId id,
-                                      clusterlib::ClientData data)
+ClientTimerEventHandler::handleTimerEvent(clusterlib::TimerId id,
+                                          clusterlib::ClientData data)
 {
     ClusterlibClient *cp = (ClusterlibClient*) data;
 

@@ -45,9 +45,9 @@ class Application
     }
 
     /*
-     * Update the cached representation.
+     * Initialize the cached representation.
      */
-    virtual void updateCachedRepresentation();
+    virtual void initializeCachedRepresentation();
 
   private:
     /*
@@ -56,7 +56,6 @@ class Application
     Application()
         : Notifyable(NULL, "", "", NULL),
           Group("", "", NULL, NULL)
-//        : Group(NULL, "", "", NULL)
     {
         throw ClusterException("Someone called the Application "
                                "default constructor!");

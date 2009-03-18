@@ -29,16 +29,26 @@ Properties::getProperties(bool create)
 }
 
 /*
- * Update the cached representation of this object.  Assumed to
- * already have the lock.
+ * Initialize the cached representation of this object.
  */
 void 
-Properties::updateCachedRepresentation()
+Properties::initializeCachedRepresentation()
+{
+    updatePropertiesMap();
+}
+
+/*
+ * Update the properties map from the repository.
+ */
+void
+Properties::updatePropertiesMap()
 {
     int32_t version;
     string keyValMap = getDelegate()->loadKeyValMap(getKey(), version);
 
-    /* Only update if this is a newer version */
+    /*
+     * Only update if this is a newer version.
+     */
     if (version > getKeyValVersion()) {
         m_keyValMap.clear();
         unmarshall(keyValMap);
@@ -71,12 +81,6 @@ Properties::publish()
     Locker k(getKeyValMapLock());
     string marshalledKeyValMap = marshall();
     int32_t finalVersion;
-
-    LOG_INFO(CL_LOG,  
-             "Tried to set node %s to %s with version %d\n",
-             getKey().c_str(), 
-             marshalledKeyValMap.c_str(), 
-             getKeyValVersion());
 	
     getDelegate()->updateProperties(getKey(),
 				    marshalledKeyValMap,
@@ -112,6 +116,7 @@ Properties::getProperty(const string &name, bool searchParent)
     Locker(getKeyValMapLock());
 
     KeyValMap::const_iterator ssIt = m_keyValMap.find(name);
+
     if (ssIt != m_keyValMap.end()) {
 	return ssIt->second;
     }
@@ -119,9 +124,13 @@ Properties::getProperty(const string &name, bool searchParent)
         /*
          * Don't try the parent if not explicit
          */
-        return string();
+        return "";
     }
 
+    /*
+     * Key manipulation should only be done in clusterlib.cc, therefore
+     * this should move to clusterlib.cc.
+     */
     Properties *prop = NULL;
     string parentKey = getKey();
     do {
@@ -139,7 +148,7 @@ Properties::getProperty(const string &name, bool searchParent)
                       getKey().c_str());
             return string();
         }
-        parentKey.append(ClusterlibStrings::PATHSEPARATOR);
+        parentKey.append(ClusterlibStrings::KEYSEPARATOR);
         parentKey.append(ClusterlibStrings::PROPERTIES);
 
         LOG_DEBUG(CL_LOG,

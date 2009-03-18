@@ -70,7 +70,7 @@ class ClusterlibStrings
      * All string constants used to name ZK nodes.
      */
     static const string ROOTNODE;
-    static const string PATHSEPARATOR;
+    static const string KEYSEPARATOR;
 
     static const string CLUSTERLIB;
     static const string CLUSTERLIBVERSION;
@@ -151,7 +151,8 @@ class ClusterlibStrings
     ClusterlibStrings() {}
 };
 
-class ClusterlibInts {
+class ClusterlibInts
+{
   public:
     /* 
      * All indices use for parsing ZK node names
@@ -194,11 +195,6 @@ class Factory
     virtual ~Factory();
 
     /*
-     * Get the applications available
-     */
-    ApplicationMap getApplications();
-
-    /*
      * Create a cluster client object.
      */
     Client *createClient();
@@ -232,6 +228,12 @@ class Factory
      * the underlying data store.
      */
     void synchronize();
+
+    /*
+     * For use by unit tests only: get the zkadapter so that the test can
+     * synthesize ZK events and examine the results.
+     */
+    zk::ZooKeeperAdapter *getRepository() { return &m_zk; }
 
   private:
     /*
@@ -313,26 +315,26 @@ class Factory
      */
     void consumeTimerEvents();
 
-    /**
+    /*
      * Retrieve a list of all (currently known) applications.
      */
     IdList getApplicationNames();
 
-    /**
+    /*
      * Retrieve a list of all (currently known) group names within
-     * the given application. This also establishes a watch on
+     * the given group. This also establishes a watch on
      * group changes.
      */
     IdList getGroupNames(Group *grp);
 
-    /**
+    /*
      * Retrieve a list of all (currently known) distribution
-     * names within the given application. This also establishes
+     * names within the given group. This also establishes
      * a watch on distribution changes.
      */
     IdList getDataDistributionNames(Group *grp);
 
-    /**
+    /*
      * Retrieve a list of all (currently known) node names
      * within the given group. This also establishes a
      * watch on node changes.
@@ -390,10 +392,10 @@ class Factory
 			      bool create = false);
 
     void updateDataDistribution(const string &key,
-                            const string &shards,
-                            const string &manualOverrides,
-			    int32_t shardsVersion,
-                            int32_t manualOverridesVersion);
+                                const string &shards,
+                                const string &manualOverrides,
+                                int32_t shardsVersion,
+                                int32_t manualOverridesVersion);
     void updateProperties(const string &key,
 			  const string &properties,
 			  int32_t versionNumber,
@@ -548,7 +550,6 @@ class Factory
         int32_t elements = -1, 
         bool create = false);
 
-
     /* 
      * Generate valid keys for various clusterlib objects given that
      * the inputs are valid.  Does not create the objects or check
@@ -687,7 +688,7 @@ class Factory
      * .../group/client/nodes/foo-server, it will return
      * .../group/client.  If the key is .../applications/foo-app, it
      * will return an empty string since they is nothing left. The key
-     * must not end in a PATHSEPARATOR.
+     * must not end in a KEYSEPARATOR.
      *
      * @param key a path to be trimmed
      * @return trimmed key or empty string if no parent clusterlib object key
@@ -702,7 +703,7 @@ class Factory
      * .../group/client/nodes/foo-server, it will return elements that include
      * .../group/client.  If the components are .../applications/foo-app, it
      * will return an empty string since they is nothing left. The key
-     * must not end in a PATHSEPARATOR.
+     * must not end in a KEYSEPARATOR.
      *
      * @param components A vector of components in the key parsed by split
      *                   (i.e. first component should be "")
@@ -711,8 +712,8 @@ class Factory
      *                 components.size().
      * @return size of the trimmed key or -1 if no Notifyable parent possible
      */
-    int32_t removeObjectFromComponents(const vector<string> &components, 
-                                       int32_t elements = -1);
+    int32_t removeObjectFromComponents(const vector<string> &comps,
+                                       int32_t elements);
 
     /*
      * Load entities from ZooKeeper.
@@ -738,24 +739,29 @@ class Factory
     /*
      * Create entities in ZooKeeper.
      */
-    Application *createApplication(const string &name, 
+    Application *createApplication(const string &appName, 
 				   const string &key);
     DataDistribution *createDataDistribution(
-	const string &name,
-	const string &key,
+	const string &distName,
+        const string &distKey,
         const string &marshalledShards,
         const string &marshalledManualOverrides,
         Group *parentGroup);
-    Properties *createProperties(
-	const string &key,
-        Notifyable *parent);
-    Group *createGroup(
-	const string &groupName,
-	const string &groupKey,
-        Group *parentGroup);
-    Node *createNode(const string &name,
-		     const string &key, 
+    Properties *createProperties(const string &propsKey,
+                                 Notifyable *parent);
+    Group *createGroup(const string &groupName,
+                       const string &groupKey,
+                       Group *parentGroup);
+    Node *createNode(const string &nodeName,
+		     const string &nodeKey,
 		     Group *parentGroup);
+
+    /*
+     * Get bits of Node state.
+     */
+    bool isNodeConnected(const string &key);
+    string getNodeClientState(const string &key);
+    int32_t getNodeMasterSetState(const string &key);
 
     /*
      * Get various locks.
@@ -777,58 +783,58 @@ class Factory
     bool establishNotifyableReady(Notifyable *ntp);
     Event handleNotifyableReady(Notifyable *ntp,
                                 int32_t etype,
-                                const string &path);
+                                const string &key);
 
     /*
      * Handle existence events on notifyables.
      */
     Event handleNotifyableExists(Notifyable *ntp,
                                  int32_t etype,
-                                 const string &path);
+                                 const string &key);
 
     /*
      * Handle changes in the set of applications.
      */
     Event handleApplicationsChange(Notifyable *ntp,
                                    int32_t etype,
-                                   const string &path);
+                                   const string &key);
 
     /*
      * Handle changes in the set of groups in
-     * an application.
+     * a group.
      */
     Event handleGroupsChange(Notifyable *ntp,
                              int32_t etype,
-                             const string &path);
+                             const string &key);
 
     /*
-     * Handle changes in the set of distributions
-     * in an application.
+     * Handle changes in the set of data distributions
+     * in a group.
      */
     Event handleDataDistributionsChange(Notifyable *ntp,
-                                    int32_t etype,
-                                    const string &path);
+                                        int32_t etype,
+                                        const string &key);
 
     /*
      * Handle changes in the set of nodes in a group.
      */
     Event handleNodesChange(Notifyable *ntp,
                             int32_t etype,
-                            const string &path);
+                            const string &key);
 
     /*
-     * Handle changes in a property list.
+     * Handle changes in a property list value.
      */
-    Event handlePropertiesChange(Notifyable *ntp,
-                                 int32_t etype,
-                                 const string &path);
+    Event handlePropertiesValueChange(Notifyable *ntp,
+                                      int32_t etype,
+                                      const string &key);
 
     /*
      * Handle changes in shards of a distribution.
      */
     Event handleShardsChange(Notifyable *ntp,
                              int32_t etype,
-                             const string &path);
+                             const string &key);
 
     /*
      * Handle changes in manual overrides in
@@ -836,7 +842,7 @@ class Factory
      */
     Event handleManualOverridesChange(Notifyable *ntp,
                                       int32_t etype,
-                                      const string &path);
+                                      const string &key);
 
     /*
      * Handle changes in client-reported state for
@@ -844,7 +850,7 @@ class Factory
      */
     Event handleClientStateChange(Notifyable *ntp,
                                   int32_t etype,
-                                  const string &path);
+                                  const string &key);
 
     /*
      * Handle changes in master-set desired state
@@ -852,7 +858,15 @@ class Factory
      */
     Event handleMasterSetStateChange(Notifyable *ntp,
                                      int32_t etype,
-                                     const string &path);
+                                     const string &key);
+
+    /*
+     * Handle a change in the connected state for
+     * a node.
+     */
+    Event handleNodeConnectionChange(Notifyable *ntp,
+                                     int32_t etype,
+                                     const string &key);
 
     /*
      * Handle changes in the leadership of a
@@ -860,7 +874,7 @@ class Factory
      */
     Event handleLeadershipChange(Notifyable *ntp,
                                  int32_t etype,
-                                 const string &path);
+                                 const string &key);
 
     /*
      * Handle existence change for preceding leader of
@@ -868,14 +882,14 @@ class Factory
      */
     Event handlePrecLeaderExistsChange(Notifyable *ntp,
                                        int32_t etype,
-                                       const string &path);
+                                       const string &key);
 
     /*
-     * Handle changes in synchronization of a zookeeper path.
+     * Handle changes in synchronization of a zookeeper key.
      */
     Event handleSynchronizeChange(Notifyable *ntp,
                                   int32_t etype,
-                                  const string &path);
+                                  const string &key);
 
     /*
      * Orderly termination mechanism.
@@ -1019,7 +1033,7 @@ class Factory
      */
     FactoryEventHandler m_notifyableReadyHandler;
     FactoryEventHandler m_notifyableExistsHandler;
-    FactoryEventHandler m_propertiesChangeHandler;
+    FactoryEventHandler m_propertiesValueChangeHandler;
     FactoryEventHandler m_applicationsChangeHandler;
     FactoryEventHandler m_groupsChangeHandler;
     FactoryEventHandler m_distributionsChangeHandler;
@@ -1028,6 +1042,7 @@ class Factory
     FactoryEventHandler m_nodesChangeHandler;
     FactoryEventHandler m_nodeClientStateChangeHandler;
     FactoryEventHandler m_nodeMasterSetStateChangeHandler;
+    FactoryEventHandler m_nodeConnectionChangeHandler;
     FactoryEventHandler m_leadershipChangeHandler;
     FactoryEventHandler m_precLeaderExistsHandler;
     FactoryEventHandler m_synchronizeChangeHandler;
@@ -1109,16 +1124,16 @@ class FactoryOps
     }
 
     void updateDataDistribution(const string &key,
-                            const string &shards,
-                            const string &manualOverrides,
-			    int32_t shardsVersion,
-                            int32_t manualOverridesVersion)
+                                const string &shards,
+                                const string &manualOverrides,
+                                int32_t shardsVersion,
+                                int32_t manualOverridesVersion)
     {
         mp_f->updateDataDistribution(key,
-                                 shards,
-                                 manualOverrides,
-                                 shardsVersion,
-				 manualOverridesVersion);
+                                     shards,
+                                     manualOverrides,
+                                     shardsVersion,
+                                     manualOverridesVersion);
     }
     void updateProperties(const string &key,
 			  const string &properties,
@@ -1157,7 +1172,7 @@ class FactoryOps
         return mp_f->getApplicationFromKey(key, create);
     }
     DataDistribution *getDataDistributionFromKey(const string &key,
-                                             bool create = false)
+                                                 bool create = false)
     {
         return mp_f->getDataDistributionFromKey(key, create);
     }
@@ -1280,6 +1295,22 @@ class FactoryOps
     string getLeadershipBidPrefix(const string &gkey)
     {
         return mp_f->getLeadershipBidPrefix(gkey);
+    }
+
+    /*
+     * Get bits of Node state.
+     */
+    bool isNodeConnected(const string &key)
+    {
+        return mp_f->isNodeConnected(key);
+    }
+    string getNodeClientState(const string &key)
+    {
+        return mp_f->getNodeClientState(key);
+    }
+    int32_t getNodeMasterSetState(const string &key)
+    {
+        return mp_f->getNodeMasterSetState(key);
     }
 
   private:

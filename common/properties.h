@@ -65,10 +65,7 @@ class Properties
      * internal clusterlib events sytem from modifying this object
      * data while it is being accessed.  If the calling process is
      * only reading, this procedure will implicitly hold the lock to
-     * provide consistent results to the user.  If searchParent is
-     * true, there are not guarantees provided to the user about the
-     * consistency between properties fetched from various higher
-     * levels in the hierarchy.
+     * provide consistent results to the user.
      *
      * @param name the property name
      * @param searchParent try the parent for the property as well?
@@ -82,7 +79,7 @@ class Properties
      * In most cases, the calling process should hold the lock prior
      * to calling this function to prevent another process or the
      * internal clusterlib events sytem from modifying this object
-     * data.  Until publish() is called, this change is only local.
+     * data.
      *
      * @param name the property name for which to set value
      * @param value the value to be set
@@ -127,6 +124,13 @@ class Properties
     }
 
     /**
+     * \brief Return the time at which the last value change happened.
+     *
+     * @return the int64 representing the time that the value changed.
+     */
+    int64_t getValueChangeTime() { return m_valueChangeTime; }
+
+    /**
      * \brief Do not allow getProperties() on a Properties object (throw)
      */
     virtual Properties *getProperties(bool create = false);
@@ -141,24 +145,24 @@ class Properties
     /*
      * Constructor used by the factory.
      */
-    Properties(Notifyable *parent, 
+    Properties(Notifyable *parent,
                const string &key,
 	       FactoryOps *fp)
         : Notifyable(fp, key, "", parent),
-	  m_keyValMapVersion(-2)
+          m_keyValMapVersion(-2),
+          m_valueChangeTime(0)
     {
     }
 
     /**
-     * Update the cached representation of this node.
-     * 
-     * \brief The clusterlib event system uses this to update the
-     * m_keyValMap when it changes.
-     *
-     * The appropriate handler calls this when it notices that
-     * Properties has changed.
+     * \brief Initialize the cached representation of this node.
      */
-    virtual void updateCachedRepresentation();
+    virtual void initializeCachedRepresentation();
+
+    /**
+     * \brief Update the properties map from the repository.
+     */
+    void updatePropertiesMap();
 
     /**
      * \brief Converts this properties map into a string.
@@ -177,27 +181,25 @@ class Properties
      */
     bool unmarshall(const string &propsAsStr);
 
+    /*
+     * Retrieve the current version # of the properties list.
+     */
     int32_t getKeyValVersion() { return m_keyValMapVersion; }
 
+    /*
+     * Set the version #.
+     */
     void setKeyValVersion(int32_t version) { m_keyValMapVersion = version; }
 
+    /*
+     * Retrieve the lock managing the map.
+     */
     Mutex *getKeyValMapLock() { return &m_keyValMapMutex; }
 
-  private:
     /*
-     * Make the default constructor private so it cannot be called.
+     * Set the time at which the value changed.
      */
-    Properties()
-        : Notifyable(NULL, "", "", NULL)
-    {
-        throw ClusterException("Someone called the Properties default "
-                               "constructor!");
-    }
-
-    /*
-     * Make the destructor private also.
-     */
-    virtual ~Properties() {}
+    void setValueChangeTime(int64_t t) { m_valueChangeTime = t; }
 
   private:
     /**                                                                        
@@ -207,6 +209,10 @@ class Properties
     int32_t m_keyValMapVersion;
     Mutex m_keyValMapMutex;
 
+    /*
+     * The time of the last change in value.
+     */
+    int64_t m_valueChangeTime;
 };
 
 };	/* End of 'namespace clusterlib' */
