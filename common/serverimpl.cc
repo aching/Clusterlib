@@ -1,5 +1,5 @@
 /*
- * clusterserver.cc --
+ * serverimpl.cc --
  *
  * Implementation of the Server class.
  *
@@ -10,10 +10,12 @@
  * ============================================================================
  */
 
-#include "clusterlib.h"
+#include "clusterlibinternal.h"
 
 #define LOG_LEVEL LOG_WARN
 #define MODULE_NAME "ClusterLib"
+
+using namespace std;
 
 namespace clusterlib
 {
@@ -45,12 +47,12 @@ namespace clusterlib
 /*
  * Constructor.
  */
-Server::Server(FactoryOps *fp,
-               Group *group,
-               const string &nodeName,
-               HealthChecker *healthChecker,
-               ServerFlags flags)
-    : Client(fp),
+ServerImpl::ServerImpl(FactoryOps *fp,
+                       Group *group,
+                       const string &nodeName,
+                       HealthChecker *healthChecker,
+                       ServerFlags flags)
+    : ClientImpl(fp),
       mp_f(fp),
       m_checkFrequencyHealthy(1000*60), // Default healthy check of a minute
       m_checkFrequencyUnhealthy(1000*15), // Default unhealthy check of 15 secs
@@ -63,7 +65,7 @@ Server::Server(FactoryOps *fp,
       m_myBid(-1)
 {
     mp_node = mp_f->getNode(nodeName,
-                            group,
+                            dynamic_cast<GroupImpl *>(group),
                             (m_flags & SF_MANAGED) == SF_MANAGED,
                             (m_flags & SF_CREATEREG) == SF_CREATEREG);
     if (mp_node == NULL) {
@@ -75,10 +77,10 @@ Server::Server(FactoryOps *fp,
      * register a health checker during construction. If mp_healthChecker
      * is NULL then the health check is just skipped...
      */
-    m_checkerThread.Create(*this, &Server::checkHealth);
+    m_checkerThread.Create(*this, &ServerImpl::checkHealth);
 }
 
-Server::~Server()
+ServerImpl::~ServerImpl()
 {
     m_mutex.Acquire();
     m_healthCheckerTerminating = true;
@@ -93,7 +95,7 @@ Server::~Server()
 /*****************************************************************************/
 
 void
-Server::registerHealthChecker(HealthChecker *healthChecker)
+ServerImpl::registerHealthChecker(HealthChecker *healthChecker)
 {
     TRACE( CL_LOG, "registerHealthChecker" );
 
@@ -114,25 +116,25 @@ Server::registerHealthChecker(HealthChecker *healthChecker)
  * Return the various heartbeat periods and multiples.
  */
 int
-Server::getHeartBeatPeriod()
+ServerImpl::getHeartBeatPeriod()
 {
     return m_checkFrequencyHealthy;
 }
 
 int
-Server::getUnhealthyHeartBeatPeriod()
+ServerImpl::getUnhealthyHeartBeatPeriod()
 {
     return m_checkFrequencyUnhealthy;
 }
 
 double
-Server::getHeartBeatMultiple() 
+ServerImpl::getHeartBeatMultiple() 
 {
     return m_heartBeatMultiple;
 }
 
 int
-Server::getHeartBeatCheckPeriod()
+ServerImpl::getHeartBeatCheckPeriod()
 {
     return m_heartBeatCheckPeriod;
 }
@@ -143,7 +145,7 @@ Server::getHeartBeatCheckPeriod()
  * period and then check the setting of m_checkFrequency again.
  */
 void
-Server::checkHealth()
+ServerImpl::checkHealth()
 {
     TRACE(CL_LOG, "checkHealth");
     
@@ -230,7 +232,7 @@ Server::checkHealth()
 }
 
 void
-Server::enableHealthChecking(bool enabled)
+ServerImpl::enableHealthChecking(bool enabled)
 {
     TRACE(CL_LOG, "enableHealthChecking");
 
@@ -247,7 +249,7 @@ Server::enableHealthChecking(bool enabled)
 }
 
 void
-Server::setHealthy(const HealthReport &report) 
+ServerImpl::setHealthy(const HealthReport &report) 
 {
     TRACE(CL_LOG, "setHealthy");
 
@@ -269,7 +271,7 @@ Server::setHealthy(const HealthReport &report)
  * Attempt to become the leader.
  */
 bool
-Server::tryToBecomeLeader()
+ServerImpl::tryToBecomeLeader()
 {
     TRACE(CL_LOG, "tryToBecomeLeader");
 
@@ -301,7 +303,7 @@ Server::tryToBecomeLeader()
  * Is this server the leader of its group?
  */
 bool
-Server::amITheLeader()
+ServerImpl::amITheLeader()
 {
     TRACE(CL_LOG, "amITheLeader");
 
@@ -313,7 +315,7 @@ Server::amITheLeader()
  * group, else some other server becomes the leader.
  */
 void
-Server::giveUpLeadership()
+ServerImpl::giveUpLeadership()
 {
     TRACE(CL_LOG, "giveUpLeadership");
 

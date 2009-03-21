@@ -13,19 +13,16 @@
 #include <log4cxx/propertyconfigurator.h> 
 #include <log4cxx/helpers/exception.h> 
 
-using namespace log4cxx; 
-using namespace log4cxx::helpers;
-
 #define PRINTIP(x) ((uint8_t*)&x)[0], ((uint8_t*)&x)[1], \
                    ((uint8_t*)&x)[2], ((uint8_t*)&x)[3]
 
 #define IPFMT "%u.%u.%u.%u"
 
 #define DECLARE_LOGGER(varName) \
-extern LoggerPtr varName;
+extern log4cxx::helpers::LoggerPtr varName;
 
 #define DEFINE_LOGGER(varName, logName) \
-static LoggerPtr varName = Logger::getLogger( logName );
+static log4cxx::LoggerPtr varName = log4cxx::Logger::getLogger( logName );
 
 #define MAX_BUFFER_SIZE 20000
 

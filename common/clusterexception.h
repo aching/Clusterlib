@@ -16,12 +16,11 @@ namespace clusterlib {
 class ClusterException 
     : public std::exception
 {
-    public:
-        
+    public:        
         /**
          * Constructor.
          */
-        ClusterException(const string &msg) throw() : m_message(msg) {}
+        ClusterException(const std::string &msg) throw() : m_message(msg) {}
         
         /**
          * Destructor.
@@ -37,11 +36,10 @@ class ClusterException
         }
 
     private:
-        
         /**
          * The detailed message associated with this exception.
          */
-        string m_message;
+        std::string m_message;
 };
 
 }	/* End of 'namespace clusterlib' */

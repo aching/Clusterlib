@@ -13,8 +13,6 @@
 
 #include "mutex.h"
 
-using namespace std;
-
 namespace clusterlib {
  
 /**
@@ -28,8 +26,8 @@ class BlockingQueue
     public:
         
         /**
-         * \brief Adds the specified element to this queue, waiting if necessary 
-         * \brief for space to become available.
+         * \brief Adds the specified element to this queue, waiting if
+         * necessary for space to become available.
          * 
          * @param e the element to be added
          */
@@ -42,7 +40,8 @@ class BlockingQueue
          * @param timeout how long to wait until an element becomes availabe, 
          *                in milliseconds; if <code>0</code> then wait forever;
          *                if <code>< 0</code> then do not wait at all.
-         * @param timedOut if not NULL then set to true whether this function timed out
+         * @param timedOut if not NULL then set to true whether this 
+         *                 function timed out
          * @return the element from the queue
          */
         E take(int32_t timeout = 0, bool *timedOut = NULL);
@@ -72,7 +71,7 @@ class BlockingQueue
          * The queue of elements. Deque is used to provide O(1) time 
          * for head elements removal.
          */
-        deque<E> m_queue;
+        std::deque<E> m_queue;
         
         /**
          * The mutex used for queue synchronization.

@@ -1,23 +1,22 @@
 /*
- * clusterserver.h --
+ * serverimpl.h --
  *
- * Include file for server side types. Include this file if you are writing
- * an implementation of an application that is managed by clusterlib.
- *
+ * Definition of class ServerImpl.
  *
  * $Header$
  * $Revision$
  * $Date$
  */
 
-#ifndef	_CLUSTERSERVER_H_
-#define	_CLUSTERSERVER_H_
+#ifndef	_SERVERIMPL_H_
+#define	_SERVERIMPL_H_
 
 namespace clusterlib
 {
 
-class Server
-    : public virtual Client
+class ServerImpl
+    : public virtual Server, 
+      public virtual ClientImpl
 {
   public:
     /**
@@ -25,14 +24,17 @@ class Server
      *
      * @return the Node * for "my" node.
      */
-    Node *getMyNode() { return mp_node; }
+    virtual Node *getMyNode() 
+    {
+        return dynamic_cast<Node *>(mp_node);
+    }
 
     /**
      * Is this server managed?
      *
      * @return true if the server is managed.
      */
-    bool isManaged()
+    virtual bool isManaged()
     {
         return (m_flags & SF_MANAGED) ? true : false;
     }
@@ -50,14 +52,14 @@ class Server
      * @param checkFrequency how often to execute the given callback,
      *                       in seconds
      */
-    void registerHealthChecker(HealthChecker *healthChecker);
+    virtual void registerHealthChecker(HealthChecker *healthChecker);
     
     /**
      * \brief Retrieve the current number of seconds to wait till running
      * the health check again.
      */
-    int32_t getHeartBeatPeriod();
-    int32_t getUnhealthyHeartBeatPeriod();
+    virtual int32_t getHeartBeatPeriod();
+    virtual int32_t getUnhealthyHeartBeatPeriod();
 
     /**
      * \brief Enables or disables the health checking and 
@@ -65,7 +67,7 @@ class Server
      * 
      * @param enabled whether to enable the health checking
      */
-    void enableHealthChecking(bool enabled);
+    virtual void enableHealthChecking(bool enabled);
 
     /**
      * \brief Participate in the leadership election protocol
@@ -73,45 +75,44 @@ class Server
      *
      * @return true if this server became the leader of its group.
      */
-    bool tryToBecomeLeader();
+    virtual bool tryToBecomeLeader();
 
     /**
      * \brief Am I the leader of my group?
      *
      * @return true if this server is the leader of its group.
      */
-    bool amITheLeader();
+    virtual bool amITheLeader();
 
     /**
      * \brief Give up leadership of my group.
      */
-    void giveUpLeadership();
+    virtual void giveUpLeadership();
 
-  protected:
     /*
-     * Make the Factory class a friend.
+     * Internal functions not used by outside clients
      */
-    friend class Factory;
-
+  public:
     /*
      * Constructor used by Factory.
      */
-    Server(FactoryOps *mp_ops,
-           Group *group,
-           const string &nodeName,
-           HealthChecker *checker,
-           ServerFlags flags);
-
+    ServerImpl(FactoryOps *mp_ops,
+               Group *group,
+               const std::string &nodeName,
+               HealthChecker *checker,
+               ServerFlags flags);
+    
     /*
      * Destructor.
      */
-    virtual ~Server();
+    virtual ~ServerImpl();
 
     /**
      * Get the heart beat checking wait multiple and timeout parameters.
      */
     double getHeartBeatMultiple();
-    int64_t getHeartBeatTimeout() {
+    int64_t getHeartBeatTimeout() 
+    {
 	return (int64_t) (getHeartBeatMultiple() * getHeartBeatPeriod());
     }
     
@@ -125,8 +126,8 @@ class Server
      * Make the default constructor private so it
      * cannot be called.
      */
-    Server()
-        : Client(NULL)
+    ServerImpl()
+        : ClientImpl(NULL)
     {
         throw ClusterException("Someone called the Server "
                                "default constructor!");
@@ -190,7 +191,7 @@ class Server
     /*
      * The thread running the health checker.
      */
-    CXXThread<Server> m_checkerThread;
+    CXXThread<ServerImpl> m_checkerThread;
 
     /*
      * Protects healthChecker thread variables 
@@ -211,7 +212,7 @@ class Server
     /*
      * The node that represents "my node".
      */
-    Node *mp_node;
+    NodeImpl *mp_node;
 
     /*
      * My leadership bid index.
@@ -221,4 +222,4 @@ class Server
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_CLUSTERSERVER_H_ */
+#endif	/* !_SERVERIMPL_H_ */

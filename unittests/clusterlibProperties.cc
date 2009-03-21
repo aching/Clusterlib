@@ -3,6 +3,8 @@
 
 extern TestParams globalTestParams;
 
+using namespace std;
+
 class MyHealthChecker : public clusterlib::HealthChecker {
   public:
     virtual clusterlib::HealthReport checkHealth() {

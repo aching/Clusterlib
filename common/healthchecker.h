@@ -34,16 +34,16 @@ class HealthReport {
          * @param healthState the health state
          * @param desc the optional description of the health state
          */
-        HealthReport(HealthState healthState, const string &desc = "") : 
-            m_healthState(healthState), m_stateDescription(desc)
-        {}
+        HealthReport(HealthState healthState, const std::string &desc = "") : 
+            m_healthState(healthState), m_stateDescription(desc) {}
         
         /**
          * \brief Returns current health state.
          * 
          * @return current health state
          */
-        HealthState getHealthState() const {
+        HealthState getHealthState() const 
+        {
             return m_healthState;
         }
         
@@ -52,7 +52,8 @@ class HealthReport {
          * 
          * @return health state's descrription
          */
-        const string getStateDescription() const {
+        const std::string getStateDescription() const 
+        {
             return m_stateDescription;
         }
         
@@ -66,7 +67,7 @@ class HealthReport {
         /**
          * Provides more detailed description of {@link m_healthState}.
          */
-        string m_stateDescription;
+        std::string m_stateDescription;
 };
 
 class HealthChecker

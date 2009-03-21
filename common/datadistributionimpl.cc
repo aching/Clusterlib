@@ -1,4 +1,9 @@
 /* 
+ * datadistributionimpl.cc --
+ *
+ * Implementation of the DataDistributionImpl class.
+
+ *
  * ============================================================================
  * $Header$
  * $Revision$
@@ -9,8 +14,11 @@
 #define LOG_LEVEL LOG_WARN
 #define MODULE_NAME "DataDistribution"
 
-#include "clusterlib.h"
+#include "clusterlibinternal.h"
 #include <boost/regex.hpp>
+
+using namespace std;
+using namespace boost;
 
 namespace clusterlib
 {
@@ -55,7 +63,7 @@ md5HashImpl(const string &key)
  * The array of hash functions.
  */
 HashFunction *
-DataDistribution::s_hashFunctions[] =
+DataDistributionImpl::s_hashFunctions[] =
 {
     NULL,		/* DD_HF_USERDEF */
     &md5HashImpl,	/* DD_HF_MD5 */
@@ -66,18 +74,18 @@ DataDistribution::s_hashFunctions[] =
 /*
  * Constructor.
  */
-DataDistribution::DataDistribution(Group *parentGroup,
-                                   const string &name,
-                                   const string &key,
-                                   FactoryOps *fp,
-                                   HashFunction *fnp)
-    : Notifyable(fp, key, name, parentGroup),
+DataDistributionImpl::DataDistributionImpl(GroupImpl *parentGroup,
+                                           const string &name,
+                                           const string &key,
+                                           FactoryOps *fp,
+                                           HashFunction *fnp)
+    : NotifyableImpl(fp, key, name, parentGroup),
       m_hashFnIndex(DD_HF_JENKINS),
       mp_hashFnPtr(fnp),
       m_shardsVersion(-2),
       m_manualOverridesVersion(-2)
 {
-    TRACE(CL_LOG, "DataDistribution");
+    TRACE(CL_LOG, "DataDistributionImpl");
     
     /*
      * Set up the hash function to use.
@@ -95,7 +103,7 @@ DataDistribution::DataDistribution(Group *parentGroup,
  * Unmarshall a string-form of the data distribution.
  */
 void
-DataDistribution::unmarshall(const string &marshalledData)
+DataDistributionImpl::unmarshall(const string &marshalledData)
 {
     TRACE(CL_LOG, "unmarshall");
 
@@ -122,7 +130,7 @@ DataDistribution::unmarshall(const string &marshalledData)
  * is stringified to "begin,end,appname,groupname,nodename;"
  */
 void
-DataDistribution::unmarshallShards(const string &marshalledShards)
+DataDistributionImpl::unmarshallShards(const string &marshalledShards)
 {
     TRACE(CL_LOG, "unmarshallShards");
 
@@ -177,7 +185,7 @@ DataDistribution::unmarshallShards(const string &marshalledShards)
  * Each override is stringified to "pattern,notifyableKey;".
  */
 void
-DataDistribution::unmarshallOverrides(const string &marshalledOverrides)
+DataDistributionImpl::unmarshallOverrides(const string &marshalledOverrides)
 {
     TRACE(CL_LOG, "unmarshallOverrides");
 
@@ -225,7 +233,7 @@ DataDistribution::unmarshallOverrides(const string &marshalledOverrides)
  * Marshall a data distribution to string form.
  */
 string
-DataDistribution::marshall()
+DataDistributionImpl::marshall()
 {
     TRACE(CL_LOG, "marshall");
 
@@ -237,7 +245,7 @@ DataDistribution::marshall()
  * Each shard gets marshalled to "begin,end,notifyableKey;".
  */
 string
-DataDistribution::marshallShards()
+DataDistributionImpl::marshallShards()
 {
     TRACE(CL_LOG, "marshallShards");
 
@@ -281,7 +289,7 @@ DataDistribution::marshallShards()
  * "pattern,appname,groupname,nodename;".
  */
 string
-DataDistribution::marshallOverrides()
+DataDistributionImpl::marshallOverrides()
 {
     TRACE(CL_LOG, "marshallOverrides");
 
@@ -321,7 +329,7 @@ DataDistribution::marshallOverrides()
  * Initialize the data distribution from the cluster.
  */
 void
-DataDistribution::initializeCachedRepresentation()
+DataDistributionImpl::initializeCachedRepresentation()
 {
     TRACE(CL_LOG, "updateCachedRepresentation");
 
@@ -340,7 +348,7 @@ DataDistribution::initializeCachedRepresentation()
  * Update the cached shards of the data distribution.
  */
 bool
-DataDistribution::updateShards()
+DataDistributionImpl::updateShards()
 {
     TRACE(CL_LOG, "udpateShards");
 
@@ -378,7 +386,7 @@ DataDistribution::updateShards()
  * Update the manual overrides of the data distribution.
  */
 bool
-DataDistribution::updateManualOverrides()
+DataDistributionImpl::updateManualOverrides()
 {
     TRACE(CL_LOG, "updateManualOverrides");
 
@@ -420,12 +428,12 @@ DataDistribution::updateManualOverrides()
  * hash function for this distribution.
  */
 Node *
-DataDistribution::map(const string &key)
+DataDistributionImpl::map(const string &key)
 {
     TRACE(CL_LOG, "map");
 
     Notifyable *ntp;
-    DataDistribution *distp = this;
+    DataDistributionImpl *distp = this;
     uint32_t idx;
 
     for (;;) {
@@ -461,7 +469,7 @@ DataDistribution::map(const string &key)
             /*
              * Follow the forwarding chain.
              */
-            distp = dynamic_cast<DataDistribution *>(ntp);
+            distp = dynamic_cast<DataDistributionImpl *>(ntp);
         } else {
             return dynamic_cast<Node *>(ntp);
         }
@@ -475,7 +483,7 @@ DataDistribution::map(const string &key)
  * Compute the hash range for this key.
  */
 HashRange
-DataDistribution::hashWork(const string &key)
+DataDistributionImpl::hashWork(const string &key)
 {
     if (mp_hashFnPtr == NULL) {
         mp_hashFnPtr = s_hashFunctions[DD_HF_JENKINS];
@@ -489,7 +497,7 @@ DataDistribution::hashWork(const string &key)
  * unspecified order) or the empty string if none.
  */
 string
-DataDistribution::matchesManualOverride(const string &key)
+DataDistributionImpl::matchesManualOverride(const string &key)
 {
     TRACE(CL_LOG, "matchesManualOverrides");
 
@@ -520,7 +528,7 @@ DataDistribution::matchesManualOverride(const string &key)
  * by the distribution.
  */
 bool
-DataDistribution::isCovered()
+DataDistributionImpl::isCovered()
 {
     TRACE(CL_LOG, "isCovered");
 
@@ -548,7 +556,7 @@ DataDistribution::isCovered()
  * Assign new shards.
  */
 void
-DataDistribution::setShards(vector<HashRange> &upperBounds)
+DataDistributionImpl::setShards(vector<HashRange> &upperBounds)
 {
     TRACE(CL_LOG, "setShards");
 
@@ -601,14 +609,14 @@ DataDistribution::setShards(vector<HashRange> &upperBounds)
  * Get the shard index for a hash value or key.
  */
 uint32_t
-DataDistribution::getShardIndex(const string &key)
+DataDistributionImpl::getShardIndex(const string &key)
 {
     TRACE(CL_LOG, "getShardIndex");
 
     return getShardIndex(hashWork(key));
 }
 uint32_t
-DataDistribution::getShardIndex(HashRange hash)
+DataDistributionImpl::getShardIndex(HashRange hash)
 {
     TRACE(CL_LOG, "getShardIndex");
 
@@ -642,10 +650,10 @@ DataDistribution::getShardIndex(HashRange hash)
  * Retrieve the shard details for a given shard index.
  */
 Notifyable *
-DataDistribution::getShardDetails(uint32_t shardIndex,
-                                  HashRange *lowP,
-                                  HashRange *hiP,
-                                  bool *isForwardedP)
+DataDistributionImpl::getShardDetails(uint32_t shardIndex,
+                                      HashRange *lowP,
+                                      HashRange *hiP,
+                                      bool *isForwardedP)
 {
     TRACE(CL_LOG, "getShardDetails");
 
@@ -680,7 +688,7 @@ DataDistribution::getShardDetails(uint32_t shardIndex,
  * Reassign a shard to a new Notifyable.
  */
 void
-DataDistribution::reassignShard(uint32_t shardIndex, Notifyable *ntp)
+DataDistributionImpl::reassignShard(uint32_t shardIndex, Notifyable *ntp)
 {
     TRACE(CL_LOG, "reassignShard");
 
@@ -692,7 +700,7 @@ DataDistribution::reassignShard(uint32_t shardIndex, Notifyable *ntp)
     m_shards[shardIndex]->reassign(ntp);
 }
 void
-DataDistribution::reassignShard(uint32_t shardIndex, const string &key)
+DataDistributionImpl::reassignShard(uint32_t shardIndex, const string &key)
 {
     TRACE(CL_LOG, "reassignShard");
 
@@ -708,8 +716,8 @@ DataDistribution::reassignShard(uint32_t shardIndex, const string &key)
  * (Re)assign a manual override to a new Notifyable.
  */
 void
-DataDistribution::reassignManualOverride(const string &pattern,
-                                         Notifyable *ntp)
+DataDistributionImpl::reassignManualOverride(const string &pattern,
+                                             Notifyable *ntp)
 {
     TRACE(CL_LOG, "reassignManualOverride");
 
@@ -724,8 +732,8 @@ DataDistribution::reassignManualOverride(const string &pattern,
 }
 
 void
-DataDistribution::reassignManualOverride(const string &pattern,
-                                         const string &key)
+DataDistributionImpl::reassignManualOverride(const string &pattern,
+                                             const string &key)
 {
     TRACE(CL_LOG, "reassignManualOverride");
 
@@ -743,7 +751,7 @@ DataDistribution::reassignManualOverride(const string &pattern,
  * Publish the data distribution if there were changes.
  */
 void
-DataDistribution::publish()
+DataDistributionImpl::publish()
 {
     TRACE(CL_LOG, "publish");
 

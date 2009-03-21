@@ -1,5 +1,5 @@
 /*
- * clusterclient.cc --
+ * clientimpl.cc --
  *
  * Implementation of the Client class.
  *
@@ -10,16 +10,18 @@
  * ============================================================================
  */
 
-#include "clusterlib.h"
+#include "clusterlibinternal.h"
 
 #define LOG_LEVEL LOG_WARN
 #define MODULE_NAME "ClusterLib"
+
+using namespace std;
 
 namespace clusterlib
 {
 
 ApplicationMap 
-Client::getApplications()
+ClientImpl::getApplications()
 {
     Locker l(getApplicationMapLock());
     
@@ -33,7 +35,7 @@ Client::getApplications()
  * cluster as needed.
  */
 Application *
-Client::getApplication(const string &appName,
+ClientImpl::getApplication(const string &appName,
                        bool create)
 {
     TRACE(CL_LOG, "getApplication");
@@ -85,7 +87,7 @@ Client::getApplication(const string &appName,
  * Refresh the cache of applications in this factory.
  */
 void
-Client::recacheApplications()
+ClientImpl::recacheApplications()
 {
     TRACE(CL_LOG, "recacheApplications");
 
@@ -104,7 +106,7 @@ Client::recacheApplications()
  * invoking handlers for events as they come in.
  */
 void
-Client::consumeClusterEvents()
+ClientImpl::consumeClusterEvents()
 {
     TRACE(CL_LOG, "consumeClusterEvents");
 
@@ -141,7 +143,7 @@ Client::consumeClusterEvents()
  * Call all handlers for the given Notifyable and Event.
  */
 void
-Client::dispatchHandlers(Notifyable *np, Event e)
+ClientImpl::dispatchHandlers(Notifyable *np, Event e)
 {
     string key = np->getKey();
     EventHandlersMultimapRange range = m_eventHandlers.equal_range(key);
@@ -228,7 +230,7 @@ Client::dispatchHandlers(Notifyable *np, Event e)
  * the supplied handler is called.
  */
 void
-Client::registerHandler(ClusterEventHandler *cehp)
+ClientImpl::registerHandler(ClusterEventHandler *cehp)
 {
     TRACE(CL_LOG, "registerHandler");
 
@@ -246,7 +248,7 @@ Client::registerHandler(ClusterEventHandler *cehp)
  * Returns true if the specified handler was unregistered.
  */
 bool
-Client::cancelHandler(ClusterEventHandler *cehp)
+ClientImpl::cancelHandler(ClusterEventHandler *cehp)
 {
     TRACE(CL_LOG, "cancelHandler");
 
@@ -263,11 +265,12 @@ Client::cancelHandler(ClusterEventHandler *cehp)
     }
     return false;
 }
+
 /*
  * Register a timer handler.
  */
 TimerId
-Client::registerTimer(TimerEventHandler *tehp,
+ClientImpl::registerTimer(TimerEventHandler *tehp,
                       uint64_t afterTime,
                       ClientData data)
 {
@@ -283,7 +286,7 @@ Client::registerTimer(TimerEventHandler *tehp,
  * delivered).
  */
 bool
-Client::cancelTimer(TimerId id)
+ClientImpl::cancelTimer(TimerId id)
 {
     TRACE(CL_LOG, "cancelTimer");
 

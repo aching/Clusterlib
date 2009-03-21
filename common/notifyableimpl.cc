@@ -1,5 +1,5 @@
 /*
- * notifyable.cc
+ * notifyableimpl.cc
  *
  * Implementation of the notification classes outlined methods.
  *
@@ -10,15 +10,18 @@
  * =============================================================================
  */
 
-#include "clusterlib.h"
+#include "clusterlibinternal.h"
 
 #define LOG_LEVEL LOG_WARN
 #define MODULE_NAME "ClusterLib"
 
+using namespace std;
+
 namespace clusterlib
 {
+
 Properties *
-Notifyable::getProperties(bool create)
+NotifyableImpl::getProperties(bool create)
 {
     TRACE(CL_LOG, "getProperties");
 
@@ -40,7 +43,7 @@ Notifyable::getProperties(bool create)
 }
 
 Notifyable *
-Notifyable::getMyParent() const
+NotifyableImpl::getMyParent() const
 {
     TRACE(CL_LOG, "getMyParent");
 
@@ -49,11 +52,11 @@ Notifyable::getMyParent() const
                                getKey());
     }
 
-    return mp_parent;
+    return dynamic_cast<Notifyable *>(mp_parent);
 }
 
 Application *
-Notifyable::getMyApplication()
+NotifyableImpl::getMyApplication()
 {
     TRACE(CL_LOG, "getMyApplication");
 
@@ -76,14 +79,14 @@ Notifyable::getMyApplication()
     do {
         mp_myApplication =
             getDelegate()->getApplicationFromKey(appKey, false);
-        appKey = getDelegate()->removeObjectFromKey(appKey);
+        appKey = NotifyableKeyManipulator::removeObjectFromKey(appKey);
     }  while ((mp_myApplication == NULL) && (!appKey.empty()));
 
     return mp_myApplication;
 }
 
 Group *
-Notifyable::getMyGroup()
+NotifyableImpl::getMyGroup()
 {
     TRACE(CL_LOG, "getMyGroup");
 
@@ -101,7 +104,7 @@ Notifyable::getMyGroup()
      * Try to find the object.
      */
     do {
-        groupKey = getDelegate()->removeObjectFromKey(groupKey);
+        groupKey = NotifyableKeyManipulator::removeObjectFromKey(groupKey);
         mp_myGroup = getDelegate()->getGroupFromKey(groupKey, false);
     } while ((mp_myGroup == NULL) && (!groupKey.empty()));
 

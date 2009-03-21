@@ -5,17 +5,24 @@ INCLUDES = \
 METASOURCES = AUTO
 lib_LIBRARIES = libcluster.a
 libcluster_a_SOURCES = \
-	application.cc \
-	clusterclient.cc \
-	clusterlib.cc \
-	clusterserver.cc \
-	datadistribution.cc \
-	properties.cc \
-	notifyable.cc \
+	notifyableimpl.cc \
+	nodeimpl.cc \
+	groupimpl.cc \
+	applicationimpl.cc \
+	datadistributionimpl.cc \
+	propertiesimpl.cc \
+	cachedobjectchangehandlers.cc \
+	clientimpl.cc \
+	serverimpl.cc \
+	clusterlibstrings.cc \
+	clusterlibints.cc \
+	factory.cc \
+	factoryops.cc \
 	event.cc \
-	group.cc \
-	node.cc \
-	notifyable.cc \
+        notifyablekeymanipulator.cc \
 	thread.cc \
 	zkadapter.cc
+
 CXXFLAGS = @BASE_CXXFLAGS@
+
+@makefile_inc@

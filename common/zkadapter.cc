@@ -6,7 +6,7 @@
  * ============================================================================
  */
 
-#include "clusterlib.h"
+#include "clusterlibinternal.h"
 
 DEFINE_LOGGER(LOG, "zookeeper.adapter")
 DEFINE_LOGGER(ZK_LOG, "zookeeper.core")

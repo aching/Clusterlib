@@ -1,7 +1,7 @@
 /*
- * properties.h --
+ * propertiesimpl.h --
  *
- * Interface of class Properties; it represents the properties of a
+ * Definition of class PropertiesImpl; it represents the properties of a
  * clusterlib object.
  *
  * $Header:$
@@ -10,8 +10,8 @@
  */
 
 
-#ifndef __PROPERTIES_H__
-#define __PROPERTIES_H__
+#ifndef _PROPERTIESIMPL_H__
+#define _PROPERTIESIMPL_H__
 
 namespace clusterlib
 {
@@ -19,8 +19,9 @@ namespace clusterlib
 /**
  * Definition of class Properties
  */
-class Properties 
-    : public virtual Notifyable
+class PropertiesImpl
+    : public virtual Properties,
+      public virtual NotifyableImpl
 {
     public:
     /** 
@@ -30,7 +31,10 @@ class Properties
      * any process that does not own the lock (including the internal
      * clusterlib event system).
      */
-    virtual void acquireLock() = 0;
+    virtual void acquireLock()
+    {
+	getKeyValMapLock()->Acquire();
+    }
 
     /** 
      * \brief Releases the property lock.
@@ -38,7 +42,10 @@ class Properties
      * Releases the lock so that other processes that do not own the
      * lock (including the internal clusterlib event system).
      */
-    virtual void releaseLock() = 0;
+    virtual void releaseLock()
+    {
+	getKeyValMapLock()->Release();
+    }
 
     /**
      * \brief Get the keys of all the properties.
@@ -49,7 +56,7 @@ class Properties
      *
      * @return the vector of property keys
      */
-    virtual std::vector<std::string> getPropertyKeys() const = 0;
+    virtual std::vector<std::string> getPropertyKeys() const;
          
     /**
      * \brief Gets a value associated with the given property.
@@ -66,7 +73,7 @@ class Properties
      * @return the value of the given propery or an empty string
      */
     virtual std::string getProperty(const std::string &name, 
-                                    bool searchParent = false) = 0;
+                                    bool searchParent = false);
         
     /**
      * \brief Sets value of the given property.
@@ -80,7 +87,7 @@ class Properties
      * @param value the value to be set
      */
     virtual void setProperty(const std::string &name, 
-                             const std::string &value) = 0;
+                             const std::string &value);
 
     /**
      * \brief Deletes the property name.
@@ -92,7 +99,7 @@ class Properties
      *
      * @param name the property name to be deleted
      */
-    virtual void deleteProperty(const std::string &name) = 0;
+    virtual void deleteProperty(const std::string &name);
 
     /**
      * \brief Push the key-value map to the storage.
@@ -105,28 +112,110 @@ class Properties
      * polling or waiting on events).  Then they should try to set
      * their properties again under a lock and publish again.
      */
-    virtual void publish() = 0;
+    virtual void publish();
 
     /**
      * \brief Resets the property list to empty (acquires/releases lock).
      *
      */
-    virtual void reset() = 0;
+    virtual void reset() 
+    {
+	acquireLock();
+	m_keyValMap.clear();
+	releaseLock();
+    }
 
     /**
      * \brief Return the time at which the last value change happened.
      *
      * @return the int64 representing the time that the value changed.
      */
-    virtual int64_t getValueChangeTime() = 0;
+    virtual int64_t getValueChangeTime() { return m_valueChangeTime; }
 
     /**
      * \brief Do not allow getProperties() on a Properties object (throw)
      */
-    virtual Properties *getProperties(bool create = false) = 0;    
+    virtual Properties *getProperties(bool create = false);
+
+    /*
+     * Internal functions not used by outside clients
+     */    
+  public:
+    /*
+     * Constructor used by the factory.
+     */
+    PropertiesImpl(NotifyableImpl *parent,
+                   const std::string &key,
+                   FactoryOps *fp)
+        : NotifyableImpl(fp, key, "", parent),
+          m_keyValMapVersion(-2),
+          m_valueChangeTime(0)
+    {
+    }
+
+    /**
+     * \brief Initialize the cached representation of this node.
+     */
+    virtual void initializeCachedRepresentation();
+
+    /**
+     * \brief Update the properties map from the repository.
+     */
+    void updatePropertiesMap();
+
+    /**
+     * \brief Converts this properties map into a string.
+     * 
+     * @return the string representation of this object
+     */
+    std::string marshall() const;
+        
+    /**
+     * \brief Unmarshalls the given properties into this object.
+     * This method will effectively override existing
+     * properties unless there is a parse error.
+     * 
+     * @return whether the method successfully unmarshalled properties 
+     *         or not
+     */
+
+    bool unmarshall(const std::string &propsAsStr);
+
+    /*
+     * Retrieve the current version # of the properties list.
+     */
+    int32_t getKeyValVersion() { return m_keyValMapVersion; }
+
+    /*
+     * Set the version #.
+     */
+    void setKeyValVersion(int32_t version) { m_keyValMapVersion = version; }
+
+    /*
+     * Retrieve the lock managing the map.
+     */
+    Mutex *getKeyValMapLock() { return &m_keyValMapMutex; }
+
+    /*
+     * Set the time at which the value changed.
+     */
+    void setValueChangeTime(int64_t t) { m_valueChangeTime = t; }
+
+  private:
+    /**                                                                        
+     * The maps of properties.                                                 
+     */
+    KeyValMap m_keyValMap;
+    int32_t m_keyValMapVersion;
+    Mutex m_keyValMapMutex;
+
+    /*
+     * The time of the last change in value.
+     */
+    int64_t m_valueChangeTime;
 };
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_CLUSTERLIB_H_ */
+#endif	/* !_PROPERTIESIMPL_H_ */
 

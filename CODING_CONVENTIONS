@@ -30,6 +30,41 @@ should be changed as necessary.
 * Use friend declarations SPARINGLY, and for good reason. If it can
   be done w/o a friend declaration, it SHOULD be done w/o one.
 
+- Class formatting
+
+* All class names should start with capital letters, inheritance
+  should be on separate lines.
+* Initializer list should be separated by lines
+* Functions and data should be separated by access specifiers
+* Empty code blocks are together on the same line
+
+Here is an example that illustrates all of the following
+
+class ServerImpl
+    : public virtual Server, 
+      public virtual ClientImpl
+{
+  public:
+    virtual Node *getMyNode() 
+    {
+        return dynamic_cast<Node *>(mp_node);
+    }
+
+    bool doesNothing() {}
+
+  private:
+    ServerImpl()
+        : ClientImpl(NULL)
+    {
+        throw ClusterException("Someone called the Server "
+                               "default constructor!");
+    }
+
+  private:
+    Node *mp_node;
+};
+   
+
 - Exceptions
 
 Do not declare exceptions as part of the declaration of a method or
@@ -68,15 +103,15 @@ no benefit.
   mp (for example mp_parent for pointers). 
 * Clusterlib objects (i.e. Node, DataDistribution, Application) should use 
   the full name in any member functions (i.e. createDataDistribution, 
-  loadApplication) and as
-  parameters use abbrieviated names as follows.
+  loadApplication) and as parameters or instance names use abbrieviated names 
+  as follows (i.e. m_app;).
     * Application = app
     * DataDistribution = dist
     * Properties = prop
     * Group = group
     * Notifyable = nt
     * Node = node
-    * For pointers, add 'P' to the end of the name
+    * For pointers, add 'P' to the end of the name (i.e. appP, distP)
 
 - Control Structures
 

@@ -1,7 +1,8 @@
 /*
- * application.cc --
+ * applicationmpl.cc --
  *
- * Implementation of the Application class.
+ * Implementation of the Application class; it represents a set of groups
+ * of nodes that together form a clusterlib application.
  *
  * =============================================================================
  * $Header:$
@@ -10,7 +11,7 @@
  * =============================================================================
  */
 
-#include "clusterlib.h"
+#include "clusterlibinternal.h"
 
 #define LOG_LEVEL LOG_WARN
 #define MODULE_NAME "ClusterLib"
@@ -18,13 +19,19 @@
 namespace clusterlib
 {
 
+Group *
+ApplicationImpl::getMyGroup()
+{
+    throw ClusterException("Application cannot be a part of a group!");
+}
+
 /*
  * Initialize the cached representation of this group.
  */
 void
-Application::initializeCachedRepresentation()
+ApplicationImpl::initializeCachedRepresentation()
 {
-    Group::initializeCachedRepresentation();
+    GroupImpl::initializeCachedRepresentation();
 }
 
 };	/* End of 'namespace clusterlib' */

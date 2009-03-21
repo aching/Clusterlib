@@ -1,7 +1,8 @@
 /*
- * group.cc --
+ * groupimpl.cc --
  *
- * Implementation of the Group class.
+ * Implementation of class GroupImpl; it represents a set of nodes within
+ * a specific application of clusterlib
  *
  * =============================================================================
  * $Header:$
@@ -10,10 +11,12 @@
  * =============================================================================
  */
 
-#include "clusterlib.h"
+#include "clusterlibinternal.h"
 
 #define LOG_LEVEL LOG_WARN
 #define MODULE_NAME "ClusterLib"
+
+using namespace std;
 
 namespace clusterlib
 {
@@ -24,8 +27,8 @@ namespace clusterlib
  * cache.
  */
 Node *
-Group::getNode(const string &nodeName, 
-	       bool create)
+GroupImpl::getNode(const string &nodeName, 
+                   bool create)
 {
     TRACE(CL_LOG, "getNode");
 
@@ -66,12 +69,12 @@ Group::getNode(const string &nodeName,
  * yet in the cache.
  */
 Group *
-Group::getGroup(const string &groupName,
-                bool create)
+GroupImpl::getGroup(const string &groupName,
+                    bool create)
 {
     TRACE(CL_LOG, "getGroup");
 
-    Group *grp;
+    Group *group;
 
     /*
      * If it is already cached, return the
@@ -91,12 +94,12 @@ Group::getGroup(const string &groupName,
      * group from the cluster, cache it,
      * and return the object.
      */
-    grp = getDelegate()->getGroup(groupName, this, create);
-    if (grp != NULL) {
+    group = getDelegate()->getGroup(groupName, this, create);
+    if (group != NULL) {
         Locker l2(getGroupMapLock());
 
-        m_groups[groupName] = grp;
-        return grp;
+        m_groups[groupName] = group;
+        return group;
     }
 
     /*
@@ -112,8 +115,8 @@ Group::getGroup(const string &groupName,
  * the cache.
  */
 DataDistribution *
-Group::getDataDistribution(const string &distName,
-                           bool create)
+GroupImpl::getDataDistribution(const string &distName,
+                               bool create)
 {
     TRACE(CL_LOG, "getDataDistribution");
 
@@ -155,7 +158,7 @@ Group::getDataDistribution(const string &distName,
  * Initialize the cached representation of this group.
  */
 void
-Group::initializeCachedRepresentation()
+GroupImpl::initializeCachedRepresentation()
 {
     TRACE(CL_LOG, "initializeCachedRepresentation");
 
@@ -168,7 +171,7 @@ Group::initializeCachedRepresentation()
  * Recache the nodes in this group.
  */
 void
-Group::recacheNodes()
+GroupImpl::recacheNodes()
 {
     TRACE(CL_LOG, "recacheNodes");
 
@@ -186,7 +189,7 @@ Group::recacheNodes()
  * Refresh the cache of groups in this application.
  */
 void
-Group::recacheGroups()
+GroupImpl::recacheGroups()
 {
     TRACE(CL_LOG, "recacheGroups");
 
@@ -204,7 +207,7 @@ Group::recacheGroups()
  * Refresh the cache of data distributions in this group.
  */
 void
-Group::recacheDataDistributions()
+GroupImpl::recacheDataDistributions()
 {
     TRACE(CL_LOG, "recacheDataDistributions");
 
@@ -224,7 +227,7 @@ Group::recacheDataDistributions()
  * if any.
  */
 Node *
-Group::getLeader()
+GroupImpl::getLeader()
 {
     TRACE(CL_LOG, "getLeader");
 
@@ -242,7 +245,7 @@ Group::getLeader()
  * Update the leader.
  */
 void
-Group::updateLeader(Node *lp)
+GroupImpl::updateLeader(Node *lp)
 {
     Locker l1(getLeadershipLock());
 
@@ -257,7 +260,7 @@ Group::updateLeader(Node *lp)
  * Methods to manage strings used in leadership protocol.
  */
 void
-Group::initializeStringsForLeadershipProtocol()
+GroupImpl::initializeStringsForLeadershipProtocol()
 {
     Locker l1(getLeadershipLock());
 
@@ -272,19 +275,19 @@ Group::initializeStringsForLeadershipProtocol()
     }
 }
 string
-Group::getCurrentLeaderNodeName()
+GroupImpl::getCurrentLeaderNodeName()
 {
     initializeStringsForLeadershipProtocol();
     return m_currentLeaderNodeName;
 }
 string
-Group::getLeadershipBidsNodeName()
+GroupImpl::getLeadershipBidsNodeName()
 {
     initializeStringsForLeadershipProtocol();
     return m_leadershipBidsNodeName;
 }
 string
-Group::getLeadershipBidPrefix()
+GroupImpl::getLeadershipBidPrefix()
 {
     initializeStringsForLeadershipProtocol();
     return m_leadershipBidPrefix;

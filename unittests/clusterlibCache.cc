@@ -3,6 +3,8 @@
 
 extern TestParams globalTestParams;
 
+using namespace std;
+
 /*
  * Forward decl needed for the timer & user
  * event handlers.
@@ -119,6 +121,7 @@ class ClusterlibCache
 
     void testCache1()
     {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
         cerr << "Test 1" << endl;
 
         cerr << "Nod0 = " << _nod0 << ", " << _nod0->getKey() << endl;
@@ -144,24 +147,28 @@ class ClusterlibCache
     }
     void testCache2()
     {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
         cerr << "Test 2, cp == " << this << endl;
 
         cerr << "Test 2 end" << endl;
     }
     void testCache3()
     {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
         cerr << "Test 3, cp == " << this << endl;
 
         cerr << "Test 3 end" << endl;
     }
     void testCache4()
     {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
         cerr << "Test 4" << endl;
 
         cerr << "Test 4 end" << endl;
     }
     void testCache5()
     {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
         cerr << "Test 5" << endl;
 
         cerr << "Test 5 end" << endl;
@@ -169,48 +176,56 @@ class ClusterlibCache
 
     void testCache20()
     {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
         cerr << "Test 20" << endl;
 
         cerr << "Test 20 end" << endl;
     }
     void testCache21()
     {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
         cerr << "Test 21" << endl;
 
         cerr << "Test 21 end" << endl;
     }
     void testCache22()
     {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
         cerr << "Test 22" << endl;
 
         cerr << "Test 22 end" << endl;
     }
     void testCache23()
     {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
         cerr << "Test 23" << endl;
 
         cerr << "Test 23 end" << endl;
     }
     void testCache24()
     {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
         cerr << "Test 24" << endl;
 
         cerr << "Test 24 end" << endl;
     }
     void testCache25()
     {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
         cerr << "Test 25" << endl;
 
         cerr << "Test 25 end" << endl;
     }
     void testCache26()
     {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
         cerr << "Test 26" << endl;
 
         cerr << "Test 26 end" << endl;
     }
     void testCache27()
     {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
         cerr << "Test 27" << endl;
 
         cerr << "Test 27 end" << endl;

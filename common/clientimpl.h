@@ -1,23 +1,21 @@
 /*
- * client.h --
+ * clientimpl.h --
  *
- * Include file for client side types. Include this file if you're only writing
- * a pure clusterlib client. If you are creating a server (a node that is in a
- * group inside some app using clusterlib) then you need to include the server-
- * side functionality: server/clusterserver.h.
+ * Definition of class ClientImpl.
  *
  * $Header$
  * $Revision$
  * $Date$
  */
 
-#ifndef _CLUSTERCLIENT_H_
-#define _CLUSTERCLIENT_H_
+#ifndef _CLIENTIMPL_H_
+#define _CLIENTIMPL_H_
 
 namespace clusterlib
 {
 
-class Client
+class ClientImpl
+    : public virtual Client
 {
   public:
     /**
@@ -25,7 +23,7 @@ class Client
      *
      * @return a map of the available applications
      */
-    ApplicationMap getApplications();
+    virtual ApplicationMap getApplications();
 
     /**
      * Retrieve an application.
@@ -35,8 +33,8 @@ class Client
      * @return NULL if the application doesn't exist otherwise the pointer 
      *         to the Application
      */
-    Application *getApplication(const string &appName,
-                                bool create = false);
+    virtual Application *getApplication(const std::string &appName,
+                                        bool create = false);
 
     /**
      * Register a timer handler to be called after
@@ -45,40 +43,39 @@ class Client
      * @param tehp pointer to the handler class that is managed by the user
      * @param afterTime milliseconds to wait for the event to be triggered
      */
-    TimerId registerTimer(TimerEventHandler *tehp,
-                          uint64_t afterTime,
-                          ClientData data);
+    virtual TimerId registerTimer(TimerEventHandler *tehp,
+                                  uint64_t afterTime,
+                                  ClientData data);
 
     /**
      * Cancel a previously registered timer.
      *
      * @return true if successful, false otherwise
      */
-    bool cancelTimer(TimerId id);
+    virtual bool cancelTimer(TimerId id);
 
     /**
      * Register and cancel a cluster event handler. 
      *
      * @param cehp a handler class for events, managed by caller
      */
-    void registerHandler(ClusterEventHandler *cehp);
+    virtual void registerHandler(ClusterEventHandler *cehp);
+
     /**
      * Cancel a handler for events.
      *
      * @return true if successful, false otherwise
      */
-    bool cancelHandler(ClusterEventHandler *cehp);
+    virtual bool cancelHandler(ClusterEventHandler *cehp);
 
-  protected:
-    /**
-     * Make the factory a friend.
+    /*
+     * Internal functions not used by outside clients
      */
-    friend class Factory;
-
+  public:
     /**
      * Constructor used by the factory.
      */
-    Client(FactoryOps *fp)
+    ClientImpl(FactoryOps *fp)
         : mp_f(fp)
     {
         /**
@@ -91,7 +88,7 @@ class Client
          * specific user program handlers. The clusterlib cache
          * object affected by the event already has been updated.
          */
-        m_eventThread.Create(*this, &Client::consumeClusterEvents);
+        m_eventThread.Create(*this, &ClientImpl::consumeClusterEvents);
     }
 
     /**
@@ -112,7 +109,7 @@ class Client
      * Make the destructor protected so it can only be invoked
      * from derived classes.
      */
-    virtual ~Client()
+    virtual ~ClientImpl()
     {
         /**
          * Wait till all events have been handled.
@@ -133,12 +130,13 @@ class Client
      * Make the default constructor private so
      * noone can call it.
      */
-    Client()
+    ClientImpl()
     {
-        throw ClusterException("Someone called the Client "
+        throw ClusterException("Someone called the ClientImpl "
                                "default constructor!");
     }
 
+  private:
     /**
      * Consume cluster events. This method runs in a separate thread,
      * see m_eventThread below.
@@ -156,7 +154,6 @@ class Client
      */
     void dispatchHandlers(Notifyable *np, Event e);
 
-  private:
     /**
      * The factory delegate instance we're using.
      */
@@ -171,7 +168,7 @@ class Client
     /**
      * The thread consuming the events.
      */
-    CXXThread<Client> m_eventThread;
+    CXXThread<ClientImpl> m_eventThread;
 
     /**
      * Map of user event handlers.
@@ -193,4 +190,4 @@ class Client
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_CLUSTERCLIENT_H_ */
+#endif	/* !_CLUSTERCLIENTIMPL_H_ */

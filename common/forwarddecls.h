@@ -12,8 +12,6 @@
 #ifndef	_FORWARDDECLS_H_
 #define	_FORWARDDECLS_H_
 
-using namespace std;
-
 namespace clusterlib
 {
 
@@ -22,7 +20,7 @@ namespace clusterlib
  */
 typedef uint64_t HashRange;
 typedef int32_t  HashFunctionId;
-typedef HashRange (HashFunction)(const string &key);
+typedef HashRange (HashFunction)(const std::string &key);
 
 /*
  * Random bits owned by the user program. Clusterlib just
@@ -46,21 +44,30 @@ typedef int32_t TimerId;
  * Alphabetical order of forward declared classes.
  */
 class Application;
+class ApplicationImpl;
+class CachedObjectChangeHandlers;
 class Client;
+class ClientImpl;
 class ClusterEventHandler;
 class ClusterEventPayload;
 class ClusterException;
 class DataDistribution;
+class DataDistributionImpl;
 class Properties;
+class PropertiesImpl;
 class Factory;
 class FactoryOps;
 class Group;
+class GroupImpl;
 class HealthChecker;
 class ManualOverride;
 class Node;
+class NodeImpl;
 class NodeAddress;
 class Notifyable;
+class NotifyableImpl;
 class Server;
+class ServerImpl;
 class Shard;
 class TimerEventHandler;
 class TimerEventPayload;
@@ -68,42 +75,46 @@ class TimerEventPayload;
 /*
  * Vectors of pointers to these classes.
  */
-typedef vector<string>				IdList;
-typedef vector<Application *>			ApplicationList;
-typedef vector<Client *>			ClientList;
-typedef vector<DataDistribution *>		DataDistributionList;
-typedef vector<Factory *>			FactoryList;
-typedef vector<FactoryOps *>			FactoryOpsList;
-typedef vector<Group *>				GroupList;
-typedef vector<HealthChecker *>			HealthCheckerList;
-typedef vector<Node *>				NodeList;
-typedef	vector<NodeAddress *>			NodeAddressList;
-typedef vector<Server *>			ServerList;
-typedef vector<Shard *>				ShardList;
+typedef std::vector<std::string>		IdList;
+typedef std::vector<ApplicationImpl *>		ApplicationImplList;
+typedef std::vector<ClientImpl *>		ClientImplList;
+typedef std::vector<DataDistributionImpl *>	DataDistributionImplList;
+typedef std::vector<Factory *>			FactoryList;
+typedef std::vector<FactoryOps *>		FactoryOpsList;
+typedef std::vector<GroupImpl *>		GroupImplList;
+typedef std::vector<HealthChecker *>		HealthCheckerList;
+typedef std::vector<NodeImpl *>			NodeImplList;
+typedef	std::vector<NodeAddress *>		NodeAddressList;
+typedef std::vector<Server *>			ServerList;
+typedef std::vector<Shard *>			ShardList;
     
 /*
  * Maps of pointers to these classes.
  */
-typedef map<string, Application *>		ApplicationMap;
-typedef map<string, Client *>			ClientMap;
-typedef map<string, DataDistribution *>		DataDistributionMap;
-typedef map<string, Factory *>			FactoryMap;
-typedef map<string, FactoryOps *>		FactoryOpsMap;
-typedef map<string, Group *>			GroupMap;
-typedef map<string, HealthChecker *>		HealthCheckerMap;
-typedef map<string, ManualOverride *>		ManualOverridesMap;
-typedef map<string, Node *>	        	NodeMap;
-typedef map<string, Server *>			ServerMap;
-typedef map<string, string>                     KeyValMap;
-typedef map<string, Properties *>	      	PropertiesMap;
-typedef map<TimerId, TimerEventPayload *>	TimerRegistry;
+typedef std::map<std::string, Application *>	       ApplicationMap;
+typedef std::map<std::string, ApplicationImpl *>       ApplicationImplMap;
+typedef std::map<std::string, Client *>		       ClientMap;
+typedef std::map<std::string, DataDistribution *>      DataDistributionMap;
+typedef std::map<std::string, DataDistributionImpl *>  DataDistributionImplMap;
+typedef std::map<std::string, Factory *>	       FactoryMap;
+typedef std::map<std::string, FactoryOps *>	       FactoryOpsMap;
+typedef std::map<std::string, Group *>		       GroupMap;
+typedef std::map<std::string, GroupImpl *>	       GroupImplMap;
+typedef std::map<std::string, HealthChecker *>	       HealthCheckerMap;
+typedef std::map<std::string, ManualOverride *>	       ManualOverridesMap;
+typedef std::map<std::string, Node *>	               NodeMap;
+typedef std::map<std::string, NodeImpl *>	       NodeImplMap;
+typedef std::map<std::string, Server *>		       ServerMap;
+typedef std::map<std::string, std::string>             KeyValMap;
+typedef std::map<std::string, PropertiesImpl *>	       PropertiesImplMap;
+typedef std::map<TimerId, TimerEventPayload *>	       TimerRegistry;
 
 /*
  * Support structures for multimap element comparison.
  */
 struct ltstr
 {
-    bool operator()(string s1, string s2) const
+    bool operator()(std::string s1, std::string s2) const
     {
         return strcmp(s1.c_str(), s2.c_str()) < 0;
     }
@@ -112,16 +123,17 @@ struct ltstr
 /*
  * Multimaps.
  */
-typedef multimap<const string, Server *, ltstr>	LeadershipElectionMultimap;
-typedef LeadershipElectionMultimap::iterator	LeadershipIterator;
-typedef pair<LeadershipIterator, LeadershipIterator>
-						LeadershipElectionMultimapRange;
+typedef std::multimap<const std::string, ServerImpl *, ltstr>	
+                                               LeadershipElectionMultimap;
+typedef LeadershipElectionMultimap::iterator   LeadershipIterator;
+typedef std::pair<LeadershipIterator, LeadershipIterator>
+					       LeadershipElectionMultimapRange;
 
-typedef multimap<const string, ClusterEventHandler *, ltstr>
-						EventHandlersMultimap;
-typedef EventHandlersMultimap::iterator		EventHandlersIterator;
-typedef pair<EventHandlersIterator, EventHandlersIterator>
-						EventHandlersMultimapRange;
+typedef std::multimap<const std::string, ClusterEventHandler *, ltstr>
+					       EventHandlersMultimap;
+typedef EventHandlersMultimap::iterator	       EventHandlersIterator;
+typedef std::pair<EventHandlersIterator, EventHandlersIterator>
+					       EventHandlersMultimapRange;
 
 /*
  * Type used for passing flags.

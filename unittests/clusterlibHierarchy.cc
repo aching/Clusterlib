@@ -3,12 +3,13 @@
 
 extern TestParams globalTestParams;
 
+using namespace std;
 using namespace clusterlib;
 
-class MyHealthChecker : public clusterlib::HealthChecker {
+class MyHealthChecker : public HealthChecker {
   public:
     virtual HealthReport checkHealth() {
-        return HealthReport(clusterlib::HealthReport::HS_HEALTHY,
+        return HealthReport(HealthReport::HS_HEALTHY,
                             "No real check");
     }
   private:
@@ -69,7 +70,7 @@ class ClusterlibHierarchy : public MPITestFixture {
 	    CPPUNIT_ASSERT(distP);
 	    Node *nodeP = groupP->getNode("hierarchy-node", true);
 	    CPPUNIT_ASSERT(nodeP);
-	    clusterlib::Properties *propP = nodeP->getProperties();
+	    Properties *propP = nodeP->getProperties();
 	    CPPUNIT_ASSERT(propP);
         }
 	
@@ -115,7 +116,7 @@ class ClusterlibHierarchy : public MPITestFixture {
 	    CPPUNIT_ASSERT(nodeP->getMyGroup() == groupP);
 	    CPPUNIT_ASSERT(nodeP->getMyApplication() == _appP);
 	    
-	    clusterlib::Properties *propP = nodeP->getProperties();
+	    Properties *propP = nodeP->getProperties();
 	    CPPUNIT_ASSERT(propP);
 	    CPPUNIT_ASSERT(propP->getMyParent() == nodeP);
 	    CPPUNIT_ASSERT(propP->getMyGroup() == groupP);
@@ -149,7 +150,7 @@ class ClusterlibHierarchy : public MPITestFixture {
 	    Node *node3P = group2P->getNode("node3", true);
 	    CPPUNIT_ASSERT(node3P);
 
-	    clusterlib::Properties *propP = node3P->getProperties();
+	    Properties *propP = node3P->getProperties();
 	    CPPUNIT_ASSERT(propP);
         }
 	
@@ -201,7 +202,7 @@ class ClusterlibHierarchy : public MPITestFixture {
             CPPUNIT_ASSERT(node3P->getMyGroup() == group2P);
             CPPUNIT_ASSERT(node3P->getMyApplication() == _appP);
 
-	    clusterlib::Properties *propP = node3P->getProperties();
+	    Properties *propP = node3P->getProperties();
             CPPUNIT_ASSERT(propP->getMyParent() == node3P);
             CPPUNIT_ASSERT(propP->getMyGroup() == group2P);
             CPPUNIT_ASSERT(propP->getMyApplication() == _appP);

@@ -28,11 +28,10 @@ class ZooKeeperException :
          * 
          * @param msg the detailed message associated with this exception
          */
-	ZooKeeperException(const string &msg,
+	ZooKeeperException(const std::string &msg,
                            bool connected = true)
             throw()
-            : m_message(msg), m_zkErrorCode(0), m_connected(connected)
-        {}
+            : m_message(msg), m_zkErrorCode(0), m_connected(connected) {}
 
         /**
          * \brief Constructor.
@@ -40,7 +39,7 @@ class ZooKeeperException :
          * @param msg the detailed message associated with this exception
          * @param errorCode the ZK error code associated with this exception
          */
-        ZooKeeperException(const string &msg,
+        ZooKeeperException(const std::string &msg,
                            int32_t errorCode,
                            bool connected = true)
             throw()
@@ -84,7 +83,7 @@ class ZooKeeperException :
         /**
          * The detailed message associated with this exception.
          */
-        string m_message;
+        std::string m_message;
         
         /**
          * The optional error code received from ZK.
@@ -107,22 +106,25 @@ class ZooKeeperConfig
         /**
          * \brief Constructor.
          * 
-         * @param hosts the comma separated list of host and port pairs of ZK nodes
+         * @param hosts the comma separated list of host and port pairs of 
+         *              ZK nodes
          * @param leaseTimeout the lease timeout (heartbeat)
          * @param autoReconnect whether to allow for auto-reconnect
          * @param connectTimeout the connect timeout, in milliseconds;
          */
-        ZooKeeperConfig(const string &hosts, 
+        ZooKeeperConfig(const std::string &hosts, 
                         int32_t leaseTimeout, 
                         bool autoReconnect = true, 
-                        int64_t connectTimeout = 15000) :
-            m_hosts(hosts), m_leaseTimeout(leaseTimeout), 
-                  m_autoReconnect(autoReconnect), m_connectTimeout(connectTimeout) {}
+                        int64_t connectTimeout = 15000)
+            : m_hosts(hosts), 
+              m_leaseTimeout(leaseTimeout), 
+              m_autoReconnect(autoReconnect), 
+              m_connectTimeout(connectTimeout) {}
         
         /**
          * \brief Returns the list of ZK hosts to connect to.
          */
-        string getHosts() const { return m_hosts; }
+        std::string getHosts() const { return m_hosts; }
         
         /**
          * \brief Returns the lease timeout.
@@ -147,7 +149,7 @@ class ZooKeeperConfig
         /**
          * The host addresses of ZK nodes.
          */
-        const string m_hosts;
+        const std::string m_hosts;
 
         /**
          * The ZK lease timeout.
@@ -169,7 +171,8 @@ class ZooKeeperConfig
 };
 
 /**
- * \brief A data value object representing a watcher event received from the ZK.
+ * \brief A data value object representing a watcher event received
+ * from the ZK.
  */
 class ZKWatcherEvent
 {
@@ -185,7 +188,8 @@ class ZKWatcherEvent
          * 
          * @param type the type of this event
          * @param state the state of this event
-         * @param path the corresponding path, may be empty for some event types
+         * @param path the corresponding path, may be empty for some event 
+         *             types
          * @param context the user specified context; possibly NULL
          */
         ZKWatcherEvent() : 
@@ -201,13 +205,13 @@ class ZKWatcherEvent
          */
         ZKWatcherEvent(int32_t type,
                        int32_t state,
-                       const string &path, 
+                       const std::string &path, 
                        ContextType context = NULL) :
             m_type(type), m_state(state), m_path(path), mp_context(context) {}
         
         int32_t getType() const { return m_type; }
         int32_t getState() const { return m_state; }
-        string const &getPath() const { return m_path; }
+        std::string const &getPath() const { return m_path; }
         ContextType getContext() const { return mp_context; }
         
         bool operator==(const ZKWatcherEvent &we) const {
@@ -218,9 +222,9 @@ class ZKWatcherEvent
     private:
         
         /**
-         * The type of this event. It can be either CREATED_EVENT, DELETED_EVENT,
-         * CHANGED_EVENT, CHILD_EVENT, SESSION_EVENT or NOTWATCHING_EVENT. 
-         * See zookeeper.h for more details.
+         * The type of this event. It can be either CREATED_EVENT,
+         * DELETED_EVENT, CHANGED_EVENT, CHILD_EVENT, SESSION_EVENT or
+         * NOTWATCHING_EVENT.  See zookeeper.h for more details.
          */
         const int32_t m_type;
         
@@ -236,7 +240,7 @@ class ZKWatcherEvent
          * The corresponding path of the node in subject. It may be empty
          * for some event types.
          */
-        const string m_path;
+        const std::string m_path;
         
         /**
          * The pointer to the user specified context, possibly NULL.
@@ -308,7 +312,8 @@ class ZooKeeperAdapter
 {
     public:
         /**
-         * \brief The global function that handles all ZK asynchronous notifications.
+         * \brief The global function that handles all ZK asynchronous
+         * notifications.
          */
         friend void zkWatcher(zhandle_t *, int, int, const char *, void *);
         
@@ -318,14 +323,15 @@ class ZooKeeperAdapter
         typedef void *ContextType;
         
         /**
-         * \brief The map type of ZK event listener to user specified context mapping.
+         * \brief The map type of ZK event listener to user specified
+         * context mapping.
          */
-        typedef map<ZKEventListener *, ContextType> Listener2Context;
+        typedef std::map<ZKEventListener *, ContextType> Listener2Context;
         
         /**
          * \brief The map type of ZK path's to listener's contexts.
          */
-        typedef map<string, Listener2Context> Path2Listener2Context;
+        typedef std::map<std::string, Listener2Context> Path2Listener2Context;
                   
         /**
          * \brief All possible states of this client, in respect to 
@@ -353,9 +359,11 @@ class ZooKeeperAdapter
          * @param listener the event listener to be used for listening 
          *                 on incoming ZK events;
          *                 if <code>NULL</code> not used
-         * @param establishConnection whether to establish connection to the ZK
+         * @param establishConnection whether to establish connection to 
+         *                            the ZK
          * 
-         * @throw ZooKeeperException if cannot establish connection to the given ZK
+         * @throw ZooKeeperException if cannot establish connection to the 
+         *                           given ZK
          */
         ZooKeeperAdapter(ZooKeeperConfig config, 
                          ZKEventListener *listener = NULL,
@@ -390,7 +398,7 @@ class ZooKeeperAdapter
 	/**
 	 * \brief Synchronizes all events with ZK with the local server.
 	 */
-	bool sync(const string &path,
+	bool sync(const std::string &path,
                   ZKEventListener *listener,
                   void *context);
 
@@ -406,34 +414,38 @@ class ZooKeeperAdapter
          * @param path the absolute path name of the node to be created
          * @param value the initial value to be associated with the node
          * @param flags the ZK flags of the node to be created
-         * @param createAncestors if true and there are some missing ancestor nodes, 
-         *        this method will attempt to create them
+         * @param createAncestors if true and there are some missing ancestor 
+         *                        nodes, this method will attempt to 
+         *                        create them
          * 
-         * @return true if the node has been successfully created; false otherwise
+         * @return true if the node has been successfully created; false
+         *              otherwise
          * @throw ZooKeeperException if the operation has failed
          */ 
-        bool createNode(const string &path, 
-                        const string &value = "", 
+        bool createNode(const std::string &path, 
+                        const std::string &value = "", 
                         int flags = 0, 
                         bool createAncestors = true);
                   
         /**
-         * \brief Creates a new sequence node using the give path as the prefix.
-         * This method will optionally attempt to create all missing ancestors.
+         * \brief Creates a new sequence node using the give path as
+         * the prefix.  This method will optionally attempt to create
+         * all missing ancestors.
          * 
          * @param path the absolute path name of the node to be created; 
          * @param value the initial value to be associated with the node
          * @param flags the ZK flags of the sequence node to be created 
          *              (in addition to SEQUENCE)
          * @param createAncestors if true and there are some missing ancestor 
-         *                        nodes, this method will attempt to create them
+         *                        nodes, this method will attempt to
+         *                        create them
          * 
          * @return the sequence number associate with newly created node,
          *         or -1 if it couldn't be created
          * @throw ZooKeeperException if the operation has failed
          */ 
-        int64_t createSequence(const string &path, 
-                               const string &value = "", 
+        int64_t createSequence(const std::string &path, 
+                               const std::string &value = "", 
                                int flags = 0, 
                                bool createAncestors = true);
         
@@ -444,13 +456,13 @@ class ZooKeeperAdapter
          * @param recursive if true this method will attempt to remove 
          *                  all children of the given node if any exist
          * @param version the expected version of the node. The function will 
-         *                fail if the actual version of the node does not match 
-         *                the expected version
+         *                fail if the actual version of the node does not 
+         *                match the expected version
          * 
          * @return true if the node has been deleted; false otherwise
          * @throw ZooKeeperException if the operation has failed
          */
-	bool deleteNode(const string &path,
+	bool deleteNode(const std::string &path,
                         bool recursive = false,
                         int version = -1);
         
@@ -469,7 +481,7 @@ class ZooKeeperAdapter
          * @return true if the given node exists; false otherwise
          * @throw ZooKeeperException if the operation has failed
          */
-        bool nodeExists(const string &path, 
+        bool nodeExists(const std::string &path, 
                         ZKEventListener *listener = NULL, 
                         void *context = NULL,
                         Stat *stat = NULL);
@@ -477,19 +489,22 @@ class ZooKeeperAdapter
         /**
          * \brief Retrieves list of all children of the given node.
          * 
-         * @param path the absolute path name of the node for which to get children
+         * @param path the absolute path name of the node for which to 
+         *             get children
          * @param listener the listener for ZK watcher events; 
-         *                 passing non <code>NULL</code> effectively establishes
+         *                 passing non <code>NULL</code> effectively 
+         *                 establishes
          *                 a ZK watch on the given node
          * @param context the user specified context that is to be passed
-         *                in a corresponding {@link ZKWatcherEvent} at later time; 
-         *                not used if <code>listener</code> is <code>NULL</code>
+         *                in a corresponding {@link ZKWatcherEvent} at later
+         *                time; not used if <code>listener</code> is
+         *                <code>NULL</code>
          * 
          * @return the list of absolute paths of child nodes, possibly empty
          * @throw ZooKeeperException if the operation has failed
          */
-        void getNodeChildren(vector<string> &children,
-                             const string &path, 
+        void getNodeChildren(std::vector<std::string> &children,
+                             const std::string &path, 
                              ZKEventListener *listener = NULL, 
                              void *context = NULL);
                 
@@ -498,8 +513,8 @@ class ZooKeeperAdapter
          * 
          * @param path the absolute path name of the node to get data from
          * @param listener the listener for ZK watcher events; 
-         *                 passing non <code>NULL</code> effectively establishes
-         *                 a ZK watch on the given node
+         *                 passing non <code>NULL</code> effectively 
+         *                 establishes a ZK watch on the given node
          * @param context the user specified context that is to be passed
          *                in a corresponding {@link ZKWatcherEvent} at later time; 
          *                not used if <code>listener</code> is <code>NULL</code>
@@ -508,7 +523,7 @@ class ZooKeeperAdapter
          * @return the node's data
          * @throw ZooKeeperException if the operation has failed
          */
-        string getNodeData(const string &path, 
+        std::string getNodeData(const std::string &path, 
                            ZKEventListener *listener = NULL, 
                            void *context = NULL,
                            Stat *stat = NULL);
@@ -524,8 +539,8 @@ class ZooKeeperAdapter
          * 
          * @throw ZooKeeperException if the operation has failed
          */
-        void setNodeData(const string &path, 
-                         const string &value, 
+        void setNodeData(const std::string &path, 
+                         const std::string &value, 
                          int version = -1,
                          Stat *stat = NULL);
         
@@ -537,7 +552,7 @@ class ZooKeeperAdapter
          * @throw ZooKeeperException if the given path is not valid
          *        (for instance it doesn't start with "/")
          */
-	void validatePath(const string &path);
+	void validatePath(const std::string &path);
 
         /**
          * Returns the current state of this adapter.
@@ -578,18 +593,18 @@ class ZooKeeperAdapter
          * @return true if the node has been successfully created; false otherwise
          * @throw ZooKeeperException if the operation has failed
          */ 
-        bool createNode(const string &path, 
-                        const string &value, 
+        bool createNode(const std::string &path, 
+                        const std::string &value, 
                         int flags, 
                         bool createAncestors,
-                        string &createdPath);
+                        std::string &createdPath);
         
         /**
          * Handles an asynchronous event received from the ZK.
          */
         void handleAsyncEvent(int type, 
 			      int state, 
-			      const string &path);
+			      const std::string &path);
         
         /**
          * Handles an asynchronous event received from the ZK.
@@ -598,13 +613,13 @@ class ZooKeeperAdapter
          */
         void handleEventInContext(int type, 
 				  int state, 
-				  const string &path, 
+				  const std::string &path, 
 				  const Listener2Context &listeners);        
         
         /**
          * \brief Enqueues the given event in {@link #m_events} queue.
          */
-        void enqueueEvent(int type, int state, const string &path);
+        void enqueueEvent(int type, int state, const std::string &path);
         
         /**
          * \brief Processes all ZK adapter events in a loop.
@@ -625,7 +640,7 @@ class ZooKeeperAdapter
          * @param listener the event listener to call back later on
          * @param context the user specified context to be passed back to user
          */
-        void registerContext(WatchableMethod method, const string &path, 
+        void registerContext(WatchableMethod method, const std::string &path, 
                              ZKEventListener *listener, ContextType context);
         
         /**
@@ -640,7 +655,7 @@ class ZooKeeperAdapter
          *         or empty map if not found
          */
         Listener2Context findAndRemoveListenerContext(WatchableMethod method, 
-                                                      const string &path);
+                                                      const std::string &path);
 
         /**
          * Sets the new state in case it's different then the current one.
@@ -707,7 +722,7 @@ class ZooKeeperAdapter
          * 
          * @see WatchableMethod
          */
-        map<int, Path2Listener2Context> m_zkContexts;
+        std::map<int, Path2Listener2Context> m_zkContexts;
         
         /**
          * The current ZK configuration.

@@ -13,13 +13,6 @@
 #include <set>
 #include <deque>
 #include <algorithm>
-#ifdef GCC4
-#   include <tr1/memory>
-using namespace std::tr1;
-#else
-#   include <boost/shared_ptr.hpp>
-using namespace boost;
-#endif
 
 #include "log.h"
 #include "blockingqueue.h"
@@ -89,7 +82,7 @@ class EventSource
      * \brief The type corresponding to the list of registered
      * event listeners.
      */
-    typedef set<EventListener<E> *> EventListeners;
+    typedef std::set<EventListener<E> *> EventListeners;
         
     /**
      * \brief Registers a new event listener.
@@ -392,9 +385,9 @@ class EventHandler
     /*
      * Define the type of the member function to invoke.
      */
-    typedef Event (T::*EventMethod)(Notifyable *np,
+    typedef Event (T::*EventMethod)(NotifyableImpl *np,
                                     int32_t etype,
-                                    const string &path);
+                                    const std::string &path);
 
     /*
      * Constructor.
@@ -408,9 +401,9 @@ class EventHandler
     /*
      * Deliver the event.
      */
-    Event deliver(Notifyable *np, 
+    Event deliver(NotifyableImpl *np, 
                   int32_t etype,
-                  const string &path)
+                  const std::string &path)
     {
         return ((*mp_obj).*m_handler)(np, etype, path);
     };
@@ -435,9 +428,9 @@ class EventHandler
 
 /*
  * Generic types for delivering events. Events are
- * delivered to a Factory object.
+ * delivered to a CachedObjectChangeHandlers object.
  */
-typedef EventHandler<Factory> FactoryEventHandler;
+typedef EventHandler<CachedObjectChangeHandlers> CachedObjectEventHandler;
 
 /*
  * Payload for delivering events from ZooKeeper to clients of
@@ -449,7 +442,7 @@ class ClusterEventPayload
     /*
      * Constructor.
      */
-    ClusterEventPayload(Notifyable *np, Event e)
+    ClusterEventPayload(NotifyableImpl *np, Event e)
         : mp_np(np),
           m_e(e)
     {
@@ -464,13 +457,13 @@ class ClusterEventPayload
      * Retrieve fields.
      */
     Event getEvent() { return m_e; }
-    Notifyable *getTarget() { return mp_np; }
+    NotifyableImpl *getTarget() { return mp_np; }
 
   private:
     /*
      * The target object clients are being notified about.
      */
-    Notifyable *mp_np;
+    NotifyableImpl *mp_np;
 
     /*
      * The event that clients are being notified about.
@@ -820,7 +813,7 @@ class Timer
     /**
      * The type of timer events queue.
      */
-    typedef deque<TimerEvent<T> > QueueType;
+    typedef std::deque<TimerEvent<T> > QueueType;
         
     /**
      * The current event ID, auto-incremented each time a new event 

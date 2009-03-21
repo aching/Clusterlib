@@ -1,7 +1,7 @@
 /*
- * properties.cc --
+ * propertiesimpl.cc --
  *
- * Implementation of the Properties class.
+ * Implementation of the PropertiesImpl class.
  *
  * ============================================================================
  * $Header:$
@@ -10,11 +10,14 @@
  * ============================================================================
  */
 
-#include "clusterlib.h"
+#include "clusterlibinternal.h"
 #include <boost/regex.hpp>
 
 #define LOG_LEVEL LOG_WARN
 #define MODULE_NAME "ClusterLib"
+
+using namespace std;
+using namespace boost;
 
 namespace clusterlib
 {
@@ -23,7 +26,7 @@ namespace clusterlib
  * Do not allow getProperties() on a Properties object
  */
 Properties *
-Properties::getProperties(bool create)
+PropertiesImpl::getProperties(bool create)
 {
     throw ClusterException("getProperties() called on a Properties object!");
 }
@@ -32,7 +35,7 @@ Properties::getProperties(bool create)
  * Initialize the cached representation of this object.
  */
 void 
-Properties::initializeCachedRepresentation()
+PropertiesImpl::initializeCachedRepresentation()
 {
     updatePropertiesMap();
 }
@@ -41,7 +44,7 @@ Properties::initializeCachedRepresentation()
  * Update the properties map from the repository.
  */
 void
-Properties::updatePropertiesMap()
+PropertiesImpl::updatePropertiesMap()
 {
     int32_t version;
     string keyValMap = getDelegate()->loadKeyValMap(getKey(), version);
@@ -53,18 +56,19 @@ Properties::updatePropertiesMap()
         m_keyValMap.clear();
         unmarshall(keyValMap);
         m_keyValMapVersion = version;
+        setValueChangeTime(FactoryOps::getCurrentTimeMillis());
     }
 }
 
 void 
-Properties::setProperty(const string &name, 
-			const string &value)
+PropertiesImpl::setProperty(const string &name, 
+                            const string &value)
 {
     m_keyValMap[name] = value;
 }
 
 void
-Properties::deleteProperty(const string &name)
+PropertiesImpl::deleteProperty(const string &name)
 {
     if (m_keyValMap.erase(name) != 1) {
         LOG_WARN(CL_LOG, 
@@ -74,7 +78,7 @@ Properties::deleteProperty(const string &name)
 }
 
 void
-Properties::publish()
+PropertiesImpl::publish()
 {
     TRACE(CL_LOG, "publish");
 
@@ -96,7 +100,7 @@ Properties::publish()
 }
 
 vector<string>
-Properties::getPropertyKeys() const
+PropertiesImpl::getPropertyKeys() const
 {
     vector<string> keys;
 
@@ -111,7 +115,7 @@ Properties::getPropertyKeys() const
 }
         
 string 
-Properties::getProperty(const string &name, bool searchParent)
+PropertiesImpl::getProperty(const string &name, bool searchParent)
 {
     Locker(getKeyValMapLock());
 
@@ -138,8 +142,8 @@ Properties::getProperty(const string &name, bool searchParent)
          * Generate the new parentKey by removing PROPERTIES and one
          * clusterlib object.
          */
-        parentKey = getDelegate()->removeObjectFromKey(parentKey);
-        parentKey = getDelegate()->removeObjectFromKey(parentKey);
+        parentKey = NotifyableKeyManipulator::removeObjectFromKey(parentKey);
+        parentKey = NotifyableKeyManipulator::removeObjectFromKey(parentKey);
      
         if (parentKey.empty()) {
             LOG_DEBUG(CL_LOG,
@@ -163,7 +167,7 @@ Properties::getProperty(const string &name, bool searchParent)
 }
 
 string 
-Properties::marshall() const
+PropertiesImpl::marshall() const
 {
     string res;
     for (KeyValMap::const_iterator kvIt = m_keyValMap.begin();
@@ -176,7 +180,7 @@ Properties::marshall() const
 }
 
 bool 
-Properties::unmarshall(const string &marshalledKeyValMap) 
+PropertiesImpl::unmarshall(const string &marshalledKeyValMap) 
 {
     vector<string> nameValueList;
     split(nameValueList, marshalledKeyValMap, is_any_of(";"));

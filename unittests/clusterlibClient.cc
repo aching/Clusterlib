@@ -3,6 +3,8 @@
 
 extern TestParams globalTestParams;
 
+using namespace std;
+
 /*
  * Forward decl needed for the timer & user
  * event handlers.
