@@ -169,28 +169,28 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     /*
      * Retrieve a list of all (currently known) applications.
      */
-    IdList getApplicationNames();
+    NameList getApplicationNames();
 
     /*
      * Retrieve a list of all (currently known) group names within
      * the given group. This also establishes a watch on
      * group changes.
      */
-    IdList getGroupNames(GroupImpl *group);
+    NameList getGroupNames(GroupImpl *group);
 
     /*
      * Retrieve a list of all (currently known) distribution
      * names within the given group. This also establishes
      * a watch on distribution changes.
      */
-    IdList getDataDistributionNames(GroupImpl *group);
+    NameList getDataDistributionNames(GroupImpl *group);
 
     /*
      * Retrieve a list of all (currently known) node names
      * within the given group. This also establishes a
      * watch on node changes.
      */
-    IdList getNodeNames(GroupImpl *group);
+    NameList getNodeNames(GroupImpl *group);
 
     /*
      * Leadership protocol.
@@ -218,6 +218,22 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
      * Retrieve (and potentially create) instances of
      * objects representing applications, groups, nodes,
      * and distributions.
+     */
+    
+    /** 
+     * Get the root. 
+     *
+     * @return the pointer to the Root
+     */
+    RootImpl *getRoot();
+
+    /** 
+     * Get a application from the root. 
+     *
+     * @param appName name of the application under the root
+     * @param create if true try to create it if it doesn't exist
+     * @return NULL if not found or creation failed, otherwise the pointer 
+     *         to the Application
      */
     ApplicationImpl *getApplication(const std::string &appName,
                                     bool create = false);
@@ -313,6 +329,26 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
         const std::vector<std::string> &components,
         int32_t elements = -1, 
         bool create = false);
+
+    /**
+     * Get the exact root represented by this key
+     *
+     * @param key should represent the Root object
+     * @return NULL if cannot be found, else the Root *
+     */
+    RootImpl *getRootFromKey(const std::string &key);
+    /**
+     * Get the exact Root represented by these components.
+     *
+     * @param components Should represent the Root object
+     * @param elements The number of elements to use in the components
+                       (-1 for all)
+     * @return NULL if cannot be found, else the Root *
+     */
+    RootImpl *getRootFromComponents(
+        const std::vector<std::string> &components,
+        int32_t elements = -1);
+
     /**
      * Get the exact data distribution represented by this key
      *
@@ -525,6 +561,11 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
      */
     LeadershipElectionMultimap m_leadershipWatches;
     Mutex m_lwLock;
+
+    /*
+     * The cached root.
+     */
+    RootImpl *m_root;
 
     /*
      * The registry of cached properties maps.

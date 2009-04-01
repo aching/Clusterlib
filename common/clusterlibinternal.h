@@ -19,6 +19,7 @@
 #include "nodeimpl.h"
 #include "datadistributionimpl.h"
 #include "propertiesimpl.h"
+#include "rootimpl.h"
 #include "clientimpl.h"
 #include "serverimpl.h"
 
@@ -26,6 +27,6 @@
 #include "cachedobjectchangehandlers.h"
 #include "factoryops.h"
 
-DEFINE_LOGGER( CL_LOG, "clusterlib" )
+DEFINE_LOGGER(CL_LOG, "clusterlib")
 
 #endif	/* !_CLUSTERLIBINTERNAL_H_ */

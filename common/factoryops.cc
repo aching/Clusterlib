@@ -65,7 +65,8 @@ namespace clusterlib
  * Create the associated FactoryOps delegate object.
  */
 FactoryOps::FactoryOps(const string &registry)
-    : m_syncId(0),
+    : m_root(NULL),
+      m_syncId(0),
       m_syncIdCompleted(0),
       m_endEventDispatched(false),
       m_config(registry, 3000),
@@ -127,6 +128,11 @@ FactoryOps::FactoryOps(const string &registry)
         m_zk.disconnect();
         throw ClusterException(e.what());
     }
+
+    /*
+     * Load up the clusterlib root of all objects.
+     */
+    getRoot();
 }
 
 /*
@@ -145,6 +151,7 @@ FactoryOps::~FactoryOps()
     removeAllApplications();
     removeAllGroups();
     removeAllNodes();
+    delete m_root;
 
     try {
         m_zk.disconnect();
@@ -534,10 +541,11 @@ FactoryOps::dispatchEvents()
                     
                     LOG_DEBUG(CL_LOG,
                               "Processing ZK event "
-                              "(type: %d, state: %d, context: 0x%x)",
+                              "(type: %d, state: %d, context: 0x%x, path %s)",
                               zp->getType(),
                               zp->getState(),
-                              (unsigned int) zp->getContext());
+                              (unsigned int) zp->getContext(),
+                              zp->getPath().c_str());
                     
                     if ((zp->getType() == ZOO_SESSION_EVENT) &&
                         (zp->getPath().compare(ClusterlibStrings::SYNC) 
@@ -842,6 +850,48 @@ FactoryOps::consumeTimerEvents()
  * Methods to retrieve entities (or create them) from the
  * FactoryOps's cache.
  */
+RootImpl *
+FactoryOps::getRoot()
+{
+    TRACE(CL_LOG, "getRoot");
+
+    if (m_root) {
+        return m_root;
+    }
+
+    string key = NotifyableKeyManipulator::createRootKey();
+    bool exists = false;
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(
+                      key, 
+                      &m_zkEventAdapter,
+                      getChangeHandlers()->getNotifyableExistsHandler())),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        string applications = 
+            key + 
+            ClusterlibStrings::KEYSEPARATOR + 
+            ClusterlibStrings::APPLICATIONS;
+
+        SAFE_CALL_ZK(m_zk.createNode(applications, "", 0, true),
+                     "Could not create key %s: %s",
+                     applications.c_str(),
+                     true,
+                     true);
+        
+        SAFE_CALL_ZK(m_zk.setNodeData(key, "ready", 0),
+                     "Could not complete ready protocol for %s: %s",
+                     key.c_str(),
+                     true,
+                     true);
+    }
+    
+    m_root = new RootImpl("root", key, this);
+    return m_root;
+}
+
 ApplicationImpl *
 FactoryOps::getApplication(const string &appName, bool create)
 {
@@ -1105,7 +1155,7 @@ FactoryOps::updateDataDistribution(const string &distKey,
                  false,
                  true);
     if (!exists) {
-        SAFE_CALL_ZK(m_zk.createNode(snode, shards, 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(snode, shards, 0),
                      "Creation of %s failed: %s",
                      snode.c_str(),
                      true,
@@ -1136,8 +1186,7 @@ FactoryOps::updateDataDistribution(const string &distKey,
     if (!exists) {
         SAFE_CALL_ZK(m_zk.createNode(monode,
                                      manualOverrides,
-                                     0,
-                                     true),
+                                     0),
                      "Creation of %s failed: %s",
                      monode.c_str(),
                      true,
@@ -1180,7 +1229,7 @@ FactoryOps::updateProperties(const string &propsKey,
                  true,
                  true);
     if (!exists) {
-        SAFE_CALL_ZK(m_zk.createNode(propsKey, propsValue, 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(propsKey, propsValue, 0),
                      "Creation of %s failed: %s",
                      propsKey.c_str(),
                      true,
@@ -1228,7 +1277,7 @@ FactoryOps::updateNodeClientState(const string &nodeKey,
                  true);
 
     if (!exists) {
-        SAFE_CALL_ZK(m_zk.createNode(csKey, cs, 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(csKey, cs, 0),
                      "Creation of %s failed: %s",
                      csKey.c_str(),
                      true,
@@ -1272,7 +1321,7 @@ FactoryOps::updateNodeClientStateDesc(const string &nodeKey,
                  true);
 
     if (!exists) {
-        SAFE_CALL_ZK(m_zk.createNode(csKey, desc, 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(csKey, desc, 0),
                      "Creation of %s failed: %s",
                      csKey.c_str(),
                      true,
@@ -1310,7 +1359,7 @@ FactoryOps::updateNodeMasterSetState(const string &nodeKey,
                  true,
                  true);
     if (!exists) {
-        SAFE_CALL_ZK(m_zk.createNode(msKey, ms, 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(msKey, ms, 0),
                      "Creation of %s failed: %s",
                      msKey.c_str(),
                      true,
@@ -1345,8 +1394,8 @@ FactoryOps::getNotifyableFromKey(const string &key, bool create)
 }
 NotifyableImpl *
 FactoryOps::getNotifyableFromComponents(const vector<string> &components,
-                                     int32_t elements, 
-                                     bool create)
+                                        int32_t elements, 
+                                        bool create)
 {
     TRACE(CL_LOG, "getNotifyableFromComponents");
 
@@ -1359,7 +1408,14 @@ FactoryOps::getNotifyableFromComponents(const vector<string> &components,
 
     LOG_DEBUG(CL_LOG, "getNotifyableFromComponents: elements %d", elements);
 
-    while (clusterObjectElements >= ClusterlibInts::APP_COMPONENTS_COUNT) {
+    while (clusterObjectElements >= ClusterlibInts::ROOT_COMPONENTS_COUNT) {
+        ntp = getRootFromComponents(components,
+                                    clusterObjectElements);
+        if (ntp) {
+            LOG_DEBUG(CL_LOG, 
+                      "getNotifyableFromComponents: found Root");
+            return ntp;
+        }
         ntp = getApplicationFromComponents(components,
                                            clusterObjectElements, 
                                            create);
@@ -1408,6 +1464,41 @@ FactoryOps::getNotifyableFromComponents(const vector<string> &components,
     }
 
     return NULL;
+}
+
+RootImpl *
+FactoryOps::getRootFromKey(const string &key)
+{
+    TRACE(CL_LOG, "getRootFromKey");
+
+    vector<string> components;
+    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
+    return getRootFromComponents(components, -1);
+}
+RootImpl *
+FactoryOps::getRootFromComponents(const vector<string> &components, 
+                                  int32_t elements)
+{
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+    if (!NotifyableKeyManipulator::isRootKey(components, elements)) {
+        LOG_DEBUG(CL_LOG, 
+                  "getRootFromComponents: Couldn't find key"
+                  " with %d elements",
+                  elements);
+        return NULL;
+    }
+
+    LOG_DEBUG(CL_LOG, 
+              "getRootFromComponents: root name = %s", 
+              components.at(elements - 1).c_str());
+
+    return getRoot();
 }
 
 ApplicationImpl *
@@ -1718,7 +1809,7 @@ FactoryOps::loadApplication(const string &name,
     if (!exists) {
         return NULL;
     }
-    app = new ApplicationImpl(name, key, this);
+    app = new ApplicationImpl(name, key, this, getRoot());
 
     /*
      * Set up ready protocol.
@@ -2002,22 +2093,22 @@ FactoryOps::createApplication(const string &name, const string &key)
          * Create the application data structure if needed.
          */
         created = true;
-        SAFE_CALL_ZK(m_zk.createNode(key, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(key, "", 0),
                      "Could not create key %s: %s",
                      key.c_str(),
                      true,
                      true);
-        SAFE_CALL_ZK(m_zk.createNode(groups, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(groups, "", 0),
                      "Could not create key %s: %s",
                      groups.c_str(),
                      true,
                      true);
-        SAFE_CALL_ZK(m_zk.createNode(dists, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(dists, "", 0),
                      "Could not create key %s: %s",
                      dists.c_str(),
                      true,
                      true);
-        SAFE_CALL_ZK(m_zk.createNode(props, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(props, "", 0),
                      "Could not create key %s: %s",
                      props.c_str(),
                      true,
@@ -2084,22 +2175,22 @@ FactoryOps::createDataDistribution(const string &name,
             ClusterlibStrings::PROPERTIES;
 
         created = true;
-        SAFE_CALL_ZK(m_zk.createNode(key, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(key, "", 0),
                      "Could not create key %s: %s",
                      key.c_str(),
                      true,
                      true);
-        SAFE_CALL_ZK(m_zk.createNode(shards, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(shards, "", 0),
                      "Could not create key %s: %s",
                      shards.c_str(),
                      true,
                      true);
-        SAFE_CALL_ZK(m_zk.createNode(mos, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(mos, "", 0),
                      "Could not create key %s: %s",
                      mos.c_str(),
                      true,
                      true);
-        SAFE_CALL_ZK(m_zk.createNode(props, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(props, "", 0),
                      "Could not create key %s: %s",
                      props.c_str(),
                      true,
@@ -2150,7 +2241,7 @@ FactoryOps::createProperties(const string &key,
                  false,
                  true);
     if (!exists) {
-        SAFE_CALL_ZK(m_zk.createNode(key, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(key, "", 0),
                      "Could not create key %s: %s",
                      key.c_str(),
                      true,
@@ -2182,8 +2273,8 @@ FactoryOps::createProperties(const string &key,
 
 GroupImpl *
 FactoryOps::createGroup(const string &groupName, 
-		     const string &groupKey,
-                     GroupImpl *parentGroup)
+                        const string &groupKey,
+                        GroupImpl *parentGroup)
 {
     TRACE(CL_LOG, "createGroup");
 
@@ -2218,27 +2309,27 @@ FactoryOps::createGroup(const string &groupName,
             ClusterlibStrings::PROPERTIES;
 
         created = true;
-        SAFE_CALL_ZK(m_zk.createNode(groupKey, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(groupKey, "", 0),
                      "Could not create key %s: %s",
                      groupKey.c_str(),
                      true,
                      true);
-        SAFE_CALL_ZK(m_zk.createNode(nodes, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(nodes, "", 0),
                      "Could not create key %s: %s",
                      nodes.c_str(),
                      true,
                      true);
-        SAFE_CALL_ZK(m_zk.createNode(leadership, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(leadership, "", 0),
                      "Could not create key %s: %s",
                      leadership.c_str(),
                      true,
                      true);
-        SAFE_CALL_ZK(m_zk.createNode(bids, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(bids, "", 0),
                      "Could not create key %s: %s",
                      bids.c_str(),
                      true,
                      true);
-        SAFE_CALL_ZK(m_zk.createNode(props, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(props, "", 0),
                      "Could not create key %s: %s",
                      props.c_str(),
                      true,
@@ -2306,27 +2397,27 @@ FactoryOps::createNode(const string &name,
             ClusterlibStrings::PROPERTIES;
 
         created = true;
-        SAFE_CALL_ZK(m_zk.createNode(key, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(key, "", 0),
                      "Could not create key %s: %s",
                      key.c_str(),
                      true,
                      true);
-        SAFE_CALL_ZK(m_zk.createNode(cs, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(cs, "", 0),
                      "Could not create key %s: %s",
                      cs.c_str(),
                      true,
                      true);
-        SAFE_CALL_ZK(m_zk.createNode(ms, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(ms, "", 0),
                      "Could not create key %s: %s",
                      ms.c_str(),
                      true,
                      true);
-        SAFE_CALL_ZK(m_zk.createNode(cv, "1.0", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(cv, "1.0", 0),
                      "Could not create key %s: %s",
                      cv.c_str(),
                      true,
                      true);
-        SAFE_CALL_ZK(m_zk.createNode(props, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(props, "", 0),
                      "Could not create key %s: %s",
                      props.c_str(),
                      true,
@@ -2429,17 +2520,19 @@ FactoryOps::getNodeMasterSetState(const string &nodeKey)
  * all groups or distributions within an application, or all
  * nodes within a group.
  */
-IdList
+NameList
 FactoryOps::getApplicationNames()
 {
     TRACE(CL_LOG, "getApplicationNames");
 
-    IdList list;
+    NameList list;
     string key =
         ClusterlibStrings::ROOTNODE +
         ClusterlibStrings::CLUSTERLIB +
         ClusterlibStrings::KEYSEPARATOR +
         ClusterlibStrings::CLUSTERLIBVERSION +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::ROOT +
         ClusterlibStrings::KEYSEPARATOR +
         ClusterlibStrings::APPLICATIONS;
 
@@ -2454,7 +2547,7 @@ FactoryOps::getApplicationNames()
                  true,
                  true);
 
-    for (IdList::iterator iIt = list.begin(); iIt != list.end(); ++iIt) {
+    for (NameList::iterator iIt = list.begin(); iIt != list.end(); ++iIt) {
         /*
          * Remove the key prefix
          */
@@ -2464,7 +2557,7 @@ FactoryOps::getApplicationNames()
 
     return list;
 }
-IdList
+NameList
 FactoryOps::getGroupNames(GroupImpl *group)
 {
     TRACE(CL_LOG, "getGroupNames");
@@ -2473,7 +2566,7 @@ FactoryOps::getGroupNames(GroupImpl *group)
         throw ClusterException("NULL group in getGroupNames");
     }
 
-    IdList list;
+    NameList list;
     string key =
         group->getKey() +
         ClusterlibStrings::KEYSEPARATOR +
@@ -2490,7 +2583,7 @@ FactoryOps::getGroupNames(GroupImpl *group)
                  true,
                  true);
 
-    for (IdList::iterator iIt = list.begin(); iIt != list.end(); ++iIt) {
+    for (NameList::iterator iIt = list.begin(); iIt != list.end(); ++iIt) {
         /*
          * Remove the key prefix
          */
@@ -2500,7 +2593,7 @@ FactoryOps::getGroupNames(GroupImpl *group)
 
     return list;
 }
-IdList
+NameList
 FactoryOps::getDataDistributionNames(GroupImpl *group)
 {
     TRACE(CL_LOG, "getDistributionNames");
@@ -2509,7 +2602,7 @@ FactoryOps::getDataDistributionNames(GroupImpl *group)
         throw ClusterException("NULL group in getDataDistributionNames");
     }
 
-    IdList list;
+    NameList list;
     string key=
         group->getKey() +
         ClusterlibStrings::KEYSEPARATOR +
@@ -2526,7 +2619,7 @@ FactoryOps::getDataDistributionNames(GroupImpl *group)
                  true,
                  true);
 
-    for (IdList::iterator iIt = list.begin(); iIt != list.end(); ++iIt) {
+    for (NameList::iterator iIt = list.begin(); iIt != list.end(); ++iIt) {
         /*
          * Remove the key prefix
          */
@@ -2536,7 +2629,7 @@ FactoryOps::getDataDistributionNames(GroupImpl *group)
 
     return list;
 }
-IdList
+NameList
 FactoryOps::getNodeNames(GroupImpl *group)
 {
     TRACE(CL_LOG, "getNodeNames");
@@ -2545,7 +2638,7 @@ FactoryOps::getNodeNames(GroupImpl *group)
         throw ClusterException("NULL group in getNodeNames");
     }
 
-    IdList list;
+    NameList list;
     string key =
         group->getKey() +
         ClusterlibStrings::KEYSEPARATOR +
@@ -2562,7 +2655,7 @@ FactoryOps::getNodeNames(GroupImpl *group)
                  true,
                  true);
 
-    for (IdList::iterator iIt = list.begin(); iIt != list.end(); ++iIt) {
+    for (NameList::iterator iIt = list.begin(); iIt != list.end(); ++iIt) {
         /*
          * Remove the key prefix
          */
@@ -2639,7 +2732,7 @@ FactoryOps::placeBid(NodeImpl *np, ServerImpl *sp)
         tmp;
     int64_t bid = 0;
 
-    SAFE_CALL_ZK((bid = m_zk.createSequence(pfx, value, ZOO_EPHEMERAL, true)),
+    SAFE_CALL_ZK((bid = m_zk.createSequence(pfx, value, ZOO_EPHEMERAL)),
                  "Bidding with prefix %s to become leader failed: %s",
                  pfx.c_str(),
                  true,
@@ -2665,8 +2758,8 @@ FactoryOps::tryToBecomeLeader(NodeImpl *np, int64_t bid)
         throw ClusterException("tryToBecomeLeader: NULL node");
     }
 
-    IdList list;
-    IdList::iterator iIt;
+    NameList list;
+    NameList::iterator iIt;
     GroupImpl *group = dynamic_cast<GroupImpl *>(np->getMyGroup());
 
     if (group == NULL) {

@@ -138,15 +138,13 @@ class ClusterlibClient
          * Create applications with different names and
          * observe allowed creation and exceptions.
          */
-        _app0 = _client0->getApplication("foo-app", true);
+        _app0 = _client0->getRoot()->getApplication("foo-app", true);
         CPPUNIT_ASSERT(_app0 != NULL);
+        /* Should not exist, didn't try to create, so return NULL */
+        _app0 = _client0->getRoot()->getApplication("", false);
+        CPPUNIT_ASSERT(_app0 == NULL);
         try {
-            _app0 = _client0->getApplication("", false);
-            CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
-        } catch (clusterlib::ClusterException &e) {
-        }
-        try {
-            _app0 = _client0->getApplication("/frob", true);
+            _app0 = _client0->getRoot()->getApplication("/frob", true);
             CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
         } catch (clusterlib::ClusterException &e) {
         }

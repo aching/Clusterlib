@@ -15,7 +15,7 @@
 namespace clusterlib
 {
 
-/*
+/**
  * Definition of class ApplicationImpl.
  */
 class ApplicationImpl
@@ -35,9 +35,10 @@ class ApplicationImpl
      */
     ApplicationImpl(const std::string &name, 
                     const std::string &key, 
-                    FactoryOps *fp)
-        : NotifyableImpl(fp, key, name, NULL),
-          GroupImpl(name, key, fp, NULL) {}
+                    FactoryOps *fp,
+                    NotifyableImpl *root)
+        : NotifyableImpl(fp, key, name, root),
+          GroupImpl(name, key, fp, root) {}
 
     /*
      * Make the destructor private also.

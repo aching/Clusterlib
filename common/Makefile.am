@@ -11,6 +11,7 @@ libcluster_a_SOURCES = \
 	applicationimpl.cc \
 	datadistributionimpl.cc \
 	propertiesimpl.cc \
+	rootimpl.cc \
 	cachedobjectchangehandlers.cc \
 	clientimpl.cc \
 	serverimpl.cc \

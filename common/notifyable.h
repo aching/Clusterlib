@@ -14,7 +14,7 @@
 namespace clusterlib
 {
 
-/*
+/**
  * Interface that must be derived by specific notifyable objects.
  */
 class Notifyable
@@ -59,23 +59,24 @@ class Notifyable
     /**
      * Get the parent of this Notifyable (if it exists)
      *
-     * @return pointer to parent or NULL if this is an Application
+     * @return pointer to parent 
+     * @throw ClusterException if Notifyable is the root
      */
     virtual Notifyable *getMyParent() const = 0;
     
     /**
      * Retrieve the application object that this Notifyable is a part of.  
      *
-     * @return pointer to the Application or NULL if it doesn't exist
+     * @return pointer to the Application
+     * @throw ClusterException if Notifyable is the root
      */
     virtual Application *getMyApplication() = 0; 
 
     /**
      * Retrieve the group object that this Notifyable is a part of.
-     * If subclasses do not want to allow getMyGroup(), override it
-     * and throw a clusterlib exception.
      *
-     * @return pointer to the Group or NULL if it doesn't exist
+     * @return pointer to the Group
+     * @throw ClusterException if Notifyable is the root or application
      */
     virtual Group *getMyGroup() = 0; 
 
@@ -93,7 +94,9 @@ class Notifyable
      * and throw a clusterlib exception.
      * 
      * @param create create the properties if doesn't exist?
-     * @return NULL if no properties exists for this notifyable
+     * @return properties pointer or NULL if no properties exists for this 
+     * notifyable and create == false
+     * @throw ClusterException if Notifyable is the root or application
      */
     virtual Properties *getProperties(bool create = false) = 0;
 

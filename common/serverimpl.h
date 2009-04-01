@@ -14,6 +14,9 @@
 namespace clusterlib
 {
 
+/**
+ * Definition of class ServerImpl.
+ */
 class ServerImpl
     : public virtual Server, 
       public virtual ClientImpl

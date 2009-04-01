@@ -128,9 +128,33 @@ CachedObjectChangeHandlers::handleApplicationsChange(NotifyableImpl *ntp,
     TRACE(CL_LOG, "handleApplicationsChange");
 
     /*
-     * For now return EN_NOEVENT.
+     * If there's no notifyable, punt.
      */
-    return EN_NOEVENT;
+    if (ntp == NULL) {
+        LOG_WARN(CL_LOG,
+                 "Punting on event: %d on %s",
+                 etype,
+                 key.c_str());
+        return EN_NOEVENT;
+    }
+
+    /*
+     * Convert to a root object.
+     */
+    RootImpl *root = dynamic_cast<RootImpl *>(ntp);
+    if (root == NULL) {
+        LOG_WARN(CL_LOG,
+                 "Conversion to Root * failed for %s",
+                 key.c_str());
+        return EN_NOEVENT;
+    }
+
+    /*
+     * Data not required, only using this function to set the watch again.
+     */
+    getOps()->getApplicationNames();
+
+    return EN_APPSCHANGE;
 }
 
 /*
@@ -166,9 +190,10 @@ CachedObjectChangeHandlers::handleGroupsChange(NotifyableImpl *ntp,
         return EN_NOEVENT;
     }
 
-    if (group->cachingGroups()) {
-        group->recacheGroups();
-    }
+    /*
+     * Data not required, only using this function to set the watch again.
+     */
+    getOps()->getGroupNames(group);
 
     return EN_GROUPSCHANGE;
 }
@@ -207,12 +232,9 @@ CachedObjectChangeHandlers::handleDataDistributionsChange(NotifyableImpl *ntp,
     }
 
     /*
-     * If we are caching the distribution objects,
-     * then update the cache.
+     * Data not required, only using this function to set the watch again.
      */
-    if (group->cachingDataDistributions()) {
-        group->recacheDataDistributions();
-    }
+    getOps()->getDataDistributionNames(group);
 
     return EN_DISTSCHANGE;
 }
@@ -250,12 +272,10 @@ CachedObjectChangeHandlers::handleNodesChange(NotifyableImpl *ntp,
     }
 
     /*
-     * If we are caching the node objects,
-     * then update the cache.
+     * Data not required, only using this function to set the watch again.
      */
-    if (group->cachingNodes()) {
-        group->recacheNodes();
-    }
+    getOps()->getNodeNames(group);
+
 
     return EN_MEMBERSHIPCHANGE;
 }

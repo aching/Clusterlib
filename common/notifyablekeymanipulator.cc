@@ -65,10 +65,26 @@ NotifyableKeyManipulator::createAppKey(const string &appName)
         ClusterlibStrings::KEYSEPARATOR +
         ClusterlibStrings::CLUSTERLIBVERSION +
         ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::ROOT +
+        ClusterlibStrings::KEYSEPARATOR +
         ClusterlibStrings::APPLICATIONS +
         ClusterlibStrings::KEYSEPARATOR +
         appName
         ;
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createRootKey()
+{
+    string res =
+        ClusterlibStrings::ROOTNODE +
+        ClusterlibStrings::CLUSTERLIB +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::CLUSTERLIBVERSION +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::ROOT;
 
     return res;
 }
@@ -128,6 +144,8 @@ NotifyableKeyManipulator::isApplicationKey(const vector<string> &components,
 
     if ((components.at(ClusterlibInts::CLUSTERLIB_INDEX) != 
          ClusterlibStrings::CLUSTERLIB) ||
+        (components.at(ClusterlibInts::ROOT_INDEX) != 
+         ClusterlibStrings::ROOT) ||
         (components.at(ClusterlibInts::APP_INDEX) != 
          ClusterlibStrings::APPLICATIONS)) {
         return false;
@@ -144,6 +162,52 @@ NotifyableKeyManipulator::isApplicationKey(const string &key)
     vector<string> components;
     split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
     return isApplicationKey(components);
+}
+
+bool
+NotifyableKeyManipulator::isRootKey(const vector<string> &components,
+                                    int32_t elements)
+{
+    TRACE(CL_LOG, "isRootKey");
+
+    if (elements > static_cast<int32_t>(components.size())) {
+        LOG_FATAL(CL_LOG,
+                  "isRootKey: elements %d > size of components %u",
+                  elements,
+                  components.size());
+        throw ClusterException("isRootKey: elements > size of "
+                               "components");
+    }
+
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+    if (elements != ClusterlibInts::ROOT_COMPONENTS_COUNT) {
+        return false;
+    }
+
+    if ((components.at(ClusterlibInts::CLUSTERLIB_INDEX) != 
+         ClusterlibStrings::CLUSTERLIB) ||
+        (components.at(ClusterlibInts::ROOT_INDEX) != 
+         ClusterlibStrings::ROOT)) {
+        return false;
+    } 
+
+    return true;    
+}
+
+bool
+NotifyableKeyManipulator::isRootKey(const string &key)
+{
+    TRACE(CL_LOG, "isRootKey");
+
+    vector<string> components;
+    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
+    return isRootKey(components);
 }
 
 bool
@@ -440,6 +504,10 @@ NotifyableKeyManipulator::removeObjectFromKey(const string &key)
         endKeySeparator = res.rfind(ClusterlibStrings::KEYSEPARATOR);
         if ((endKeySeparator == string::npos) ||
             (endKeySeparator == 0)) {
+            LOG_ERROR(CL_LOG,
+                      "removeObjectFromKey: Couldn't find last separator for "
+                      " key %s",
+                      res.c_str());
             return string();
         }
         res.erase(endKeySeparator);
@@ -451,22 +519,32 @@ NotifyableKeyManipulator::removeObjectFromKey(const string &key)
         endKeySeparator = res.rfind(ClusterlibStrings::KEYSEPARATOR);
         if ((endKeySeparator == string::npos) ||
             (endKeySeparator == 0)) {
+            LOG_ERROR(CL_LOG,
+                      "removeObjectFromKey: Couldn't find second to last "
+                      "separator for key %s",
+                      res.c_str());
             return string();
         }
         beginKeySeparator = res.rfind(ClusterlibStrings::KEYSEPARATOR, 
                                       endKeySeparator - 1);
         if ((beginKeySeparator == string::npos) ||
             (beginKeySeparator == 0)) {
+            LOG_ERROR(CL_LOG,
+                      "removeObjectFromKey: Couldn't find third to last "
+                      "separator for key %s",
+                      res.c_str());
             return string();
         }
         
         /* 
          * Try to find a clusterlib object in this portion of the key 
          */
+        string rootObject = res.substr(endKeySeparator + 1);
         string clusterlibObject = 
             res.substr(beginKeySeparator + 1, 
                        endKeySeparator - beginKeySeparator - 1);
-        if ((!clusterlibObject.compare(ClusterlibStrings::APPLICATIONS)) ||
+        if ((!rootObject.compare(ClusterlibStrings::ROOT)) ||
+            (!clusterlibObject.compare(ClusterlibStrings::APPLICATIONS)) ||
             (!clusterlibObject.compare(ClusterlibStrings::GROUPS)) ||
             (!clusterlibObject.compare(ClusterlibStrings::NODES)) ||
             (!clusterlibObject.compare(ClusterlibStrings::DISTRIBUTIONS))) {
@@ -514,8 +592,10 @@ NotifyableKeyManipulator::removeObjectFromComponents(
         /* 
          * Try to find a clusterlib object in this component
          */
-        if ((components.at(clusterlibObjectIndex).compare(
-                 ClusterlibStrings::APPLICATIONS) == 0) ||
+        if ((components.at(clusterlibObjectIndex + 1).compare(
+                 ClusterlibStrings::ROOT) == 0) ||
+            (components.at(clusterlibObjectIndex).compare(
+                ClusterlibStrings::APPLICATIONS) == 0) ||
             (components.at(clusterlibObjectIndex).compare(
                  ClusterlibStrings::GROUPS) == 0) ||
             (components.at(clusterlibObjectIndex).compare(

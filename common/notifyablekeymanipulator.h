@@ -14,8 +14,8 @@
 namespace clusterlib
 {
 
-/*
- * The actual key manipulation class.
+/**
+ * Definition of NotifyableKeyManipulator.
  */
 class NotifyableKeyManipulator
 {
@@ -31,6 +31,7 @@ class NotifyableKeyManipulator
     static std::string createGroupKey(const std::string &groupKey,
                                       const std::string &groupName);
     static std::string createAppKey(const std::string &appName);
+    static std::string createRootKey();
     static std::string createDistKey(const std::string &groupKey,
                                      const std::string &distName);
     static std::string createPropertiesKey(const std::string &notifyableKey);
@@ -57,6 +58,29 @@ class NotifyableKeyManipulator
      * @return true if key is valid, false if not valid
      */
     static bool isApplicationKey(const std::string &key);
+
+    /**
+     * Checks if the components (assumed from a split) make up a valid
+     * key, not if an actual Root exists for that key.
+     * 
+     * @param components A vector of components in the key parsed by split
+     *                   (i.e. first component should be "")
+     * @param elements The number of elements to check with (should 
+     *                 be <= components.size()).  If it is -1, then use 
+     *                 components.size().
+     * @return true if key is valid, false if not valid
+     */
+    static bool isRootKey(const std::vector<std::string> &components, 
+                                 int32_t elements = -1);
+
+    /**
+     * Checks if the key is valid, not if an actual Root exists
+     * for that key.
+     * 
+     * @param key A key to test if it is an root
+     * @return true if key is valid, false if not valid
+     */
+    static bool isRootKey(const std::string &key);
 
     /**
      * Checks if the components (assumed from a split) make up a valid

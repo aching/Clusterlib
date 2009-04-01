@@ -23,6 +23,7 @@ unittests_SOURCES = \
 	clusterlibCache.cc \
 	clusterlibClient.cc \
 	clusterlibProperties.cc \
-	clusterlibHierarchy.cc
+	clusterlibHierarchy.cc \
+	clusterlibNotifyableKeyManipulator.cc
 
 @makefile_inc@

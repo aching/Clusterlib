@@ -36,6 +36,7 @@ class ClusterlibStrings
     static const std::string ALERTS;
     static const std::string SYNC;
 
+    static const std::string ROOT;
     static const std::string APPLICATIONS;
     static const std::string GROUPS;
     static const std::string NODES;

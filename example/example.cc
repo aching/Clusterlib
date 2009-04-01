@@ -81,7 +81,8 @@ main(int ac, char **av)
 
         cerr << "After sleep in main thread." << endl;
 
-        clusterlib::Application *app = c->getApplication("app", true);
+        clusterlib::Application *app = 
+            c->getRoot()->getApplication("app", true);
         cerr << "app = " << app << endl;
         clusterlib::Group *grp = app->getGroup("grp", true);
         clusterlib::Server *s =
@@ -93,7 +94,7 @@ main(int ac, char **av)
             exit(99);
         }
 
-        app = s->getApplication("foo");
+        app = s->getRoot()->getApplication("foo");
         cerr << "app = " << app << endl;
 
         grp = app->getGroup("bar");

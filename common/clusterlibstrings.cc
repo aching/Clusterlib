@@ -32,6 +32,7 @@ const string ClusterlibStrings::CONFIGURATION = "configuration";
 const string ClusterlibStrings::ALERTS = "alerts";
 const string ClusterlibStrings::SYNC = "sync";
 
+const string ClusterlibStrings::ROOT = "root";
 const string ClusterlibStrings::APPLICATIONS = "applications";
 const string ClusterlibStrings::GROUPS = "groups";
 const string ClusterlibStrings::NODES = "nodes";

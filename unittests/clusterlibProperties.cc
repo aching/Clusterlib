@@ -37,7 +37,7 @@ class ClusterlibProperties : public MPITestFixture {
 	CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
 	CPPUNIT_ASSERT(_client0 != NULL);
-	_app0 = _client0->getApplication("properties-app", true);
+	_app0 = _client0->getRoot()->getApplication("properties-app", true);
 	CPPUNIT_ASSERT(_app0 != NULL);
 	_group0 = _app0->getGroup("properties-group-servers", true);
 	CPPUNIT_ASSERT(_group0 != NULL);
@@ -111,13 +111,13 @@ class ClusterlibProperties : public MPITestFixture {
         INIT_BARRIER_MPI_TEST_OR_DONE(2, true, _factory);
 
         if (isMyRank(0)) { 
-            _properties0 = _group0->getProperties();
+            _properties0 = _group0->getProperties(true);
             CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             _properties0->setProperty("test", "v3");
             _properties0->publish();
             _properties0->releaseLock();
-            _properties0 = _node0->getProperties();
+            _properties0 = _node0->getProperties(true);
             CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             _properties0->setProperty("test", "v4");
@@ -147,7 +147,7 @@ class ClusterlibProperties : public MPITestFixture {
             _properties0->publish();
             _properties0->releaseLock();
             
-            _properties0 = _app0->getProperties();
+            _properties0 = _app0->getProperties(true);
             CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             val = _properties0->getProperty("test");

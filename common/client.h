@@ -21,22 +21,12 @@ class Client
 {
   public:
     /**
-     * Get a map of the available applications in this factory.
-     *
-     * @return a map of the available applications
+     * Get the root node that contains all applications and can be
+     * used for registering event handlers on.
+     * 
+     * @return the root node
      */
-    virtual ApplicationMap getApplications() = 0;
-
-    /**
-     * Retrieve an application.
-     *
-     * @param appName non-path name of the application (i.e. llf)
-     * @param create create the Application if it doesn't exist
-     * @return NULL if the application doesn't exist otherwise the pointer 
-     *         to the Application
-     */
-    virtual Application *getApplication(const std::string &appName,
-                                        bool create = false) = 0;
+    virtual Root *getRoot() = 0;
 
     /**
      * Register a timer handler to be called after

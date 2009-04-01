@@ -16,6 +16,9 @@
 namespace clusterlib
 {
 
+/**
+ * Definition of class Server.
+ */
 class Server
     : public virtual Client
 {

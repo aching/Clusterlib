@@ -19,22 +19,12 @@ class ClientImpl
 {
   public:
     /**
-     * Get a map of the available applications in this factory.
-     *
-     * @return a map of the available applications
+     * Get the root node that contains all applications and can be
+     * used for registering event handlers on.
+     * 
+     * @return the root node
      */
-    virtual ApplicationMap getApplications();
-
-    /**
-     * Retrieve an application.
-     *
-     * @param appName non-path name of the application (i.e. llf)
-     * @param create create the Application if it doesn't exist
-     * @return NULL if the application doesn't exist otherwise the pointer 
-     *         to the Application
-     */
-    virtual Application *getApplication(const std::string &appName,
-                                        bool create = false);
+    virtual Root *getRoot();
 
     /**
      * Register a timer handler to be called after
@@ -117,14 +107,6 @@ class ClientImpl
         m_eventThread.Join();
     }
 
-    /**
-     * Are we caching the applications fully?
-     */
-    bool cachingApplications() { return m_cachingApplications; }
-    void recacheApplications();
-
-    Mutex *getApplicationMapLock() { return &m_applicationsLock; }
-
   private:
     /**
      * Make the default constructor private so
@@ -175,17 +157,6 @@ class ClientImpl
      */
     EventHandlersMultimap m_eventHandlers;
     Mutex m_eventHandlersLock;
-
-    /**
-     * Map of all applications within this factory.
-     */
-    ApplicationMap m_applications;
-    Mutex m_applicationsLock;
-
-    /**
-     * Caching applications fully?
-     */
-    bool m_cachingApplications;
 };
 
 };	/* End of 'namespace clusterlib' */

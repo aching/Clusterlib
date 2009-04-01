@@ -15,59 +15,29 @@
 namespace clusterlib
 {
 
-/*
- * Definition of class Node
+/**
+ * Definition of class NodeImpl.
  */
 class NodeImpl
     : public virtual Node, 
       public virtual NotifyableImpl
 {
   public:
-    /**
-     * Is this node the leader of its group?
-     *
-     * @return true if I am the leader.
-     */
     virtual bool isLeader()
     {
         return (mp_group->getLeader() == this) ? true : false;
     }
 
-    /**
-     * Get the client-state of this node.
-     *
-     * @return a string representing the client state for this
-     * node.
-     */
     virtual std::string getClientState() { return m_clientState; }
 
-    /**
-     * Get the master-set state of this node.
-     *
-     * @return an int32 value representing the state set by the
-     * master for this node.
-     */
     virtual int32_t getMasterSetState() { return m_masterSetState; }
 
-    /**
-     * Is this node connected?
-     *
-     * @return true if this node is connected.
-     */
     virtual bool isConnected() { return m_connected; }
 
-    /*
-     * Return the time at which various events happened.
-     */
     virtual int64_t getClientStateTime() { return m_clientStateTime; }
     virtual int64_t getMasterSetStateTime() { return m_masterSetStateTime; }
     virtual int64_t getConnectionTime() { return m_connectionTime; }
 
-    /**
-     * Is this node healthy?
-     * 
-     * @return true if healthy, false if not
-     */
     virtual bool isHealthy()
     {
         return (m_clientState == "healthy") ? true : false;

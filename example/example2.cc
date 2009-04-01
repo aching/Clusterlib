@@ -26,15 +26,15 @@ main(int ac, char **av)
         cerr << "factory = " << f << endl;
         clusterlib::Client *c = f->createClient();
         cerr << "client = " << c << endl;
-        clusterlib::Application *app0 = c->getApplication("app-foo", true);
+        clusterlib::Application *
+            app0 = c->getRoot()->getApplication("app-foo", true);
         cerr << "app0 = " << app0 << endl;
-        c->getApplication("app-bar", true);
+        c->getRoot()->getApplication("app-bar", true);
 
-        clusterlib::ApplicationMap appMap = c->getApplications();
-        clusterlib::ApplicationMap::iterator appIt;
-        for (appIt = appMap.begin(); appIt != appMap.end(); appIt++) {
-            cerr << "app name: " << appIt->first << " pointer " 
-                 <<  appIt->second << endl;
+        clusterlib::NameList appNames = c->getRoot()->getApplicationNames();
+        clusterlib::NameList::iterator appIt;
+        for (appIt = appNames.begin(); appIt != appNames.end(); appIt++) {
+            cerr << "app name: " << *appIt << endl;
                 
         }
 

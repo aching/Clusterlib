@@ -75,7 +75,7 @@ class TimerEventPayload;
 /*
  * Vectors of pointers to these classes.
  */
-typedef std::vector<std::string>		IdList;
+typedef std::vector<std::string>		NameList;
 typedef std::vector<ApplicationImpl *>		ApplicationImplList;
 typedef std::vector<ClientImpl *>		ClientImplList;
 typedef std::vector<DataDistributionImpl *>	DataDistributionImplList;

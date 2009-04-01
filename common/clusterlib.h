@@ -43,39 +43,11 @@
 #include "node.h"
 #include "datadistribution.h"
 #include "properties.h"
+#include "root.h"
 #include "client.h"
 #include "server.h"
 #include "clusterlibstrings.h"
 #include "clusterlibints.h"
 #include "factory.h"
-
-#if 0
-
-#include "log.h"
-
-#include "blockingqueue.h"
-#include "mutex.h"
-#include "thread.h"
-#include "event.h"
-#include "command.h"
-#include "zkadapter.h"
-#include "healthchecker.h"
-
-#include "notifyableimpl.h"
-#include "groupimpl.h"
-#include "applicationimpl.h"
-#include "nodeimpl.h"
-#include "datadistributionimpl.h"
-#include "propertiesimpl.h"
-#include "clientimpl.h"
-#include "serverimpl.h"
-
-#include "notifyablekeymanipulator.h"
-#include "cachedobjectchangehandlers.h"
-#include "factoryops.h"
-#include "factory.h"
-
-DEFINE_LOGGER( CL_LOG, "clusterlib" )
-#endif
 
 #endif	/* !_CLUSTERLIB_H_ */

@@ -15,7 +15,7 @@
 namespace clusterlib
 {
 
-/*
+/**
  * Definition of class Application.
  */
 class Application

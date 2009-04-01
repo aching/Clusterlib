@@ -512,6 +512,7 @@ const int32_t EN_SHARDSCHANGE =			(1<<11);
 const int32_t EN_MANUALOVERRIDESCHANGE =	(1<<12);
 
 const int32_t EN_PROPCHANGE =			(1<<13);
+const int32_t EN_APPSCHANGE =			(1<<14);
 
 /*
  * Interface for cluster event handler. Must be derived
@@ -528,9 +529,7 @@ class ClusterEventHandler
                         ClientData cd)
         : mp_np(np),
           m_mask(mask),
-          m_cd(cd)
-    {
-    }
+          m_cd(cd) {}
 
     /*
      * Destructor.

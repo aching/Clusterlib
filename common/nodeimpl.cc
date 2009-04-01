@@ -31,11 +31,11 @@ NodeImpl::initializeCachedRepresentation()
      * about this node, and that all watches are established.
      */
     m_connected = getDelegate()->isNodeConnected(
-        NotifyableImpl::getKey());
+        getKey());
     m_clientState = getDelegate()->getNodeClientState(
-        NotifyableImpl::getKey());
+        getKey());
     m_masterSetState = getDelegate()->getNodeMasterSetState(
-        this->getKey());
+        getKey());
 }
 
 };	/* End of 'namespace clusterlib' */

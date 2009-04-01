@@ -19,6 +19,7 @@ class ClusterlibHierarchy : public MPITestFixture {
     CPPUNIT_TEST_SUITE(ClusterlibHierarchy);
     CPPUNIT_TEST(testHierarchy1);
     CPPUNIT_TEST(testHierarchy2);
+    CPPUNIT_TEST(testHierarchy3);
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -37,7 +38,7 @@ class ClusterlibHierarchy : public MPITestFixture {
 	CPPUNIT_ASSERT(_factoryP != NULL);
 	_clientP = _factoryP->createClient();
 	CPPUNIT_ASSERT(_clientP != NULL);
-	_appP = _clientP->getApplication("hierarchy-app", true);
+	_appP = _clientP->getRoot()->getApplication("hierarchy-app", true);
 	CPPUNIT_ASSERT(_appP != NULL);
     }
 
@@ -79,10 +80,11 @@ class ClusterlibHierarchy : public MPITestFixture {
         if (isMyRank(1)) {
 	    CPPUNIT_ASSERT(_appP);
 
+            /* Applications now have parents! */
             try {
-                _appP->getMyParent();
-                CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
+                CPPUNIT_ASSERT(_appP->getMyParent() == _clientP->getRoot());
             } catch (ClusterException &e) { 
+                CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
                 cerr << "Caught appP->getMyParent() exception correctly" 
                      << endl;
             }
@@ -159,10 +161,11 @@ class ClusterlibHierarchy : public MPITestFixture {
         if (isMyRank(1)) {
 	    CPPUNIT_ASSERT(_appP);
 
+            /* Applications now have parents! */
             try {
-                _appP->getMyParent();
-                CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
+                CPPUNIT_ASSERT(_appP->getMyParent() == _clientP->getRoot());
             } catch (ClusterException &e) { 
+                CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
                 cerr << "Caught appP->getMyParent() exception correctly" 
                      << endl;
             }
@@ -209,6 +212,60 @@ class ClusterlibHierarchy : public MPITestFixture {
         }
 	
 	cerr << "testHierarchy2 passed" << endl;
+    }
+
+    /** 
+     * Try to create a new application and see if the other process
+     * picks it up.  Prefers 2 nodes, but if only one process is
+     * available, runs as a single process test.
+     */
+    void testHierarchy3()
+    {
+        cerr << "testHierarchy3: started" << endl;
+        INIT_BARRIER_MPI_TEST_OR_DONE(2, true, _factoryP);
+
+        uint32_t appCount = 0;
+        if (isMyRank(1)) {
+            NameList nl =  _clientP->getRoot()->getApplicationNames();
+            appCount = nl.size();
+        }
+        
+	waitsForOrder(1, 0, _factoryP, true);
+
+        if (isMyRank(0)) {
+            NameList nl =  _clientP->getRoot()->getApplicationNames();
+            /* Get the longest name and then add a character to
+             * guarantee it's a new one. */
+            uint32_t biggestSize = 0, index = 0;
+            for (uint32_t i = 0; i < nl.size(); i++) {
+                if (i == 0) {
+                    biggestSize = nl[i].size();
+                    index = i;
+                }
+                else {
+                    if (nl[i].size() > biggestSize) {
+                        biggestSize = nl[i].size();
+                        index = i;
+                    }
+                }
+            }
+
+            string newkey = nl[index] + "next";
+            Application *app0 = 
+                _clientP->getRoot()->getApplication(newkey, true);
+            CPPUNIT_ASSERT(app0);
+        }        
+        
+	waitsForOrder(0, 1, _factoryP, true);
+
+        if (isMyRank(1)) {
+            NameList nl =  _clientP->getRoot()->getApplicationNames();
+            cerr << "Orignally had " << appCount << " applications, now has "
+                 << nl.size() << " ." << endl; 
+            CPPUNIT_ASSERT(appCount + 1 == nl.size());
+        }
+
+	cerr << "testHierarchy3 passed" << endl;
     }
 
   private:

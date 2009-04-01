@@ -94,7 +94,7 @@ class ClusterlibCache
         CPPUNIT_ASSERT(_zk != NULL);
 	_client0 = _factory->createClient();
 	CPPUNIT_ASSERT(_client0 != NULL);
-        _app0 = _client0->getApplication("foo-app", true);
+        _app0 = _client0->getRoot()->getApplication("foo-app", true);
         CPPUNIT_ASSERT(_app0 != NULL);
         _grp0 = _app0->getGroup("bar-group", true);
         CPPUNIT_ASSERT(_grp0 != NULL);

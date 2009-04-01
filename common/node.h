@@ -15,7 +15,7 @@
 namespace clusterlib
 {
 
-/*
+/**
  * Definition of class Node
  */
 class Node

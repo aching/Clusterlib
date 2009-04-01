@@ -27,8 +27,14 @@ class ClusterlibInts
      */
     static const int32_t CLUSTERLIB_INDEX;
     static const int32_t VERSION_NAME_INDEX;
+    static const int32_t ROOT_INDEX;
     static const int32_t APP_INDEX;
     static const int32_t APP_NAME_INDEX;
+
+    /*
+     * Number of components in a Root key
+     */
+    static const int32_t ROOT_COMPONENTS_COUNT;
 
     /*
      * Number of components in an Application key

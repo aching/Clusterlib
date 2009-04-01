@@ -14,7 +14,7 @@
 namespace clusterlib
 {
 
-/*
+/**
  * Interface for user programs event handler command classes.
  */
 class Command

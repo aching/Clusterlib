@@ -14,7 +14,7 @@
 namespace clusterlib
 {
 
-/*
+/**
  * A client visible class to begin accessing clusterlib objects
  */
  class Factory 
