@@ -25,18 +25,58 @@ namespace clusterlib
  * Key creation and recognition.
  */
 string
+NotifyableKeyManipulator::createLockKey(const string &notifyableKey)
+{
+    string res;
+    res.append(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::LOCK);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createLockNodeKey(const string &notifyableKey)
+{
+    string res;
+    res.append(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::LOCK);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+
+    const int32_t bufLen = 128;
+    char tmp[bufLen + 1];
+    tmp[bufLen] = '\0';
+    if (gethostname(tmp, bufLen) != 0) {
+        throw ClusterException("acquire: gethostname failed");
+    }
+
+    res.append(tmp);
+    res.append(":");
+    snprintf(tmp, bufLen, "%d", getpid());
+    res.append(tmp);
+    res.append(ClusterlibStrings::BID_SPLIT);
+
+    return res;
+}
+                                            
+
+string
 NotifyableKeyManipulator::createNodeKey(const string &groupKey,
                                         const string &nodeName,
                                         bool managed)
 {
-    string res =
-        groupKey +
-        ClusterlibStrings::KEYSEPARATOR +
-        (managed ? 
-         ClusterlibStrings::NODES : ClusterlibStrings::UNMANAGEDNODES) +
-        ClusterlibStrings::KEYSEPARATOR +
-        nodeName
-        ;
+    string res;
+    res.append(groupKey);
+    res.append (ClusterlibStrings::KEYSEPARATOR);
+    if (managed) {
+        res.append(ClusterlibStrings::NODES);
+    }
+    else {
+        res.append(ClusterlibStrings::UNMANAGEDNODES);
+    }
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(nodeName);
 
     return res;
 }
@@ -45,13 +85,12 @@ string
 NotifyableKeyManipulator::createGroupKey(const string &groupKey,
                                          const string &groupName)
 {
-    string res = 
-        groupKey +
-        ClusterlibStrings::KEYSEPARATOR +
-        ClusterlibStrings::GROUPS +
-        ClusterlibStrings::KEYSEPARATOR +
-        groupName
-        ;
+    string res;
+    res.append(groupKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::GROUPS);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(groupName);
 
     return res;
 }
@@ -59,18 +98,17 @@ NotifyableKeyManipulator::createGroupKey(const string &groupKey,
 string
 NotifyableKeyManipulator::createAppKey(const string &appName)
 {
-    string res =
-        ClusterlibStrings::ROOTNODE +
-        ClusterlibStrings::CLUSTERLIB +
-        ClusterlibStrings::KEYSEPARATOR +
-        ClusterlibStrings::CLUSTERLIBVERSION +
-        ClusterlibStrings::KEYSEPARATOR +
-        ClusterlibStrings::ROOT +
-        ClusterlibStrings::KEYSEPARATOR +
-        ClusterlibStrings::APPLICATIONS +
-        ClusterlibStrings::KEYSEPARATOR +
-        appName
-        ;
+    string res;
+        res.append(ClusterlibStrings::ROOTNODE);
+        res.append(ClusterlibStrings::CLUSTERLIB);
+        res.append(ClusterlibStrings::KEYSEPARATOR);
+        res.append(ClusterlibStrings::CLUSTERLIBVERSION);
+        res.append(ClusterlibStrings::KEYSEPARATOR);
+        res.append(ClusterlibStrings::ROOT);
+        res.append(ClusterlibStrings::KEYSEPARATOR);
+        res.append(ClusterlibStrings::APPLICATIONS);
+        res.append(ClusterlibStrings::KEYSEPARATOR);
+        res.append(appName);
 
     return res;
 }
@@ -78,13 +116,13 @@ NotifyableKeyManipulator::createAppKey(const string &appName)
 string
 NotifyableKeyManipulator::createRootKey()
 {
-    string res =
-        ClusterlibStrings::ROOTNODE +
-        ClusterlibStrings::CLUSTERLIB +
-        ClusterlibStrings::KEYSEPARATOR +
-        ClusterlibStrings::CLUSTERLIBVERSION +
-        ClusterlibStrings::KEYSEPARATOR +
-        ClusterlibStrings::ROOT;
+    string res;
+        res.append(ClusterlibStrings::ROOTNODE);
+        res.append(ClusterlibStrings::CLUSTERLIB);
+        res.append(ClusterlibStrings::KEYSEPARATOR);
+        res.append(ClusterlibStrings::CLUSTERLIBVERSION);
+        res.append(ClusterlibStrings::KEYSEPARATOR);
+        res.append(ClusterlibStrings::ROOT);
 
     return res;
 }
@@ -93,13 +131,12 @@ string
 NotifyableKeyManipulator::createDistKey(const string &groupKey,
                                         const string &distName)
 {
-    string res =
-        groupKey +
-        ClusterlibStrings::KEYSEPARATOR +
-        ClusterlibStrings::DISTRIBUTIONS +
-        ClusterlibStrings::KEYSEPARATOR +
-        distName
-        ;
+    string res;
+    res.append(groupKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::DISTRIBUTIONS);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(distName);
 
     return res;
 }
@@ -107,11 +144,10 @@ NotifyableKeyManipulator::createDistKey(const string &groupKey,
 string
 NotifyableKeyManipulator::createPropertiesKey(const string &notifyableKey)
 {
-    string res =
-	notifyableKey +
-        ClusterlibStrings::KEYSEPARATOR +
-        ClusterlibStrings::PROPERTIES
-	;
+    string res;
+    res.append(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::PROPERTIES);
 
     return res;
 }

@@ -53,6 +53,7 @@ class ClusterEventPayload;
 class ClusterException;
 class DataDistribution;
 class DataDistributionImpl;
+class DistributedLocks;
 class Properties;
 class PropertiesImpl;
 class Factory;
@@ -61,11 +62,13 @@ class Group;
 class GroupImpl;
 class HealthChecker;
 class ManualOverride;
+class Mutex;
 class Node;
 class NodeImpl;
 class NodeAddress;
 class Notifyable;
 class NotifyableImpl;
+struct PredMutexCond;
 class Server;
 class ServerImpl;
 class Shard;
@@ -108,6 +111,7 @@ typedef std::map<std::string, Server *>		       ServerMap;
 typedef std::map<std::string, std::string>             KeyValMap;
 typedef std::map<std::string, PropertiesImpl *>	       PropertiesImplMap;
 typedef std::map<TimerId, TimerEventPayload *>	       TimerRegistry;
+typedef std::map<std::string, PredMutexCond *>         WaitMap;
 
 /*
  * Support structures for multimap element comparison.

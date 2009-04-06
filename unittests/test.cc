@@ -39,9 +39,9 @@ int main(int argc, char* argv[]) {
     /* MPI set error handler to throw exceptions */
     MPI::COMM_WORLD.Set_errhandler(MPI::ERRORS_THROW_EXCEPTIONS);
     
-    /* Get the top level suite from the registry */
+    /* Get the top level suite from the registry. */
     CppUnit::Test *suite = 
-	CppUnit::TestFactoryRegistry::getRegistry().makeTest();
+        CppUnit::TestFactoryRegistry::getRegistry().makeTest();
 
     /* Adds the test to the list of test to run */
     CppUnit::TextUi::TestRunner runner;
@@ -51,8 +51,8 @@ int main(int argc, char* argv[]) {
     runner.setOutputter(
         new CppUnit::CompilerOutputter(&runner.result(), std::cerr));
 
-    /* Run the tests. */
-    int wasSuccessful = runner.run();
+    /* Run one or more test fixtures. */
+    int wasSuccessful = runner.run(globalTestParams.getTestFixtureName());
 
     /* Check if all processes were successful */
     int *successArr = NULL;

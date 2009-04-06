@@ -18,42 +18,6 @@
 using namespace std;
 using namespace boost;
 
-/*
- * Macro for safely executing calls to ZooKeeper.
- *
- * NOTE: If your call needs to return a value, please use
- * SAFE_CALL_ZK((var = call()), "some message %s", false, true)
- */
-#define SAFE_CALL_ZK(_action, _message, _node, _warning, _once) \
-{ \
-    bool done = false; \
-    while (!done) { \
-	try { \
-	    _action ; done = true; \
-	} catch (zk::ZooKeeperException &ze) { \
-	    if (m_shutdown) { \
-		LOG_WARN(CL_LOG, "Call to ZK during shutdown!"); \
-		done = true; \
-	    } \
-	    else if (!ze.isConnected()) { \
-		throw ClusterException(ze.what()); \
-	    } \
-	    else if (_warning) { \
-		LOG_WARN(CL_LOG, _message, _node, ze.what()); \
-		if (_once) { \
-		    /* \
-		     * Only warn once. \
-		     */ \
-		    done = true; \
-                } \
-	    } \
-	    else { \
-		throw ClusterException(ze.what()); \
-	    } \
-	} \
-    } \
-}
-
 namespace clusterlib
 {
 
@@ -75,7 +39,8 @@ FactoryOps::FactoryOps(const string &registry)
       m_zkEventAdapter(m_zk),
       m_shutdown(false),
       m_connected(false),
-      m_changeHandlers(this)
+      m_changeHandlers(this),
+      m_distributedLocks(this)
 {
     TRACE(CL_LOG, "FactoryOps");
 
@@ -326,7 +291,7 @@ FactoryOps::synchronize()
     {
         Locker l1(getSyncLock());
         while (syncId > m_syncIdCompleted) {
-            m_syncCond.Wait(m_syncLock);
+            m_syncCond.wait(m_syncLock);
         }
     }
 
@@ -2732,7 +2697,12 @@ FactoryOps::placeBid(NodeImpl *np, ServerImpl *sp)
         tmp;
     int64_t bid = 0;
 
-    SAFE_CALL_ZK((bid = m_zk.createSequence(pfx, value, ZOO_EPHEMERAL)),
+    string createdPath;
+    SAFE_CALL_ZK((bid = m_zk.createSequence(pfx, 
+                                            value, 
+                                            ZOO_EPHEMERAL, 
+                                            false, 
+                                            createdPath)),
                  "Bidding with prefix %s to become leader failed: %s",
                  pfx.c_str(),
                  true,
@@ -3155,14 +3125,11 @@ FactoryOps::establishNotifyableReady(NotifyableImpl *ntp)
                  true);
 
     if (ready == "ready") {
-        ntp->setReady(true);
+        ntp->setState(Notifyable::READY);
         ntp->initializeCachedRepresentation();
     }
-    else {
-        ntp->setReady(false);
-    }
 
-    return ntp->isReady();
+    return (ntp->getState() == Notifyable::READY);
 }
 
 };	/* End of 'namespace clusterlib' */

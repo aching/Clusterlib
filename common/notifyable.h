@@ -20,6 +20,15 @@ namespace clusterlib
 class Notifyable
 {
   public:
+    /**
+     * State of the Notifyable.
+     */
+    enum State {
+        INIT,
+        READY,
+        REMOVED
+    };
+
     /*
      * Compare two Notifyable instances.
      */
@@ -81,12 +90,11 @@ class Notifyable
     virtual Group *getMyGroup() = 0; 
 
     /**
-     * Is this notifyable "ready"? (according to the
-     * ready protocol)
+     * What state is this Notifyable in?
      *
-     * @return true if this Notifyable is ready for use
+     * @return the state of the Notifyable
      */
-    virtual bool isReady() const = 0;
+    virtual Notifyable::State getState() = 0;
 
     /**
      * Get the properties for this object (if it is allowed). If
@@ -99,6 +107,47 @@ class Notifyable
      * @throw ClusterException if Notifyable is the root or application
      */
     virtual Properties *getProperties(bool create = false) = 0;
+
+    /** 
+     * \brief Get the clusterlib lock for this Notifyable.
+     *
+     * Advisory lock.  Internal clusterlib event system will always
+     * respect this lock.  In order to guarantee that changes to
+     * Notifyable objects are ordered and atomic, clients must also
+     * acquire the appropirate locks.
+     *
+     * @throw ClusterException if this Notifyable or its parent no
+     * longer exist.
+     *
+     */
+    virtual void acquireLock() = 0;
+
+    /** 
+     * \brief Release the clusterlib lock for this Notifyable.
+     *
+     * Advisory lock.  Internal clusterlib event system will always
+     * respect this lock.  In order to guarantee that changes to
+     * Notifyable objects are ordered and atomic, clients must also
+     * acquire the appropirate locks.
+     *
+     * @throw ClusterException if internal state is in consistent 
+     */
+    virtual void releaseLock() = 0;    
+
+    /**
+     * NOT OPERATIONAL - Do not use!!!
+     *
+     * Remove the this notifyable.  This causes the object to be
+     * removed in clusterlib.  It will no longer be accessable and all
+     * state associated with this object will be removed.
+     *
+     * @param removeChildren if true, try to remove all children, else
+     * try to only remove self.
+     * @throw ClusterException if the Notifyable was already removed, 
+     * the Notifyable has children and removeChildren was not set, or the 
+     * Notifyable is not allowed to be removed (i.e. root).
+     */
+    virtual void remove(bool removeChildren) = 0;
 
     /*
      * Destructor.

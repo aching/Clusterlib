@@ -22,6 +22,7 @@ my $mpdConf = "$ENV{'HOME'}".'/.mpd.conf';
 my $mpdPid = undef;
 my $numProcs = 1;
 my $testBin = undef;
+my $testBinOpts = "";
 my $startMpd = undef;
 my $startZookeeper = undef;
 my $killAllMpd = undef;
@@ -68,7 +69,7 @@ if ((defined($startMpd)) ||
 &startZookeeper($zookeeperExec);
 
 # Run the actual unittests
-my $ret = &setSystemCmdPrintExec("$mpiExec -n $numProcs $testBin -z $ENV{'HOSTNAME'}\:$zookeeperClientPort");
+my $ret = &setSystemCmdPrintExec("$mpiExec -n $numProcs $testBin -z $ENV{'HOSTNAME'}\:$zookeeperClientPort $testBinOpts");
 
 # Clean up mpd if it wasn't running before;
 if (defined($mpdPid)) {
@@ -124,6 +125,7 @@ sub parseArgs()
 	       'globalDebug'      => \$globalDebug,
 	       'numProcs=s'       => \$numProcs,
 	       'testBin=s'        => \$testBin,
+	       'testBinOpts=s'    => \$testBinOpts,
 	       'startMpd'         => \$startMpd,
 	       'startZk'          => \$startZookeeper,
 	       'killAllMpd'       => \$killAllMpd,
@@ -151,6 +153,7 @@ sub usage()
     print "   start them up automatically\n";
     print "\n";
     print "   --testBin (s)      path to the test binary\n";
+    print "   --testBinOpts (s)  command line arguments passed to the test binary\n";
     print "   [--numProcs (s)]   how many processes to use (default 1)\n";
     print "   [--globalDebug]    only show commands (do not execute anything)\n";
     print "\n";

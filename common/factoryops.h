@@ -11,6 +11,42 @@
 #ifndef	_FACTORYOPS_H_
 #define	_FACTORYOPS_H_
 
+/*
+ * Macro for safely executing calls to ZooKeeper.
+ *
+ * NOTE: If your call needs to return a value, please use
+ * SAFE_CALL_ZK((var = call()), "some message %s", false, true)
+ */
+#define SAFE_CALL_ZK(_action, _message, _node, _warning, _once) \
+{ \
+    bool done = false; \
+    while (!done) { \
+	try { \
+	    _action ; done = true; \
+	} catch (zk::ZooKeeperException &ze) { \
+	    if (getOps()->isShutdown()) { \
+		LOG_WARN(CL_LOG, "Call to ZK during shutdown!"); \
+		done = true; \
+	    } \
+	    else if (!ze.isConnected()) { \
+		throw ClusterException(ze.what()); \
+	    } \
+	    else if (_warning) { \
+		LOG_WARN(CL_LOG, _message, _node, ze.what()); \
+		if (_once) { \
+		    /* \
+		     * Only warn once. \
+		     */ \
+		    done = true; \
+                } \
+	    } \
+	    else { \
+		throw ClusterException(ze.what()); \
+	    } \
+	} \
+    } \
+}
+
 namespace clusterlib
 {
 
@@ -542,11 +578,43 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
         return &m_changeHandlers;
     }
 
+    /**
+     * Get the distributed locks object
+     *
+     * @return pointer to DistributedLocks for doing lock operations
+     */
+    DistributedLocks *getDistrbutedLocks()
+    {
+        return &m_distributedLocks;
+    }
+
+    /**
+     * Get the Zookeeper source adapter.
+     */
+    ZooKeeperEventAdapter *getZooKeeperEventAdapter()
+    {
+        return &m_zkEventAdapter;
+    }
+
     /*
      * Orderly termination mechanism.
      */
     void injectEndEvent();
     void waitForThreads();
+
+    /**
+     * Has shut down?
+     */
+    bool isShutdown() 
+    {
+        return m_shutdown;
+    }
+
+  private:
+    /**
+     * Required to support SAFE_CALL_ZK macro for various classes
+     */
+    FactoryOps *getOps() { return this; }
 
   private:
 
@@ -654,27 +722,27 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
      */
     ZooKeeperEventAdapter m_zkEventAdapter;
 
-    /*
+    /**
      * Synchronous event adapter.
      */
     SynchronousEventAdapter<GenericEvent> m_eventAdapter;
 
-    /*
+    /**
      * The thread running the synchronous event adapter.
      */
     CXXThread<FactoryOps> m_eventThread;
 
-    /*
+    /**
      * Is the event loop terminating?
      */
     bool m_shutdown;
 
-    /*
+    /**
      * Is the factory connected to ZooKeeper?
      */
     volatile bool m_connected;
 
-    /*
+    /**
      * Lock for event synchronization.
      */
     Lock m_eventSyncLock;
@@ -683,6 +751,11 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
      * Handles all the events for clusterlib objects
      */
     CachedObjectChangeHandlers m_changeHandlers;
+
+    /**
+     * Handles all the locks for clusterlib objects
+     */
+    DistributedLocks m_distributedLocks;
 };
 
 };	/* End of 'namespace clusterlib' */

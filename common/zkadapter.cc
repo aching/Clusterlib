@@ -402,12 +402,12 @@ ZooKeeperAdapter::sync(const string &path,
      * At this point, we insert the sync event into the blocking queue
      * for other listeners.
      */
-    m_zkContextsMutex.Acquire();
+    m_zkContextsMutex.acquire();
     registerContext(SYNC_DATA, 
                     clusterlib::ClusterlibStrings::SYNC, 
                     listener, 
                     context);
-    m_zkContextsMutex.Release();
+    m_zkContextsMutex.release();
     m_events.put(ZKWatcherEvent(ZOO_SESSION_EVENT, 
                                 ZOO_CONNECTED_STATE,
                                 clusterlib::ClusterlibStrings::SYNC));
@@ -433,7 +433,7 @@ ZooKeeperAdapter::handleAsyncEvent(int32_t type,
     if (((type != ZOO_SESSION_EVENT) || 
          (!path.compare(clusterlib::ClusterlibStrings::SYNC))) &&
         (type != ZOO_NOTWATCHING_EVENT)) {
-        m_zkContextsMutex.Acquire();
+        m_zkContextsMutex.acquire();
         /* Check if the user context is available */
         if (type == ZOO_CHANGED_EVENT || type == ZOO_DELETED_EVENT) {
             /*
@@ -455,7 +455,7 @@ ZooKeeperAdapter::handleAsyncEvent(int32_t type,
             context = findAndRemoveListenerContext(SYNC_DATA, path);
         }
 
-        m_zkContextsMutex.Release();
+        m_zkContextsMutex.release();
 
         /* Only forward events that do have context */
         if (!context.empty()) {
@@ -799,7 +799,7 @@ ZooKeeperAdapter::createNode(const string &path,
                              const string &value, 
                              int32_t flags, 
                              bool createAncestors,
-                             string &returnPath) 
+                             string &createdPath) 
 {
     TRACE(LOG, "createNode (internal)");
     validatePath(path);
@@ -852,7 +852,7 @@ ZooKeeperAdapter::createNode(const string &path,
                     pos++;
                 } else {
                     //no more path components
-                    return createNode(path, value, flags, false, returnPath);
+                    return createNode(path, value, flags, false, createdPath);
                 }
             }
         }
@@ -868,7 +868,7 @@ ZooKeeperAdapter::createNode(const string &path,
         LOG_INFO(LOG, 
                  "%s has been created", 
                  realPath);
-        returnPath = string(realPath);
+        createdPath = string(realPath);
         return true;
     }
 }
@@ -889,11 +889,11 @@ int64_t
 ZooKeeperAdapter::createSequence(const string &path,
                                  const string &value,
                                  int32_t flags,
-                                 bool createAncestors) 
+                                 bool createAncestors,
+                                 string &createdPath) 
 {
     TRACE(LOG, "createSequence");
 
-    string createdPath;    
     bool result = createNode(path,
                              value,
                              flags | ZOO_SEQUENCE,
@@ -1000,7 +1000,7 @@ ZooKeeperAdapter::nodeExists(const string &path,
     do {
         verifyConnection();
         if (context != NULL) {    
-            m_zkContextsMutex.Acquire();
+            m_zkContextsMutex.acquire();
             rc = zoo_exists(mp_zkHandle,
                             path.c_str(),
                             (listener != NULL ? 1 : 0),
@@ -1008,7 +1008,7 @@ ZooKeeperAdapter::nodeExists(const string &path,
             if (rc == ZOK || rc == ZNONODE) {
                 registerContext(NODE_EXISTS, path, listener, context);
             }
-            m_zkContextsMutex.Release();
+            m_zkContextsMutex.release();
         } else {
 	    if (listener) {
 		throw ZooKeeperException(
@@ -1060,7 +1060,7 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
     do {
         verifyConnection();
         if (context != NULL) {
-            m_zkContextsMutex.Acquire();
+            m_zkContextsMutex.acquire();
             rc = zoo_get_children(mp_zkHandle,
                                   path.c_str(), 
                                   (listener != NULL ? 1 : 0), 
@@ -1068,7 +1068,7 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
             if (rc == ZOK) {
                 registerContext(GET_NODE_CHILDREN, path, listener, context);
             }
-            m_zkContextsMutex.Release();
+            m_zkContextsMutex.release();
         } else {
 	    if (listener) {
 		throw ZooKeeperException(
@@ -1137,7 +1137,7 @@ ZooKeeperAdapter::getNodeData(const string &path,
         verifyConnection();
         len = MAX_DATA_LENGTH - 1;
         if (context != NULL) {
-            m_zkContextsMutex.Acquire();
+            m_zkContextsMutex.acquire();
             rc = zoo_get(mp_zkHandle, 
                          path.c_str(),
                          (listener != NULL ? 1 : 0),
@@ -1145,7 +1145,7 @@ ZooKeeperAdapter::getNodeData(const string &path,
             if (rc == ZOK) {
                 registerContext(GET_NODE_DATA, path, listener, context);
             }
-            m_zkContextsMutex.Release();
+            m_zkContextsMutex.release();
         } else {
 	    if (listener) {
 		throw ZooKeeperException(

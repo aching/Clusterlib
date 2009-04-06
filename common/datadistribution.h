@@ -73,23 +73,6 @@ class DataDistribution
     virtual HashFunctionId getHashFunctionIndex() = 0;
     virtual void setHashFunctionIndex(HashFunctionId idx) = 0;
     virtual void setHashFunction(HashFunction *fn) = 0;
-
-    /*** 
-     * \brief Get the data distribution locks.
-     *
-     * Guarantees that the this object's members will not be modified by
-     * any process that does not own the lock (including the internal
-     * clusterlib event system).
-     */
-    virtual void acquireLock() = 0;
-
-    /*** 
-     * \brief Releases the data distribution locks.
-     *
-     * Releases the lock so that other processes that do not own the
-     * lock (including the internal clusterlib event system).
-     */
-    virtual void releaseLock() = 0;
         
     /**
      * Assign new shards.

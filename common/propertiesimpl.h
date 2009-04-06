@@ -24,29 +24,6 @@ class PropertiesImpl
       public virtual NotifyableImpl
 {
     public:
-    /** 
-     * \brief Get the property lock.
-     *
-     * Guarantees that the this object's members will not be modified by
-     * any process that does not own the lock (including the internal
-     * clusterlib event system).
-     */
-    virtual void acquireLock()
-    {
-	getKeyValMapLock()->Acquire();
-    }
-
-    /** 
-     * \brief Releases the property lock.
-     *
-     * Releases the lock so that other processes that do not own the
-     * lock (including the internal clusterlib event system).
-     */
-    virtual void releaseLock()
-    {
-	getKeyValMapLock()->Release();
-    }
-
     /**
      * \brief Get the keys of all the properties.
      * 

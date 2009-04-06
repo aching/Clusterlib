@@ -82,11 +82,11 @@ ServerImpl::ServerImpl(FactoryOps *fp,
 
 ServerImpl::~ServerImpl()
 {
-    m_mutex.Acquire();
+    m_mutex.acquire();
     m_healthCheckerTerminating = true;
     LOG_INFO(CL_LOG, "Sending signal to stop health checking...");
-    m_cond.Signal();
-    m_mutex.Release();
+    m_cond.signal();
+    m_mutex.release();
     m_checkerThread.Join();
 }
 
@@ -103,12 +103,12 @@ ServerImpl::registerHealthChecker(HealthChecker *healthChecker)
      * DCL pattern.
      */
     if (healthChecker != mp_healthChecker) {
-        m_mutex.Acquire();
+        m_mutex.acquire();
         if (healthChecker != mp_healthChecker) {
             mp_healthChecker = healthChecker;
-            m_cond.Signal();
+            m_cond.signal();
         }
-        m_mutex.Release();
+        m_mutex.release();
     }
 }
 
@@ -159,7 +159,7 @@ ServerImpl::checkHealth()
          * First of all check the health, if health checking is turned on.
          */
         HealthReport report(HealthReport::HS_UNHEALTHY);
-        m_mutex.Acquire();
+        m_mutex.acquire();
         if ((mp_healthChecker != NULL) && 
             (curPeriod > 0) &&
             m_healthCheckingEnabled) 
@@ -224,10 +224,10 @@ ServerImpl::checkHealth()
         LOG_DEBUG(CL_LOG,
                   "About to wait %d msec before next health check...",
                   waitTime);
-        m_cond.Wait(m_mutex, waitTime);
+        m_cond.wait(m_mutex, waitTime);
         LOG_DEBUG(CL_LOG, "...awoken!");
         
-        m_mutex.Release();
+        m_mutex.release();
     }
 }
 
@@ -240,12 +240,12 @@ ServerImpl::enableHealthChecking(bool enabled)
              "enableHealthChecking - enabled: %s",
              enabled ? "true" : "false");
     
-    m_mutex.Acquire();
+    m_mutex.acquire();
     if (enabled != m_healthCheckingEnabled) {
         m_healthCheckingEnabled = enabled;   
-        m_cond.Signal();
+        m_cond.signal();
     }
-    m_mutex.Release();
+    m_mutex.release();
 }
 
 void

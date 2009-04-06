@@ -439,15 +439,18 @@ class ZooKeeperAdapter
          * @param createAncestors if true and there are some missing ancestor 
          *                        nodes, this method will attempt to
          *                        create them
+         * @param createdPath this is set to the actual created path if the 
+         *                    call is successful
          * 
          * @return the sequence number associate with newly created node,
          *         or -1 if it couldn't be created
          * @throw ZooKeeperException if the operation has failed
          */ 
         int64_t createSequence(const std::string &path, 
-                               const std::string &value = "", 
-                               int flags = 0, 
-                               bool createAncestors = true);
+                               const std::string &value,
+                               int flags, 
+                               bool createAncestors,
+                               std::string &createdPath);
         
         /**
          * \brief Deletes a node identified by the given path.
@@ -585,12 +588,13 @@ class ZooKeeperAdapter
          * @param path the absolute path name of the node to be created
          * @param value the initial value to be associated with the node
          * @param flags the ZK flags of the node to be created
-         * @param createAncestors if true and there are some missing ancestor nodes, 
-         *        this method will attempt to create them
-         * @param createdPath the actual path of the node that has been created; 
-         *        useful for sequences
+         * @param createAncestors if true and there are some missing ancestor 
+         *        nodes, this method will attempt to create them
+         * @param createdPath the actual path of the node that has been 
+         *        created; useful for sequences
          * 
-         * @return true if the node has been successfully created; false otherwise
+         * @return true if the node has been successfully created; false 
+         *         otherwise
          * @throw ZooKeeperException if the operation has failed
          */ 
         bool createNode(const std::string &path, 

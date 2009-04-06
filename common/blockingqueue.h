@@ -89,9 +89,9 @@ template<class E>
 int BlockingQueue<E>::size() const
 {
     int32_t size;
-    m_mutex.Acquire();
+    m_mutex.acquire();
     size = m_queue.size();
-    m_mutex.Release();
+    m_mutex.release();
     return size;
 }
 
@@ -99,25 +99,25 @@ template<class E>
 bool BlockingQueue<E>::empty() const
 {
     bool isEmpty;
-    m_mutex.Acquire();
+    m_mutex.acquire();
     isEmpty = m_queue.empty();
-    m_mutex.Release();
+    m_mutex.release();
     return isEmpty;
 }
 
 template<class E> 
 void BlockingQueue<E>::put(E e)
 {
-    m_mutex.Acquire();
-    m_queue.push_back( e );
-    m_cond.Signal();
-    m_mutex.Release();
+    m_mutex.acquire();
+    m_queue.push_back(e);
+    m_cond.signal();
+    m_mutex.release();
 }
 
 template<class E> 
 E BlockingQueue<E>::take(int32_t timeout, bool *timedOut)
 {
-    m_mutex.Acquire();
+    m_mutex.acquire();
     bool hasResult = true;
     while (m_queue.empty()) {
         if (timeout < 0) {
@@ -125,9 +125,9 @@ E BlockingQueue<E>::take(int32_t timeout, bool *timedOut)
             break;
         }
         if (timeout == 0) {
-            m_cond.Wait( m_mutex );
+            m_cond.wait(m_mutex);
         } else {
-            if (!m_cond.Wait( m_mutex, timeout )) {
+            if (!m_cond.wait(m_mutex, timeout)) {
                 hasResult = false;
                 break;
             }
@@ -139,13 +139,13 @@ E BlockingQueue<E>::take(int32_t timeout, bool *timedOut)
         if (timedOut) {
             *timedOut = false;
         }
-        m_mutex.Release();
+        m_mutex.release();
         return e;
     } else {
         if (timedOut) {
             *timedOut = true;
         }
-        m_mutex.Release();
+        m_mutex.release();
         return E();
     }
 }
@@ -153,9 +153,9 @@ E BlockingQueue<E>::take(int32_t timeout, bool *timedOut)
 template<class E>
 void BlockingQueue<E>::erase()
 {
-    m_mutex.Acquire();
+    m_mutex.acquire();
     m_queue.resize(0);
-    m_mutex.Release();
+    m_mutex.release();
  }
 
 }	/* End of 'namespace clusterlib' */

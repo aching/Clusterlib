@@ -23,23 +23,6 @@ class Properties
     : public virtual Notifyable
 {
     public:
-    /** 
-     * \brief Get the property lock.
-     *
-     * Guarantees that the this object's members will not be modified by
-     * any process that does not own the lock (including the internal
-     * clusterlib event system).
-     */
-    virtual void acquireLock() = 0;
-
-    /** 
-     * \brief Releases the property lock.
-     *
-     * Releases the lock so that other processes that do not own the
-     * lock (including the internal clusterlib event system).
-     */
-    virtual void releaseLock() = 0;
-
     /**
      * \brief Get the keys of all the properties.
      * 

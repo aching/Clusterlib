@@ -12,16 +12,20 @@ class TestParams {
         m_numProcs(-1),
         m_zkServerPortList("localhost:2221"),
         m_parseArgsState(-1) {}
+
     TestParams(int32_t myId, int32_t numProcs) :
         m_myId(myId),
         m_numProcs(numProcs),
         m_zkServerPortList("localhost:2221"),
         m_parseArgsState(-1) {}
+
     void printUsage(char *exec) const;
+
     /**
      * Only the root process will actually parse the arguments
      */
     int32_t rootParseArgs(int argc, char **argv);
+
     /**
      * The root process will scatter the arguments to the other
      * processes.
@@ -29,22 +33,44 @@ class TestParams {
     int32_t scatterArgs();
 
     int32_t getMyId() const { return m_myId; }
+
     void setMyId(int32_t myId) { m_myId = myId; }
+
     int32_t getNumProcs() const { return m_numProcs; }
+
     void setNumProcs(int32_t numProcs) { m_numProcs = numProcs; }
+
     bool root() const { return m_myId == 0; }
+
     const std::string &getZkServerPortList() const 
     { 
         return m_zkServerPortList; 
     }
+
+    const std::string &getTestFixtureName() { return m_testFixtureName; }
   private:
+    /**
+     * The rank of this proccess.
+     */
     int32_t m_myId;
+
+    /**
+     * The number of processes to run this test with
+     */
     int32_t m_numProcs;
+
     /** 
      * The command separated list of ZooKeeper Servers
      * i.e. (wmdev1008:2181,wmdev1007:2181)
      */
     std::string m_zkServerPortList;
+
+    /**
+     * The name one test fixture.  It is empty if all tests fixtures
+     * are desired.
+     */
+    std::string m_testFixtureName;
+
     /**
      * -1 for failure, 0 for success
      */

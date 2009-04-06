@@ -90,7 +90,7 @@ CachedObjectChangeHandlers::handleNotifyableExists(NotifyableImpl *ntp,
         LOG_WARN(CL_LOG,
                  "Deleted event for key: %s",
                  key.c_str());
-        ntp->setReady(false);
+        ntp->setState(Notifyable::REMOVED);
         return EN_DELETED;
     }
     if (etype == ZOO_CREATED_EVENT) {
@@ -754,6 +754,64 @@ CachedObjectChangeHandlers::handlePrecLeaderExistsChange(NotifyableImpl *ntp,
 }
 
 /*
+ * Handle existence change for preceding lock node. This is called
+ * whenever a preceding lock node being watched by a thread in this
+ * abdicates.  All it does is signal the lock waiting on it to wake up
+ * and try again.
+ */
+Event
+CachedObjectChangeHandlers::handlePrecLockNodeExistsChange(NotifyableImpl *ntp,
+                                                           int32_t etype,
+                                                           const string &key)
+{
+    TRACE(CL_LOG, "handlePrecLockNodeExistsChange");
+
+    /*
+     * If there's no notifyable, punt.
+     */
+    if (ntp == NULL) {
+        LOG_WARN(CL_LOG,
+                 "Punting on event: %d on %s",
+                 etype,
+                 key.c_str());
+        return EN_NOEVENT;
+    }
+
+    if (etype == ZOO_DELETED_EVENT) {
+        /*
+         * This is the only expected event.
+         */
+        LOG_DEBUG(CL_LOG, 
+                  "handlePrecLockNodeExistsChange: ZOO_DELETED_EVENT called");
+
+        /*
+         * Notify the thread waiting to acquire the lock that this
+         * lock node has finally been deleted.  Since this object
+         * cannot be deleted it should be safe 
+         */
+        WaitMap::iterator waitMapIt = 
+            getOps()->getDistrbutedLocks()->getWaitMap()->find(key);
+        if (waitMapIt != getOps()->getDistrbutedLocks()->getWaitMap()->end()) {
+            throw ClusterException("handlePrecLockNodeExistsChange: Signalling "
+                                   "the thread waiting on acquire failed");
+        }
+
+        waitMapIt->second->predSignal();
+
+        return EN_NOEVENT;
+    }
+    else {
+        LOG_ERROR(CL_LOG, 
+                  "handlePrecLockNodeExistsChange: non-ZOO_DELETED_EVENT "
+                  "event %d called", etype);
+        throw ClusterException("handlePrecLockNodeExistsChange: "
+                               "non-ZOO_DELETED_EVENT called");
+    }
+    
+    return EN_LOCKNODECHANGE;
+}
+
+/*
  * Special handler for synchronization that waits until the zk event
  * is propogated through the m_eventAdapter before returning.  This
  * ensures that all zk events prior to this point are visible by each
@@ -767,9 +825,9 @@ CachedObjectChangeHandlers::handleSynchronizeChange(NotifyableImpl *ntp,
     TRACE(CL_LOG, "handleSynchronizeChange");
 
     {
-        AutoLock l1(*(getOps()->getSyncLock()));
+        Locker l1(getOps()->getSyncLock());
         getOps()->incrSyncIdCompleted();
-        getOps()->getSyncCond()->Signal();
+        getOps()->getSyncCond()->signal();
     }
 
     LOG_DEBUG(CL_LOG,

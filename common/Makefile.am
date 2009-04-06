@@ -13,6 +13,7 @@ libcluster_a_SOURCES = \
 	propertiesimpl.cc \
 	rootimpl.cc \
 	cachedobjectchangehandlers.cc \
+	distributedlocks.cc \
 	clientimpl.cc \
 	serverimpl.cc \
 	clusterlibstrings.cc \

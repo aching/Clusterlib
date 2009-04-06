@@ -128,6 +128,13 @@ class CachedObjectChangeHandlers
                                        const std::string &key);
 
     /**
+     * Handle existence change for preceding lock node.
+     */
+    Event handlePrecLockNodeExistsChange(NotifyableImpl *ntp,
+                                         int32_t etype,
+                                         const std::string &key);
+    
+    /**
      * Handle changes in synchronization of a zookeeper key.
      */
     Event handleSynchronizeChange(NotifyableImpl *ntp,
@@ -193,6 +200,10 @@ class CachedObjectChangeHandlers
     {
         return &m_precLeaderExistsHandler;
     }
+    CachedObjectEventHandler *getPrecLockNodeExistsHandler()
+    {
+        return &m_precLockNodeExistsHandler;
+    }
     CachedObjectEventHandler *getSynchronizeChangeHandler()
     {
         return &m_synchronizeChangeHandler;
@@ -245,6 +256,9 @@ class CachedObjectChangeHandlers
         m_precLeaderExistsHandler(
             this,
             &CachedObjectChangeHandlers::handlePrecLeaderExistsChange),
+        m_precLockNodeExistsHandler(
+            this,
+            &CachedObjectChangeHandlers::handlePrecLockNodeExistsChange),
         m_synchronizeChangeHandler(
             this,
             &CachedObjectChangeHandlers::handleSynchronizeChange) {}
@@ -278,6 +292,7 @@ class CachedObjectChangeHandlers
     CachedObjectEventHandler m_nodeConnectionChangeHandler;
     CachedObjectEventHandler m_leadershipChangeHandler;
     CachedObjectEventHandler m_precLeaderExistsHandler;
+    CachedObjectEventHandler m_precLockNodeExistsHandler;
     CachedObjectEventHandler m_synchronizeChangeHandler;
 };
 

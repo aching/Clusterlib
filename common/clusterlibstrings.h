@@ -63,6 +63,8 @@ class ClusterlibStrings
     static const std::string GOLDENSHARDS;
     static const std::string MANUALOVERRIDES;
 
+    static const std::string LOCK;
+    static const std::string BID_SPLIT;
     static const std::string LOCKS;
     static const std::string QUEUES;
     static const std::string BARRIERS;

@@ -59,6 +59,9 @@ const string ClusterlibStrings::SHARDS = "shards";
 const string ClusterlibStrings::GOLDENSHARDS = "goldenShards";
 const string ClusterlibStrings::MANUALOVERRIDES = "manualOverrides";
 
+const string ClusterlibStrings::LOCK = "lock";
+const string ClusterlibStrings::BID_SPLIT = "_";
+
 const string ClusterlibStrings::LOCKS = "locks";
 const string ClusterlibStrings::QUEUES = "queues";
 const string ClusterlibStrings::BARRIERS = "barriers";

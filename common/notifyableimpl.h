@@ -42,9 +42,15 @@ class NotifyableImpl
 
     virtual Group *getMyGroup(); 
 
-    virtual bool isReady() const { return m_ready; }
-
+    virtual Notifyable::State getState();
+    
     virtual Properties *getProperties(bool create = false);
+
+    virtual void acquireLock();
+
+    virtual void releaseLock();
+
+    virtual void remove(bool removeChildren = false);
 
     /*
      * Internal functions not used by outside clients
@@ -61,12 +67,12 @@ class NotifyableImpl
           m_key(key),
           m_name(name),
           mp_parent(parent),
-          m_ready(false) {}
+          m_state(Notifyable::INIT) {}
 
-    /*
-     * Set the "ready" state of this notifyable.
+    /**
+     * Set the state of this notifyable.
      */
-    void setReady(bool v) { m_ready = v; }
+    void setState(Notifyable::State state);
 
     /*
      * Get the associated factory delegate object.
@@ -78,12 +84,38 @@ class NotifyableImpl
      */
     virtual ~NotifyableImpl() {}
 
-    /*
-     * Initialize the cached representation -- must be provided
-     * by subclasses.
+    /**
+     * Initialize the cached representation when the object is loaded
+     * into clusterlib -- must be provided by subclasses.
      */
     virtual void initializeCachedRepresentation() = 0;
 
+    /**
+     * Take all actions to remove all backend storage (i.e. Zookeeper data)
+     */
+    virtual void removeRepositoryEntries() {}
+
+    /**
+     * Get the NotifyableImpl lock
+     */
+    virtual Mutex *getStateLock() { return &m_stateLock; }
+
+    /**
+     * Get the key of the distributed lock
+     */
+    virtual const std::string &getDistributedLockKey() const 
+    {
+        return m_distLockKey; 
+    }
+
+    /**
+     * Set the key of the distributed lock
+     */
+    virtual void setDistributedLockKey(const std::string &distLockKey)
+    { 
+        m_distLockKey = distLockKey; 
+    }
+    
   private:
     /*
      * Default constructor.
@@ -116,11 +148,22 @@ class NotifyableImpl
      */
     NotifyableImpl *mp_parent;
 
-    /*
-     * Is this notifyable "ready" according to the ready
-     * protocol?
+    /**
+     * Is this notifyable "init", "ready", or "deleted" according to the
+     * Notifyable state protocol?
      */
-    bool m_ready;
+    State m_state;
+    
+    /**
+     * Lock to synchronize the Notifyable state
+     */
+    Mutex m_stateLock;
+
+    /** 
+     * The key that represents the holder of the distributed lock of
+     * this object.
+     */
+    std::string m_distLockKey;
 };
 
 };	/* End of 'namespace clusterlib' */

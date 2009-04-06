@@ -514,6 +514,7 @@ const int32_t EN_MANUALOVERRIDESCHANGE =	(1<<12);
 const int32_t EN_PROPCHANGE =			(1<<13);
 const int32_t EN_APPSCHANGE =			(1<<14);
 
+const int32_t EN_LOCKNODECHANGE =               (1<<15);
 /*
  * Interface for cluster event handler. Must be derived
  * to define specific behavior for handling events.

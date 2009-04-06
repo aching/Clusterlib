@@ -25,6 +25,7 @@
 
 #include "notifyablekeymanipulator.h"
 #include "cachedobjectchangehandlers.h"
+#include "distributedlocks.h"
 #include "factoryops.h"
 
 DEFINE_LOGGER(CL_LOG, "clusterlib")

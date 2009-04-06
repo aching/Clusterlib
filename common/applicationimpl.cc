@@ -34,4 +34,9 @@ ApplicationImpl::initializeCachedRepresentation()
     GroupImpl::initializeCachedRepresentation();
 }
 
+void
+ApplicationImpl::removeRepositoryEntries()
+{
+}
+
 };	/* End of 'namespace clusterlib' */

@@ -41,14 +41,13 @@ class ApplicationImpl
           GroupImpl(name, key, fp, root) {}
 
     /*
-     * Make the destructor private also.
+     * Destructor.
      */
     virtual ~ApplicationImpl() {};
 
-    /*
-     * Initialize the cached representation.
-     */
     virtual void initializeCachedRepresentation();
+
+    virtual void removeRepositoryEntries();
 
   private:
     /*
