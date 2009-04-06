@@ -234,7 +234,7 @@ sub startZookeeper()
 	&setCmdPrintExec("print FH \"electionAlg=0\n\"");
 	&setCmdPrintExec("print FH \"server\.0=$ENV{'HOSTNAME'}\:$zookeeperServerPort\n\"");
 	&setCmdPrintExec('close FH');
-	&setSystemCmdPrintExec("chmod 777 $zookeeperCfg");
+	&setSystemCmdPrintExec("chmod 700 $zookeeperCfg");
 	print "\nStarting up zookeeper ($zookeeperExec) for user $user...\n";
 	&setCmdPrintExec("chdir(\"$zookeeperServerDir\")");
 	&setSystemCmdPrintExec("$bin \>\& $zookeeperOut \&");
