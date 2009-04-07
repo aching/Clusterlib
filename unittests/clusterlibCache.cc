@@ -4,6 +4,7 @@
 extern TestParams globalTestParams;
 
 using namespace std;
+using namespace clusterlib;
 
 /*
  * Forward decl needed for the timer & user
@@ -12,24 +13,24 @@ using namespace std;
 class ClusterlibCache;
 
 class CacheClusterEventHandler
-    : public clusterlib::ClusterEventHandler
+    : public ClusterEventHandler
 {
   public:
-    CacheClusterEventHandler(clusterlib::Client *cp,
-                             clusterlib::Event mask,
-                             clusterlib::Notifyable *np)
-        : clusterlib::ClusterEventHandler(np, mask, cp),
+    CacheClusterEventHandler(Client *cp,
+                             Event mask,
+                             Notifyable *np)
+        : ClusterEventHandler(np, mask, cp),
           counter(0),
-          lastEvent(clusterlib::EN_NOEVENT)
+          lastEvent(EN_NOEVENT)
     {
     }
 
     int32_t getCounter() { return counter; }
     void setCounter(int32_t newval) { counter = newval; }
 
-    clusterlib::Event getLastEvent() { return lastEvent; }
+    Event getLastEvent() { return lastEvent; }
 
-    void handleClusterEvent(clusterlib::Event e)
+    void handleClusterEvent(Event e)
     {
         counter++;
         lastEvent = e;
@@ -44,7 +45,7 @@ class CacheClusterEventHandler
     /*
      * Last event fired.
      */
-    clusterlib::Event lastEvent;
+    Event lastEvent;
 };
 
 /*
@@ -59,15 +60,20 @@ class ClusterlibCache
     CPPUNIT_TEST( testCache3 );
     CPPUNIT_TEST( testCache4 );
     CPPUNIT_TEST( testCache5 );
-
-    CPPUNIT_TEST( testCache20 );
-    CPPUNIT_TEST( testCache21 );
-    CPPUNIT_TEST( testCache22 );
-    CPPUNIT_TEST( testCache23 );
-    CPPUNIT_TEST( testCache24 );
-    CPPUNIT_TEST( testCache25 );
-    CPPUNIT_TEST( testCache26 );
-    CPPUNIT_TEST( testCache27 );
+    CPPUNIT_TEST( testCache6 );
+    CPPUNIT_TEST( testCache7 );
+    CPPUNIT_TEST( testCache8 );
+    CPPUNIT_TEST( testCache9 );
+    CPPUNIT_TEST( testCache10 );
+    CPPUNIT_TEST( testCache11 );
+    CPPUNIT_TEST( testCache12 );
+    CPPUNIT_TEST( testCache13 );
+    CPPUNIT_TEST( testCache14 );
+    CPPUNIT_TEST( testCache15 );
+    CPPUNIT_TEST( testCache16 );
+    CPPUNIT_TEST( testCache17 );
+    CPPUNIT_TEST( testCache18 );
+    CPPUNIT_TEST( testCache19 );
 
     CPPUNIT_TEST_SUITE_END();
 
@@ -79,6 +85,7 @@ class ClusterlibCache
           _app0(NULL),
           _grp0(NULL),
           _nod0(NULL),
+          _dist0(NULL),
           _zk(NULL)
     {
     }
@@ -87,7 +94,7 @@ class ClusterlibCache
     virtual void setUp() 
     {
 	_factory =
-            new clusterlib::Factory(globalTestParams.getZkServerPortList());
+            new Factory(globalTestParams.getZkServerPortList());
 
 	CPPUNIT_ASSERT(_factory != NULL);
         _zk = _factory->getRepository();
@@ -100,6 +107,8 @@ class ClusterlibCache
         CPPUNIT_ASSERT(_grp0 != NULL);
         _nod0 = _grp0->getNode("nod3", true);
         CPPUNIT_ASSERT(_nod0 != NULL);
+        _dist0 = _grp0->getDataDistribution("dist1", true);
+        CPPUNIT_ASSERT(_dist0 != NULL);
     }
 
     /* Runs after all tests */
@@ -117,126 +126,656 @@ class ClusterlibCache
         _app0 = NULL;
         _grp0 = NULL;
         _nod0 = NULL;
+        _dist0 = NULL;
     }
 
     void testCache1()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-        cerr << "Test 1" << endl;
-
-        cerr << "Nod0 = " << _nod0 << ", " << _nod0->getKey() << endl;
         /*
          * Set the health report of a node and see if the cache
          * is updated.
          */
+
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        if (!isMyRank(0)) {
+            return;
+        }
+
+        cerr << "Test 1" << endl;
+
         string hrpath =
             _nod0->getKey() +
             "/" +
             "clientState";
-        cerr << "Before setting \"" << hrpath << "\"" << endl;
         _zk->setNodeData(hrpath, "healthy");
-        cerr << "After setting \"" << hrpath << "\"" << endl;
         _factory->synchronize();
-        cerr << "client state: \""
-             << _nod0->getClientState()
-             << "\""
-             << endl;
         CPPUNIT_ASSERT(string("healthy") == _nod0->getClientState());
 
         cerr << "Test 1 end" << endl;
     }
     void testCache2()
     {
+        /*
+         * Test ready protocol.
+         *
+         * Set and unset the ready bit on a node and see if the
+         * cache is updated. Same on group, application, and
+         * data distribution.
+         */
+
         INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-        cerr << "Test 2, cp == " << this << endl;
+
+        if (!isMyRank(0)) {
+            return;
+        }
+
+        cerr << "Test 2" << endl;
+
+        /*
+         * This test needs to be rewritten for the new
+         * implementation of the READY protocol, punt for
+         * now.
+         */
 
         cerr << "Test 2 end" << endl;
     }
     void testCache3()
     {
+        /*
+         * Testing whether groups change notification works
+         * in an application.
+         */
+
         INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-        cerr << "Test 3, cp == " << this << endl;
+
+        if (!isMyRank(0)) {
+            return;
+        }
+
+        cerr << "Test 3 " << endl;
+
+        string rpath =
+            _app0->getKey() +
+            "/" +
+            "groups" +
+            "/" +
+            "g15";
+        bool found = false;
+
+        /*
+         * Make sure the group does not exist when we start.
+         */
+        try {
+            _zk->deleteNode(rpath, true, -1);
+        } catch (...) {
+        }
+
+        /*
+         * Force clusterlib to inform us of any changes in the
+         * groups in _app0.
+         */
+        NameList gnl = _app0->getGroupNames();
+
+        /*
+         * Create the new group..
+         */
+        _zk->createNode(rpath, "", 0, false);
+
+        /*
+         * Wait for event propagation.
+         */
+        _factory->synchronize();
+        
+        /*
+         * Now check that the new group appears.
+         */
+        gnl = _app0->getGroupNames();
+        NameList::iterator nlIt;
+
+        for (nlIt = gnl.begin(); nlIt != gnl.end(); nlIt++) {
+            if ((*nlIt) == "g15") {
+                found = true;
+                break;
+            }
+        }
+
+        CPPUNIT_ASSERT(found == true);
+
+        Group *groupP = _app0->getGroup("g15");
+
+        CPPUNIT_ASSERT(groupP->getState() == Notifyable::INIT);
 
         cerr << "Test 3 end" << endl;
     }
     void testCache4()
     {
+        /*
+         * Testing whether distribution change notification works
+         * in an application.
+         */
+
         INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        if (!isMyRank(0)) {
+            return;
+        }
+
         cerr << "Test 4" << endl;
+
+        string rpath =
+            _app0->getKey() +
+            "/" +
+            "distributions" +
+            "/" +
+            "d15";
+        bool found = false;
+
+        /*
+         * Make sure the distribution does not exist when we start.
+         */
+        try {
+            _zk->deleteNode(rpath, true, -1);
+        } catch (...) {
+        }
+
+        /*
+         * Force clusterlib to inform us of any changes in the
+         * distributions in _app0.
+         */
+        NameList ddnl = _app0->getDataDistributionNames();
+
+        /*
+         * Create the new data distribution..
+         */
+        _zk->createNode(rpath, "", 0, false);
+
+        /*
+         * Wait for event propagation.
+         */
+        _factory->synchronize();
+
+        /*
+         * Now check that the new distribution appears.
+         */
+        ddnl = _app0->getDataDistributionNames();
+
+        NameList::iterator nlIt;
+
+        for (nlIt = ddnl.begin(); nlIt != ddnl.end(); nlIt++) {
+            if ((*nlIt) == "d15") {
+                found = true;
+                break;
+            }
+        }
+
+        CPPUNIT_ASSERT(found == true);
+
+        DataDistribution *distP = _app0->getDataDistribution("d15");
+
+        CPPUNIT_ASSERT(distP->getState() == Notifyable::INIT);
 
         cerr << "Test 4 end" << endl;
     }
     void testCache5()
     {
+        /*
+         * Test whether node membership change notification works
+         * in a group.
+         */
+
         INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        if (!isMyRank(0)) {
+            return;
+        }
+
         cerr << "Test 5" << endl;
+
+        string rpath = 
+            _grp0->getKey() +
+            "/" +
+            "nodes" +
+            "/" +
+            "n111";
+        bool found = false;
+
+        /*
+         * Make sure the node does not exist when we start.
+         */
+        try {
+            _zk->deleteNode(rpath, true, -1);
+        } catch (...) {
+        }
+
+        /*
+         * Force clusterlib to inform us of any changes in the
+         * nodes in _grp0.
+         */
+        NameList nnl = _grp0->getNodeNames();
+
+        /*
+         * Create a new node..
+         */
+        _zk->createNode(rpath, "", 0, false);
+
+        /*
+         * Wait for event propagation.
+         */
+        _factory->synchronize();
+
+        /*
+         * Now check that the new node appears.
+         */
+        nnl = _grp0->getNodeNames();
+
+        NameList::iterator nlIt;
+
+        for (nlIt = nnl.begin(); nlIt != nnl.end(); nlIt++) {
+            if ((*nlIt) == "n111") {
+                found = true;
+                break;
+            }
+        }
+
+        CPPUNIT_ASSERT(found == true);
+
+        Node *np = _grp0->getNode("n111");
+
+        CPPUNIT_ASSERT(np->getState() == Notifyable::INIT);
 
         cerr << "Test 5 end" << endl;
     }
 
-    void testCache20()
+    void testCache6()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-        cerr << "Test 20" << endl;
+        /*
+         * Testing whether distribution change notification works
+         * in a group.
+         */
 
-        cerr << "Test 20 end" << endl;
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        if (!isMyRank(0)) {
+            return;
+        }
+
+        cerr << "Test 6" << endl;
+
+        string rpath =
+            _grp0->getKey() +
+            "/" +
+            "distributions" +
+            "/" +
+            "d15";
+        bool found = false;
+
+        /*
+         * Make sure the distribution does not exist when we start.
+         */
+        try {
+            _zk->deleteNode(rpath, true, -1);
+        } catch (...) {
+        }
+
+        /*
+         * Force clusterlib to inform us of any changes in the
+         * distributions in _grp0.
+         */
+        NameList ddnl = _grp0->getDataDistributionNames();
+
+        /*
+         * Create the new data distribution..
+         */
+        _zk->createNode(rpath, "", 0, false);
+
+        /*
+         * Wait for event propagation.
+         */
+        _factory->synchronize();
+
+        /*
+         * Now check that the new distribution appears.
+         */
+        ddnl = _grp0->getDataDistributionNames();
+
+        NameList::iterator nlIt;
+
+        for (nlIt = ddnl.begin(); nlIt != ddnl.end(); nlIt++) {
+            if ((*nlIt) == "d15") {
+                found = true;
+                break;
+            }
+        }
+
+        CPPUNIT_ASSERT(found == true);
+
+        DataDistribution *distP = _grp0->getDataDistribution("d15");
+
+        CPPUNIT_ASSERT(distP->getState() == Notifyable::INIT);
+
+        cerr << "Test 6 end" << endl;
     }
-    void testCache21()
+    void testCache7()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-        cerr << "Test 21" << endl;
+        /*
+         * Test whether node membership change notification works
+         * in an application.
+         */
 
-        cerr << "Test 21 end" << endl;
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        if (!isMyRank(0)) {
+            return;
+        }
+
+        cerr << "Test 7" << endl;
+
+        string rpath = 
+            _app0->getKey() +
+            "/" +
+            "nodes" +
+            "/" +
+            "n111";
+        bool found = false;
+
+        /*
+         * Make sure the node does not exist when we start.
+         */
+        try {
+            _zk->deleteNode(rpath, true, -1);
+        } catch (...) {
+        }
+
+        /*
+         * Force clusterlib to inform us of any changes in the
+         * nodes in _app0.
+         */
+        NameList nnl = _app0->getNodeNames();
+
+        /*
+         * Create a new node..
+         */
+        _zk->createNode(rpath, "", 0, false);
+
+        /*
+         * Wait for event propagation.
+         */
+        _factory->synchronize();
+
+        /*
+         * Now check that the new node appears.
+         */
+        nnl = _app0->getNodeNames();
+
+        NameList::iterator nlIt;
+        
+        for (nlIt = nnl.begin(); nlIt != nnl.end(); nlIt++) {
+            if ((*nlIt) == "n111") {
+                found = true;
+                break;
+            }
+        }
+
+        CPPUNIT_ASSERT(found == true);
+
+        Node *np = _app0->getNode("n111");
+
+        CPPUNIT_ASSERT(np->getState() == Notifyable::INIT);
+
+        cerr << "Test 7 end" << endl;
     }
-    void testCache22()
+    void testCache8()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-        cerr << "Test 22" << endl;
+        /*
+         * Testing whether groups change notification works
+         * in a group.
+         */
 
-        cerr << "Test 22 end" << endl;
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        if (!isMyRank(0)) {
+            return;
+        }
+
+        cerr << "Test 8 " << endl;
+
+        string rpath =
+            _grp0->getKey() +
+            "/" +
+            "groups" +
+            "/" +
+            "g15";
+        bool found = false;
+
+        /*
+         * Make sure the group does not exist when we start.
+         */
+        try {
+            _zk->deleteNode(rpath, true, -1);
+        } catch (...) {
+        }
+
+        /*
+         * Force clusterlib to inform us of any changes in the
+         * groups in _app0.
+         */
+        NameList gnl = _grp0->getGroupNames();
+
+        /*
+         * Create the new group..
+         */
+        _zk->createNode(rpath, "", 0, false);
+
+        /*
+         * Wait for event propagation.
+         */
+        _factory->synchronize();
+        
+        /*
+         * Now check that the new group appears.
+         */
+        gnl = _grp0->getGroupNames();
+
+        NameList::iterator nlIt;
+
+        for (nlIt = gnl.begin(); nlIt != gnl.end(); nlIt++) {
+            if ((*nlIt) == "g15") {
+                found = true;
+                break;
+            }
+        }
+
+        CPPUNIT_ASSERT(found == true);
+
+        Group *groupP = _grp0->getGroup("g15");
+
+        CPPUNIT_ASSERT(groupP->getState() == Notifyable::INIT);
+
+        cerr << "Test 8 end" << endl;
     }
-    void testCache23()
+    void testCache9()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-        cerr << "Test 23" << endl;
+        /*
+         * Test whether node connectivity notification
+         * works.
+         */
 
-        cerr << "Test 23 end" << endl;
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        if (!isMyRank(0)) {
+            return;
+        }
+
+        cerr << "Test 9" << endl;
+
+        CPPUNIT_ASSERT(_nod0->isConnected() == false);
+
+        string rpath =
+            _nod0->getKey() +
+            "/" +
+            "connected";
+
+        /*
+         * Create the connectivity znode.
+         */
+        _zk->createNode(rpath, "yes", 0, false);
+
+        /*
+         * Wait for event propagation.
+         */
+        _factory->synchronize();
+
+        /*
+         * Now check that the node is "connected".
+         */
+        CPPUNIT_ASSERT(_nod0->isConnected() == true);
+
+        /*
+         * Delete the connectivity znode.
+         */
+        _zk->deleteNode(rpath, true, -1);
+
+        /*
+         * Wait for event propagation.
+         */
+        _factory->synchronize();
+
+        /*
+         * Now check that the node is not "connected".
+         */
+        CPPUNIT_ASSERT(_nod0->isConnected() == false);
+
+        cerr << "Test 9 end" << endl;
     }
-    void testCache24()
+    void testCache10()
     {
         INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-        cerr << "Test 24" << endl;
 
-        cerr << "Test 24 end" << endl;
+        if (!isMyRank(0)) {
+            return;
+        }
+
+        cerr << "Test 10" << endl;
+
+        cerr << "Test 10 end" << endl;
     }
-    void testCache25()
+    void testCache11()
     {
         INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-        cerr << "Test 25" << endl;
 
-        cerr << "Test 25 end" << endl;
+        if (!isMyRank(0)) {
+            return;
+        }
+
+        cerr << "Test 11" << endl;
+
+        cerr << "Test 11 end" << endl;
     }
-    void testCache26()
+    void testCache12()
     {
         INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-        cerr << "Test 26" << endl;
 
-        cerr << "Test 26 end" << endl;
+        if (!isMyRank(0)) {
+            return;
+        }
+
+        cerr << "Test 12" << endl;
+
+        cerr << "Test 12 end" << endl;
     }
-    void testCache27()
+    void testCache13()
     {
         INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-        cerr << "Test 27" << endl;
 
-        cerr << "Test 27 end" << endl;
+        if (!isMyRank(0)) {
+            return;
+        }
+
+        cerr << "Test 13" << endl;
+
+        cerr << "Test 13 end" << endl;
+    }
+    void testCache14()
+    {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        if (!isMyRank(0)) {
+            return;
+        }
+
+        cerr << "Test 14" << endl;
+
+        cerr << "Test 14 end" << endl;
+    }
+    void testCache15()
+    {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        if (!isMyRank(0)) {
+            return;
+        }
+
+        cerr << "Test 15" << endl;
+
+        cerr << "Test 15 end" << endl;
+    }
+    void testCache16()
+    {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        if (!isMyRank(0)) {
+            return;
+        }
+
+        cerr << "Test 16" << endl;
+
+        cerr << "Test 16 end" << endl;
+    }
+    void testCache17()
+    {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        if (!isMyRank(0)) {
+            return;
+        }
+
+        cerr << "Test 17" << endl;
+
+        cerr << "Test 17 end" << endl;
+    }
+    void testCache18()
+    {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        if (!isMyRank(0)) {
+            return;
+        }
+
+        cerr << "Test 18" << endl;
+
+        cerr << "Test 18 end" << endl;
+    }
+    void testCache19()
+    {
+        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+
+        if (!isMyRank(0)) {
+            return;
+        }
+
+        cerr << "Test 19" << endl;
+
+        cerr << "Test 19 end" << endl;
     }
 
   private:
-    clusterlib::Factory *_factory;
-    clusterlib::Client *_client0;
-    clusterlib::Application *_app0;
-    clusterlib::Group *_grp0;
-    clusterlib::Node *_nod0;
+    Factory *_factory;
+    Client *_client0;
+    Application *_app0;
+    Group *_grp0;
+    Node *_nod0;
+    DataDistribution *_dist0;
     zk::ZooKeeperAdapter *_zk;
 };
 

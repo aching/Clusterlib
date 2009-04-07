@@ -31,7 +31,9 @@ class ZooKeeperException :
 	ZooKeeperException(const std::string &msg,
                            bool connected = true)
             throw()
-            : m_message(msg), m_zkErrorCode(0), m_connected(connected) {}
+            : m_message(msg),
+              m_zkErrorCode(0),
+              m_connected(connected) {}
 
         /**
          * \brief Constructor.
@@ -394,6 +396,11 @@ class ZooKeeperAdapter
          * \brief Disconnects from the ZK and unregisters {@link #mp_zkHandle}.
          */
         void disconnect();
+
+        /**
+         * \brief Stops the ZK event loop from dispatching events.
+         */
+        void stopEventDispatch();
 
 	/**
 	 * \brief Synchronizes all events with ZK with the local server.
@@ -773,6 +780,11 @@ class ZooKeeperAdapter
          * The state of this adapter.
          */
         AdapterState m_state;
+
+	/**
+         * Is event dispatch allowed? (default == true)
+         */
+	bool m_eventDispatchAllowed;
         
         /**
          * The lock used to synchronize access to {@link #m_state}.

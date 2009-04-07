@@ -29,7 +29,7 @@ namespace clusterlib
  * Create the associated FactoryOps delegate object.
  */
 FactoryOps::FactoryOps(const string &registry)
-    : m_root(NULL),
+    : mp_root(NULL),
       m_syncId(0),
       m_syncIdCompleted(0),
       m_endEventDispatched(false),
@@ -95,7 +95,7 @@ FactoryOps::FactoryOps(const string &registry)
     }
 
     /*
-     * Load up the clusterlib root of all objects.
+     * After all other initializations, get the root object.
      */
     getRoot();
 }
@@ -107,6 +107,8 @@ FactoryOps::~FactoryOps()
 {
     TRACE(CL_LOG, "~FactoryOps");
 
+    stopZKEventDispatch();
+
     injectEndEvent();
     waitForThreads();
 
@@ -116,7 +118,7 @@ FactoryOps::~FactoryOps()
     removeAllApplications();
     removeAllGroups();
     removeAllNodes();
-    delete m_root;
+    delete mp_root;
 
     try {
         m_zk.disconnect();
@@ -125,6 +127,17 @@ FactoryOps::~FactoryOps()
                  "Got exception during disconnect: %s",
                  e.what());
     }
+}
+
+/*
+ * Stop the ZK adapter from dispatching any more events.
+ */
+void
+FactoryOps::stopZKEventDispatch()
+{
+    TRACE(CL_LOG, "stopZKEventDispatch");
+
+    m_zk.stopEventDispatch();
 }
 
 /*
@@ -444,9 +457,9 @@ FactoryOps::dispatchEvents()
     uint32_t eventSeqId = 0;
 
     LOG_DEBUG(CL_LOG,
-              "Hello from dispatchEvents(), this: 0x%x, thread: %d",
-              (unsigned int) this,
-              (unsigned int) pthread_self());
+              "Hello from FactoryOps::dispatchEvents(), this: 0x%x, thread: %d",
+              (int32_t) this,
+              (uint32_t) pthread_self());
 
     try {
         for (m_shutdown = false;
@@ -506,7 +519,7 @@ FactoryOps::dispatchEvents()
                     
                     LOG_DEBUG(CL_LOG,
                               "Processing ZK event "
-                              "(type: %d, state: %d, context: 0x%x, path %s)",
+                              "(type: %d, state: %d, context: 0x%x, path: %s)",
                               zp->getType(),
                               zp->getState(),
                               (unsigned int) zp->getContext(),
@@ -532,6 +545,11 @@ FactoryOps::dispatchEvents()
          * be no more events coming.
          */
         dispatchEndEvent();
+
+        LOG_DEBUG(CL_LOG,
+                  "End FactoryOps::dispatchEvents(): this = 0x%x, tid = %d",
+                  (int32_t) this,
+                  (uint32_t) pthread_self());
     } catch (zk::ZooKeeperException &zke) {
         LOG_ERROR(CL_LOG, "ZooKeeperException: %s", zke.what());
         dispatchEndEvent();
@@ -753,12 +771,10 @@ FactoryOps::consumeTimerEvents()
 
     TimerEventPayload *tepp;
 
-#ifdef	VERY_VERY_VERBOSE
-    LOG_WARN(CL_LOG,
-             "Hello from consumeTimerEvents, this: 0x%x, thread: %d",
-             this,
-             (uint32_t) pthread_self());
-#endif
+    LOG_DEBUG(CL_LOG,
+              "Hello from FactoryOps::consumeTimerEvents, this: 0x%x, thread: %d",
+              (int32_t) this,
+              (uint32_t) pthread_self());
 
     try {
         for (;;) {
@@ -771,7 +787,7 @@ FactoryOps::consumeTimerEvents()
             if (tepp == NULL) {
                 LOG_INFO(CL_LOG,
                          "Received terminate signal, finishing loop");
-                return;
+                break;
             }
 
             /*
@@ -800,6 +816,11 @@ FactoryOps::consumeTimerEvents()
                 delete tepp;
             }
         }
+
+        LOG_DEBUG(CL_LOG,
+                  "End FactoryOps::consumeTimerEvents(): this: 0x%x, thread: %d",
+                  (int32_t) this,
+                  (uint32_t) pthread_self());
     } catch (zk::ZooKeeperException &zke) {
         LOG_ERROR(CL_LOG, "ZooKeeperException: %s", zke.what());
         throw ClusterException(zke.what());
@@ -820,8 +841,8 @@ FactoryOps::getRoot()
 {
     TRACE(CL_LOG, "getRoot");
 
-    if (m_root) {
-        return m_root;
+    if (mp_root != NULL) {
+        return mp_root;
     }
 
     string key = NotifyableKeyManipulator::createRootKey();
@@ -840,7 +861,7 @@ FactoryOps::getRoot()
             ClusterlibStrings::KEYSEPARATOR + 
             ClusterlibStrings::APPLICATIONS;
 
-        SAFE_CALL_ZK(m_zk.createNode(applications, "", 0, true),
+        SAFE_CALL_ZK(m_zk.createNode(applications, "", 0),
                      "Could not create key %s: %s",
                      applications.c_str(),
                      true,
@@ -853,10 +874,14 @@ FactoryOps::getRoot()
                      true);
     }
     
-    m_root = new RootImpl("root", key, this);
-    return m_root;
+    mp_root = new RootImpl("root", key, this);
+    return mp_root;
 }
 
+/*
+ * Methods to retrieve entities (or create them) from the
+ * FactoryOps's cache.
+ */
 ApplicationImpl *
 FactoryOps::getApplication(const string &appName, bool create)
 {
@@ -1149,9 +1174,7 @@ FactoryOps::updateDataDistribution(const string &distKey,
                  true,
                  true);
     if (!exists) {
-        SAFE_CALL_ZK(m_zk.createNode(monode,
-                                     manualOverrides,
-                                     0),
+        SAFE_CALL_ZK(m_zk.createNode(monode, manualOverrides, 0),
                      "Creation of %s failed: %s",
                      monode.c_str(),
                      true,
@@ -1359,7 +1382,7 @@ FactoryOps::getNotifyableFromKey(const string &key, bool create)
 }
 NotifyableImpl *
 FactoryOps::getNotifyableFromComponents(const vector<string> &components,
-                                        int32_t elements, 
+                                        int32_t elements,
                                         bool create)
 {
     TRACE(CL_LOG, "getNotifyableFromComponents");
@@ -2049,6 +2072,10 @@ FactoryOps::createApplication(const string &name, const string &key)
             key + 
             ClusterlibStrings::KEYSEPARATOR + 
             ClusterlibStrings::DISTRIBUTIONS;
+        string nodes =
+            key +
+            ClusterlibStrings::KEYSEPARATOR +
+            ClusterlibStrings::NODES;
         string props = 
             key + 
             ClusterlibStrings::KEYSEPARATOR + 
@@ -2071,6 +2098,11 @@ FactoryOps::createApplication(const string &name, const string &key)
         SAFE_CALL_ZK(m_zk.createNode(dists, "", 0),
                      "Could not create key %s: %s",
                      dists.c_str(),
+                     true,
+                     true);
+        SAFE_CALL_ZK(m_zk.createNode(nodes, "", 0),
+                     "Could not create key %s: %s",
+                     nodes.c_str(),
                      true,
                      true);
         SAFE_CALL_ZK(m_zk.createNode(props, "", 0),
@@ -2238,8 +2270,8 @@ FactoryOps::createProperties(const string &key,
 
 GroupImpl *
 FactoryOps::createGroup(const string &groupName, 
-                        const string &groupKey,
-                        GroupImpl *parentGroup)
+		     const string &groupKey,
+                     GroupImpl *parentGroup)
 {
     TRACE(CL_LOG, "createGroup");
 
@@ -2272,6 +2304,14 @@ FactoryOps::createGroup(const string &groupName,
             groupKey + 
             ClusterlibStrings::KEYSEPARATOR + 
             ClusterlibStrings::PROPERTIES;
+        string groups =
+            groupKey +
+            ClusterlibStrings::KEYSEPARATOR +
+            ClusterlibStrings::GROUPS;
+        string dists =
+            groupKey +
+            ClusterlibStrings::KEYSEPARATOR +
+            ClusterlibStrings::DISTRIBUTIONS;
 
         created = true;
         SAFE_CALL_ZK(m_zk.createNode(groupKey, "", 0),
@@ -2297,6 +2337,16 @@ FactoryOps::createGroup(const string &groupName,
         SAFE_CALL_ZK(m_zk.createNode(props, "", 0),
                      "Could not create key %s: %s",
                      props.c_str(),
+                     true,
+                     true);
+        SAFE_CALL_ZK(m_zk.createNode(groups, "", 0),
+                     "Could not create key %s: %s",
+                     groups.c_str(),
+                     true,
+                     true);
+        SAFE_CALL_ZK(m_zk.createNode(dists, "", 0),
+                     "Could not create key %s: %s",
+                     dists.c_str(),
                      true,
                      true);
     }
@@ -2512,12 +2562,12 @@ FactoryOps::getApplicationNames()
                  true,
                  true);
 
-    for (NameList::iterator iIt = list.begin(); iIt != list.end(); ++iIt) {
+    for (NameList::iterator nlIt = list.begin(); nlIt != list.end(); ++nlIt) {
         /*
          * Remove the key prefix
          */
-        *iIt = iIt->substr(key.length() + 
-                           ClusterlibStrings::KEYSEPARATOR.length());
+        *nlIt = nlIt->substr(key.length() + 
+                             ClusterlibStrings::KEYSEPARATOR.length());
     }
 
     return list;
@@ -2548,12 +2598,14 @@ FactoryOps::getGroupNames(GroupImpl *group)
                  true,
                  true);
 
-    for (NameList::iterator iIt = list.begin(); iIt != list.end(); ++iIt) {
+    for (NameList::iterator nlIt = list.begin();
+         nlIt != list.end();
+         ++nlIt) {
         /*
          * Remove the key prefix
          */
-        *iIt = iIt->substr(key.length() + 
-                           ClusterlibStrings::KEYSEPARATOR.length());
+        *nlIt = nlIt->substr(key.length() + 
+                             ClusterlibStrings::KEYSEPARATOR.length());
     }
 
     return list;
@@ -2584,12 +2636,13 @@ FactoryOps::getDataDistributionNames(GroupImpl *group)
                  true,
                  true);
 
-    for (NameList::iterator iIt = list.begin(); iIt != list.end(); ++iIt) {
+    for (NameList::iterator nlIt = list.begin();
+         nlIt != list.end(); ++nlIt) {
         /*
          * Remove the key prefix
          */
-        *iIt = iIt->substr(key.length() + 
-                           ClusterlibStrings::KEYSEPARATOR.length());
+        *nlIt = nlIt->substr(key.length() + 
+                             ClusterlibStrings::KEYSEPARATOR.length());
     }
 
     return list;
@@ -2620,12 +2673,14 @@ FactoryOps::getNodeNames(GroupImpl *group)
                  true,
                  true);
 
-    for (NameList::iterator iIt = list.begin(); iIt != list.end(); ++iIt) {
+    for (NameList::iterator nlIt = list.begin();
+         nlIt != list.end();
+         ++nlIt) {
         /*
          * Remove the key prefix
          */
-        *iIt = iIt->substr(key.length() + 
-                           ClusterlibStrings::KEYSEPARATOR.length());
+        *nlIt = nlIt->substr(key.length() + 
+                             ClusterlibStrings::KEYSEPARATOR.length());
     }
 
     return list;
@@ -2729,7 +2784,7 @@ FactoryOps::tryToBecomeLeader(NodeImpl *np, int64_t bid)
     }
 
     NameList list;
-    NameList::iterator iIt;
+    NameList::iterator nlIt;
     GroupImpl *group = dynamic_cast<GroupImpl *>(np->getMyGroup());
 
     if (group == NULL) {
@@ -2760,8 +2815,8 @@ FactoryOps::tryToBecomeLeader(NodeImpl *np, int64_t bid)
                  group->getKey().c_str(),
                  true,
                  true);
-    for (iIt = list.begin(); iIt != list.end(); iIt++) {
-        toCheck = *iIt;
+    for (nlIt = list.begin(); nlIt != list.end(); nlIt++) {
+        toCheck = *nlIt;
 
         /*
          * Skip any random strings that are not

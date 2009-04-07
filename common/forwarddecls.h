@@ -54,8 +54,6 @@ class ClusterException;
 class DataDistribution;
 class DataDistributionImpl;
 class DistributedLocks;
-class Properties;
-class PropertiesImpl;
 class Factory;
 class FactoryOps;
 class Group;
@@ -69,6 +67,8 @@ class NodeAddress;
 class Notifyable;
 class NotifyableImpl;
 struct PredMutexCond;
+class Properties;
+class PropertiesImpl;
 class Server;
 class ServerImpl;
 class Shard;
@@ -78,7 +78,6 @@ class TimerEventPayload;
 /*
  * Vectors of pointers to these classes.
  */
-typedef std::vector<std::string>		NameList;
 typedef std::vector<ApplicationImpl *>		ApplicationImplList;
 typedef std::vector<ClientImpl *>		ClientImplList;
 typedef std::vector<DataDistributionImpl *>	DataDistributionImplList;
@@ -86,6 +85,7 @@ typedef std::vector<Factory *>			FactoryList;
 typedef std::vector<FactoryOps *>		FactoryOpsList;
 typedef std::vector<GroupImpl *>		GroupImplList;
 typedef std::vector<HealthChecker *>		HealthCheckerList;
+typedef std::vector<std::string>		NameList;
 typedef std::vector<NodeImpl *>			NodeImplList;
 typedef	std::vector<NodeAddress *>		NodeAddressList;
 typedef std::vector<Server *>			ServerList;
@@ -104,12 +104,12 @@ typedef std::map<std::string, FactoryOps *>	       FactoryOpsMap;
 typedef std::map<std::string, Group *>		       GroupMap;
 typedef std::map<std::string, GroupImpl *>	       GroupImplMap;
 typedef std::map<std::string, HealthChecker *>	       HealthCheckerMap;
+typedef std::map<std::string, std::string>             KeyValMap;
 typedef std::map<std::string, ManualOverride *>	       ManualOverridesMap;
 typedef std::map<std::string, Node *>	               NodeMap;
 typedef std::map<std::string, NodeImpl *>	       NodeImplMap;
-typedef std::map<std::string, Server *>		       ServerMap;
-typedef std::map<std::string, std::string>             KeyValMap;
 typedef std::map<std::string, PropertiesImpl *>	       PropertiesImplMap;
+typedef std::map<std::string, Server *>		       ServerMap;
 typedef std::map<TimerId, TimerEventPayload *>	       TimerRegistry;
 typedef std::map<std::string, PredMutexCond *>         WaitMap;
 

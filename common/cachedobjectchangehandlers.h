@@ -178,7 +178,7 @@ class CachedObjectChangeHandlers
     }
     CachedObjectEventHandler *getNodesChangeHandler()
     {
-        return &m_notifyableExistsHandler;
+        return &m_nodesChangeHandler;
     }
     CachedObjectEventHandler *getNodeClientStateChangeHandler()
     {

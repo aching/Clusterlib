@@ -1,7 +1,7 @@
 /*
- * clusterlib.cc --
+ * cachedobjectchangehandlers.cc --
  *
- * Implementation of the Factory class.
+ * Implementation of the cache change handlers.
  *
  * ============================================================================
  * $Header$
@@ -46,6 +46,13 @@ CachedObjectChangeHandlers::handleNotifyableReady(NotifyableImpl *ntp,
               "handleNotifyableReady(%s)",
               ntp->getKey().c_str());
 
+    if (etype == ZOO_DELETED_EVENT) {
+        /*
+         * NEED TO HANDLE DELETION!!!!
+         */
+        return EN_NOEVENT;
+    }
+
     getOps()->establishNotifyableReady(ntp);
     return EN_READY;
 }
@@ -78,12 +85,6 @@ CachedObjectChangeHandlers::handleNotifyableExists(NotifyableImpl *ntp,
              ntp->getKey().c_str());
 
     /*
-     * Re-establish interest in the existence of this notifyable.
-     */
-    getOps()->establishNotifyableInterest(ntp->getKey(),
-                                          &m_notifyableExistsHandler);
-
-    /*
      * Now decide what to do with the event.
      */
     if (etype == ZOO_DELETED_EVENT) {
@@ -98,12 +99,26 @@ CachedObjectChangeHandlers::handleNotifyableExists(NotifyableImpl *ntp,
                  "Created event for key: %s",
                  key.c_str());
         getOps()->establishNotifyableReady(ntp);
+
+        /*
+         * Re-establish interest in the existence of this notifyable.
+         */
+        getOps()->establishNotifyableInterest(ntp->getKey(),
+                                              &m_notifyableExistsHandler);
+
         return EN_CREATED;
     }
     if (etype == ZOO_CHANGED_EVENT) {
         LOG_WARN(CL_LOG,
                  "Changed event for key: %s",
                  key.c_str());
+
+        /*
+         * Re-establish interest in the existence of this notifyable.
+         */
+        getOps()->establishNotifyableInterest(ntp->getKey(),
+                                              &m_notifyableExistsHandler);
+
         return EN_NOEVENT;
     }
 

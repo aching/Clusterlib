@@ -599,6 +599,7 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     /*
      * Orderly termination mechanism.
      */
+    void stopZKEventDispatch();
     void injectEndEvent();
     void waitForThreads();
 
@@ -633,7 +634,7 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     /*
      * The cached root.
      */
-    RootImpl *m_root;
+    RootImpl *mp_root;
 
     /*
      * The registry of cached properties maps.

@@ -151,7 +151,8 @@ ZooKeeperAdapter::ZooKeeperAdapter(ZooKeeperConfig config,
       mp_zkHandle(NULL), 
       m_terminating(false),
       m_connected(false),
-      m_state(AS_DISCONNECTED) 
+      m_state(AS_DISCONNECTED),
+      m_eventDispatchAllowed(true)
 {
     TRACE(LOG, "ZooKeeperAdapter");
 
@@ -238,6 +239,12 @@ ZooKeeperAdapter::disconnect()
         setState(AS_DISCONNECTED);
     }
     m_stateLock.unlock();
+}
+
+void
+ZooKeeperAdapter::stopEventDispatch()
+{
+    m_eventDispatchAllowed = false;
 }
 
 void
@@ -429,6 +436,7 @@ ZooKeeperAdapter::handleAsyncEvent(int32_t type,
               path.c_str());
 
     Listener2Context context, context2;
+
     /* Ignore internal ZK events */
     if (((type != ZOO_SESSION_EVENT) || 
          (!path.compare(clusterlib::ClusterlibStrings::SYNC))) &&
@@ -457,17 +465,23 @@ ZooKeeperAdapter::handleAsyncEvent(int32_t type,
 
         m_zkContextsMutex.release();
 
-        /* Only forward events that do have context */
+        /*
+         * Only forward events that do have context. If we
+         * do not find at least one context, throw.
+         */
+        bool contextFound = false;
         if (!context.empty()) {
             handleEventInContext(type, state, path, context);
-        }
-        else {
-            throw ZooKeeperException("Tried to handle non-session event "
-                                     "without context", 
-                                     m_state == AS_CONNECTED);
+            contextFound = true;
         }
         if (!context2.empty()) {
             handleEventInContext(type, state, path, context2);
+            contextFound = true;
+        }
+        if (!contextFound) {
+            throw ZooKeeperException("Tried to handle non-session event "
+                                     "without context", 
+                                     m_state == AS_CONNECTED);
         }
     }
     else {
@@ -547,6 +561,16 @@ ZooKeeperAdapter::enqueueEvent(int32_t type,
 {
     TRACE(LOG, "enqueueEvents");
 
+    /*
+     * Drop the event if dispatch is not allowed.
+     */
+    if (m_eventDispatchAllowed == false) {
+        return;
+    }
+
+    /*
+     * Pass the event to the handler.
+     */
     m_events.put(ZKWatcherEvent(type, state, path));
 }
 
@@ -554,6 +578,12 @@ void
 ZooKeeperAdapter::processEvents()
 {
     TRACE(LOG, "processEvents");
+
+    LOG_INFO(LOG,
+             "Hello from ZooKeeperAdapter::processEvents: this = 0x%x, "
+             "tid = %d",
+             (int32_t) this,
+             (uint32_t) pthread_self());
 
     while (!m_terminating) {
         bool timedOut = false;
@@ -589,12 +619,24 @@ ZooKeeperAdapter::processEvents()
             m_userEvents.put(source);
         }
     }
+
+    LOG_INFO(LOG,
+             "End ZooKeeperAdapter::processEvents(): this = 0x%x, "
+             "tid = %d",
+             (int32_t) this,
+             (uint32_t) pthread_self());
 }
 
 void
 ZooKeeperAdapter::processUserEvents()
 {
     TRACE(LOG, "processUserEvents");
+
+    LOG_WARN(LOG,
+             "Hello from ZooKeeperAdapter::processUserEvents: this = 0x%x, "
+             "tid = %d",
+             (int32_t) this,
+             (uint32_t) pthread_self());
 
     while (!m_terminating) {
         bool timedOut = false;
@@ -622,6 +664,12 @@ ZooKeeperAdapter::processUserEvents()
             }
         }
     }
+
+    LOG_INFO(LOG,
+             "End ZooKeeperAdapter::processUserEvents(): this = 0x%x, "
+             "tid = %d",
+             (int32_t) this,
+             (uint32_t) pthread_self());
 }
 
 void 

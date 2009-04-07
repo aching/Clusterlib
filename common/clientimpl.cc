@@ -36,10 +36,11 @@ ClientImpl::consumeClusterEvents()
     TRACE(CL_LOG, "consumeClusterEvents");
 
     ClusterEventPayload *cepp;
-    
+
     LOG_INFO(CL_LOG,
-             "Hello from consumeClusterEvents, this: 0x%x, thread: 0x%x",
-             (int) this, (int) pthread_self());
+             "Hello from ClientImpl::consumeClusterEvents, this: 0x%x, thread: 0x%x",
+             (int32_t) this,
+             (uint32_t) pthread_self());
 
     for (;;) {
 	cepp = m_queue.take();
@@ -49,7 +50,7 @@ ClientImpl::consumeClusterEvents()
          * the Factory to terminate.
          */
 	if (cepp == NULL) {
-	    return;
+            break;
 	}
 	
         /*
@@ -62,6 +63,11 @@ ClientImpl::consumeClusterEvents()
          */
 	delete cepp;
     }
+
+    LOG_INFO(CL_LOG,
+             "End ClientImpl::consumeClusterEvents(): this = 0x%x, tid = %d",
+             (int32_t) this,
+             (uint32_t) pthread_self());
 }
 
 /*
