@@ -48,7 +48,8 @@ int32_t TestParams::rootParseArgs(int argc, char **argv)
     int32_t err = -1;
     int32_t ret = 0;
     const char *optstring = ":ht:z:";
-    
+    bool found = false;
+
     /* Parse all standard command line arguments */
     while (1) {
         err = getopt_long(argc, argv, optstring, longopts, &option_index);
@@ -60,15 +61,33 @@ int32_t TestParams::rootParseArgs(int argc, char **argv)
                 printUsage(argv[0]);
                 return -1;
             case 't':
-                m_testFixtureName = optarg;
+                /* Get the top level suite from the registry. */
+                CppUnit::Test *suite = 
+                    CppUnit::TestFactoryRegistry::getRegistry().makeTest();
+                found = false;
+                for (int32_t i = 0; i < suite->getChildTestCount(); i++) {
+                    if (suite->getChildTestAt(i)->getName().compare(
+                            optarg) == 0) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (found == true) {
+                    m_testFixtureName = optarg;
+                }
+                else {
+                    cout << optarg << " is an unknown test fixture" << endl;
+                    ret = -1;
+                }
                 break;
             case 'z':
                 m_zkServerPortList = optarg;
                 break;
             default:
                 if (getMyId() == 0) {
-                    fprintf(stderr, "Option -%c is invalid\n",
-                            (char) optopt);
+                    cout << "Option -" 
+                         << static_cast<char>(optopt) 
+                         << " is invalid" << endl;
                 }
                 ret = -1;
         }

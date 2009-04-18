@@ -30,12 +30,18 @@ NodeImpl::initializeCachedRepresentation()
      * Ensure that the cache contains all the information
      * about this node, and that all watches are established.
      */
-    m_connected = getDelegate()->isNodeConnected(
+    m_connected = getOps()->isNodeConnected(
         getKey());
-    m_clientState = getDelegate()->getNodeClientState(
+    m_clientState = getOps()->getNodeClientState(
         getKey());
-    m_masterSetState = getDelegate()->getNodeMasterSetState(
+    m_masterSetState = getOps()->getNodeMasterSetState(
         getKey());
+}
+
+void
+NodeImpl::removeRepositoryEntries()
+{
+    getOps()->removeNode(this);
 }
 
 };	/* End of 'namespace clusterlib' */

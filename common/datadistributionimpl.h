@@ -186,7 +186,12 @@ class DataDistributionImpl
     /**
      * Return the number of shards in this data distribution.
      */
-    virtual uint32_t getShardCount() { return m_shards.size(); }
+    virtual uint32_t getShardCount() 
+    {
+        throwIfRemoved();
+
+        return m_shards.size(); 
+    }
 
     /**
      * Is the distribution covered (at the time of checking)?
@@ -196,13 +201,24 @@ class DataDistributionImpl
     /**
      * Get/set the hash function to use.
      */
-    virtual HashFunctionId getHashFunctionIndex() { return m_hashFnIndex; }
+    virtual HashFunctionId getHashFunctionIndex() 
+    {
+        throwIfRemoved();
+
+        return m_hashFnIndex; 
+    }
+
     virtual void setHashFunctionIndex(HashFunctionId idx) 
     {
+        throwIfRemoved();
+
         m_hashFnIndex = idx; 
     }
+
     virtual void setHashFunction(HashFunction *fn)
     {
+        throwIfRemoved();
+
         if (fn == NULL) {
             m_hashFnIndex = DD_HF_JENKINS;
             mp_hashFnPtr = s_hashFunctions[DD_HF_JENKINS];
@@ -265,10 +281,10 @@ class DataDistributionImpl
     /**
      * Constructor used by Factory.
      */
-    DataDistributionImpl(GroupImpl *parentGroup, 
-                         const std::string &name,
+    DataDistributionImpl(FactoryOps *fp,
                          const std::string &key,
-                         FactoryOps *f,
+                         const std::string &name,
+                         GroupImpl *parentGroup,
                          HashFunction *fn = NULL);
 
     /**
@@ -286,10 +302,9 @@ class DataDistributionImpl
 	}
     }
 
-    /**
-     * Initialize the cached representation of the distribution.
-     */
-    void initializeCachedRepresentation();
+    virtual void initializeCachedRepresentation();
+
+    virtual void removeRepositoryEntries();
 
     /**
      * Retrieve the current version number of the
@@ -297,11 +312,15 @@ class DataDistributionImpl
      */
     int32_t getShardsVersion() 
     {
+        throwIfRemoved();
+
 	return m_shardsVersion; 
     }
 
     void setShardsVersion(int32_t version) 
     { 
+        throwIfRemoved();
+
 	m_shardsVersion = version; 
     }
 
@@ -311,11 +330,15 @@ class DataDistributionImpl
      */
     int32_t getManualOverridesVersion() 
     {
+        throwIfRemoved();
+
 	return m_manualOverridesVersion; 
     }
 
     void setManualOverridesVersion(int32_t version) 
     {
+        throwIfRemoved();
+
 	m_manualOverridesVersion = version; 
     }
 
@@ -335,8 +358,9 @@ class DataDistributionImpl
     DataDistributionImpl()
         : NotifyableImpl(NULL, "", "", NULL)
     {
-        throw ClusterException("Someone called the DataDistributionImpl "
-                               "default constructor!");
+        throw InvalidMethodException(
+            "Someone called the DataDistributionImpl "
+            "default constructor!");
     }
 
   private:

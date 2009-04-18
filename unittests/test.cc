@@ -6,7 +6,7 @@
 
 using namespace std;
 
-const string debugExt = ".out";
+const string debugExt = ".unittestout";
 
 /* Global test parameters to be used in all tests */
 TestParams globalTestParams;
@@ -27,6 +27,9 @@ int main(int argc, char* argv[]) {
     /* Redirect all stderr log4cxxx messaging to the same files */
     stringstream fileStringStream;
     fileStringStream << MPI::COMM_WORLD.Get_rank();
+    fileStringStream << ".0x";
+    fileStringStream << hex;
+    fileStringStream << getpid();
     fileStringStream << debugExt;
     remove(fileStringStream.str().c_str());
     FILE *stderrFile = freopen(fileStringStream.str().c_str(), "a", stderr);
@@ -70,6 +73,8 @@ int main(int argc, char* argv[]) {
         }
         delete [] successArr;
         successArr = NULL;
+
+        
 
         cout << (wasSuccessful ? "SUCCESS" : "FAILURE")
              << " - See details in files (0-"

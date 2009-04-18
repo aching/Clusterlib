@@ -12,6 +12,9 @@
 
 #include "clusterlibinternal.h"
 
+#include <sys/types.h>
+#include <linux/unistd.h>
+
 #define LOG_LEVEL LOG_WARN
 #define MODULE_NAME "ClusterLib"
 
@@ -39,36 +42,34 @@ FactoryOps::FactoryOps(const string &registry)
       m_zkEventAdapter(m_zk),
       m_shutdown(false),
       m_connected(false),
-      m_changeHandlers(this),
+      m_cachedObjectChangeHandlers(this),
+      m_internalChangeHandlers(this),
       m_distributedLocks(this)
 {
     TRACE(CL_LOG, "FactoryOps");
 
     /*
-     * Clear all the collections (lists, maps)
-     * so that they start out empty.
-     */
-    m_dists.clear();
-    m_apps.clear();
-    m_groups.clear();
-    m_nodes.clear();
-    m_clients.clear();
-
-    /*
-     * Clear the multi-map of leadership election watches.
-     */
-    m_leadershipWatches.clear();
-
-    /*
      * Link up the event sources.
      */
-    m_timerEventAdapter.addListener(&m_eventAdapter);
-    m_zkEventAdapter.addListener(&m_eventAdapter);
+    m_timerEventAdapter.addListener(&m_externalEventAdapter);
+    m_zkEventAdapter.addListener(&m_internalEventAdapter);
+    m_zkEventAdapter.addListener(&m_externalEventAdapter);
 
     /*
-     * Create the event dispatch thread.
-     */
-    m_eventThread.Create(*this, &FactoryOps::dispatchEvents);
+     * Create the internal clusterlib event dispath thread (processes
+     * only events that internal and not to be propagaged to
+     * clusterlib clients) */
+    m_internalEventThread.Create(
+        *this, 
+        &FactoryOps::dispatchInternalEvents);
+
+    /*
+     * Create the clusterlib event dispatch thread (processes only
+     * events that are visible to clusterlib clients)
+    */
+    m_externalEventThread.Create(
+        *this, 
+        &FactoryOps::dispatchExternalEvents);
 
     /*
      * Create the timer handler thread.
@@ -80,18 +81,18 @@ FactoryOps::FactoryOps(const string &registry)
      */
     try {
         m_zk.reconnect();
-        LOG_WARN(CL_LOG, 
+        LOG_INFO(CL_LOG, 
                  "Waiting for connect event from ZooKeeper");
         if (m_eventSyncLock.lockedWait(3000) == false) {
-	    throw ClusterException(
+	    throw RepositoryConnectionFailureException(
 		"Did not receive connect event in time, aborting");
         }
-        LOG_WARN(CL_LOG, 
+        LOG_INFO(CL_LOG, 
                  "After wait, m_connected == %d",
                  static_cast<int>(m_connected));
     } catch (zk::ZooKeeperException &e) {
         m_zk.disconnect();
-        throw ClusterException(e.what());
+        throw RepositoryInternalsFailureException(e.what());
     }
 
     /*
@@ -107,9 +108,20 @@ FactoryOps::~FactoryOps()
 {
     TRACE(CL_LOG, "~FactoryOps");
 
+    /*
+     * Zookeeper adapter will no longer process any events
+     */
     stopZKEventDispatch();
 
+    /*
+     * Although ZookeeperAdapter is no longer processing Zookeeper
+     * events, manually inject a final event in the Zookeeper event
+     * queue for clients to know when to stop.
+     */
     injectEndEvent();
+    /*
+     * Allow our threads to shut down.
+     */
     waitForThreads();
 
     removeAllClients();
@@ -118,6 +130,7 @@ FactoryOps::~FactoryOps()
     removeAllApplications();
     removeAllGroups();
     removeAllNodes();
+    removeAllRemovedNotifyables();
     delete mp_root;
 
     try {
@@ -151,7 +164,7 @@ FactoryOps::injectEndEvent()
 
     Locker l(getEndEventLock());
 
-    if (m_endEventDispatched) {
+    if (m_endEventDispatched) {        
         return;
     }
     m_zk.injectEndEvent();
@@ -165,8 +178,9 @@ FactoryOps::waitForThreads()
 {
     TRACE(CL_LOG, "waitForThreads");
 
-    m_eventThread.Join();
     m_timerHandlerThread.Join();
+    m_internalEventThread.Join();
+    m_externalEventThread.Join();
 }
 
 /*
@@ -192,7 +206,7 @@ FactoryOps::createClient()
         ClientImpl *cp = new ClientImpl(this);
         addClient(cp);
         return cp;
-    } catch (ClusterException &e) {
+    } catch (Exception &e) {
 	LOG_WARN(CL_LOG, 
                  "Couldn't create client because: %s", 
                  e.what());
@@ -230,7 +244,7 @@ FactoryOps::createServer(Group *group,
                                         flags);
         addClient(sp);
         return sp;
-    } catch (ClusterException &e) {
+    } catch (Exception &e) {
 	LOG_WARN(CL_LOG, 
                  "Couldn't create server with "
                  "group %s, node %s because: %s", 
@@ -271,8 +285,8 @@ FactoryOps::synchronize()
         Locker l1(getSyncLock());
         if ((m_syncId < m_syncIdCompleted) ||
             (m_syncId == numeric_limits<int64_t>::max())) {
-            throw ClusterException("synchronize: sync invariant not "
-                                   "maintained");
+            throw InconsistentInternalStateException(
+                "synchronize: sync invariant not maintained");
         }
         
         /*
@@ -291,7 +305,8 @@ FactoryOps::synchronize()
     key.append(ClusterlibStrings::CLUSTERLIB);
     SAFE_CALL_ZK(m_zk.sync(key, 
                            &m_zkEventAdapter, 
-                           getChangeHandlers()->getSynchronizeChangeHandler()),
+                           getCachedObjectChangeHandlers()
+                           ->getSynchronizeChangeHandler()),
                  "Could not synchronize with the underlying store %s: %s",
                  "/",
                  true,
@@ -371,7 +386,7 @@ FactoryOps::removeAllDataDistributions()
     TRACE(CL_LOG, "removeAllDataDistributions");
 
     Locker l(getDataDistributionsLock());
-    DataDistributionImplMap::iterator distIt;
+    NotifyableImplMap::iterator distIt;
 
     for (distIt = m_dists.begin();
          distIt != m_dists.end();
@@ -387,15 +402,15 @@ FactoryOps::removeAllProperties()
     TRACE(CL_LOG, "removeAllProperties");
 
     Locker l(getPropertiesLock());
-    PropertiesImplMap::iterator pIt;
+    NotifyableImplMap::iterator pIt;
 
-    for (pIt = m_properties.begin();
-         pIt != m_properties.end();
+    for (pIt = m_props.begin();
+         pIt != m_props.end();
          pIt++)
     {
 	delete pIt->second;
     }
-    m_properties.clear();
+    m_props.clear();
 }
 void
 FactoryOps::removeAllApplications()
@@ -403,7 +418,7 @@ FactoryOps::removeAllApplications()
     TRACE(CL_LOG, "removeAllApplications");
 
     Locker l(getApplicationsLock());
-    ApplicationImplMap::iterator aIt;
+    NotifyableImplMap::iterator aIt;
 
     for (aIt = m_apps.begin();
          aIt != m_apps.end();
@@ -419,7 +434,7 @@ FactoryOps::removeAllGroups()
     TRACE(CL_LOG, "removeAllGroups");
 
     Locker l(getGroupsLock());
-    GroupImplMap::iterator gIt;
+    NotifyableImplMap::iterator gIt;
 
     for (gIt = m_groups.begin();
          gIt != m_groups.end();
@@ -435,7 +450,7 @@ FactoryOps::removeAllNodes()
     TRACE(CL_LOG, "removeAllNodes");
 
     Locker l(getNodesLock());
-    NodeImplMap::iterator nIt;
+    NotifyableImplMap::iterator nIt;
 
     for (nIt = m_nodes.begin();
          nIt != m_nodes.end();
@@ -445,27 +460,40 @@ FactoryOps::removeAllNodes()
     }
     m_nodes.clear();
 }
+void
+FactoryOps::removeAllRemovedNotifyables()
+{
+    TRACE(CL_LOG, "removeAllRemovedNotifyables");
+
+    Locker l(getRemovedNotifyablesLock());
+    NotifyableList::iterator ntpIt;
+
+    for (ntpIt = m_removedNotifyables.begin();
+         ntpIt != m_removedNotifyables.end();
+         ntpIt++)
+    {
+	delete *ntpIt;
+    }
+    m_removedNotifyables.clear();
+}
 
 /*
  * Dispatch events to all registered clients.
  */
 void
-FactoryOps::dispatchEvents()
+FactoryOps::dispatchExternalEvents(void *param)
 {
-    TRACE(CL_LOG, "dispatchEvents");
+    TRACE(CL_LOG, "dispatchExternalEvents");
 
     uint32_t eventSeqId = 0;
-
     LOG_DEBUG(CL_LOG,
-              "Hello from FactoryOps::dispatchEvents(), this: 0x%x, thread: %d",
+              "Starting thread with FactoryOps::dispatchExternalEvents(), "
+              "this: 0x%x, thread: 0x%x",
               (int32_t) this,
               (uint32_t) pthread_self());
 
     try {
-        for (m_shutdown = false;
-             m_shutdown == false;
-             ) 
-        {
+        while (m_shutdown == false) { 
             LOG_INFO(CL_LOG,
                      "[%d]: Asking for next event",
                      eventSeqId);
@@ -475,14 +503,21 @@ FactoryOps::dispatchEvents()
              * Get the next event and send it off to the
              * correct handler.
              */
-            GenericEvent ge(m_eventAdapter.getNextEvent());
+            GenericEvent ge(m_externalEventAdapter.getNextEvent());
+
+            /*
+             * Only process external events.
+             */
+            if (isInternalEvent(&ge) == true) {
+                continue;
+            }
 
             LOG_DEBUG(CL_LOG,
-                      "[%d, 0x%x] dispatchEvents() received event of "
-                      "type %d",
+                      "[%d, 0x%x] dispatchExternalEvents() received "
+                      "generic event of type: %s",
                       eventSeqId,
                       (unsigned int) this,
-                      (unsigned int) ge.getType());
+                      GenericEvent::getTypeString(ge.getType()).c_str());
             
             switch (ge.getType()) {
                 default:
@@ -519,8 +554,9 @@ FactoryOps::dispatchEvents()
                     
                     LOG_DEBUG(CL_LOG,
                               "Processing ZK event "
-                              "(type: %d, state: %d, context: 0x%x, path: %s)",
-                              zp->getType(),
+                              "(type: %s, state: %d, context: 0x%x, path: %s)",
+                              zk::ZooKeeperAdapter::getEventString(
+                                  zp->getType()).c_str(),
                               zp->getState(),
                               (unsigned int) zp->getContext(),
                               zp->getPath().c_str());
@@ -547,20 +583,21 @@ FactoryOps::dispatchEvents()
         dispatchEndEvent();
 
         LOG_DEBUG(CL_LOG,
-                  "End FactoryOps::dispatchEvents(): this = 0x%x, tid = %d",
+                  "Ending thread with FactoryOps::dispatchExternalEvents(): "
+                  "this: 0x%x, thread: 0x%x",
                   (int32_t) this,
                   (uint32_t) pthread_self());
     } catch (zk::ZooKeeperException &zke) {
         LOG_ERROR(CL_LOG, "ZooKeeperException: %s", zke.what());
         dispatchEndEvent();
-        throw ClusterException(zke.what());
-    } catch (ClusterException &ce) {
+        throw RepositoryInternalsFailureException(zke.what());
+    } catch (Exception &e) {
         dispatchEndEvent();
-        throw ClusterException(ce.what());
+        throw Exception(e.what());
     } catch (std::exception &stde) {
         LOG_ERROR(CL_LOG, "Unknown exception: %s", stde.what());
         dispatchEndEvent();
-        throw ClusterException(stde.what());
+        throw Exception(stde.what());
     }
 }
 
@@ -590,7 +627,7 @@ FactoryOps::dispatchZKEvent(zk::ZKWatcherEvent *zp)
     TRACE(CL_LOG, "dispatchZKEvent");
     
     if (!zp) {
-	throw ClusterException("Unexpected NULL ZKWatcherEvent");
+	throw InvalidArgumentsException("Unexpected NULL ZKWatcherEvent");
     }
 
     CachedObjectEventHandler *fehp =
@@ -609,8 +646,8 @@ FactoryOps::dispatchZKEvent(zk::ZKWatcherEvent *zp)
                  zp->getType(),
                  zp->getState(),
                  zp->getPath().c_str());
-        throw ClusterException(string("Unexpected NULL event context: ") +
-                               buf);
+        throw InconsistentInternalStateException(
+            string("Unexpected NULL event context: ") + buf);
     }
 
     LOG_DEBUG(CL_LOG, "Dispatching ZK event!");
@@ -619,6 +656,9 @@ FactoryOps::dispatchZKEvent(zk::ZKWatcherEvent *zp)
      * Update the cache representation of the clusterlib
      * repository object and get back a prototypical
      * cluster event payload to send to clients.
+     *
+     * If the event is ZOO_DELETED_EVENT, then the Notifyable * should
+     * be disregarded.
      *
      * If NULL is returned, the event is not propagated
      * to clients.
@@ -761,20 +801,144 @@ FactoryOps::dispatchEndEvent()
 }
 
 /*
+ * Dispatch internal events to internal handler functions
+ */
+void
+FactoryOps::dispatchInternalEvents(void *eventAdapter)
+{
+    TRACE(CL_LOG, "dispatchInternalEvents");
+
+    uint32_t eventSeqId = 0;
+    LOG_DEBUG(CL_LOG,
+              "Starting thread with FactoryOps::dispatchInternalEvents(), "
+              "this: 0x%x, thread: 0x%x",
+              (int32_t) this,
+              (uint32_t) pthread_self());
+
+    bool timedOut = false;
+    try {
+        while (m_shutdown == false) {
+            if (timedOut == false) {
+                LOG_INFO(CL_LOG,
+                         "[%d]: Asking for next event",
+                         eventSeqId);
+                eventSeqId++;
+            }
+
+            /*
+             * Get the next event and send it off to the correct
+             * handler.  Set a wait of 100 ms to check for possible
+             * shutdown.
+             */
+            timedOut = true;
+            GenericEvent ge(m_internalEventAdapter.getNextEvent(100, 
+                                                                &timedOut));
+            if (timedOut) {
+                continue;
+            }
+
+            /*
+             * Only process internal events.
+             */
+            if (isInternalEvent(&ge) == false) {
+                continue;
+            }
+
+            LOG_DEBUG(CL_LOG,
+                      "[%d, 0x%x] dispatchInternalEvents() received "
+                      "generic event of type: %s",
+                      eventSeqId,
+                      (unsigned int) this,
+                      GenericEvent::getTypeString(ge.getType()).c_str());
+            
+            zk::ZKWatcherEvent *zp = 
+                reinterpret_cast<zk::ZKWatcherEvent *>(ge.getEvent());
+            if (zp == NULL) {
+                throw InvalidArgumentsException(
+                    "dispatchInternalEvents: Not a ZKWatcherEvent (NULL)");
+            }
+
+            InternalEventHandler *iehp =
+                reinterpret_cast<InternalEventHandler *>(zp->getContext());
+            if (iehp == NULL) {
+                throw InconsistentInternalStateException(
+                    "dispatchInternalEvents: Got NULL context");
+            }
+            
+            iehp->deliver(zp->getType(), zp->getPath());
+        }
+
+        LOG_DEBUG(CL_LOG,
+                  "Ending thread with FactoryOps::dispatchInternalEvents(): "
+                  "this: 0x%x, thread: 0x%x",
+                  (int32_t) this,
+                  (uint32_t) pthread_self());
+    } catch (zk::ZooKeeperException &zke) {
+        LOG_ERROR(CL_LOG, "ZooKeeperException: %s", zke.what());
+        throw RepositoryInternalsFailureException(zke.what());
+    } catch (Exception &e) {
+        throw Exception(e.what());
+    } catch (std::exception &stde) {
+        LOG_ERROR(CL_LOG, "Unknown exception: %s", stde.what());
+        throw Exception(stde.what());
+    }
+}
+
+bool 
+FactoryOps::isInternalEvent(GenericEvent *ge)
+{
+    TRACE(CL_LOG, "isInternalEvent");
+
+    if (ge == NULL) {
+        throw InvalidArgumentsException("isInternalEvent: NULL ge");
+    }
+
+    /*
+     * For now, the only internal event is any lock node getting deleted.
+     */
+    if (ge->getType() != ZKEVENT) {
+        return false;
+    }
+
+    zk::ZKWatcherEvent *zp = 
+        reinterpret_cast<zk::ZKWatcherEvent *>(ge->getEvent());
+    if (zp == NULL) {
+        throw InvalidArgumentsException(
+            "isInternalEvent: Not a ZKWatcherEvent (NULL)");
+    }
+
+    if (zp->getType() != ZOO_DELETED_EVENT) {
+        return false;
+    }
+
+    string lockNodePartialKey;
+    lockNodePartialKey.append(ClusterlibStrings::KEYSEPARATOR);
+    lockNodePartialKey.append(ClusterlibStrings::LOCK);
+    lockNodePartialKey.append(ClusterlibStrings::KEYSEPARATOR);
+    size_t lockNodeIndex = zp->getPath().find(lockNodePartialKey);
+    if (lockNodeIndex == string::npos) {
+        return false;
+    }
+
+    return true;
+}
+
+/*
  * Consume timer events. Run the timer event handlers.
  * This runs in a special thread owned by the factory.
  */
 void
-FactoryOps::consumeTimerEvents()
+FactoryOps::consumeTimerEvents(void *param)
 {
     TRACE(CL_LOG, "consumeTimerEvents");
 
     TimerEventPayload *tepp;
 
     LOG_DEBUG(CL_LOG,
-              "Hello from FactoryOps::consumeTimerEvents, this: 0x%x, thread: %d",
+              "Starting thread with FactoryOps::consumeTimerEvents(), "
+              "this: 0x%x, thread: 0x%x",
               (int32_t) this,
-              (uint32_t) pthread_self());
+              (uint32_t) ::pthread_self());
 
     try {
         for (;;) {
@@ -818,17 +982,18 @@ FactoryOps::consumeTimerEvents()
         }
 
         LOG_DEBUG(CL_LOG,
-                  "End FactoryOps::consumeTimerEvents(): this: 0x%x, thread: %d",
+                  "Ending thread with FactoryOps::consumeTimerEvents(): "
+                  "this: 0x%x, thread: 0x%x",
                   (int32_t) this,
                   (uint32_t) pthread_self());
     } catch (zk::ZooKeeperException &zke) {
         LOG_ERROR(CL_LOG, "ZooKeeperException: %s", zke.what());
-        throw ClusterException(zke.what());
-    } catch (ClusterException &ce) {
-        throw ClusterException(ce.what());
+        throw RepositoryInternalsFailureException(zke.what());
+    } catch (Exception &e) {
+        throw Exception(e.what());
     } catch (std::exception &stde) {
         LOG_ERROR(CL_LOG, "Unknown exception: %s", stde.what());
-        throw ClusterException(stde.what());
+        throw Exception(stde.what());
     }        
 }
 
@@ -844,37 +1009,26 @@ FactoryOps::getRoot()
     if (mp_root != NULL) {
         return mp_root;
     }
-
-    string key = NotifyableKeyManipulator::createRootKey();
-    bool exists = false;
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(
-                      key, 
-                      &m_zkEventAdapter,
-                      getChangeHandlers()->getNotifyableExistsHandler())),
-                 "Could not determine whether key %s exists: %s",
-                 key.c_str(),
-                 false,
-                 true);
-    if (!exists) {
-        string applications = 
-            key + 
-            ClusterlibStrings::KEYSEPARATOR + 
-            ClusterlibStrings::APPLICATIONS;
-
-        SAFE_CALL_ZK(m_zk.createNode(applications, "", 0),
-                     "Could not create key %s: %s",
-                     applications.c_str(),
-                     true,
-                     true);
-        
-        SAFE_CALL_ZK(m_zk.setNodeData(key, "ready", 0),
-                     "Could not complete ready protocol for %s: %s",
-                     key.c_str(),
-                     true,
-                     true);
-    }
     
-    mp_root = new RootImpl("root", key, this);
+    string key = NotifyableKeyManipulator::createRootKey();
+    string applications = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::APPLICATIONS;
+    
+    SAFE_CALL_ZK(m_zk.createNode(key, "", 0),
+                 "Could not create key %s: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(applications, "", 0),
+                 "Could not create key %s: %s",
+                 applications.c_str(),
+                 true,
+                 true);
+    
+    Locker l(getRootLock());
+    mp_root = new RootImpl(this, key, "root");
     return mp_root;
 }
 
@@ -894,6 +1048,9 @@ FactoryOps::getApplication(const string &appName, bool create)
         LOG_WARN(CL_LOG,
                  "getApplication: illegal application name %s",
                  appName.c_str());
+        if (create == true) {
+            throw InvalidArgumentsException("getApplication: illegal name");
+        }
         return NULL;
     }
 
@@ -901,20 +1058,31 @@ FactoryOps::getApplication(const string &appName, bool create)
 
     {
         Locker l(getApplicationsLock());
-        ApplicationImplMap::const_iterator appIt = m_apps.find(key);
+        NotifyableImplMap::const_iterator appIt = m_apps.find(key);
 
         if (appIt != m_apps.end()) {
-            return appIt->second;
+            return dynamic_cast<ApplicationImpl *>(appIt->second);
         }
     }
 
+    /*
+     * Use a distributed lock on the parent to prevent another thread
+     * from interfering with creation or loading.
+     */
+    getOps()->getDistrbutedLocks()->acquire(getRoot());
+
     ApplicationImpl *app = loadApplication(appName, key);
     if (app != NULL) {
+        getOps()->getDistrbutedLocks()->release(getRoot());
         return app;
     }
     if (create == true) {
-        return createApplication(appName, key);
+        app = createApplication(appName, key);
+        getOps()->getDistrbutedLocks()->release(getRoot());
+        return app;
     }
+
+    getOps()->getDistrbutedLocks()->release(getRoot());
 
     LOG_WARN(CL_LOG,
              "getApplication: application %s not found nor created",
@@ -937,6 +1105,11 @@ FactoryOps::getDataDistribution(const string &distName,
         LOG_WARN(CL_LOG,
                  "getDataDistribution: Illegal data distribution name %s",
                  distName.c_str());
+
+        if (create == true) {
+            throw InvalidArgumentsException(
+                "getDataDistribution: illegal name");
+        }
         return NULL;
     }
 
@@ -950,22 +1123,34 @@ FactoryOps::getDataDistribution(const string &distName,
 
     {
         Locker l(getDataDistributionsLock());
-        DataDistributionImplMap::const_iterator distIt = 
+        NotifyableImplMap::const_iterator distIt = 
             m_dists.find(key);
 
         if (distIt != m_dists.end()) {
-            return distIt->second;
+            return dynamic_cast<DataDistributionImpl *>(distIt->second);
         }
     }
-    DataDistributionImpl *distp = loadDataDistribution(distName, 
-                                                       key, 
-                                                       parentGroup);
-    if (distp != NULL) {
-        return distp;
+
+    /*
+     * Use a distributed lock on the parent to prevent another thread
+     * from interfering with creation or loading.
+     */
+    getOps()->getDistrbutedLocks()->acquire(parentGroup);
+
+    DataDistributionImpl *dist = loadDataDistribution(distName, 
+                                                      key, 
+                                                      parentGroup);
+    if (dist != NULL) {
+        getOps()->getDistrbutedLocks()->release(parentGroup);
+        return dist;
     }
     if (create == true) {
-        return createDataDistribution(distName, key, "", "", parentGroup);
+        dist = createDataDistribution(distName, key, "", "", parentGroup); 
+        getOps()->getDistrbutedLocks()->release(parentGroup);
+        return dist;
     }
+
+    getOps()->getDistrbutedLocks()->release(parentGroup);
 
     LOG_WARN(CL_LOG,
              "getDataDistribution: data distribution %s not found "
@@ -982,8 +1167,8 @@ FactoryOps::getProperties(Notifyable *parent,
     TRACE(CL_LOG, "getProperties");
 
     if (parent == NULL) {
-        LOG_WARN(CL_LOG, "getProperties: NULL parent");                 
-        return NULL;
+        LOG_ERROR(CL_LOG, "getProperties: NULL parent");                 
+        throw InvalidArgumentsException("getProperties: NULL parent");
     }
 
     string key = 
@@ -991,20 +1176,31 @@ FactoryOps::getProperties(Notifyable *parent,
 
     {
         Locker l(getPropertiesLock());
-        PropertiesImplMap::const_iterator propIt = m_properties.find(key);
+        NotifyableImplMap::const_iterator propIt = m_props.find(key);
 
-        if (propIt != m_properties.end()) {
-            return propIt->second;
+        if (propIt != m_props.end()) {
+            return dynamic_cast<PropertiesImpl *>(propIt->second);
         }
     }
 
+    /*
+     * Use a distributed lock on the parent to prevent another thread
+     * from interfering with creation or loading.
+     */
+    getOps()->getDistrbutedLocks()->acquire(parent);
+
     PropertiesImpl *prop = loadProperties(key, parent);
     if (prop != NULL) {
+        getOps()->getDistrbutedLocks()->release(parent);
         return prop;
     }
     if (create == true) {
-        return createProperties(key, parent);
+        prop = createProperties(key, parent);
+        getOps()->getDistrbutedLocks()->release(parent);
+        return prop;
     }
+
+    getOps()->getDistrbutedLocks()->release(parent);
 
     LOG_WARN(CL_LOG,
              "getProperties: could not find nor create "
@@ -1028,6 +1224,9 @@ FactoryOps::getGroup(const string &groupName,
         LOG_WARN(CL_LOG,
                  "getGroup: Illegal group name %s",
                  groupName.c_str());
+        if (create == true) {
+            throw InvalidArgumentsException("getGroup: illegal name");
+        }
         return NULL;
     }
 
@@ -1041,20 +1240,31 @@ FactoryOps::getGroup(const string &groupName,
 
     {
         Locker l(getGroupsLock());
-        GroupImplMap::const_iterator groupIt = m_groups.find(key);
+        NotifyableImplMap::const_iterator groupIt = m_groups.find(key);
 
         if (groupIt != m_groups.end()) {
-            return groupIt->second;
+            return dynamic_cast<GroupImpl *>(groupIt->second);
         }
     }
 
+    /*
+     * Use a distributed lock on the parent to prevent another thread
+     * from interfering with creation or loading.
+     */
+    getOps()->getDistrbutedLocks()->acquire(parentGroup);
+
     GroupImpl *group = loadGroup(groupName, key, parentGroup);
     if (group != NULL) {
+        getOps()->getDistrbutedLocks()->release(parentGroup);
         return group;
     }
     if (create == true) {
-        return createGroup(groupName, key, parentGroup);
+        group = createGroup(groupName, key, parentGroup);
+        getOps()->getDistrbutedLocks()->release(parentGroup);
+        return group;
     }
+
+    getOps()->getDistrbutedLocks()->release(parentGroup);
 
     LOG_WARN(CL_LOG,
              "getGroup: group %s not found nor created",
@@ -1078,6 +1288,9 @@ FactoryOps::getNode(const string &nodeName,
         LOG_WARN(CL_LOG,
                  "getNode: Illegal node name %s",
                  nodeName.c_str());
+        if (create == true) {
+            throw InvalidArgumentsException("getNode: illegal name");
+        }
         return NULL;
     }
 
@@ -1092,20 +1305,36 @@ FactoryOps::getNode(const string &nodeName,
 
     {
         Locker l(getNodesLock());
-        NodeImplMap::const_iterator nodeIt = m_nodes.find(key);
+        NotifyableImplMap::const_iterator nodeIt = m_nodes.find(key);
 
         if (nodeIt != m_nodes.end()) {
-            return nodeIt->second;
+            LOG_DEBUG(CL_LOG, 
+                      "getNode: Found %s/%s in local cache.",
+                      parentGroup->getKey().c_str(),
+                      nodeName.c_str());
+                      
+            return dynamic_cast<NodeImpl *>(nodeIt->second);
         }
     }
 
-    NodeImpl *np = loadNode(nodeName, key, parentGroup);
-    if (np != NULL) {
-        return np;
+    /*
+     * Use a distributed lock on the parent to prevent another thread
+     * from interfering with creation or loading.
+     */
+    getOps()->getDistrbutedLocks()->acquire(parentGroup);
+
+    NodeImpl *node = loadNode(nodeName, key, parentGroup);
+    if (node != NULL) {
+        getOps()->getDistrbutedLocks()->release(parentGroup);
+        return node;
     }
     if (create == true) {
-        return createNode(nodeName, key, parentGroup);
+        node = createNode(nodeName, key, parentGroup);
+        getOps()->getDistrbutedLocks()->release(parentGroup);
+        return node;
     }
+
+    getOps()->getDistrbutedLocks()->release(parentGroup);
 
     LOG_WARN(CL_LOG,
              "getNode: node %s not found nor created",
@@ -1159,7 +1388,7 @@ FactoryOps::updateDataDistribution(const string &distKey,
     SAFE_CALL_ZK(m_zk.getNodeData(
                      snode,
                      &m_zkEventAdapter, 
-                     getChangeHandlers()->getShardsChangeHandler()),
+                     getCachedObjectChangeHandlers()->getShardsChangeHandler()),
                  "Reestablishing watch on value of %s failed: %s",
                  snode.c_str(),
                  true,
@@ -1190,7 +1419,7 @@ FactoryOps::updateDataDistribution(const string &distKey,
     SAFE_CALL_ZK(m_zk.getNodeData(
                      monode,
                      &m_zkEventAdapter,
-                     getChangeHandlers()->getManualOverridesChangeHandler()),
+                     getCachedObjectChangeHandlers()->getManualOverridesChangeHandler()),
                  "Reestablishing watch on value of %s failed: %s",
                  monode.c_str(),
                  false,
@@ -1208,33 +1437,38 @@ FactoryOps::updateProperties(const string &propsKey,
 {
     TRACE(CL_LOG, "updateProperties");
 
+    string kvnode =
+        propsKey +
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::KEYVAL;
+
     Stat stat;
     bool exists = false;
 
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(propsKey)),
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(kvnode)),
                  "Could not determine whether key %s exists: %s",
-                 propsKey.c_str(),
+                 kvnode.c_str(),
                  true,
                  true);
     if (!exists) {
-        SAFE_CALL_ZK(m_zk.createNode(propsKey, propsValue, 0),
+        SAFE_CALL_ZK(m_zk.createNode(kvnode, propsValue, 0),
                      "Creation of %s failed: %s",
-                     propsKey.c_str(),
+                     kvnode.c_str(),
                      true,
                      true);
     }
-    SAFE_CALL_ZK(m_zk.setNodeData(propsKey, 
+    SAFE_CALL_ZK(m_zk.setNodeData(kvnode,
                                   propsValue, 
                                   versionNumber, 
                                   &stat),
                  "Setting of %s failed: %s",
-                 propsKey.c_str(),
+                 kvnode.c_str(),
                  false,
                  true);
     SAFE_CALL_ZK(m_zk.getNodeData(
-                     propsKey,
+                     kvnode,
                      &m_zkEventAdapter,
-                     getChangeHandlers()->getPropertiesValueChangeHandler()),
+                     getCachedObjectChangeHandlers()->getPropertiesValueChangeHandler()),
                  "Reestablishing watch on value of %s failed: %s",
                  propsKey.c_str(),
                  false,
@@ -1279,7 +1513,7 @@ FactoryOps::updateNodeClientState(const string &nodeKey,
     SAFE_CALL_ZK(m_zk.getNodeData(
                      csKey,
                      &m_zkEventAdapter,
-                     getChangeHandlers()->getNodeClientStateChangeHandler()),
+                     getCachedObjectChangeHandlers()->getNodeClientStateChangeHandler()),
                  "Reestablishing watch on value of %s failed: %s",
                  csKey.c_str(),
                  false,
@@ -1360,7 +1594,7 @@ FactoryOps::updateNodeMasterSetState(const string &nodeKey,
                  true);
     SAFE_CALL_ZK(m_zk.getNodeData(msKey,
                                   &m_zkEventAdapter,
-                                  getChangeHandlers()->getNodeMasterSetStateChangeHandler()),
+                                  getCachedObjectChangeHandlers()->getNodeMasterSetStateChangeHandler()),
                  "Reestablishing watch on value of %s failed: %s",
                  msKey.c_str(),
                  false,
@@ -1781,15 +2015,16 @@ FactoryOps::loadApplication(const string &name,
     bool exists = false;
     Locker l(getApplicationsLock());
 
-    ApplicationImplMap::const_iterator appIt = m_apps.find(key);
+    NotifyableImplMap::const_iterator appIt = m_apps.find(key);
     if (appIt != m_apps.end()) {
-        return appIt->second;
+        return dynamic_cast<ApplicationImpl *>(appIt->second);
     }
 
     SAFE_CALL_ZK((exists = m_zk.nodeExists(
                       key, 
                       &m_zkEventAdapter,
-                      getChangeHandlers()->getNotifyableExistsHandler())),
+                      getCachedObjectChangeHandlers()->
+                      getNotifyableStateChangeHandler())),
                  "Could not determine whether key %s exists: %s",
                  key.c_str(),
                  false,
@@ -1797,12 +2032,16 @@ FactoryOps::loadApplication(const string &name,
     if (!exists) {
         return NULL;
     }
-    app = new ApplicationImpl(name, key, this, getRoot());
+    app = new ApplicationImpl(this, 
+                              key, 
+                              name, 
+                              getRoot());
+    app->initializeCachedRepresentation();
 
     /*
-     * Set up ready protocol.
+     * Set up handler for changes in Notifyable state.
      */
-    establishNotifyableReady(app);
+    establishNotifyableStateChange(app);
 
     m_apps[key] = app;
 
@@ -1816,7 +2055,7 @@ FactoryOps::loadDataDistribution(const string &distName,
 {
     TRACE(CL_LOG, "loadDataDistribution");
 
-    DataDistributionImpl *distp;
+    DataDistributionImpl *dist;
     bool exists = false;
 
     /*
@@ -1825,10 +2064,10 @@ FactoryOps::loadDataDistribution(const string &distName,
      */
     Locker l(getDataDistributionsLock());
 
-    DataDistributionImplMap::const_iterator distIt = 
+    NotifyableImplMap::const_iterator distIt = 
         m_dists.find(distKey);
     if (distIt != m_dists.end()) {
-        return distIt->second;
+        return dynamic_cast<DataDistributionImpl *>(distIt->second);
     }
 
     SAFE_CALL_ZK((exists = m_zk.nodeExists(distKey)),
@@ -1839,18 +2078,20 @@ FactoryOps::loadDataDistribution(const string &distName,
     if (!exists) {
         return NULL;
     }
-    distp = new DataDistributionImpl(parentGroup,
-                                     distName,
-                                     distKey,
-                                     this);
-    m_dists[distKey] = distp;
+    dist = new DataDistributionImpl(this,
+                                    distKey,
+                                    distName,
+                                    parentGroup);
+    dist->initializeCachedRepresentation();
 
-    /*
-     * Set up the 'ready' protocol.
+    /*                                                                         
+     * Set up handler for changes in Notifyable state.
      */
-    establishNotifyableReady(distp);
+    establishNotifyableStateChange(dist);
 
-    return distp;
+    m_dists[distKey] = dist;
+
+    return dist;
 }
 
 string
@@ -1867,7 +2108,7 @@ FactoryOps::loadShards(const string &key, int32_t &version)
     SAFE_CALL_ZK((res = m_zk.getNodeData(
                       snode,
                       &m_zkEventAdapter,
-                      getChangeHandlers()->getShardsChangeHandler(),
+                      getCachedObjectChangeHandlers()->getShardsChangeHandler(),
                       &stat)),
                  "Loading shards from %s failed: %s",
                  snode.c_str(),
@@ -1891,7 +2132,7 @@ FactoryOps::loadManualOverrides(const string &key, int32_t &version)
     SAFE_CALL_ZK((res = m_zk.getNodeData(
                       monode,
                       &m_zkEventAdapter,
-                      getChangeHandlers()->getManualOverridesChangeHandler(),
+                      getCachedObjectChangeHandlers()->getManualOverridesChangeHandler(),
                       &stat)),
                  "Loading manual overrides from %s failed: %s",
                  monode.c_str(),
@@ -1902,7 +2143,7 @@ FactoryOps::loadManualOverrides(const string &key, int32_t &version)
 }
 
 PropertiesImpl *
-FactoryOps::loadProperties(const string &propsKey,
+FactoryOps::loadProperties(const string &propKey,
                            Notifyable *parent)
 {
     TRACE(CL_LOG, "Properties");
@@ -1911,39 +2152,32 @@ FactoryOps::loadProperties(const string &propsKey,
     bool exists = false;
     Locker l(getPropertiesLock());
 
-    PropertiesImplMap::const_iterator propIt =
-        m_properties.find(propsKey);
-    if (propIt != m_properties.end()) {
-        return propIt->second;
+    NotifyableImplMap::const_iterator propIt =
+        m_props.find(propKey);
+    if (propIt != m_props.end()) {
+        return dynamic_cast<PropertiesImpl *>(propIt->second);
     }
 
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(propsKey)),
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(propKey)),
                  "Could not determine whether key %s exists: %s",
-                 propsKey.c_str(),
+                 propKey.c_str(),
                  false,
                  true);
     if (!exists) {
         return NULL;
     }
-    SAFE_CALL_ZK(m_zk.getNodeData(
-                     propsKey,
-                     &m_zkEventAdapter,
-                     getChangeHandlers()->getPropertiesValueChangeHandler()),
-                 "Reading the value of %s failed: %s",
-                 propsKey.c_str(),
-                 false,
-                 true);
-    prop = new PropertiesImpl(dynamic_cast<NotifyableImpl *>(parent),
-                              propsKey, 
-                              this);
-    m_properties[propsKey] = prop;
 
-    /*
-     * Initialize the data out of the repository into the cache. Needs
-     * to be called directly here since properties do not participate
-     * in the 'ready' protocol.
-     */
+    prop = new PropertiesImpl(this,
+                              propKey, 
+                              dynamic_cast<NotifyableImpl *>(parent));
     prop->initializeCachedRepresentation();
+    
+    /*
+     * Set up handler for changes in Notifyable state.
+     */
+    establishNotifyableStateChange(prop);
+
+    m_props[propKey] = prop;
 
     return prop;
 }
@@ -1952,12 +2186,16 @@ string
 FactoryOps::loadKeyValMap(const string &key, int32_t &version)
 {
     Stat stat;
-    string kvnode = "";
+    string kvnode =
+        key +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::KEYVAL;
 
-    SAFE_CALL_ZK((kvnode = m_zk.getNodeData(
-                      key,
+    string kv;
+    SAFE_CALL_ZK((kv = m_zk.getNodeData(
+                      kvnode,
                       &m_zkEventAdapter,
-                      getChangeHandlers()->getPropertiesValueChangeHandler(),
+                      getCachedObjectChangeHandlers()->getPropertiesValueChangeHandler(),
                       &stat)),
                  "Reading the value of %s failed: %s",
                  key.c_str(),
@@ -1966,7 +2204,7 @@ FactoryOps::loadKeyValMap(const string &key, int32_t &version)
 
     version = stat.version;
 
-    return kvnode;
+    return kv;
 }
 
 GroupImpl *
@@ -1980,9 +2218,9 @@ FactoryOps::loadGroup(const string &groupName,
     bool exists = false;
     Locker l(getGroupsLock());
 
-    GroupImplMap::const_iterator groupIt = m_groups.find(groupKey);
+    NotifyableImplMap::const_iterator groupIt = m_groups.find(groupKey);
     if (groupIt != m_groups.end()) {
-        return groupIt->second;
+        return dynamic_cast<GroupImpl *>(groupIt->second);
     }
 
     SAFE_CALL_ZK((exists = m_zk.nodeExists(groupKey)),
@@ -1993,16 +2231,18 @@ FactoryOps::loadGroup(const string &groupName,
     if (!exists) {
         return NULL;
     }
-    group = new GroupImpl(groupName,
-                    groupKey,
-                    this,
-                    parentGroup);
-    m_groups[groupKey] = group;
+    group = new GroupImpl(this,
+                          groupKey,
+                          groupName,
+                          parentGroup);
+    group->initializeCachedRepresentation();
 
     /*
-     * Set up ready protocol.
+     * Set up handler for changes in Notifyable state.
      */
-    establishNotifyableReady(group);
+    establishNotifyableStateChange(group);
+
+    m_groups[groupKey] = group;
 
     return group;
 }
@@ -2014,13 +2254,13 @@ FactoryOps::loadNode(const string &name,
 {
     TRACE(CL_LOG, "loadNode");
 
-    NodeImpl *np;
+    NodeImpl *node;
     bool exists = false;
     Locker l(getNodesLock());
 
-    NodeImplMap::const_iterator nodeIt = m_nodes.find(key);
+    NotifyableImplMap::const_iterator nodeIt = m_nodes.find(key);
     if (nodeIt != m_nodes.end()) {
-        return nodeIt->second;
+        return dynamic_cast<NodeImpl *>(nodeIt->second);
     }
 
     SAFE_CALL_ZK((exists = m_zk.nodeExists(key)),
@@ -2031,15 +2271,17 @@ FactoryOps::loadNode(const string &name,
     if (!exists) {
         return NULL;
     }
-    np = new NodeImpl(group, name, key, this);
-    m_nodes[key] = np;
+    node = new NodeImpl(this, key, name, group);
+    node->initializeCachedRepresentation();
 
     /*
-     * Set up ready protocol.
+     * Set up handler for changes in Notifyable state.
      */
-    establishNotifyableReady(np);
+    establishNotifyableStateChange(node);
 
-    return np;
+    m_nodes[key] = node;
+
+    return node;
 }
 
 /*
@@ -2049,91 +2291,50 @@ ApplicationImpl *
 FactoryOps::createApplication(const string &name, const string &key)
 {
     TRACE(CL_LOG, "createApplication");
-
-    vector<string> zkNodes;
-    ApplicationImpl *app = NULL;
-    bool created = false;
-    bool exists = false;
     
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(
-                      key,
-                      &m_zkEventAdapter,
-                      getChangeHandlers()->getNotifyableExistsHandler())),
-                 "Could not determine whether key %s exists: %s",
-                 key.c_str(),
-                 false,
-                 true);
-    if (!exists) {
-        string groups = 
-            key + 
-            ClusterlibStrings::KEYSEPARATOR + 
-            ClusterlibStrings::GROUPS;
-        string dists = 
-            key + 
-            ClusterlibStrings::KEYSEPARATOR + 
-            ClusterlibStrings::DISTRIBUTIONS;
-        string nodes =
-            key +
-            ClusterlibStrings::KEYSEPARATOR +
-            ClusterlibStrings::NODES;
-        string props = 
-            key + 
-            ClusterlibStrings::KEYSEPARATOR + 
-            ClusterlibStrings::PROPERTIES;
+    string groups = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::GROUPS;
+    string dists = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::DISTRIBUTIONS;
+    string nodes =
+        key +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::NODES;
 
-        /*
-         * Create the application data structure if needed.
-         */
-        created = true;
-        SAFE_CALL_ZK(m_zk.createNode(key, "", 0),
-                     "Could not create key %s: %s",
-                     key.c_str(),
-                     true,
-                     true);
-        SAFE_CALL_ZK(m_zk.createNode(groups, "", 0),
-                     "Could not create key %s: %s",
-                     groups.c_str(),
-                     true,
-                     true);
-        SAFE_CALL_ZK(m_zk.createNode(dists, "", 0),
-                     "Could not create key %s: %s",
-                     dists.c_str(),
-                     true,
-                     true);
-        SAFE_CALL_ZK(m_zk.createNode(nodes, "", 0),
-                     "Could not create key %s: %s",
-                     nodes.c_str(),
-                     true,
-                     true);
-        SAFE_CALL_ZK(m_zk.createNode(props, "", 0),
-                     "Could not create key %s: %s",
-                     props.c_str(),
-                     true,
-                     true);
-    }
+    /*
+     * Create the application data structure.
+     */
+    SAFE_CALL_ZK(m_zk.createNode(key, "", 0),
+                 "Could not create key %s: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(groups, "", 0),
+                 "Could not create key %s: %s",
+                 groups.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(dists, "", 0),
+                 "Could not create key %s: %s",
+                 dists.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(nodes, "", 0),
+                 "Could not create key %s: %s",
+                 nodes.c_str(),
+                 true,
+                 true);
 
     /*
      * Load the application object, which will load the data,
      * establish all the event notifications, and add the
      * object to the cache.
      */
-    app = loadApplication(name, key);
-
-    /*
-     * Trigger the 'ready' protocol if we created this
-     * application. We need to do this for any *OTHER*
-     * processes waiting for the application to be
-     * ready.
-     */
-    if (created) {
-        SAFE_CALL_ZK(m_zk.setNodeData(key, "ready", 0),
-                     "Could not complete ready protocol for %s: %s",
-                     key.c_str(),
-                     true,
-                     true);
-    }
-
-    return app;
+    return loadApplication(name, key);
 }
 
 DataDistributionImpl *
@@ -2145,233 +2346,134 @@ FactoryOps::createDataDistribution(const string &name,
 {
     TRACE(CL_LOG, "createDataDistribution");
 
-    DataDistributionImpl *distp;
-    bool created = false;
-    bool exists = false;
+    string shards = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::SHARDS;
+    string mos = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::MANUALOVERRIDES;
 
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(
-                      key,
-                      &m_zkEventAdapter,
-                      getChangeHandlers()->getNotifyableExistsHandler())),
-                 "Could not determine whether key %s exists: %s",
+    SAFE_CALL_ZK(m_zk.createNode(key, "", 0),
+                 "Could not create key %s: %s",
                  key.c_str(),
-                 false,
+                 true,
                  true);
-    if (!exists) {
-        string shards = 
-            key + 
-            ClusterlibStrings::KEYSEPARATOR + 
-            ClusterlibStrings::SHARDS;
-        string mos = 
-            key + 
-            ClusterlibStrings::KEYSEPARATOR + 
-            ClusterlibStrings::MANUALOVERRIDES;
-        string props = 
-            key + 
-            ClusterlibStrings::KEYSEPARATOR + 
-            ClusterlibStrings::PROPERTIES;
-
-        created = true;
-        SAFE_CALL_ZK(m_zk.createNode(key, "", 0),
-                     "Could not create key %s: %s",
-                     key.c_str(),
-                     true,
-                     true);
-        SAFE_CALL_ZK(m_zk.createNode(shards, "", 0),
-                     "Could not create key %s: %s",
-                     shards.c_str(),
-                     true,
-                     true);
-        SAFE_CALL_ZK(m_zk.createNode(mos, "", 0),
-                     "Could not create key %s: %s",
-                     mos.c_str(),
-                     true,
-                     true);
-        SAFE_CALL_ZK(m_zk.createNode(props, "", 0),
-                     "Could not create key %s: %s",
-                     props.c_str(),
-                     true,
-                     true);
-    }
-
+    SAFE_CALL_ZK(m_zk.createNode(shards, "", 0),
+                 "Could not create key %s: %s",
+                 shards.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(mos, "", 0),
+                 "Could not create key %s: %s",
+                 mos.c_str(),
+                 true,
+                 true);
+    
     /*
      * Load the distribution, which will load the data,
      * establish all the event notifications, and add the
      * object to the cache.
      */
-    distp = loadDataDistribution(name, key, parentGroup);
-
-    /*
-     * If we created the data distribution in the
-     * repository, trigger the ready protocol. This is
-     * needed for *OTHER* processes waiting till this
-     * object is ready.
-     */
-    if (created) {
-        SAFE_CALL_ZK(m_zk.setNodeData(key, "ready", 0),
-                     "Could not complete ready protocol for %s: %s",
-                     key.c_str(),
-                     true,
-                     true);
-    }
-
-    return distp;
+    return loadDataDistribution(name, key, parentGroup);
 }
 
 PropertiesImpl *
 FactoryOps::createProperties(const string &key,
-                          Notifyable *parent) 
+                             Notifyable *parent) 
 {
     TRACE(CL_LOG, "createProperties");
-    bool exists = false;
 
-    /*
-     * Preliminaries: Ensure the node exists and
-     * has the correct watchers set up.
-     */
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(
-                      key,
-                      &m_zkEventAdapter,
-                      getChangeHandlers()->getNotifyableExistsHandler())),
-                 "Could not determine whether key %s exists: %s",
-                 key.c_str(),
-                 false,
-                 true);
-    if (!exists) {
-        SAFE_CALL_ZK(m_zk.createNode(key, "", 0),
-                     "Could not create key %s: %s",
-                     key.c_str(),
-                     true,
-                     true);
-    }
-    SAFE_CALL_ZK(m_zk.getNodeData(
-                     key, 
-                     &m_zkEventAdapter,
-                     getChangeHandlers()->getPropertiesValueChangeHandler()),
-                 "Could not read value of %s: %s",
-                 key.c_str(),
-                 false,
-                 true);
+    string kv = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::KEYVAL;
 
+    SAFE_CALL_ZK(m_zk.createNode(key, "", 0),
+                 "Could not create key %s: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(kv, "", 0),
+                 "Could not create key %s: %s",
+                 kv.c_str(),
+                 true,
+                 true);
+    
     /*
      * Load the properties, which will load the data,
      * establish all the event notifications, and add the
      * object to the cache.
      */
-    PropertiesImpl *prop = loadProperties(key, parent);
-    
-    /*
-     * No ready protocol necessary for Properties.
-     */
-    
-    return prop;
-
+    return loadProperties(key, parent);
 }
 
 GroupImpl *
 FactoryOps::createGroup(const string &groupName, 
-		     const string &groupKey,
-                     GroupImpl *parentGroup)
+                        const string &groupKey,
+                        GroupImpl *parentGroup)
 {
     TRACE(CL_LOG, "createGroup");
 
-    GroupImpl *group = NULL;
-    bool created = false;
-    bool exists = false;
-    
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(
-                      groupKey,
-                      &m_zkEventAdapter,
-                      getChangeHandlers()->getNotifyableExistsHandler())),
-                 "Could not determine whether key %s exists: %s",
+    string nodes = 
+        groupKey + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::NODES;
+    string leadership = 
+        groupKey + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::LEADERSHIP;
+    string bids = 
+        leadership + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::BIDS;
+    string groups =
+        groupKey +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::GROUPS;
+    string dists =
+        groupKey +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::DISTRIBUTIONS;
+
+    SAFE_CALL_ZK(m_zk.createNode(groupKey, "", 0),
+                 "Could not create key %s: %s",
                  groupKey.c_str(),
-                 false,
+                 true,
                  true);
-    if (!exists) {
-        string nodes = 
-            groupKey + 
-            ClusterlibStrings::KEYSEPARATOR + 
-            ClusterlibStrings::NODES;
-        string leadership = 
-            groupKey + 
-            ClusterlibStrings::KEYSEPARATOR + 
-            ClusterlibStrings::LEADERSHIP;
-        string bids = 
-            leadership + 
-            ClusterlibStrings::KEYSEPARATOR + 
-            ClusterlibStrings::BIDS;
-        string props = 
-            groupKey + 
-            ClusterlibStrings::KEYSEPARATOR + 
-            ClusterlibStrings::PROPERTIES;
-        string groups =
-            groupKey +
-            ClusterlibStrings::KEYSEPARATOR +
-            ClusterlibStrings::GROUPS;
-        string dists =
-            groupKey +
-            ClusterlibStrings::KEYSEPARATOR +
-            ClusterlibStrings::DISTRIBUTIONS;
-
-        created = true;
-        SAFE_CALL_ZK(m_zk.createNode(groupKey, "", 0),
-                     "Could not create key %s: %s",
-                     groupKey.c_str(),
-                     true,
-                     true);
-        SAFE_CALL_ZK(m_zk.createNode(nodes, "", 0),
-                     "Could not create key %s: %s",
-                     nodes.c_str(),
-                     true,
-                     true);
-        SAFE_CALL_ZK(m_zk.createNode(leadership, "", 0),
-                     "Could not create key %s: %s",
-                     leadership.c_str(),
-                     true,
-                     true);
-        SAFE_CALL_ZK(m_zk.createNode(bids, "", 0),
-                     "Could not create key %s: %s",
-                     bids.c_str(),
-                     true,
-                     true);
-        SAFE_CALL_ZK(m_zk.createNode(props, "", 0),
-                     "Could not create key %s: %s",
-                     props.c_str(),
-                     true,
-                     true);
-        SAFE_CALL_ZK(m_zk.createNode(groups, "", 0),
-                     "Could not create key %s: %s",
-                     groups.c_str(),
-                     true,
-                     true);
-        SAFE_CALL_ZK(m_zk.createNode(dists, "", 0),
-                     "Could not create key %s: %s",
-                     dists.c_str(),
-                     true,
-                     true);
-    }
-
+    SAFE_CALL_ZK(m_zk.createNode(nodes, "", 0),
+                 "Could not create key %s: %s",
+                 nodes.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(leadership, "", 0),
+                 "Could not create key %s: %s",
+                 leadership.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(bids, "", 0),
+                 "Could not create key %s: %s",
+                 bids.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(groups, "", 0),
+                 "Could not create key %s: %s",
+                 groups.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(dists, "", 0),
+                 "Could not create key %s: %s",
+                 dists.c_str(),
+                 true,
+                 true);
+    
     /*
      * Load the group, which will load the data,
      * establish all the event notifications, and add the
      * object to the cache.
      */
-    group = loadGroup(groupName, groupKey, parentGroup);
-    
-    /*
-     * Trigger the 'ready' protocol if we created the
-     * group. This is for *OTHER* processes that are
-     * waiting for the group to be ready.
-     */
-    if (created) {
-        SAFE_CALL_ZK(m_zk.setNodeData(groupKey, "ready", 0),
-                     "Could not complete ready protocol for %s: %s",
-                     groupKey.c_str(),
-                     true,
-                     true);
-    }
-    
-    return group;
+    return loadGroup(groupName, groupKey, parentGroup);
 }
 
 NodeImpl *
@@ -2381,85 +2483,158 @@ FactoryOps::createNode(const string &name,
 {
     TRACE(CL_LOG, "createNode");
 
-    NodeImpl *np = NULL;
-    bool created = false;
-    bool exists = false;
+    string cs = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::CLIENTSTATE;
+    string ms = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::MASTERSETSTATE;
+    string cv = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::CLIENTVERSION;
 
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(
-                      key,
-                      &m_zkEventAdapter, 
-                      getChangeHandlers()->getNotifyableExistsHandler())),
-                 "Could not determine whether key %s exists: %s",
+    SAFE_CALL_ZK(m_zk.createNode(key, "", 0),
+                 "Could not create key %s: %s",
                  key.c_str(),
-                 false,
+                 true,
                  true);
-    if (!exists) {
-        string cs = 
-            key + 
-            ClusterlibStrings::KEYSEPARATOR + 
-            ClusterlibStrings::CLIENTSTATE;
-        string ms = 
-            key + 
-            ClusterlibStrings::KEYSEPARATOR + 
-            ClusterlibStrings::MASTERSETSTATE;
-        string cv = 
-            key + 
-            ClusterlibStrings::KEYSEPARATOR + 
-            ClusterlibStrings::CLIENTVERSION;
-        string props = 
-            key + 
-            ClusterlibStrings::KEYSEPARATOR + 
-            ClusterlibStrings::PROPERTIES;
-
-        created = true;
-        SAFE_CALL_ZK(m_zk.createNode(key, "", 0),
-                     "Could not create key %s: %s",
-                     key.c_str(),
-                     true,
-                     true);
-        SAFE_CALL_ZK(m_zk.createNode(cs, "", 0),
-                     "Could not create key %s: %s",
-                     cs.c_str(),
-                     true,
-                     true);
-        SAFE_CALL_ZK(m_zk.createNode(ms, "", 0),
-                     "Could not create key %s: %s",
-                     ms.c_str(),
-                     true,
-                     true);
-        SAFE_CALL_ZK(m_zk.createNode(cv, "1.0", 0),
-                     "Could not create key %s: %s",
-                     cv.c_str(),
-                     true,
-                     true);
-        SAFE_CALL_ZK(m_zk.createNode(props, "", 0),
-                     "Could not create key %s: %s",
-                     props.c_str(),
-                     true,
-                     true);
-    }
+    SAFE_CALL_ZK(m_zk.createNode(cs, "", 0),
+                 "Could not create key %s: %s",
+                 cs.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(ms, "", 0),
+                 "Could not create key %s: %s",
+                 ms.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(cv, "1.0", 0),
+                 "Could not create key %s: %s",
+                 cv.c_str(),
+                 true,
+                 true);
 
     /*
      * Load the node, which will load the data,
      * establish all the event notifications, and add the
      * object to the cache.
      */
-    np = loadNode(name, key, group);
+    return loadNode(name, key, group);
+}
 
-    /*
-     * Trigger the 'ready' protocol if we created the
-     * group. This is for *OTHER* processes that are
-     * waiting for the group to be ready.
-     */
-    if (created) {
-        SAFE_CALL_ZK(m_zk.setNodeData(key, "ready", 0),
-                     "Could not complete ready protocol for %s: %s",
-                     key.c_str(),
-                     true,
-                     true);
+void
+FactoryOps::removeApplication(ApplicationImpl *app)
+{
+    SAFE_CALL_ZK(m_zk.deleteNode(app->getKey(), true),
+                 "Could not delete key %s: %s",
+                 app->getKey().c_str(),
+                 false,
+                 true);
+}
+
+void
+FactoryOps::removeDataDistribution(DataDistributionImpl *dist)
+{
+    SAFE_CALL_ZK(m_zk.deleteNode(dist->getKey(), true),
+                 "Could not delete key %s: %s",
+                 dist->getKey().c_str(),
+                 false,
+                 true);
+}
+
+void
+FactoryOps::removeProperties(PropertiesImpl *prop)
+{
+    SAFE_CALL_ZK(m_zk.deleteNode(prop->getKey(), true),
+                 "Could not delete key %s: %s",
+                 prop->getKey().c_str(),
+                 false,
+                 true);
+}
+
+void
+FactoryOps::removeGroup(GroupImpl *group)
+{
+    SAFE_CALL_ZK(m_zk.deleteNode(group->getKey(), true),
+                 "Could not delete key %s: %s",
+                 group->getKey().c_str(),
+                 false,
+                 true);
+}
+
+void
+FactoryOps::removeNode(NodeImpl *node)
+{
+    SAFE_CALL_ZK(m_zk.deleteNode(node->getKey(), true),
+                 "Could not delete key %s: %s",
+                 node->getKey().c_str(),
+                 false,
+                 true);
+}
+
+void 
+FactoryOps::removeNotifyableFromCacheByKey(const string &key)
+{
+    Mutex *ntpMapLock = NULL;
+    NotifyableImplMap *ntpMap = NULL;
+
+    if (NotifyableKeyManipulator::isRootKey(key)) {
+        throw InvalidMethodException(
+            "RemoveNotifyableFromCacheByKey: Cannot remove root!");
     }
-    
-    return np;
+    else if (NotifyableKeyManipulator::isApplicationKey(key)) {
+        ntpMapLock = getApplicationsLock();
+        ntpMap = &m_apps;
+    }
+    else if (NotifyableKeyManipulator::isGroupKey(key)) {
+        ntpMapLock = getGroupsLock();
+        ntpMap = &m_groups;
+    }
+    else if (NotifyableKeyManipulator::isNodeKey(key)) {
+        ntpMapLock = getNodesLock();
+        ntpMap = &m_nodes;
+    }
+    else if (NotifyableKeyManipulator::isPropertiesKey(key)) {
+        ntpMapLock = getPropertiesLock();
+        ntpMap = &m_props;
+    }
+    else if (NotifyableKeyManipulator::isDataDistributionKey(key)) {
+        ntpMapLock = getDataDistributionsLock();
+        ntpMap = &m_dists;
+    }
+    else {
+        throw InvalidArgumentsException(
+            string("RemoveNotifyableFromCacheByKey:: Cannot find map for ") + 
+            key);
+    }
+
+    Locker l1(ntpMapLock);
+    NotifyableImplMap::iterator ntpMapIt = ntpMap->find(key);
+    if (ntpMapIt == ntpMap->end()) {
+        throw InconsistentInternalStateException(
+            string("RemoveNotifyableFromCacheByKey: Cannot find Notifyable ") +
+            key + string(" in the map"));
+    }
+
+    Locker l2(ntpMapIt->second->getStateLock());
+    LOG_DEBUG(CL_LOG, 
+              "RemoveNotifyableFromCacheByKey: state changed to REMOVED "
+              "for Notifyable %s",
+              key.c_str());
+    if (ntpMapIt->second->getState() == Notifyable::REMOVED) {
+        throw InvalidMethodException(
+            string("RemoveNotifyableFromCacheByKey: Tried to remove 2x ") +
+            key.c_str());
+    }
+
+    Locker l3(getRemovedNotifyablesLock());
+    getRemovedNotifyablesList()->push_back(ntpMapIt->second);
+
+    ntpMapIt->second->setState(Notifyable::REMOVED);
+    ntpMap->erase(ntpMapIt);
 }
 
 /*
@@ -2479,7 +2654,7 @@ FactoryOps::isNodeConnected(const string &nodeKey)
     SAFE_CALL_ZK((exists = m_zk.nodeExists(
                       ckey,
                       &m_zkEventAdapter,
-                      getChangeHandlers()->getNodeConnectionChangeHandler())),
+                      getCachedObjectChangeHandlers()->getNodeConnectionChangeHandler())),
                  "Could not determine whether key %s is connected: %s",
                  nodeKey.c_str(),
                  false,
@@ -2495,12 +2670,12 @@ FactoryOps::getNodeClientState(const string &nodeKey)
         nodeKey +
         ClusterlibStrings::KEYSEPARATOR +
         ClusterlibStrings::CLIENTSTATE;
-    string res = "";
+    string res;
 
     SAFE_CALL_ZK((res = m_zk.getNodeData(
                       ckey,
                       &m_zkEventAdapter,
-                      getChangeHandlers()->getNodeClientStateChangeHandler())),
+                      getCachedObjectChangeHandlers()->getNodeClientStateChangeHandler())),
                  "Could not read node %s client state: %s",
                  nodeKey.c_str(),
                  false,
@@ -2516,13 +2691,13 @@ FactoryOps::getNodeMasterSetState(const string &nodeKey)
         nodeKey +
         ClusterlibStrings::KEYSEPARATOR +
         ClusterlibStrings::MASTERSETSTATE;
-    string res = "";
+    string res;
 
     SAFE_CALL_ZK(
         (res = m_zk.getNodeData(
             ckey,
             &m_zkEventAdapter,
-            getChangeHandlers()->getNodeMasterSetStateChangeHandler())),
+            getCachedObjectChangeHandlers()->getNodeMasterSetStateChangeHandler())),
         "Could not read node %s master set state: %s",
         nodeKey.c_str(),
         false,
@@ -2556,7 +2731,7 @@ FactoryOps::getApplicationNames()
                      list,
                      key, 
                      &m_zkEventAdapter,
-                     getChangeHandlers()->getApplicationsChangeHandler()),
+                     getCachedObjectChangeHandlers()->getApplicationsChangeHandler()),
                  "Reading the value of %s failed: %s",
                  key.c_str(),
                  true,
@@ -2578,7 +2753,7 @@ FactoryOps::getGroupNames(GroupImpl *group)
     TRACE(CL_LOG, "getGroupNames");
 
     if (group == NULL) {
-        throw ClusterException("NULL group in getGroupNames");
+        throw InvalidArgumentsException("NULL group in getGroupNames");
     }
 
     NameList list;
@@ -2592,7 +2767,7 @@ FactoryOps::getGroupNames(GroupImpl *group)
                      list,
                      key,
                      &m_zkEventAdapter,
-                     getChangeHandlers()->getGroupsChangeHandler()),
+                     getCachedObjectChangeHandlers()->getGroupsChangeHandler()),
                  "Reading the value of %s failed: %s",
                  key.c_str(),
                  true,
@@ -2613,10 +2788,11 @@ FactoryOps::getGroupNames(GroupImpl *group)
 NameList
 FactoryOps::getDataDistributionNames(GroupImpl *group)
 {
-    TRACE(CL_LOG, "getDistributionNames");
+    TRACE(CL_LOG, "getDataDistributionNames");
 
     if (group == NULL) {
-        throw ClusterException("NULL group in getDataDistributionNames");
+        throw InvalidArgumentsException(
+            "NULL group in getDataDistributionNames");
     }
 
     NameList list;
@@ -2630,14 +2806,15 @@ FactoryOps::getDataDistributionNames(GroupImpl *group)
                      list,
                      key,
                      &m_zkEventAdapter,
-                     getChangeHandlers()->getDataDistributionsChangeHandler()),
+                     getCachedObjectChangeHandlers()->getDataDistributionsChangeHandler()),
                  "Reading the value of %s failed: %s",
                  key.c_str(),
                  true,
                  true);
 
     for (NameList::iterator nlIt = list.begin();
-         nlIt != list.end(); ++nlIt) {
+         nlIt != list.end();
+         ++nlIt) {
         /*
          * Remove the key prefix
          */
@@ -2653,7 +2830,7 @@ FactoryOps::getNodeNames(GroupImpl *group)
     TRACE(CL_LOG, "getNodeNames");
 
     if (group == NULL) {
-        throw ClusterException("NULL group in getNodeNames");
+        throw InvalidArgumentsException("NULL group in getNodeNames");
     }
 
     NameList list;
@@ -2667,7 +2844,7 @@ FactoryOps::getNodeNames(GroupImpl *group)
                      list,
                      key,
                      &m_zkEventAdapter,
-                     getChangeHandlers()->getNodesChangeHandler()),
+                     getCachedObjectChangeHandlers()->getNodesChangeHandler()),
                  "Reading the value of %s failed: %s",
                  key.c_str(),
                  true,
@@ -2686,6 +2863,163 @@ FactoryOps::getNodeNames(GroupImpl *group)
     return list;
 }
 
+NotifyableList
+FactoryOps::getChildren(Notifyable *ntp)
+{
+    /*
+     * NotifyableImpl * could be any subclass, so start with the
+     * simplest and try the most complicated.  If new subclasses of
+     * NotifyableImpl are added to clusterlib, they will need to also
+     * be checked for here.
+     */
+    NotifyableList ntList;
+    
+    Properties *prop = dynamic_cast<Properties *>(ntp);
+    if (prop != NULL) {
+        LOG_DEBUG(CL_LOG, 
+                  "getChildren: %s is a Properties", 
+                  ntp->getKey().c_str());
+        return ntList;
+    }
+  
+    /*
+     * Any other NotifyableImpl subclass (except Root) can have a
+     * Properties child
+     */
+    try {
+        prop = ntp->getProperties();
+        if (prop != NULL) {
+            LOG_DEBUG(CL_LOG, 
+                      "getChildren: found Properties %s for %s", 
+                      prop->getKey().c_str(),
+                      ntp->getKey().c_str());
+            ntList.push_back(prop);
+        }
+    } 
+    catch (InvalidMethodException &e) {
+        /*
+         * If this is not a root object then throw an exception.
+         * Otherwise, we expect Root to get an exception here.
+         */
+        if (dynamic_cast<Root *>(ntp) == NULL) {
+            throw InvalidMethodException(
+                string("getChildren: getProperties failed: ") + e.what());
+        }
+        LOG_DEBUG(CL_LOG, "getChildren: Root doesn't have Properties");
+    }
+
+    DataDistribution *dist = dynamic_cast<DataDistribution *>(ntp);
+    if (dist != NULL) {
+        LOG_DEBUG(CL_LOG, 
+                  "getChildren: %s is a DataDistribution", 
+                  ntp->getKey().c_str());
+        return ntList;
+    }
+  
+    Node *node = dynamic_cast<Node *>(ntp);
+    if (node != NULL) {
+        LOG_DEBUG(CL_LOG, "getChildren: %s is a Node", ntp->getKey().c_str());
+        return ntList;
+    }
+
+    NameList::iterator nameListIt;
+    Notifyable *tempNtp = NULL;
+    Group *group = dynamic_cast<Group *>(ntp);
+    if (group != NULL) {
+        LOG_DEBUG(CL_LOG, "getChildren: %s is a Group", ntp->getKey().c_str());
+        NameList nameList = group->getNodeNames();
+        for (nameListIt = nameList.begin(); 
+             nameListIt != nameList.end(); 
+             nameListIt++) {
+            tempNtp = group->getNode(*nameListIt);
+            if (tempNtp == NULL) {
+                LOG_WARN(CL_LOG, 
+                         "getChildren: Shouldn't get NULL node for %s"
+                         " if I have the lock",
+                         nameListIt->c_str());
+            }
+            else {
+                LOG_DEBUG(CL_LOG, 
+                          "getChildren: found Node %s for %s", 
+                          tempNtp->getKey().c_str(),
+                          ntp->getKey().c_str());
+                ntList.push_back(tempNtp);
+            }
+        }
+
+        nameList = group->getGroupNames();
+        for (nameListIt = nameList.begin(); 
+             nameListIt != nameList.end(); 
+             nameListIt++) {
+            tempNtp = group->getGroup(*nameListIt);
+            if (tempNtp == NULL) {
+                LOG_WARN(CL_LOG, 
+                         "getChildren: Shouldn't get NULL group for %s"
+                         " if I have the lock",
+                         nameListIt->c_str());
+            }
+            else {
+                LOG_DEBUG(CL_LOG, 
+                          "getChildren: found Group %s for %s", 
+                          tempNtp->getKey().c_str(),
+                          ntp->getKey().c_str());
+                ntList.push_back(tempNtp);
+            }
+        }
+
+        nameList = group->getDataDistributionNames();
+        for (nameListIt = nameList.begin(); 
+             nameListIt != nameList.end(); 
+             nameListIt++) {
+            tempNtp = group->getDataDistribution(*nameListIt);
+            if (tempNtp == NULL) {
+                LOG_WARN(CL_LOG, 
+                         "getChildren: Shouldn't get NULL data distribution "
+                         "for %s if I have the lock",
+                         nameListIt->c_str());
+            }
+            else {
+                LOG_DEBUG(CL_LOG, 
+                          "getChildren: found DataDistribution %s for %s", 
+                          tempNtp->getKey().c_str(),
+                          ntp->getKey().c_str());
+                ntList.push_back(tempNtp);
+            }
+        }
+
+        return ntList;
+    }
+
+    Root *root = dynamic_cast<Root *>(ntp);
+    if (root != NULL) {
+        LOG_DEBUG(CL_LOG, "getChildren: %s is a Root", ntp->getKey().c_str());
+        NameList nameList = root->getApplicationNames();
+        for (nameListIt = nameList.begin(); 
+             nameListIt != nameList.end(); 
+             nameListIt++) {
+            tempNtp = root->getApplication(*nameListIt);
+            if (tempNtp == NULL) {
+                LOG_WARN(CL_LOG, 
+                         "getChildren: Shouldn't get NULL application for %s"
+                         " if I have the lock",
+                         nameListIt->c_str());
+            }
+            else {
+                LOG_DEBUG(CL_LOG, 
+                          "getChildren: found Application %s for %s", 
+                          tempNtp->getKey().c_str(),
+                          ntp->getKey().c_str());
+                ntList.push_back(tempNtp);
+            }
+        }
+
+        return ntList;
+    }
+
+    throw InconsistentInternalStateException(
+        "getChildren: Unknown NotifyableImpl subclass");
+}
+
 /**********************************************************************/
 /* Leadership protocol.                                               */
 /**********************************************************************/
@@ -2699,7 +3033,7 @@ FactoryOps::getLeader(GroupImpl *group)
     TRACE( CL_LOG, "getLeader" );
 
     if (group == NULL) {
-        throw ClusterException("getLeader: NULL group");
+        throw InvalidArgumentsException("getLeader: NULL group");
     }
 
     NodeImpl *lp = NULL;
@@ -2709,7 +3043,7 @@ FactoryOps::getLeader(GroupImpl *group)
     SAFE_CALL_ZK((ln = m_zk.getNodeData(
                       lnn, 
                       &m_zkEventAdapter,
-                      getChangeHandlers()->getLeadershipChangeHandler())),
+                      getCachedObjectChangeHandlers()->getLeadershipChangeHandler())),
                  "Getting current leader of group %s failed: %s",
                  group->getKey().c_str(),
                  true,
@@ -2726,21 +3060,22 @@ FactoryOps::placeBid(NodeImpl *np, ServerImpl *sp)
     TRACE(CL_LOG, "placeBid");
 
     if (np == NULL) {
-        throw ClusterException("placeBid: NULL node");
+        throw InvalidArgumentsException("placeBid: NULL node");
     }
     if (sp == NULL) {
-        throw ClusterException("placeBid: NULL server");
+        throw InvalidArgumentsException("placeBid: NULL server");
     }
 
     char tmp[100];
 
+    /* TODO: Follow the pthread_self() convension. */
     snprintf(tmp, 100, "%d", getpid());
 
     GroupImpl *group = dynamic_cast<GroupImpl *>(np->getMyGroup());
 
     if (group == NULL) {
-        throw ClusterException(string("placeBid: NULL group containing node ")
-                               + np->getKey());
+        throw InvalidArgumentsException(
+            string("placeBid: NULL group containing node ") + np->getKey());
     }
 
     string pfx = group->getLeadershipBidPrefix();
@@ -2780,7 +3115,7 @@ FactoryOps::tryToBecomeLeader(NodeImpl *np, int64_t bid)
     TRACE(CL_LOG, "tryToBecomeLeader");
 
     if (np == NULL) {
-        throw ClusterException("tryToBecomeLeader: NULL node");
+        throw InvalidArgumentsException("tryToBecomeLeader: NULL node");
     }
 
     NameList list;
@@ -2788,9 +3123,9 @@ FactoryOps::tryToBecomeLeader(NodeImpl *np, int64_t bid)
     GroupImpl *group = dynamic_cast<GroupImpl *>(np->getMyGroup());
 
     if (group == NULL) {
-        throw ClusterException(
-		string("tryToBecomeLeader: NULL group containing ") +
-                np->getKey());
+        throw InvalidArgumentsException(
+            string("tryToBecomeLeader: NULL group containing ") + 
+            np->getKey());
     }
 
     string lnn = group->getCurrentLeaderNodeName();
@@ -2834,7 +3169,8 @@ FactoryOps::tryToBecomeLeader(NodeImpl *np, int64_t bid)
         checkID = strtol(suffix.c_str(), &ptr, 10);
         if ((ptr != NULL) && (*ptr != '\0')) {
             LOG_WARN(CL_LOG, "Expecting a number but got %s", suffix.c_str());
-            throw ClusterException( "Expecting a number but got " + suffix );
+            throw InconsistentInternalStateException(
+                "Expecting a number but got " + suffix);
         }
 
         /*
@@ -2845,7 +3181,7 @@ FactoryOps::tryToBecomeLeader(NodeImpl *np, int64_t bid)
                 (exists = m_zk.nodeExists(
                     toCheck,
                     &m_zkEventAdapter,
-                    getChangeHandlers()->getPrecLeaderExistsHandler())),
+                    getCachedObjectChangeHandlers()->getPrecLeaderExistsHandler())),
                 "Checking for preceding leader %s failed: %s",
                 toCheck.c_str(),
                 false,
@@ -2896,8 +3232,8 @@ FactoryOps::isLeaderKnown(NodeImpl *np)
 
     GroupImpl *group = dynamic_cast<GroupImpl *>(np->getMyGroup());
     if (group == NULL) {
-        throw ClusterException(string("NULL group containing ") +
-                               np->getKey());
+        throw InvalidArgumentsException(string("NULL group containing ") +
+                                        np->getKey());
     }
 
     return group->isLeaderKnown();
@@ -2918,8 +3254,8 @@ FactoryOps::leaderIsUnknown(NodeImpl *np)
 
     GroupImpl *group = dynamic_cast<GroupImpl *>(np->getMyGroup());
     if (group == NULL) {
-        throw ClusterException(string("NULL group containing ") +
-                               np->getKey());
+        throw InvalidArgumentsException(string("NULL group containing ") +
+                                        np->getKey());
     }
 
     group->updateLeader(NULL);
@@ -2941,8 +3277,8 @@ FactoryOps::giveUpLeadership(NodeImpl *np, int64_t bid)
 
     GroupImpl *group = dynamic_cast<GroupImpl *>(np->getMyGroup());
     if (group == NULL) {
-        throw ClusterException(string("NULL group containing ") +
-                               np->getKey());
+        throw InvalidArgumentsException(string("NULL group containing ") +
+                                        np->getKey());
     }
 
     /*
@@ -3068,35 +3404,62 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
     TRACE(CL_LOG, "updateCachedObject");
 
     if (fehp == NULL) {
-        throw ClusterException("NULL CachedObjectEventHandler!");
+        throw InvalidArgumentsException("NULL CachedObjectEventHandler!");
     }
     if (ep == NULL) {
-        throw ClusterException("NULL watcher event!");
+        throw InvalidArgumentsException("NULL watcher event!");
     }
 
     const string path = ep->getPath();
     int32_t etype = ep->getType();
 
-
     LOG_INFO(CL_LOG,
-              "updateCachedObject: (0x%x, 0x%x, %s)",
-              (int) fehp,
-              (int) ep,
-	      path.c_str());
+             "updateCachedObject: (0x%x, 0x%x, %s, %s)",
+             (int) fehp,
+             (int) ep,
+             zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+             path.c_str());
 
-    NotifyableImpl *ntp;
+    NotifyableImpl *ntp = NULL;
 
     /*
-     * SYNC doesn't get a Notifyable.
+     * Get the NotifyableImpl for this key so that clusterlib clients
+     * can get these events.  There are two exceptions:
+     * 
+     * 1) SYNC doesn't get a Notifyable.
+     * 2) Any lockNode does not get its events propagated to external clients
+     *    (This would cause the event dispather thread to wait for a future 
+     *     event -- impossible).
+     *
+     * Note: Getting the NotifyableImpl * is best effort.  Since the
+     * NotifyableImpl may have already been removed, it should return
+     * NULL. then ZOO_DELETED_EVENT - cannot guarantee to return the
+     * correct Notifyable since it should have been removed.  Try to
+     * retrieve it if it exists, in order to delete it.
      */
+    string lockNodePartialKey;
+    lockNodePartialKey.append(ClusterlibStrings::KEYSEPARATOR);
+    lockNodePartialKey.append(ClusterlibStrings::LOCK);
+    lockNodePartialKey.append(ClusterlibStrings::KEYSEPARATOR);
     if (path.compare(ClusterlibStrings::SYNC) == 0) {
         ntp = NULL;
     }
+    else if (path.find(lockNodePartialKey) == 0) {
+        ntp = NULL;
+    }
     else {
-        ntp = getNotifyableFromKey(path); 
-        if (ntp == NULL) {
-            throw ClusterException(string("Unknown event : ") +
-                                   path);
+        try {
+            ntp = getNotifyableFromKey(path); 
+            if (ntp == NULL) {
+                throw InconsistentInternalStateException(
+                    string("Unknown event : ") + path);
+            }
+        }
+        catch (RepositoryInternalsFailureException &e) {
+            LOG_WARN(CL_LOG, 
+                     "updateCachedObject: NotifyableImpl with key %s "
+                     "no longer exists",
+                     path.c_str());
         }
     }
 
@@ -3156,35 +3519,26 @@ FactoryOps::getNotifyableValue(const string &key,
 
     return lname;
 }
-                               
-/*
- * Establish whether the given notifyable object
- * is 'ready' according to the 'ready' protocol.
- */
-bool
-FactoryOps::establishNotifyableReady(NotifyableImpl *ntp)
+
+void
+FactoryOps::establishNotifyableStateChange(NotifyableImpl *ntp)
 {
     string ready = "";
-
+    
     if (ntp == NULL) {
-        return false;
+        throw InvalidArgumentsException(
+            "establishNotifyableStateChange: with NULL NotifyableImpl *");
     }
 
     SAFE_CALL_ZK((ready = m_zk.getNodeData(
                       ntp->getKey(),
                       &m_zkEventAdapter,
-                      getChangeHandlers()->getNotifyableReadyHandler())),
+                      getCachedObjectChangeHandlers()->getNotifyableStateChangeHandler())),
                  "Reading the value of %s failed: %s",
                  ntp->getKey().c_str(),
                  true,
                  true);
-
-    if (ready == "ready") {
-        ntp->setState(Notifyable::READY);
-        ntp->initializeCachedRepresentation();
-    }
-
-    return (ntp->getState() == Notifyable::READY);
 }
 
 };	/* End of 'namespace clusterlib' */
+

@@ -19,7 +19,9 @@ namespace clusterlib
  */
 struct PredMutexCond
 {
-    PredMutexCond() : pred(false) {}
+    PredMutexCond() 
+        : pred(false),
+          refCount(0) {}
 
     /**
      * Signal another thread that is waiting on a predicate.  This is
@@ -63,6 +65,11 @@ struct PredMutexCond
      * Used to signal betwen threads
      */
     Cond cond;
+
+    /**
+     * Could be more than one thread waiting on this conditional
+     */
+    int32_t refCount;
 };
 
 /**
@@ -78,22 +85,22 @@ class DistributedLocks
         : mp_ops(factoryOps) {}
 
     /**
-     * Try to lock this NotifyableImpl.  The NotifyableImpl cannot be the
+     * Try to lock this Notifyable.  The Notifyable cannot be the
      * Root.  The lock can be used to prevent any process from
      * interfering with operations on this NotifyableImpl.
      *
-     * @param ntp is the NotifyableImpl to be locked.
-     * @throw ClusterException if the NotifyableImpl doesn't exist
+     * @param ntp is the Notifyable to be locked.
+     * @throw Exception if the Notifyable doesn't exist
      */
-    void acquire(NotifyableImpl *ntp);
+    void acquire(Notifyable *ntp);
 
     /**
-     * Try to unlock this NotifyableImpl.
+     * Try to unlock this Notifyable.
      *
-     * @param ntp is the NotifyableImpl to be unlocked.
-     * @throw ClusterException if there is an unrecoverable problem
+     * @param ntp is the Notifyable to be unlocked.
+     * @throw Exception if there is an unrecoverable problem
      */
-    void release(NotifyableImpl *ntp);
+    void release(Notifyable *ntp);
 
     /**
      * Get the map that is used to signal threads trying to acquire locks.

@@ -12,6 +12,8 @@
 
 #include "clusterlibinternal.h"
 #include "notifyablekeymanipulator.h"
+#include <sys/types.h>
+#include <linux/unistd.h>
 
 #define LOG_LEVEL LOG_WARN
 
@@ -48,13 +50,21 @@ NotifyableKeyManipulator::createLockNodeKey(const string &notifyableKey)
     char tmp[bufLen + 1];
     tmp[bufLen] = '\0';
     if (gethostname(tmp, bufLen) != 0) {
-        throw ClusterException("acquire: gethostname failed");
+        throw SystemFailureException("acquire: gethostname failed");
     }
-
     res.append(tmp);
     res.append(":");
-    snprintf(tmp, bufLen, "%d", getpid());
+
+    /*
+     * Lock nodes have the hostname, pid, and tid of the calling
+     * thread.
+     */
+    snprintf(tmp, bufLen, "0x%x", (uint32_t) getpid());
     res.append(tmp);
+    res.append("-");
+    snprintf(tmp, bufLen, "0x%x", (uint32_t) pthread_self());
+    res.append(tmp);
+    
     res.append(ClusterlibStrings::BID_SPLIT);
 
     return res;
@@ -163,8 +173,8 @@ NotifyableKeyManipulator::isApplicationKey(const vector<string> &components,
                   "isApplicationKey: elements %d > size of components %u",
                   elements,
                   components.size());
-        throw ClusterException("isApplicationKey: elements > size of "
-                               "components");
+        throw InvalidArgumentsException("isApplicationKey: elements > size of "
+                                        "components");
     }
 
     /* 
@@ -211,8 +221,8 @@ NotifyableKeyManipulator::isRootKey(const vector<string> &components,
                   "isRootKey: elements %d > size of components %u",
                   elements,
                   components.size());
-        throw ClusterException("isRootKey: elements > size of "
-                               "components");
+        throw InvalidArgumentsException("isRootKey: elements > size of "
+                                        "components");
     }
 
     /* 
@@ -258,8 +268,8 @@ NotifyableKeyManipulator::isDataDistributionKey(
                   "isDataDistributionKey: elements %d > size of components %u",
                   elements,
                   components.size());
-        throw ClusterException("isDataDistributionKey: elements > size of "
-                               "components");
+        throw InvalidArgumentsException(
+            "isDataDistributionKey: elements > size of components");
     }
 
     /* 
@@ -319,8 +329,8 @@ NotifyableKeyManipulator::isGroupKey(const vector<string> &components,
                   "isGroupKey: elements %d > size of components %u",
                   elements,
                   components.size());
-        throw ClusterException("isGroupKey: elements > size of "
-                               "components");
+        throw InvalidArgumentsException("isGroupKey: elements > size of "
+                                        "components");
     }
 
     /* 
@@ -395,8 +405,8 @@ NotifyableKeyManipulator::isPropertiesKey(const vector<string> &components,
                   "isPropertiesKey: elements %d > size of components %u",
                   elements,
                   components.size());
-        throw ClusterException("isPropertiesKey: elements > size of "
-                               "components");
+        throw InvalidArgumentsException("isPropertiesKey: elements > size of "
+                                        "components");
     }
     
     /* 
@@ -418,7 +428,7 @@ NotifyableKeyManipulator::isPropertiesKey(const vector<string> &components,
 
     /*
      * Check that the each of the parent of the properties is a
-     * Notifyable and that their parents are a group or application.
+     * Notifyable 
      */ 
     if (((components.at(elements - 3) != ClusterlibStrings::APPLICATIONS) &&
          (components.at(elements - 3) != ClusterlibStrings::GROUPS) &&
@@ -467,8 +477,8 @@ NotifyableKeyManipulator::isNodeKey(const vector<string> &components,
                   "isNodeKey: elements %d > size of components %u",
                   elements,
                   components.size());
-        throw ClusterException("isNodeKey: elements > size of "
-                               "components");
+        throw InvalidArgumentsException("isNodeKey: elements > size of "
+                                        "components");
     }
 
     /* 
@@ -583,7 +593,8 @@ NotifyableKeyManipulator::removeObjectFromKey(const string &key)
             (!clusterlibObject.compare(ClusterlibStrings::APPLICATIONS)) ||
             (!clusterlibObject.compare(ClusterlibStrings::GROUPS)) ||
             (!clusterlibObject.compare(ClusterlibStrings::NODES)) ||
-            (!clusterlibObject.compare(ClusterlibStrings::DISTRIBUTIONS))) {
+            (!clusterlibObject.compare(ClusterlibStrings::DISTRIBUTIONS)) ||
+            (!clusterlibObject.compare(ClusterlibStrings::PROPERTIES))) {
             objectFound = true;
         }
     }
@@ -608,36 +619,42 @@ NotifyableKeyManipulator::removeObjectFromComponents(
         return -1;
     }
 
-    int32_t clusterlibObjectIndex = -1;
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+    int32_t clusterlibObjectElements = elements;
     bool objectFound = false;
     while (objectFound == false) {
         /*
          * Get rid of the leaf node 
          */
-        elements--;
-        if (elements < 2) {
+        clusterlibObjectElements--;
+        if (clusterlibObjectElements < 2) {
             return -1;
         }
 
         /*
          * If this key represents a valid Notifyable, then it should
-         * be /APPLICATIONS|GROUPS|NODES|DISTRIBUTIONS/name.
+         * be /(APPLICATIONS|GROUPS|NODES|DISTRIBUTIONS)/name or ROOT
+         * or PROPERTIES.  Try to find a clusterlib object in this
+         * component
          */
-        clusterlibObjectIndex = elements - 2;
-        
-        /* 
-         * Try to find a clusterlib object in this component
-         */
-        if ((components.at(clusterlibObjectIndex + 1).compare(
+        if ((components.at(clusterlibObjectElements - 1).compare(
                  ClusterlibStrings::ROOT) == 0) ||
-            (components.at(clusterlibObjectIndex).compare(
+            (components.at(clusterlibObjectElements - 2).compare(
                 ClusterlibStrings::APPLICATIONS) == 0) ||
-            (components.at(clusterlibObjectIndex).compare(
-                 ClusterlibStrings::GROUPS) == 0) ||
-            (components.at(clusterlibObjectIndex).compare(
-                 ClusterlibStrings::NODES) == 0) ||
-            (components.at(clusterlibObjectIndex).compare(
-                 ClusterlibStrings::DISTRIBUTIONS) == 0)) {
+            (components.at(clusterlibObjectElements - 2).compare(
+                ClusterlibStrings::GROUPS) == 0) ||
+            (components.at(clusterlibObjectElements - 2).compare(
+                ClusterlibStrings::NODES) == 0) ||
+            (components.at(clusterlibObjectElements - 2).compare(
+                ClusterlibStrings::DISTRIBUTIONS) == 0)||
+            (components.at(clusterlibObjectElements - 1).compare(
+                ClusterlibStrings::PROPERTIES) == 0)) {
             objectFound = true;
         }
     }
@@ -646,14 +663,10 @@ NotifyableKeyManipulator::removeObjectFromComponents(
               "removeObjectFromComponents: Changed key from %s/%s to %s/%s",
               components.at(elements - 2).c_str(),
               components.at(elements - 1).c_str(),
-              components.at(clusterlibObjectIndex).c_str(),
-              components.at(clusterlibObjectIndex + 1).c_str());
+              components.at(clusterlibObjectElements - 2).c_str(),
+              components.at(clusterlibObjectElements - 1).c_str());
 
-    /*
-     * +2 since 1 for including the name of the clusterlib object and
-     * 1 since this is the elements count and not the index.
-     */
-    return clusterlibObjectIndex + 2;
+    return clusterlibObjectElements;
 }
 
 };	/* End of 'namespace clusterlib' */

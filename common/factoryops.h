@@ -29,7 +29,7 @@
 		done = true; \
 	    } \
 	    else if (!ze.isConnected()) { \
-		throw ClusterException(ze.what()); \
+		throw RepositoryConnectionFailureException(ze.what()); \
 	    } \
 	    else if (_warning) { \
 		LOG_WARN(CL_LOG, _message, _node, ze.what()); \
@@ -41,7 +41,7 @@
                 } \
 	    } \
 	    else { \
-		throw ClusterException(ze.what()); \
+		throw RepositoryInternalsFailureException(ze.what()); \
 	    } \
 	} \
     } \
@@ -166,6 +166,11 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     void removeAllNodes();
 
     /*
+     * Clean up all removed notifyables
+     */
+    void removeAllRemovedNotifyables();
+
+    /*
      * Register/cancel a timer handler.
      */
     TimerId registerTimer(TimerEventHandler *handler,
@@ -178,7 +183,7 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
      * event sources and sends events to
      * the registered client for each event.
      */
-    void dispatchEvents();
+    void dispatchExternalEvents(void *param);
 
     /*
      * Dispatch timer, zk, and session events.
@@ -187,6 +192,22 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     void dispatchZKEvent(zk::ZKWatcherEvent *zep);
     void dispatchSessionEvent(zk::ZKWatcherEvent *zep);
     bool dispatchEndEvent();
+
+    /**
+     * Dispatch only internal clusterlib events that will not be
+     * propaged to clusterlib clients.  Since these events are not
+     * visible to clusterlib clients, they may violate the strict
+     * ordering of events from m_zkEventAdapter.
+     */
+    void dispatchInternalEvents(void *param);
+
+    /**
+     * Checks whether this is an internal event.  Should only be
+     * processed by dispatchInternalEvents.
+     *
+     * @param ge the GenericEvent pointer
+     */
+    bool isInternalEvent(GenericEvent *ge);
 
     /*
      * Helper method that updates the cached representation
@@ -200,7 +221,7 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
      * This method consumes timer events. It runs in a separate
      * thread.
      */
-    void consumeTimerEvents();
+    void consumeTimerEvents(void *param);
 
     /*
      * Retrieve a list of all (currently known) applications.
@@ -228,6 +249,16 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
      */
     NameList getNodeNames(GroupImpl *group);
 
+    /**
+     * Get any immediate children of this NotifyableImpl.  In order to
+     * guarantee that this is atomic, hold the lock of this
+     * NotifyableImpl first.
+     *
+     * @param ntp the NotifyableImpl to look for children on
+     * @return list of pointers to the Notifyable children.
+     */
+    NotifyableList getChildren(Notifyable *ntp);
+    
     /*
      * Leadership protocol.
      */
@@ -522,6 +553,21 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
                          GroupImpl *parentGroup);
     
     /*
+     * Remove entities in Zookeeper.
+     */
+    void removeApplication(ApplicationImpl *app);
+    void removeDataDistribution(DataDistributionImpl *dist);
+    void removeProperties(PropertiesImpl *prop);
+    void removeGroup(GroupImpl *group);
+    void removeNode(NodeImpl *ntp);
+
+    /*
+     * Remove Notifyable from the factory cache and into
+     * m_removedNotifyables (dead pool) that will be cleaned up later.
+     */
+    void removeNotifyableFromCacheByKey(const std::string &key);
+
+    /*
      * Get bits of Node state.
      */
     bool isNodeConnected(const std::string &key);
@@ -535,13 +581,23 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     Mutex *getLeadershipWatchesLock() { return &m_lwLock; }
     Mutex *getPropertiesLock() { return &m_propLock; }
     Mutex *getDataDistributionsLock() { return &m_distLock; }
+    Mutex *getRootLock() { return &m_rootLock; }
     Mutex *getApplicationsLock() { return &m_appLock; }
     Mutex *getGroupsLock() { return &m_groupLock; }
     Mutex *getNodesLock() { return &m_nodeLock; }
+    Mutex *getRemovedNotifyablesLock() { return &m_removedNotifyablesLock; }
     Mutex *getTimersLock() { return &m_timerRegistryLock; }
     Mutex *getSyncLock() { return &m_syncLock; }
     Cond *getSyncCond() { return &m_syncCond; }
     Mutex *getEndEventLock() { return &m_endEventLock; }
+
+    /**
+     * Get the removed notifyables list
+     */
+    NotifyableList *getRemovedNotifyablesList()
+    {
+        return &m_removedNotifyables;
+    }
 
     /**
      * Increment the sync completed
@@ -563,19 +619,31 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     std::string getNotifyableValue(const std::string &key,
                                    CachedObjectEventHandler *eventHandlerP);
 
-    /*
-     * Implement ready protocol for notifyables.
+    /**
+     * Set up event handler for changes in the clusterlib object state.
+     *
+     * @param ntp Notifyable to watch for changes on
      */
-    bool establishNotifyableReady(NotifyableImpl *ntp);
+    void establishNotifyableStateChange(NotifyableImpl *ntp);
 
     /**
-     * Get the change handlers object
+     * Get the cached object change handlers object
      *
      * @return pointer to CachedObjectChangeHandlers for handling change
      */
-    CachedObjectChangeHandlers *getChangeHandlers()
+    CachedObjectChangeHandlers *getCachedObjectChangeHandlers()
     {
-        return &m_changeHandlers;
+        return &m_cachedObjectChangeHandlers;
+    }
+
+    /**
+     * Get the internal change handlers object
+     *
+     * @return pointer to InternalChangeHandlers for handling change
+     */
+    InternalChangeHandlers *getInternalChangeHandlers()
+    {
+        return &m_internalChangeHandlers;
     }
 
     /**
@@ -635,35 +703,36 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
      * The cached root.
      */
     RootImpl *mp_root;
+    Mutex m_rootLock;
 
     /*
      * The registry of cached properties maps.
      */
-    PropertiesImplMap m_properties;
+    NotifyableImplMap m_props;
     Mutex m_propLock;
 
     /*
      * The registry of cached data distributions.
      */
-    DataDistributionImplMap m_dists;
+    NotifyableImplMap m_dists;
     Mutex m_distLock;
 
     /*
      * The registry of cached applications.
      */
-    ApplicationImplMap m_apps;
+    NotifyableImplMap m_apps;
     Mutex m_appLock;
 
     /*
      * The registry of cached groups.
      */
-    GroupImplMap m_groups;
+    NotifyableImplMap m_groups;
     Mutex m_groupLock;
 
     /*
      * The registry of cached nodes.
      */
-    NodeImplMap m_nodes;
+    NotifyableImplMap m_nodes;
     Mutex m_nodeLock;
 
     /*
@@ -679,6 +748,12 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     int64_t m_syncIdCompleted;
     Mutex m_syncLock;
     Cond m_syncCond;
+
+    /*
+     * The registry of deleted Notifyables
+     */
+    NotifyableList m_removedNotifyables;
+    Mutex m_removedNotifyablesLock;
 
     /*
      * Remember whether an END event has been dispatched
@@ -724,19 +799,32 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     ZooKeeperEventAdapter m_zkEventAdapter;
 
     /**
-     * Synchronous event adapter.
+     * Synchronous event adapter for m_externalEventThread.
      */
-    SynchronousEventAdapter<GenericEvent> m_eventAdapter;
+    SynchronousEventAdapter<GenericEvent> m_externalEventAdapter;
 
     /**
-     * The thread running the synchronous event adapter.
+     * The thread that processes all clusterlib external events from the
+     * synchronous event adapter.
      */
-    CXXThread<FactoryOps> m_eventThread;
+    CXXThread<FactoryOps> m_externalEventThread;
+
+    /**
+     * Synchronous event adapter for m_internalEventAdapter.
+     */
+    SynchronousEventAdapter<GenericEvent> m_internalEventAdapter;
+
+    /**
+     * The thread that processes all clusterlib internal events from
+     * the m_eventAdapter.  It is meant to handle events that the
+     * m_clientEventThread depends on.
+     */
+    CXXThread<FactoryOps> m_internalEventThread;
 
     /**
      * Is the event loop terminating?
      */
-    bool m_shutdown;
+    volatile bool m_shutdown;
 
     /**
      * Is the factory connected to ZooKeeper?
@@ -751,7 +839,13 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     /**
      * Handles all the events for clusterlib objects
      */
-    CachedObjectChangeHandlers m_changeHandlers;
+    CachedObjectChangeHandlers m_cachedObjectChangeHandlers;
+
+    /**
+     * Handles all event for internal event changes (not visible to
+     * clusterlib clients)
+     */
+    InternalChangeHandlers m_internalChangeHandlers;
 
     /**
      * Handles all the locks for clusterlib objects

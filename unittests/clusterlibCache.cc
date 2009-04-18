@@ -54,26 +54,26 @@ class CacheClusterEventHandler
 class ClusterlibCache
     : public MPITestFixture
 {
-    CPPUNIT_TEST_SUITE( ClusterlibCache );
-    CPPUNIT_TEST( testCache1 );
-    CPPUNIT_TEST( testCache2 );
-    CPPUNIT_TEST( testCache3 );
-    CPPUNIT_TEST( testCache4 );
-    CPPUNIT_TEST( testCache5 );
-    CPPUNIT_TEST( testCache6 );
-    CPPUNIT_TEST( testCache7 );
-    CPPUNIT_TEST( testCache8 );
-    CPPUNIT_TEST( testCache9 );
-    CPPUNIT_TEST( testCache10 );
-    CPPUNIT_TEST( testCache11 );
-    CPPUNIT_TEST( testCache12 );
-    CPPUNIT_TEST( testCache13 );
-    CPPUNIT_TEST( testCache14 );
-    CPPUNIT_TEST( testCache15 );
-    CPPUNIT_TEST( testCache16 );
-    CPPUNIT_TEST( testCache17 );
-    CPPUNIT_TEST( testCache18 );
-    CPPUNIT_TEST( testCache19 );
+    CPPUNIT_TEST_SUITE(ClusterlibCache);
+    CPPUNIT_TEST(testCache1);
+    CPPUNIT_TEST(testCache2);
+    CPPUNIT_TEST(testCache3);
+    CPPUNIT_TEST(testCache4);
+    CPPUNIT_TEST(testCache5);
+    CPPUNIT_TEST(testCache6);
+    CPPUNIT_TEST(testCache7);
+    CPPUNIT_TEST(testCache8);
+    CPPUNIT_TEST(testCache9);
+    CPPUNIT_TEST(testCache10);
+    CPPUNIT_TEST(testCache11);
+    CPPUNIT_TEST(testCache12);
+    CPPUNIT_TEST(testCache13);
+    CPPUNIT_TEST(testCache14);
+    CPPUNIT_TEST(testCache15);
+    CPPUNIT_TEST(testCache16);
+    CPPUNIT_TEST(testCache17);
+    CPPUNIT_TEST(testCache18);
+    CPPUNIT_TEST(testCache19);
 
     CPPUNIT_TEST_SUITE_END();
 
@@ -90,7 +90,7 @@ class ClusterlibCache
     {
     }
 
-    /* Runs prior to all tests */
+    /* Runs prior to each test */
     virtual void setUp() 
     {
 	_factory =
@@ -111,11 +111,10 @@ class ClusterlibCache
         CPPUNIT_ASSERT(_dist0 != NULL);
     }
 
-    /* Runs after all tests */
+    /* Runs after each test */
     virtual void tearDown() 
     {
-	cerr << "delete called " << endl;
-
+        cleanAndBarrierMPITest(_factory, true);
         /*
          * Delete only the factory, that automatically deletes
          * all the other objects.
@@ -131,18 +130,19 @@ class ClusterlibCache
 
     void testCache1()
     {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache1");
+        
         /*
          * Set the health report of a node and see if the cache
          * is updated.
          */
-
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 1" << endl;
 
         string hrpath =
             _nod0->getKey() +
@@ -151,11 +151,15 @@ class ClusterlibCache
         _zk->setNodeData(hrpath, "healthy");
         _factory->synchronize();
         CPPUNIT_ASSERT(string("healthy") == _nod0->getClientState());
-
-        cerr << "Test 1 end" << endl;
     }
     void testCache2()
     {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache2");
+
         /*
          * Test ready protocol.
          *
@@ -163,37 +167,57 @@ class ClusterlibCache
          * cache is updated. Same on group, application, and
          * data distribution.
          */
-
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-
         if (!isMyRank(0)) {
             return;
         }
 
-        cerr << "Test 2" << endl;
+        string rpath = _nod0->getKey();
+        _zk->setNodeData(rpath, "");
+        _factory->synchronize();
+        CPPUNIT_ASSERT(_nod0->getState() == Notifyable::READY);
+        _zk->setNodeData(rpath, "ready");
+        _factory->synchronize();
+        CPPUNIT_ASSERT(_nod0->getState() == Notifyable::READY);
 
-        /*
-         * This test needs to be rewritten for the new
-         * implementation of the READY protocol, punt for
-         * now.
-         */
+        rpath = _grp0->getKey();
+        _zk->setNodeData(rpath, "");
+        _factory->synchronize();
+        CPPUNIT_ASSERT(_grp0->getState() == Notifyable::READY);
+        _zk->setNodeData(rpath, "ready");
+        _factory->synchronize();
+        CPPUNIT_ASSERT(_grp0->getState() == Notifyable::READY);
 
-        cerr << "Test 2 end" << endl;
+        rpath = _app0->getKey();
+        _zk->setNodeData(rpath, "");
+        _factory->synchronize();
+        CPPUNIT_ASSERT(_app0->getState() == Notifyable::READY);
+        _zk->setNodeData(rpath, "ready");
+        _factory->synchronize();
+        CPPUNIT_ASSERT(_app0->getState() == Notifyable::READY);
+
+        rpath = _dist0->getKey();
+        _zk->setNodeData(rpath, "");
+        _factory->synchronize();
+        CPPUNIT_ASSERT(_dist0->getState() == Notifyable::READY);
+        _zk->setNodeData(rpath, "ready");
+        _factory->synchronize();
+        CPPUNIT_ASSERT(_dist0->getState() == Notifyable::READY);
     }
     void testCache3()
     {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache3");
+
         /*
          * Testing whether groups change notification works
          * in an application.
          */
-
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 3 " << endl;
 
         string rpath =
             _app0->getKey() +
@@ -244,24 +268,23 @@ class ClusterlibCache
 
         Group *groupP = _app0->getGroup("g15");
 
-        CPPUNIT_ASSERT(groupP->getState() == Notifyable::INIT);
-
-        cerr << "Test 3 end" << endl;
+        CPPUNIT_ASSERT(groupP->getState() == Notifyable::READY);
     }
     void testCache4()
     {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache4");
+
         /*
          * Testing whether distribution change notification works
          * in an application.
          */
-
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 4" << endl;
 
         string rpath =
             _app0->getKey() +
@@ -288,7 +311,7 @@ class ClusterlibCache
         /*
          * Create the new data distribution..
          */
-        _zk->createNode(rpath, "", 0, false);
+        _app0->getDataDistribution("d15", true);
 
         /*
          * Wait for event propagation.
@@ -313,24 +336,24 @@ class ClusterlibCache
 
         DataDistribution *distP = _app0->getDataDistribution("d15");
 
-        CPPUNIT_ASSERT(distP->getState() == Notifyable::INIT);
-
-        cerr << "Test 4 end" << endl;
+        CPPUNIT_ASSERT(distP->getState() == Notifyable::READY);
     }
     void testCache5()
     {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache5");
+
         /*
          * Test whether node membership change notification works
          * in a group.
          */
 
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 5" << endl;
 
         string rpath = 
             _grp0->getKey() +
@@ -357,7 +380,7 @@ class ClusterlibCache
         /*
          * Create a new node..
          */
-        _zk->createNode(rpath, "", 0, false);
+        _grp0->getNode("n111", true);
 
         /*
          * Wait for event propagation.
@@ -382,25 +405,24 @@ class ClusterlibCache
 
         Node *np = _grp0->getNode("n111");
 
-        CPPUNIT_ASSERT(np->getState() == Notifyable::INIT);
-
-        cerr << "Test 5 end" << endl;
+        CPPUNIT_ASSERT(np->getState() == Notifyable::READY);
     }
 
     void testCache6()
     {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache6");
+
         /*
          * Testing whether distribution change notification works
          * in a group.
          */
-
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 6" << endl;
 
         string rpath =
             _grp0->getKey() +
@@ -427,7 +449,7 @@ class ClusterlibCache
         /*
          * Create the new data distribution..
          */
-        _zk->createNode(rpath, "", 0, false);
+        _grp0->getDataDistribution("d15", true);
 
         /*
          * Wait for event propagation.
@@ -452,24 +474,23 @@ class ClusterlibCache
 
         DataDistribution *distP = _grp0->getDataDistribution("d15");
 
-        CPPUNIT_ASSERT(distP->getState() == Notifyable::INIT);
-
-        cerr << "Test 6 end" << endl;
+        CPPUNIT_ASSERT(distP->getState() == Notifyable::READY);
     }
     void testCache7()
     {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache7");
+
         /*
          * Test whether node membership change notification works
          * in an application.
          */
-
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 7" << endl;
 
         string rpath = 
             _app0->getKey() +
@@ -496,7 +517,7 @@ class ClusterlibCache
         /*
          * Create a new node..
          */
-        _zk->createNode(rpath, "", 0, false);
+        _app0->getNode("n111", true);
 
         /*
          * Wait for event propagation.
@@ -521,24 +542,23 @@ class ClusterlibCache
 
         Node *np = _app0->getNode("n111");
 
-        CPPUNIT_ASSERT(np->getState() == Notifyable::INIT);
-
-        cerr << "Test 7 end" << endl;
+        CPPUNIT_ASSERT(np->getState() == Notifyable::READY);
     }
     void testCache8()
     {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache8");
+
         /*
          * Testing whether groups change notification works
          * in a group.
          */
-
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 8 " << endl;
 
         string rpath =
             _grp0->getKey() +
@@ -590,24 +610,24 @@ class ClusterlibCache
 
         Group *groupP = _grp0->getGroup("g15");
 
-        CPPUNIT_ASSERT(groupP->getState() == Notifyable::INIT);
-
-        cerr << "Test 8 end" << endl;
+        CPPUNIT_ASSERT(groupP->getState() == Notifyable::READY);
     }
     void testCache9()
     {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache9");
+
         /*
          * Test whether node connectivity notification
          * works.
          */
 
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 9" << endl;
 
         CPPUNIT_ASSERT(_nod0->isConnected() == false);
 
@@ -645,128 +665,126 @@ class ClusterlibCache
          * Now check that the node is not "connected".
          */
         CPPUNIT_ASSERT(_nod0->isConnected() == false);
-
-        cerr << "Test 9 end" << endl;
     }
     void testCache10()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache10");
 
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 10" << endl;
-
-        cerr << "Test 10 end" << endl;
     }
     void testCache11()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache11");
 
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 11" << endl;
-
-        cerr << "Test 11 end" << endl;
     }
     void testCache12()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache12");
 
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 12" << endl;
-
-        cerr << "Test 12 end" << endl;
     }
     void testCache13()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache13");
 
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 13" << endl;
-
-        cerr << "Test 13 end" << endl;
     }
     void testCache14()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache14");
 
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 14" << endl;
-
-        cerr << "Test 14 end" << endl;
     }
     void testCache15()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache15");
 
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 15" << endl;
-
-        cerr << "Test 15 end" << endl;
     }
     void testCache16()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache16");
 
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 16" << endl;
-
-        cerr << "Test 16 end" << endl;
     }
     void testCache17()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache17");
 
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 17" << endl;
-
-        cerr << "Test 17 end" << endl;
     }
     void testCache18()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache18");
 
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 18" << endl;
-
-        cerr << "Test 18 end" << endl;
     }
     void testCache19()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testCache19");
 
         if (!isMyRank(0)) {
             return;
         }
-
-        cerr << "Test 19" << endl;
-
-        cerr << "Test 19 end" << endl;
     }
 
   private:
@@ -780,5 +798,5 @@ class ClusterlibCache
 };
 
 /* Registers the fixture into the 'registry' */
-CPPUNIT_TEST_SUITE_REGISTRATION( ClusterlibCache );
+CPPUNIT_TEST_SUITE_REGISTRATION(ClusterlibCache);
 

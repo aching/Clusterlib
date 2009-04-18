@@ -50,30 +50,27 @@ class NodeImpl
     /*
      * Constructor used by the factory.
      */
-    NodeImpl(GroupImpl *group,
-             const std::string &name,
+    NodeImpl(FactoryOps *fp,
              const std::string &key,
-             FactoryOps *f)
-        : NotifyableImpl(f, key, name, group),
+             const std::string &name,
+             GroupImpl *group)
+        : NotifyableImpl(fp, key, name, group),
           mp_group(group),
           m_clientState(""),
           m_clientStateTime(0),
           m_masterSetState(0),
           m_masterSetStateTime(0),
           m_connected(false),
-          m_connectionTime(0)
-    {
-    }
+          m_connectionTime(0) {}
 
     /*
      * Destructor.
      */
     virtual ~NodeImpl() {}
 
-    /*
-     * Initialize the cached representation of this node.
-     */
     virtual void initializeCachedRepresentation();
+
+    virtual void removeRepositoryEntries();
 
     /*
      * Set the client state associated with this node.
@@ -100,8 +97,8 @@ class NodeImpl
     NodeImpl()
         : NotifyableImpl(NULL, "", "", NULL)
     {
-        throw ClusterException("Someone called the Node default "
-                               "constructor!");
+        throw InvalidMethodException("Someone called the Node default "
+                                       "constructor!");
     }
 
   private:

@@ -31,14 +31,15 @@ ClientImpl::getRoot()
  * invoking handlers for events as they come in.
  */
 void
-ClientImpl::consumeClusterEvents()
+ClientImpl::consumeClusterEvents(void *param)
 {
     TRACE(CL_LOG, "consumeClusterEvents");
 
     ClusterEventPayload *cepp;
 
     LOG_INFO(CL_LOG,
-             "Hello from ClientImpl::consumeClusterEvents, this: 0x%x, thread: 0x%x",
+             "Starting thread with ClientImpl::consumeClusterEvents(), "
+             "this: 0x%x, thread: 0x%x",
              (int32_t) this,
              (uint32_t) pthread_self());
 
@@ -65,7 +66,8 @@ ClientImpl::consumeClusterEvents()
     }
 
     LOG_INFO(CL_LOG,
-             "End ClientImpl::consumeClusterEvents(): this = 0x%x, tid = %d",
+             "Ending thread with ClientImpl::consumeClusterEvents(): "
+             "this = 0x%x, thread = 0x%x",
              (int32_t) this,
              (uint32_t) pthread_self());
 }
@@ -76,6 +78,12 @@ ClientImpl::consumeClusterEvents()
 void
 ClientImpl::dispatchHandlers(Notifyable *np, Event e)
 {
+    if (np == NULL) {
+        LOG_INFO(CL_LOG,
+                 "dispatchHandlers: NULL np, not dispatching");
+        return;
+    }
+
     string key = np->getKey();
     EventHandlersMultimapRange range = m_eventHandlers.equal_range(key);
     EventHandlersMultimap copy;

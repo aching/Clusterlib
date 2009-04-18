@@ -22,12 +22,9 @@ namespace clusterlib
 Group *
 ApplicationImpl::getMyGroup()
 {
-    throw ClusterException("Application cannot be a part of a group!");
+    throw InvalidMethodException("Application cannot be a part of a group!");
 }
 
-/*
- * Initialize the cached representation of this group.
- */
 void
 ApplicationImpl::initializeCachedRepresentation()
 {
@@ -37,6 +34,7 @@ ApplicationImpl::initializeCachedRepresentation()
 void
 ApplicationImpl::removeRepositoryEntries()
 {
+    getOps()->removeApplication(this);
 }
 
 };	/* End of 'namespace clusterlib' */

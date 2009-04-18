@@ -16,26 +16,26 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture {
 
   public:
     
-    ClusterlibNotifyableKeyManipulator() : _factoryP(NULL) {}
+    ClusterlibNotifyableKeyManipulator() : _factory(NULL) {}
     
     /**
-     * Runs prior to all tests 
+     * Runs prior to each test 
      */
     virtual void setUp() 
     {
-	_factoryP = new Factory(
+	_factory = new Factory(
             globalTestParams.getZkServerPortList());
-	CPPUNIT_ASSERT(_factoryP != NULL);
+	CPPUNIT_ASSERT(_factory != NULL);
     }
 
     /** 
-     * Runs after all tests 
+     * Runs after each test 
      */
     virtual void tearDown() 
     {
-	cerr << "delete called " << endl;
-	delete _factoryP;
-        _factoryP = NULL;
+        cleanAndBarrierMPITest(_factory, true);
+	delete _factory;
+        _factory = NULL;
     }
 
     /** 
@@ -43,8 +43,11 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture {
      */
     void testNotifyableKeyManipulator1()
     {
-        cerr << "testNotifyableKeyManipulator1: started" << endl;
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factoryP);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testNotifyableKeyManipulator1");
 
         string expectedres =         
             ClusterlibStrings::ROOTNODE +
@@ -64,8 +67,6 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture {
              << " final key = " << final << endl;
 
         CPPUNIT_ASSERT(final == expectedres);
-
-	cerr << "testGetNotifyableKeyManipulator1: done" << endl;
     }
 
     /** 
@@ -73,8 +74,11 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture {
      */
     void testNotifyableKeyManipulator2()
     {
-        cerr << "testNotifyableKeyManipulator2: started" << endl;
-        INIT_BARRIER_MPI_TEST_OR_DONE(2, true, _factoryP);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testNotifyableKeyManipulator2");
 
         string res =         
             ClusterlibStrings::ROOTNODE +
@@ -89,8 +93,6 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture {
              << " final key = " << final << endl;
 
         CPPUNIT_ASSERT(final.empty());
-
-	cerr << "testNotifyableKeyManipulator2 passed" << endl;
     }
 
     /** 
@@ -100,8 +102,11 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture {
      */
     void testNotifyableKeyManipulator3()
     {
-        cerr << "testNotifyableKeyManipulator3: started" << endl;
-        INIT_BARRIER_MPI_TEST_OR_DONE(2, true, _factoryP);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testNotifyableKeyManipulator3");
 
         string expectedres =         
             ClusterlibStrings::ROOTNODE +
@@ -127,12 +132,10 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture {
              << " final key = " << final << endl;
 
         CPPUNIT_ASSERT(final == expectedres);
-
-	cerr << "testNotifyableKeyManipulator3 passed" << endl;
     }
 
   private:
-    Factory *_factoryP;
+    Factory *_factory;
 };
 
 /* Registers the fixture into the 'registry' */

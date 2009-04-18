@@ -30,22 +30,38 @@ class RootImpl
 
     virtual Notifyable *getMyParent() const
     {
-        throw ClusterException("RootImpl does not have a parent");
+        throw InvalidMethodException("RootImpl does not have a parent");
     }
     
     virtual Application *getMyApplication()
     {
-        throw ClusterException("RootImpl not is part of an application");
+        throw InvalidMethodException(
+            "RootImpl not is part of an application");
     }
 
     virtual Group *getMyGroup()
     {
-        throw ClusterException("RootImpl is not part of a group");
+        throw InvalidMethodException("RootImpl is not part of a group");
     }
 
     virtual Properties *getProperties(bool create = false)
     {
-        throw ClusterException("RootImpl cannot have properties");
+        throw InvalidMethodException("RootImpl cannot have properties");
+    }
+
+    virtual void acquireLock(bool acquireChildren = 0)
+    {
+        throw InvalidMethodException("RootImpl cannot acquire locks");
+    }
+
+    virtual void releaseLock(bool releaseChildren = 0)
+    {
+        throw InvalidMethodException("RootImpl cannot release locks");
+    }
+
+    virtual void remove(bool removeChildren = 0) 
+    {
+        throw InvalidMethodException("RootImpl cannot be removed");
     }
 
     /*
@@ -55,20 +71,20 @@ class RootImpl
     /*
      * Constructor used by Factory.
      */
-    RootImpl(const std::string &name, 
-             const std::string &key, 
-             FactoryOps *fp)
+    RootImpl(FactoryOps *fp,
+             const std::string &key,
+             const std::string &name)
         : NotifyableImpl(fp, key, name, NULL) {}
 
-    /*
-     * Make the destructor private also.
-     */
     virtual ~RootImpl() {};
 
-    /*
-     * Initialize the cached representation.
-     */
     virtual void initializeCachedRepresentation();
+
+    virtual void removeRepositoryEntries() 
+    {
+        throw InvalidMethodException("RootImpl cannot remove its"
+                                       " repository entries");
+    }
 
   private:
     /*
@@ -77,8 +93,8 @@ class RootImpl
     RootImpl()
         : NotifyableImpl(NULL, "", "", NULL)
     {
-        throw ClusterException("Someone called the RootImpl "
-                               "default constructor!");
+        throw InvalidMethodException("Someone called the RootImpl "
+                                       "default constructor!");
     }
 };
 

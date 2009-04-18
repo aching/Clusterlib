@@ -41,14 +41,16 @@ class Thread
 template<typename T>
 struct ThreadContext
 {
-    typedef void (T::*FuncPtr) (void);
-    ThreadContext(T& ctx, FuncPtr func) : _ctx(ctx), _func(func) {}
+    typedef void (T::*FuncPtr) (void *);
+    ThreadContext(T& ctx, FuncPtr func, void *funcParam) 
+        : _ctx(ctx), _func(func), _funcParam(funcParam) {}
     void run(void) 
     {
-        (_ctx.*_func)();
+        (_ctx.*_func)(_funcParam);
     }
     T& _ctx;
-    FuncPtr   _func;
+    FuncPtr _func;
+    void *_funcParam;
 };
 
 template<typename T>
@@ -65,14 +67,14 @@ class CXXThread
     : public Thread
 {
   public:
-    typedef void (T::*FuncPtr) (void);
+    typedef void (T::*FuncPtr) (void *);
     CXXThread() : ctx(0) {}
     ~CXXThread() { if (ctx) delete ctx; }
 
-    void Create(T& obj, FuncPtr func) 
+    void Create(T& obj, FuncPtr func, void *funcParam = NULL) 
     {
         assert(ctx == 0);
-        ctx = new ThreadContext<T>(obj, func);
+        ctx = new ThreadContext<T>(obj, func, funcParam);
         Thread::Create(ctx, ThreadExec<T>);
     }
 

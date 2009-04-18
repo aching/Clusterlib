@@ -33,12 +33,12 @@ class ApplicationImpl
     /*
      * Constructor used by Factory.
      */
-    ApplicationImpl(const std::string &name, 
+    ApplicationImpl(FactoryOps *fp,
                     const std::string &key, 
-                    FactoryOps *fp,
+                    const std::string &name, 
                     NotifyableImpl *root)
         : NotifyableImpl(fp, key, name, root),
-          GroupImpl(name, key, fp, root) {}
+          GroupImpl(fp, key, name, root) {}
 
     /*
      * Destructor.
@@ -55,10 +55,10 @@ class ApplicationImpl
      */
     ApplicationImpl()
         : NotifyableImpl(NULL, "", "", NULL),
-          GroupImpl("", "", NULL, NULL)
+          GroupImpl(NULL, "", "", NULL)
     {
-        throw ClusterException("Someone called the ApplicationImpl "
-                               "default constructor!");
+        throw InvalidMethodException("Someone called the ApplicationImpl "
+                                     "default constructor!");
     }
 };
 

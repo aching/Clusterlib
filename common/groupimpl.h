@@ -38,6 +38,8 @@ class GroupImpl
      */
     virtual int64_t getLeadershipChangeTime() 
     { 
+        throwIfRemoved();
+
         return m_leadershipChangeTime; 
     }
 
@@ -97,9 +99,9 @@ class GroupImpl
     /*
      * Constructor used by the factory.
      */
-    GroupImpl(const std::string &name,
+    GroupImpl(FactoryOps *f,
               const std::string &key,
-              FactoryOps *f,
+              const std::string &name,
               NotifyableImpl *parent)
         : NotifyableImpl(f, key, name, parent),
           mp_leader(NULL),
@@ -142,10 +144,9 @@ class GroupImpl
      */
     void setLeadershipChangeTime(int64_t t) { m_leadershipChangeTime = t; }
 
-    /*
-     * Initialize the cached representation of this group.
-     */
     virtual void initializeCachedRepresentation();
+
+    virtual void removeRepositoryEntries();
 
   private:
     /*
@@ -154,8 +155,8 @@ class GroupImpl
     GroupImpl()
         : NotifyableImpl(NULL, "", "", NULL)
     {
-        throw ClusterException("Someone called the GroupImpl default "
-                               "constructor!");
+        throw InvalidMethodException("Someone called the GroupImpl default "
+                                       "constructor!");
     }
 
   private:

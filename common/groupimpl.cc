@@ -24,7 +24,11 @@ namespace clusterlib
 NameList
 GroupImpl::getNodeNames() 
 {
-    return getDelegate()->getNodeNames(this);
+    TRACE(CL_LOG, "getNodeNames");
+
+    throwIfRemoved();
+
+    return getOps()->getNodeNames(this);
 }
 
 /*
@@ -38,13 +42,19 @@ GroupImpl::getNode(const string &nodeName,
 {
     TRACE(CL_LOG, "getNode");
 
-    return getDelegate()->getNode(nodeName, this, true, create);
+    throwIfRemoved();
+
+    return getOps()->getNode(nodeName, this, true, create);
 }
 
 NameList
 GroupImpl::getGroupNames()
 {
-    return getDelegate()->getGroupNames(this);
+    TRACE(CL_LOG, "getGroupNames");
+
+    throwIfRemoved();
+
+    return getOps()->getGroupNames(this);
 }
 
 /*
@@ -58,19 +68,19 @@ GroupImpl::getGroup(const string &groupName,
 {
     TRACE(CL_LOG, "getGroup");
 
-    Group *group = getDelegate()->getGroup(groupName, this, create);
-    if ((group == NULL) && (create == true)) {
-        throw ClusterException(
-            string("getGrup: Couldn't create group ") + groupName);
-    }
+    throwIfRemoved();
 
-    return group;
+    return getOps()->getGroup(groupName, this, create);
 }
 
 NameList
 GroupImpl::getDataDistributionNames()
 {
-    return getDelegate()->getDataDistributionNames(this);
+    TRACE(CL_LOG, "getDataDistributionNames");
+
+    throwIfRemoved();
+
+    return getOps()->getDataDistributionNames(this);
 }
 
 /*
@@ -84,20 +94,11 @@ GroupImpl::getDataDistribution(const string &distName,
 {
     TRACE(CL_LOG, "getDataDistribution");
 
-    DataDistribution *dist = 
-        getDelegate()->getDataDistribution(distName, this, create);
-    if ((dist == NULL) && (create == true)) {
-        throw ClusterException(
-            string("getDataDistribution: Couldn't create data distribution ") +
-            distName);
-    }
+    throwIfRemoved();
 
-    return dist;
+    return getOps()->getDataDistribution(distName, this, create);
 }
 
-/*
- * Initialize the cached representation of this group.
- */
 void
 GroupImpl::initializeCachedRepresentation()
 {
@@ -106,6 +107,12 @@ GroupImpl::initializeCachedRepresentation()
     /*
      * Nothing to do here.
      */
+}
+
+void
+GroupImpl::removeRepositoryEntries()
+{
+    getOps()->removeGroup(this);
 }
 
 /*
@@ -117,11 +124,13 @@ GroupImpl::getLeader()
 {
     TRACE(CL_LOG, "getLeader");
 
+    throwIfRemoved();
+
     Locker l1(getLeadershipLock());
 
     if (mp_leader == NULL) {
         if (m_leaderIsKnown == false) {
-            updateLeader(getDelegate()->getLeader(this));
+            updateLeader(getOps()->getLeader(this));
         }
     }
     return mp_leader;
@@ -133,6 +142,10 @@ GroupImpl::getLeader()
 void
 GroupImpl::updateLeader(Node *lp)
 {
+    TRACE(CL_LOG, "updateLeader");
+
+    throwIfRemoved();
+
     Locker l1(getLeadershipLock());
 
     mp_leader = lp;
@@ -148,33 +161,41 @@ GroupImpl::updateLeader(Node *lp)
 void
 GroupImpl::initializeStringsForLeadershipProtocol()
 {
+    throwIfRemoved();
+
     Locker l1(getLeadershipLock());
 
     if (!m_leadershipStringsInitialized) {
         m_leadershipStringsInitialized = true;
         m_currentLeaderNodeName =
-            getDelegate()->getCurrentLeaderNodeName(getKey());
+            getOps()->getCurrentLeaderNodeName(getKey());
         m_leadershipBidsNodeName = 
-            getDelegate()->getLeadershipBidsNodeName(getKey());
+            getOps()->getLeadershipBidsNodeName(getKey());
         m_leadershipBidPrefix = 
-            getDelegate()->getLeadershipBidPrefix(getKey());
+            getOps()->getLeadershipBidPrefix(getKey());
     }
 }
 string
 GroupImpl::getCurrentLeaderNodeName()
 {
+    throwIfRemoved();
+
     initializeStringsForLeadershipProtocol();
     return m_currentLeaderNodeName;
 }
 string
 GroupImpl::getLeadershipBidsNodeName()
 {
+    throwIfRemoved();
+
     initializeStringsForLeadershipProtocol();
     return m_leadershipBidsNodeName;
 }
 string
 GroupImpl::getLeadershipBidPrefix()
 {
+    throwIfRemoved();
+
     initializeStringsForLeadershipProtocol();
     return m_leadershipBidPrefix;
 }

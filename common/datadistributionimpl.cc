@@ -74,10 +74,10 @@ DataDistributionImpl::s_hashFunctions[] =
 /*
  * Constructor.
  */
-DataDistributionImpl::DataDistributionImpl(GroupImpl *parentGroup,
-                                           const string &name,
+DataDistributionImpl::DataDistributionImpl(FactoryOps *fp,
                                            const string &key,
-                                           FactoryOps *fp,
+                                           const string &name,
+                                           GroupImpl *parentGroup,
                                            HashFunction *fnp)
     : NotifyableImpl(fp, key, name, parentGroup),
       m_hashFnIndex(DD_HF_JENKINS),
@@ -107,6 +107,8 @@ DataDistributionImpl::unmarshall(const string &marshalledData)
 {
     TRACE(CL_LOG, "unmarshall");
 
+    throwIfRemoved();
+
     vector<string> components;
     
     /*
@@ -114,8 +116,8 @@ DataDistributionImpl::unmarshall(const string &marshalledData)
      */
     split(components, marshalledData, is_any_of("\n")); 
     if (components.size() != 2) {
-        throw ClusterException("Invalid data. Expecting 2 top "
-                               "level components");
+        throw InconsistentInternalStateException(
+            "Invalid data. Expecting 2 top level components");
     }
 
     Locker s(getShardsLock());
@@ -133,6 +135,8 @@ void
 DataDistributionImpl::unmarshallShards(const string &marshalledShards)
 {
     TRACE(CL_LOG, "unmarshallShards");
+
+    throwIfRemoved();
 
     vector<string> components;
     vector<string> shardComponents;
@@ -153,10 +157,11 @@ DataDistributionImpl::unmarshallShards(const string &marshalledShards)
 	    LOG_WARN(CL_LOG,
                      "shardComponents (%d component(s)) = %s", 
                      shardComponents.size(), (*sIt).c_str());
-            throw ClusterException("Malformed shard \"" +
-                                   *sIt +
-                                   "\", expecting 3 components " +
-				   "and instead got " + s.str().c_str());
+            throw InconsistentInternalStateException(
+                "Malformed shard \"" +
+                *sIt +
+                "\", expecting 3 components " +
+                "and instead got " + s.str().c_str());
         }
 
         /*
@@ -168,9 +173,10 @@ DataDistributionImpl::unmarshallShards(const string &marshalledShards)
                         ::atoll(shardComponents[SC_LOWBOUND_IDX].c_str()),
                         ::atoll(shardComponents[SC_HIBOUND_IDX].c_str()));
         if (nsp == NULL) {
-            throw ClusterException("Could not create shard \"" +
-                                   *sIt +
-                                   "\"");
+            throw InconsistentInternalStateException(
+                "Could not create shard \"" +
+                *sIt +
+                "\"");
         }
 
         /*
@@ -189,6 +195,8 @@ DataDistributionImpl::unmarshallOverrides(const string &marshalledOverrides)
 {
     TRACE(CL_LOG, "unmarshallOverrides");
 
+    throwIfRemoved();
+
     vector<string> components;
     vector<string> moComponents;
     vector<string>::iterator sIt;
@@ -203,7 +211,7 @@ DataDistributionImpl::unmarshallOverrides(const string &marshalledOverrides)
     for (sIt = components.begin(); sIt != components.end(); sIt++) {
         split(moComponents, *sIt, is_any_of(","));
         if (moComponents.size() == 2) {
-            ntp = getDelegate()->getNotifyableFromKey(moComponents[1]);
+            ntp = getOps()->getNotifyableFromKey(moComponents[1]);
             // AC - TO be changed true);
             if (ntp != NULL) {
                 /*
@@ -215,16 +223,18 @@ DataDistributionImpl::unmarshallOverrides(const string &marshalledOverrides)
                                          ntp->getKey());
             }
             else {
-                throw ClusterException("Could not find Notifyable for manual "
-                                       "override \"" +
-                                       *sIt +
-                                       "\"");
+                throw InconsistentInternalStateException(
+                    "Could not find Notifyable for manual "
+                    "override \"" +
+                    *sIt +
+                    "\"");
             }
         }
         else {
-           throw ClusterException("Malformed manual override \"" +
-                                  *sIt +
-                                   "\", expecting 2 components");
+           throw InconsistentInternalStateException(
+               "Malformed manual override \"" +
+               *sIt +
+               "\", expecting 2 components");
         }
     }                                   
 }
@@ -237,6 +247,8 @@ DataDistributionImpl::marshall()
 {
     TRACE(CL_LOG, "marshall");
 
+    throwIfRemoved();
+
     return marshallShards() + "\n" + marshallOverrides();
 };
 
@@ -248,6 +260,8 @@ string
 DataDistributionImpl::marshallShards()
 {
     TRACE(CL_LOG, "marshallShards");
+
+    throwIfRemoved();
 
     string res = "";
     ShardList::iterator sIt;
@@ -293,6 +307,8 @@ DataDistributionImpl::marshallOverrides()
 {
     TRACE(CL_LOG, "marshallOverrides");
 
+    throwIfRemoved();
+
     string res = "";
     ManualOverridesMap::iterator moIt;
     char buf[1024];
@@ -325,9 +341,6 @@ DataDistributionImpl::marshallOverrides()
     return res;
 };
 
-/*
- * Initialize the data distribution from the cluster.
- */
 void
 DataDistributionImpl::initializeCachedRepresentation()
 {
@@ -344,6 +357,12 @@ DataDistributionImpl::initializeCachedRepresentation()
     updateManualOverrides();
 }
 
+void
+DataDistributionImpl::removeRepositoryEntries()
+{
+    getOps()->removeDataDistribution(this);
+}
+
 /*
  * Update the cached shards of the data distribution.
  */
@@ -351,6 +370,8 @@ bool
 DataDistributionImpl::updateShards()
 {
     TRACE(CL_LOG, "udpateShards");
+
+    throwIfRemoved();
 
     /*
      * Must lock before asking the repository for the values
@@ -360,7 +381,7 @@ DataDistributionImpl::updateShards()
     Locker s(getShardsLock());
 
     int32_t shardsVersion;
-    string shards = getDelegate()->loadShards(getKey(), shardsVersion);
+    string shards = getOps()->loadShards(getKey(), shardsVersion);
     ShardList::iterator sIt;
 
     /* 
@@ -390,6 +411,8 @@ DataDistributionImpl::updateManualOverrides()
 {
     TRACE(CL_LOG, "updateManualOverrides");
 
+    throwIfRemoved();
+
     /*
      * Must lock before asking the repository for the values
      * to ensure that we don't lose intermediate values or
@@ -399,7 +422,7 @@ DataDistributionImpl::updateManualOverrides()
 
     int32_t overridesVersion;
     string overrides =
-        getDelegate()->loadManualOverrides(getKey(), overridesVersion);
+        getOps()->loadManualOverrides(getKey(), overridesVersion);
     ManualOverridesMap::iterator moIt;
 
     /* 
@@ -431,6 +454,8 @@ Node *
 DataDistributionImpl::map(const string &key)
 {
     TRACE(CL_LOG, "map");
+
+    throwIfRemoved();
 
     Notifyable *ntp;
     DataDistributionImpl *distp = this;
@@ -485,6 +510,10 @@ DataDistributionImpl::map(const string &key)
 HashRange
 DataDistributionImpl::hashWork(const string &key)
 {
+    TRACE(CL_LOG, "hashWork");
+
+    throwIfRemoved();
+
     if (mp_hashFnPtr == NULL) {
         mp_hashFnPtr = s_hashFunctions[DD_HF_JENKINS];
     }
@@ -500,6 +529,8 @@ string
 DataDistributionImpl::matchesManualOverride(const string &key)
 {
     TRACE(CL_LOG, "matchesManualOverrides");
+
+    throwIfRemoved();
 
 #ifdef	ENABLING_MANUAL_OVERRIDES
     /*
@@ -532,6 +563,8 @@ DataDistributionImpl::isCovered()
 {
     TRACE(CL_LOG, "isCovered");
 
+    throwIfRemoved();
+
     ShardList::iterator sIt;
 
     Locker l(getShardsLock());
@@ -559,6 +592,8 @@ void
 DataDistributionImpl::setShards(vector<HashRange> &upperBounds)
 {
     TRACE(CL_LOG, "setShards");
+
+    throwIfRemoved();
 
     ShardList::iterator sIt;
     vector<HashRange>::iterator vIt;
@@ -597,7 +632,8 @@ DataDistributionImpl::setShards(vector<HashRange> &upperBounds)
          sIt != m_shards.end();
          sIt++, vIt++) {
         if (*vIt <= s) {
-            throw ClusterException("Invalid shard boundaries in setShards");
+            throw InconsistentInternalStateException(
+                "Invalid shard boundaries in setShards");
         }
         (*sIt)->setBeginRange(s);
         (*sIt)->setEndRange(*vIt);
@@ -613,12 +649,16 @@ DataDistributionImpl::getShardIndex(const string &key)
 {
     TRACE(CL_LOG, "getShardIndex");
 
+    throwIfRemoved();
+
     return getShardIndex(hashWork(key));
 }
 uint32_t
 DataDistributionImpl::getShardIndex(HashRange hash)
 {
     TRACE(CL_LOG, "getShardIndex");
+
+    throwIfRemoved();
 
     /*
      * Use the shard mapping. This is a linear search; better efficiency
@@ -643,7 +683,7 @@ DataDistributionImpl::getShardIndex(HashRange hash)
              1024,
              "There is no shard assigned to cover hash value %lld!",
              hash);
-    throw ClusterException(buf);
+    throw InconsistentInternalStateException(buf);
 };
 
 /*
@@ -657,6 +697,8 @@ DataDistributionImpl::getShardDetails(uint32_t shardIndex,
 {
     TRACE(CL_LOG, "getShardDetails");
 
+    throwIfRemoved();
+
     Locker l(getShardsLock());
     if (shardIndex >= m_shards.size()) {
         char buf[1024];
@@ -665,7 +707,7 @@ DataDistributionImpl::getShardDetails(uint32_t shardIndex,
                  "Shard index %d out of range 0-%d",
                  shardIndex,
                  m_shards.size() - 1);
-        throw ClusterException(buf);
+        throw InconsistentInternalStateException(buf);
     }
 
     /*
@@ -692,10 +734,13 @@ DataDistributionImpl::reassignShard(uint32_t shardIndex, Notifyable *ntp)
 {
     TRACE(CL_LOG, "reassignShard");
 
+    throwIfRemoved();
+
     Locker l(getShardsLock());
 
     if (shardIndex >= m_shards.size()) {
-        throw ClusterException("Shard index out of range in reassignShard");
+        throw InconsistentInternalStateException(
+            "Shard index out of range in reassignShard");
     }
     m_shards[shardIndex]->reassign(ntp);
 }
@@ -704,10 +749,13 @@ DataDistributionImpl::reassignShard(uint32_t shardIndex, const string &key)
 {
     TRACE(CL_LOG, "reassignShard");
 
+    throwIfRemoved();
+
     Locker l(getShardsLock());
 
     if (shardIndex >= m_shards.size()) {
-        throw ClusterException("Shard index out of range in reassignShard");
+        throw InconsistentInternalStateException(
+            "Shard index out of range in reassignShard");
     }
     m_shards[shardIndex]->reassign(key);
 }
@@ -720,6 +768,8 @@ DataDistributionImpl::reassignManualOverride(const string &pattern,
                                              Notifyable *ntp)
 {
     TRACE(CL_LOG, "reassignManualOverride");
+
+    throwIfRemoved();
 
     Locker l(getManualOverridesLock());
     ManualOverride *mop = m_manualOverrides[pattern];
@@ -736,6 +786,8 @@ DataDistributionImpl::reassignManualOverride(const string &pattern,
                                              const string &key)
 {
     TRACE(CL_LOG, "reassignManualOverride");
+
+    throwIfRemoved();
 
     Locker l(getManualOverridesLock());
     ManualOverride *mop = m_manualOverrides[pattern];
@@ -755,6 +807,8 @@ DataDistributionImpl::publish()
 {
     TRACE(CL_LOG, "publish");
 
+    throwIfRemoved();
+
     Locker s(getShardsLock());
     Locker m(getManualOverridesLock());
 
@@ -770,7 +824,7 @@ DataDistributionImpl::publish()
              getShardsVersion(),
              getManualOverridesVersion());
 
-    getDelegate()->updateDataDistribution(getKey(), 
+    getOps()->updateDataDistribution(getKey(), 
                                       marshalledShards,
                                       marshalledOverrides,
                                       getShardsVersion(),
@@ -794,6 +848,8 @@ DataDistributionImpl::publish()
 Notifyable *
 ManualOverride::loadNotifyable()
 {
+    TRACE(CL_LOG, "loadNotifyable");
+
     /*
      * If the notifyable is already loaded, return it.
      */
@@ -806,17 +862,19 @@ ManualOverride::loadNotifyable()
      */
     if (isForwarded()) {
         mp_notifyable =
-            mp_dist->getDelegate()->getDataDistributionFromKey(m_key, false);
+            mp_dist->getOps()->getDataDistributionFromKey(m_key, false);
     } else {
         mp_notifyable =
-            mp_dist->getDelegate()->getNodeFromKey(m_key, false);
+            mp_dist->getOps()->getNodeFromKey(m_key, false);
     }
     return mp_notifyable;
 }
 void
 ManualOverride::determineForwarding()
 {
-    Notifyable *ntp = mp_dist->getDelegate()->getNotifyableFromKey(m_key);
+    TRACE(CL_LOG, "determineForwarding");
+
+    Notifyable *ntp = mp_dist->getOps()->getNotifyableFromKey(m_key);
 
     if (m_key == "") {
         m_isForwarded = false;
@@ -825,10 +883,10 @@ ManualOverride::determineForwarding()
     } else if (dynamic_cast<DataDistribution *>(ntp)) {
         m_isForwarded = true;
     } else {
-        throw ClusterException("Key: \"" +
-                               m_key +
-                               "\" does not denote a node " +
-                               "or distribution!");
+        throw InconsistentInternalStateException("Key: \"" +
+                                                 m_key +
+                                                 "\" does not denote a node " +
+                                                 "or distribution!");
     }
 }
 
@@ -839,6 +897,8 @@ ManualOverride::determineForwarding()
 bool
 Shard::covers(const string &key)
 {
+    TRACE(CL_LOG, "covers");
+
     HashRange hash = getDataDistribution()->hashWork(key);
 
     return covers(hash);
@@ -846,6 +906,8 @@ Shard::covers(const string &key)
 bool
 Shard::covers(HashRange hash)
 {
+    TRACE(CL_LOG, "covers");
+
     if ((hash >= m_beginRange) && (hash <= m_endRange)) {
         return true;
     }

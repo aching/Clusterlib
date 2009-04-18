@@ -37,7 +37,7 @@ class BlockingQueue
          * \brief Retrieves and removes the head of this queue, waiting if 
          * \brief no elements are present in this queue.
          * 
-         * @param timeout how long to wait until an element becomes availabe, 
+         * @param timeout how long to wait until an element becomes available, 
          *                in milliseconds; if <code>0</code> then wait forever;
          *                if <code>< 0</code> then do not wait at all.
          * @param timedOut if not NULL then set to true whether this 

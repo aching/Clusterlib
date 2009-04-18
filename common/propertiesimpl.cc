@@ -28,16 +28,20 @@ namespace clusterlib
 Properties *
 PropertiesImpl::getProperties(bool create)
 {
-    throw ClusterException("getProperties() called on a Properties object!");
+    throw InvalidMethodException(
+        "getProperties() called on a Properties object!");
 }
 
-/*
- * Initialize the cached representation of this object.
- */
 void 
 PropertiesImpl::initializeCachedRepresentation()
 {
     updatePropertiesMap();
+}
+
+void
+PropertiesImpl::removeRepositoryEntries()
+{
+    getOps()->removeProperties(this);
 }
 
 /*
@@ -47,16 +51,32 @@ void
 PropertiesImpl::updatePropertiesMap()
 {
     int32_t version;
-    string keyValMap = getDelegate()->loadKeyValMap(getKey(), version);
+    string keyValMap = getOps()->loadKeyValMap(getKey(), version);
+
+    LOG_DEBUG(CL_LOG, 
+              "updatePropertiesMap: Properties key = %s, "
+              "new version = %d, old version = %d, new keyValMap = %s",
+              getKey().c_str(),
+              version,
+              getKeyValVersion(),
+              keyValMap.c_str());
 
     /*
      * Only update if this is a newer version.
      */
     if (version > getKeyValVersion()) {
+        Locker l1(getKeyValMapLock());
         m_keyValMap.clear();
         unmarshall(keyValMap);
         m_keyValMapVersion = version;
         setValueChangeTime(FactoryOps::getCurrentTimeMillis());
+    }
+    else {
+        LOG_WARN(CL_LOG,
+                 "updatePropertiesMap: Have a newer version (%d) "
+                 "than the repository (%d)",
+                 getKeyValVersion(),
+                 version);
     }
 }
 
@@ -64,12 +84,20 @@ void
 PropertiesImpl::setProperty(const string &name, 
                             const string &value)
 {
+    TRACE(CL_LOG, "setProperty");
+
+    throwIfRemoved();
+
     m_keyValMap[name] = value;
 }
 
 void
 PropertiesImpl::deleteProperty(const string &name)
 {
+    TRACE(CL_LOG, "deleteProperty");
+
+    throwIfRemoved();
+
     if (m_keyValMap.erase(name) != 1) {
         LOG_WARN(CL_LOG, 
                  "deleteProperty: Failed delete with name %s", 
@@ -86,10 +114,10 @@ PropertiesImpl::publish()
     string marshalledKeyValMap = marshall();
     int32_t finalVersion;
 	
-    getDelegate()->updateProperties(getKey(),
-				    marshalledKeyValMap,
-				    getKeyValVersion(),
-                                    finalVersion);
+    getOps()->updateProperties(getKey(),
+                               marshalledKeyValMap,
+                               getKeyValVersion(),
+                               finalVersion);
     
     /* 
      * Since we should have the lock, the data should be identical to
@@ -102,6 +130,10 @@ PropertiesImpl::publish()
 vector<string>
 PropertiesImpl::getPropertyKeys() const
 {
+    TRACE(CL_LOG, "getPropertyKeys");
+
+    throwIfRemoved();
+
     vector<string> keys;
 
     Locker(getKeyValMapLock());
@@ -117,11 +149,21 @@ PropertiesImpl::getPropertyKeys() const
 string 
 PropertiesImpl::getProperty(const string &name, bool searchParent)
 {
+    TRACE(CL_LOG, "getProperty");
+    
+    throwIfRemoved();
+
     Locker(getKeyValMapLock());
 
     KeyValMap::const_iterator ssIt = m_keyValMap.find(name);
 
     if (ssIt != m_keyValMap.end()) {
+        LOG_DEBUG(CL_LOG,
+                  "getProperty: Found name = %s with val %s "
+                  "in Properties key %s",
+                  name.c_str(),
+                  ssIt->second.c_str(),
+                  getKey().c_str());
 	return ssIt->second;
     }
     else if (searchParent == false) {
@@ -139,12 +181,12 @@ PropertiesImpl::getProperty(const string &name, bool searchParent)
     string parentKey = getKey();
     do {
         /*
-         * Generate the new parentKey by removing PROPERTIES and one
-         * clusterlib object.
+         * Generate the new parentKey by removing this Properties
+         * object and one clusterlib object.
          */
         parentKey = NotifyableKeyManipulator::removeObjectFromKey(parentKey);
         parentKey = NotifyableKeyManipulator::removeObjectFromKey(parentKey);
-     
+
         if (parentKey.empty()) {
             LOG_DEBUG(CL_LOG,
                       "getProperty: Giving up with new key %s from old key %s",
@@ -160,7 +202,7 @@ PropertiesImpl::getProperty(const string &name, bool searchParent)
                   parentKey.c_str(),
                   getKey().c_str());
         
-        prop = getDelegate()->getPropertiesFromKey(parentKey);
+        prop = getOps()->getPropertiesFromKey(parentKey);
     } while (prop == NULL);
     
     return prop->getProperty(name, searchParent);
@@ -201,15 +243,17 @@ PropertiesImpl::unmarshall(const string &marshalledKeyValMap)
                           "unmarshall: key-val pair (%d component(s)) = %s", 
                           pair.size(),
                           (*sIt).c_str());
-		throw ClusterException("Malformed property \"" +
-				       *sIt +
-				       "\", expecting 2 components " +
-				       "and instead got " + s.str().c_str());
+		throw InconsistentInternalStateException(
+                    "Malformed property \"" +
+                    *sIt +
+                    "\", expecting 2 components " +
+                    "and instead got " + s.str().c_str());
             }
             keyValMap[pair[0]] = pair[1];
         }
     }
     m_keyValMap = keyValMap;
+
     return true;
 }
 

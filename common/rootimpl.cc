@@ -26,7 +26,7 @@ RootImpl::getApplicationNames()
 {
     TRACE(CL_LOG, "getApplicationNames");
 
-    return getDelegate()->getApplicationNames();
+    return getOps()->getApplicationNames();
 }
 
 Application *
@@ -34,13 +34,7 @@ RootImpl::getApplication(const string &appName, bool create)
 {
     TRACE(CL_LOG, "getApplication");
 
-    Application *app = getDelegate()->getApplication(appName, create);
-    if ((app == NULL) && (create == true)) {
-        throw ClusterException(
-            string("getApplication: Couldn't create application ") + appName);
-    }
-
-    return app;
+    return  getOps()->getApplication(appName, create);
 }
 
 /*

@@ -97,9 +97,8 @@ class PropertiesImpl
      */
     virtual void reset() 
     {
-	acquireLock();
+        Locker l1(getKeyValMapLock());
 	m_keyValMap.clear();
-	releaseLock();
     }
 
     /**
@@ -121,19 +120,16 @@ class PropertiesImpl
     /*
      * Constructor used by the factory.
      */
-    PropertiesImpl(NotifyableImpl *parent,
+    PropertiesImpl(FactoryOps *fp,
                    const std::string &key,
-                   FactoryOps *fp)
+                   NotifyableImpl *parent)
         : NotifyableImpl(fp, key, "", parent),
           m_keyValMapVersion(-2),
-          m_valueChangeTime(0)
-    {
-    }
+          m_valueChangeTime(0) {}
 
-    /**
-     * \brief Initialize the cached representation of this node.
-     */
     virtual void initializeCachedRepresentation();
+
+    virtual void removeRepositoryEntries();
 
     /**
      * \brief Update the properties map from the repository.
@@ -177,6 +173,18 @@ class PropertiesImpl
      * Set the time at which the value changed.
      */
     void setValueChangeTime(int64_t t) { m_valueChangeTime = t; }
+
+  private:
+    /*
+     * The default constructor is private so no one can call it.
+     */
+    PropertiesImpl()
+        : NotifyableImpl(NULL, "", "", NULL)
+    {
+        throw InvalidMethodException("Someone called the PropertiesImpl "
+                                       "default constructor!");
+    }
+
 
   private:
     /**                                                                        

@@ -27,6 +27,8 @@ my $startMpd = undef;
 my $startZookeeper = undef;
 my $killAllMpd = undef;
 my $killAllZookeeper = undef;
+my $restartMpd = undef;
+my $restartZookeeper = undef;
 
 # Subroutine prototypes
 sub setCmdPrintExec;
@@ -46,18 +48,20 @@ my $user = getlogin();
 if ((defined($startMpd)) ||
     (defined($startZookeeper)) ||
     (defined($killAllMpd)) ||
-    (defined($killAllZookeeper))) {
-    if (defined($startMpd)) {
-	&startMpd($mpdBin);
-    }
-    if (defined($startZookeeper)) {
-	&startZookeeper($zookeeperExec);
-    }
-    if (defined($killAllMpd)) {
+    (defined($killAllZookeeper)) ||
+    (defined($restartMpd)) ||
+    (defined($restartZookeeper))) {
+    if (defined($killAllMpd) || defined($restartMpd)) {
 	&killAllMpd($mpdBin);
     }
-    if (defined($killAllZookeeper)) {
+    if (defined($killAllZookeeper) || defined($restartZookeeper)) {
 	&killAllZookeeper($zookeeperExec);
+    }
+    if (defined($startMpd) || defined($restartMpd)) {
+	&startMpd($mpdBin);
+    }
+    if (defined($startZookeeper) || defined($restartZookeeper)) {
+	&startZookeeper($zookeeperExec);
     }
     exit(0);
 }
@@ -129,14 +133,18 @@ sub parseArgs()
 	       'startMpd'         => \$startMpd,
 	       'startZk'          => \$startZookeeper,
 	       'killAllMpd'       => \$killAllMpd,
-	       'killAllZk'        => \$killAllZookeeper)
+	       'killAllZk'        => \$killAllZookeeper,
+	       'restartMpd'       => \$restartMpd,
+	       'restartZk'        => \$restartZookeeper)
         or usage();
 
     usage() if (defined($help) ||
 		(((!defined($startMpd)) &&
 		  (!defined($startZookeeper)) &&
 		  (!defined($killAllMpd)) &&
-		  (!defined($killAllZookeeper))) &&
+		  (!defined($killAllZookeeper)) &&
+                  (!defined($restartMpd)) &&
+		  (!defined($restartZookeeper))) &&
 		 ((!defined($numProcs)) ||
 		  (!defined($testBin)))));
 }
@@ -164,6 +172,8 @@ sub usage()
     print "   [--startZk]        start zookeeper only\n";
     print "   [--killAllMpd]     start mpd only\n";
     print "   [--klllAllZk]      start zookeeper only\n";
+    print "   [--restartMpd]     restart mpd only\n";
+    print "   [--restartZk]      restart zookeeper only\n";
 
     exit(1);
 }
@@ -262,4 +272,5 @@ sub killAllZookeeper()
     "user $user...\n";
     &setSystemCmdPrintExec("pkill -u $user -f \"$bin\" ");
     &setSystemCmdPrintExec("rm -rf $zookeeperServerDir");
+    sleep(1);
 }

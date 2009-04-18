@@ -98,19 +98,19 @@ main(int ac, char **av)
         clusterlib::Application *app1 = dst->getMyApplication();
         if (app0 != app1) {
             throw
-                clusterlib::ClusterException("app->dist->app non-equivalence");
+                clusterlib::Exception("app->dist->app non-equivalence");
         }
 
         clusterlib::Group *grp2 = node0->getMyGroup();
         if (grp1 != grp2) {
             throw
-                clusterlib::ClusterException(
+                clusterlib::Exception(
 		    "group->node->group non-equivalence");
         }
         app1 = grp0->getMyApplication();
         if (app0 != app1) {
             throw
-               clusterlib::ClusterException("app->group->app non-equivalence");
+               clusterlib::Exception("app->group->app non-equivalence");
         }
 
 	clusterlib::Properties *prop0 = app1->getProperties();

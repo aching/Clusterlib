@@ -22,114 +22,48 @@ namespace clusterlib
 {
 
 /*
- * Implement 'ready' protocol for notifyable objects.
+ * Handle changes to the state of a Notifyable.
  */
 Event
-CachedObjectChangeHandlers::handleNotifyableReady(NotifyableImpl *ntp,
-                                                  int32_t etype,
-                                                  const string &key)
+CachedObjectChangeHandlers::handleNotifyableStateChange(NotifyableImpl *ntp,
+                                                        int32_t etype,
+                                                        const string &key)
 {
-    TRACE(CL_LOG, "handleNotifyableReady");
+    TRACE(CL_LOG, "handleNotifyableStateChange");
 
-    /*
-     * If there's no notifyable, punt.
-     */
-    if (ntp == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Punting on event: %d on %s",
-                 etype,
-                 key.c_str());
-        return EN_NOEVENT;
-    }
-
-    LOG_WARN(CL_LOG, 
-              "handleNotifyableReady(%s)",
-              ntp->getKey().c_str());
-
-    if (etype == ZOO_DELETED_EVENT) {
-        /*
-         * NEED TO HANDLE DELETION!!!!
-         */
-        return EN_NOEVENT;
-    }
-
-    getOps()->establishNotifyableReady(ntp);
-    return EN_READY;
-}
-
-/*
- * Note the existence of a new notifyable, or the destruction of
- * an existing notifyable.
- */
-Event
-CachedObjectChangeHandlers::handleNotifyableExists(NotifyableImpl *ntp,
-                                                   int32_t etype,
-                                                   const string &key)
-{
-    TRACE(CL_LOG, "handleNotifyableExists");
-
-    /*
-     * If there's no notifyable, punt.
-     */
-    if (ntp == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Punting on event: %d on %s",
-                 etype,
-                 key.c_str());
-        return EN_NOEVENT;
-    }
-
-    LOG_WARN(CL_LOG,
-             "Got exists event: %d on notifyable: \"%s\"",
-             etype,
-             ntp->getKey().c_str());
-
-    /*
-     * Now decide what to do with the event.
-     */
-    if (etype == ZOO_DELETED_EVENT) {
-        LOG_WARN(CL_LOG,
-                 "Deleted event for key: %s",
-                 key.c_str());
-        ntp->setState(Notifyable::REMOVED);
-        return EN_DELETED;
-    }
-    if (etype == ZOO_CREATED_EVENT) {
-        LOG_WARN(CL_LOG,
-                 "Created event for key: %s",
-                 key.c_str());
-        getOps()->establishNotifyableReady(ntp);
-
-        /*
-         * Re-establish interest in the existence of this notifyable.
-         */
-        getOps()->establishNotifyableInterest(ntp->getKey(),
-                                              &m_notifyableExistsHandler);
-
-        return EN_CREATED;
-    }
-    if (etype == ZOO_CHANGED_EVENT) {
-        LOG_WARN(CL_LOG,
-                 "Changed event for key: %s",
-                 key.c_str());
-
-        /*
-         * Re-establish interest in the existence of this notifyable.
-         */
-        getOps()->establishNotifyableInterest(ntp->getKey(),
-                                              &m_notifyableExistsHandler);
-
-        return EN_NOEVENT;
-    }
-
-    /*
-     * SHOULD NOT HAPPEN!
-     */
-    LOG_ERROR(CL_LOG,
-              "Illegal event %d for key %s",
-              etype,
+    LOG_DEBUG(CL_LOG,
+              "handleNotifyableStateChange: %s on notifyable \"%s\""
+              " for key %s",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              (!ntp) ? "" : ntp->getKey().c_str(),
               key.c_str());
-    ::abort();
+    
+    if (etype == ZOO_DELETED_EVENT) {
+        /*
+         * If this NotifyableImpl hasn't been removed (removed by a
+         * thread on another FactoryOps), the actual change in state is
+         * propagated through this handler.
+         */
+        if ((ntp) && (key.compare(ntp->getKey()) == 0)) {
+            getOps()->removeNotifyableFromCacheByKey(key);
+        }
+
+        return EN_NOEVENT;
+    }
+
+    /*
+     * If there's no notifyable, punt.
+     */
+    if (ntp == NULL) {
+        LOG_WARN(CL_LOG,
+                 "handleNotifyableStateChange: Punting on event: %s on %s",
+                 zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+                 key.c_str());
+        return EN_NOEVENT;
+    }
+
+    getOps()->establishNotifyableStateChange(ntp);
+    return EN_READY;
 }
 
 /*
@@ -143,15 +77,29 @@ CachedObjectChangeHandlers::handleApplicationsChange(NotifyableImpl *ntp,
     TRACE(CL_LOG, "handleApplicationsChange");
 
     /*
+     * If NotifyableImpl was deleted, do not re-establish watch, pass
+     * event to clients.
+     */
+    if (etype == ZOO_DELETED_EVENT) {
+        LOG_DEBUG(CL_LOG, "handleApplicationsChange: deleted");
+        return EN_DELETED;
+    }
+
+    /*
      * If there's no notifyable, punt.
      */
     if (ntp == NULL) {
         LOG_WARN(CL_LOG,
-                 "Punting on event: %d on %s",
-                 etype,
+                 "handleApplicationsChange: Punting on event: %s on %s",
+                 zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
         return EN_NOEVENT;
     }
+
+    LOG_DEBUG(CL_LOG,
+              "handleApplicationsChange: %s on notifyable: \"%s\"",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              ntp->getKey().c_str());
 
     /*
      * Convert to a root object.
@@ -184,15 +132,29 @@ CachedObjectChangeHandlers::handleGroupsChange(NotifyableImpl *ntp,
     TRACE(CL_LOG, "handleGroupsChange");
 
     /*
+     * If NotifyableImpl was deleted, do not re-establish watch, pass
+     * event to clients.
+     */
+    if (etype == ZOO_DELETED_EVENT) {
+        LOG_DEBUG(CL_LOG, "handleGroupsChange: deleted");
+        return EN_DELETED;
+    }
+
+    /*
      * If there's no notifyable, punt.
      */
     if (ntp == NULL) {
         LOG_WARN(CL_LOG,
-                 "Punting on event: %d on %s",
-                 etype,
+                 "handleGroupsChange: Punting on event: %s on %s",
+                 zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
         return EN_NOEVENT;
     }
+
+    LOG_DEBUG(CL_LOG,
+              "handleGroupsChange: %s on notifyable: \"%s\"",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              ntp->getKey().c_str());
 
     /*
      * Convert to group object.
@@ -225,12 +187,21 @@ CachedObjectChangeHandlers::handleDataDistributionsChange(NotifyableImpl *ntp,
     TRACE(CL_LOG, "handleDataDistributionsChange");
 
     /*
+     * If NotifyableImpl was deleted, do not re-establish watch, pass
+     * event to clients.
+     */
+    if (etype == ZOO_DELETED_EVENT) {
+        LOG_DEBUG(CL_LOG, "handleDataDistributionsChange: deleted");
+        return EN_DELETED;
+    }
+
+    /*
      * If there's no notifyable, punt.
      */
     if (ntp == NULL) {
         LOG_WARN(CL_LOG,
-                 "Punting on event: %d on %s",
-                 etype,
+                 "handleDataDistributionsChange: Punting on event: %s on %s",
+                 zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
         return EN_NOEVENT;
     }
@@ -245,6 +216,11 @@ CachedObjectChangeHandlers::handleDataDistributionsChange(NotifyableImpl *ntp,
                  key.c_str());
         return EN_NOEVENT;
     }
+
+    LOG_DEBUG(CL_LOG,
+              "handleDataDistributionsChange: %s on notifyable: \"%s\"",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              ntp->getKey().c_str());
 
     /*
      * Data not required, only using this function to set the watch again.
@@ -264,16 +240,31 @@ CachedObjectChangeHandlers::handleNodesChange(NotifyableImpl *ntp,
 {
     TRACE(CL_LOG, "handleNodesChange");
 
+    /*                                                                        
+     * If NotifyableImpl was deleted, do not re-establish watch, pass
+     * event to clients.
+     */
+    if (etype == ZOO_DELETED_EVENT) {
+        LOG_DEBUG(CL_LOG, "handleNodesChange: deleted");
+        return EN_DELETED;
+    }
+
     /*
      * If there's no notifyable, punt.
      */
     if (ntp == NULL) {
         LOG_WARN(CL_LOG,
-                 "Punting on event: %d on %s",
-                 etype,
+                 "handleNodesChange: Punting on event: %s on %s",
+                 zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
         return EN_NOEVENT;
     }
+
+    LOG_DEBUG(CL_LOG,
+              "handleNodesChange: %s on notifyable \"%s\" for key %s",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              ntp->getKey().c_str(),
+              key.c_str());
 
     /*
      * Convert to a group object.
@@ -291,7 +282,6 @@ CachedObjectChangeHandlers::handleNodesChange(NotifyableImpl *ntp,
      */
     getOps()->getNodeNames(group);
 
-
     return EN_MEMBERSHIPCHANGE;
 }
 
@@ -305,26 +295,38 @@ CachedObjectChangeHandlers::handlePropertiesValueChange(NotifyableImpl *ntp,
 {
     TRACE(CL_LOG, "handlePropertiesValueChange");
 
+    /*                                                                        
+     * If NotifyableImpl was deleted, do not re-establish watch, pass
+     * event to clients.
+     */
+    if (etype == ZOO_DELETED_EVENT) {
+        LOG_DEBUG(CL_LOG, "handlePropertiesValueChange: deleted");
+        return EN_DELETED;
+    }
+
     /*
      * If there's no notifyable, punt.
      */
     if (ntp == NULL) {
         LOG_WARN(CL_LOG,
-                 "Punting on event: %d on %s",
-                 etype,
+                 "handlePropertiesValueChange: Punting on event: %s on %s",
+                 zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
         return EN_NOEVENT;
     }
 
-    /*
-     * Convert the NotifyableImpl into a Properties *
-     */
-    PropertiesImpl *prop = dynamic_cast<PropertiesImpl *>(ntp);
-    string nv = "";
+    LOG_DEBUG(CL_LOG,
+              "handlePropertiesValueChange: %s on notifyable \"%s\" "
+              "for key %s",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              ntp->getKey().c_str(),
+              key.c_str());
 
     /*
+     * Convert the NotifyableImpl into a Properties *.
      * If there's no PropertiesImpl * then punt.
      */
+    PropertiesImpl *prop = dynamic_cast<PropertiesImpl *>(ntp);
     if (prop == NULL) {
         LOG_WARN(CL_LOG, 
                  "Conversion to PropertiesImpl * failed for %s",
@@ -346,6 +348,15 @@ CachedObjectChangeHandlers::handleShardsChange(NotifyableImpl *ntp,
                                                const string &key)
 {
     TRACE(CL_LOG, "handleShardsChange");
+
+    /*                                                                        
+     * If NotifyableImpl was deleted, do not re-establish watch, pass
+     * event to clients.
+     */
+    if (etype == ZOO_DELETED_EVENT) {
+        LOG_DEBUG(CL_LOG, "handleShardsChange: deleted");
+        return EN_DELETED;
+    }
 
     /*
      * If the given NotifyableImpl is NULL, punt.
@@ -370,6 +381,10 @@ CachedObjectChangeHandlers::handleShardsChange(NotifyableImpl *ntp,
         return EN_NOEVENT;
     }
 
+    LOG_DEBUG(CL_LOG,
+              "handleShardsChange: %s on notifyable: \"%s\"",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              ntp->getKey().c_str());
     /*
      * If there was no change, return EN_NOEVENT.
      */
@@ -393,11 +408,22 @@ CachedObjectChangeHandlers::handleManualOverridesChange(NotifyableImpl *ntp,
 {
     TRACE(CL_LOG, "handleManualOverridesChange");
 
+    /*                                                                        
+     * If NotifyableImpl was deleted, do not re-establish watch, pass
+     * event to clients.
+     */
+    if (etype == ZOO_DELETED_EVENT) {
+        LOG_DEBUG(CL_LOG, "handleManualOverridesChange: deleted");
+        return EN_DELETED;
+    }
+
     /*
      * If the given NotifyableImpl is NULL, punt.
      */
     if (ntp == NULL) {
-        LOG_WARN(CL_LOG, "No NotifyableImpl provided -- punting");
+        LOG_WARN(CL_LOG, 
+                 "handleManualOverridesChange: "
+                 "No NotifyableImpl provided -- punting");
         return EN_NOEVENT;
     }
 
@@ -415,6 +441,11 @@ CachedObjectChangeHandlers::handleManualOverridesChange(NotifyableImpl *ntp,
                  key.c_str());
         return EN_NOEVENT;
     }
+
+    LOG_DEBUG(CL_LOG,
+              "handleManualOverridesChange: %s on notifyable with key: \"%s\"",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              ntp->getKey().c_str());
 
     /*
      * If there was no change, return EN_NOEVENT.
@@ -439,11 +470,22 @@ CachedObjectChangeHandlers::handleClientStateChange(NotifyableImpl *ntp,
 {
     TRACE(CL_LOG, "handleClientStateChange");
 
+    /*                                                                       
+     * If NotifyableImpl was deleted, do not re-establish watch, pass
+     * event to clients.
+     */
+    if (etype == ZOO_DELETED_EVENT) {
+        LOG_DEBUG(CL_LOG, "handleClientStateChange: deleted");
+        return EN_DELETED;
+    }
+
     /*
      * If the given NotifyableImpl is NULL, punt.
      */
     if (ntp == NULL) {
-        LOG_WARN(CL_LOG, "No NotifyableImpl provided -- punting");
+        LOG_WARN(CL_LOG, 
+                 "handleClientStateChange:"
+                 " No NotifyableImpl provided -- punting");
         return EN_NOEVENT;
     }
 
@@ -461,6 +503,11 @@ CachedObjectChangeHandlers::handleClientStateChange(NotifyableImpl *ntp,
                  key.c_str());
         return EN_NOEVENT;
     }
+
+    LOG_DEBUG(CL_LOG,
+              "handleClientStateChange: %s on notifyable: \"%s\"",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              ntp->getKey().c_str());
 
     /*
      * Get the current client state and re-establish watch.
@@ -493,6 +540,15 @@ CachedObjectChangeHandlers::handleMasterSetStateChange(NotifyableImpl *ntp,
     TRACE(CL_LOG, "handleMasterSetStateChange");
 
     /*
+     * If NotifyableImpl was deleted, do not re-establish watch, pass
+     * event to clients.
+     */
+    if (etype == ZOO_DELETED_EVENT) {
+        LOG_DEBUG(CL_LOG, "handleMasterSetStateChange: deleted");
+        return EN_DELETED;
+    }
+
+    /*
      * If the given NotifyableImpl is NULL, punt.
      */
     if (ntp == NULL) {
@@ -514,6 +570,11 @@ CachedObjectChangeHandlers::handleMasterSetStateChange(NotifyableImpl *ntp,
                  key.c_str());
         return EN_NOEVENT;
     }
+
+    LOG_DEBUG(CL_LOG,
+              "handleMasterSetStateChange: %s on notifyable: \"%s\"",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              ntp->getKey().c_str());
 
     /*
      * Get the new value and re-establish watch.
@@ -567,6 +628,11 @@ CachedObjectChangeHandlers::handleNodeConnectionChange(NotifyableImpl *ntp,
         return EN_NOEVENT;
     }
 
+    LOG_DEBUG(CL_LOG,
+              "handleNodeConnectionChange: %s on notifyable: \"%s\"",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              ntp->getKey().c_str());
+
     /*
      * Get the current value and re-establish watch.
      */
@@ -596,13 +662,22 @@ CachedObjectChangeHandlers::handleLeadershipChange(NotifyableImpl *ntp,
 {
     TRACE(CL_LOG, "handleLeadershipChange");
 
+    /*                                                                        
+     * If NotifyableImpl was deleted, do not re-establish watch, pass
+     * event to clients.
+     */
+    if (etype == ZOO_DELETED_EVENT) {
+        LOG_DEBUG(CL_LOG, "handleLeadershipChange: deleted");
+        return EN_DELETED;
+    }
+
     /*
      * If there's no notifyable, punt.
      */
     if (ntp == NULL) {
         LOG_WARN(CL_LOG,
-                 "Punting on event: %d on %s",
-                 etype,
+                 "handleLeadershipChange: Punting on event: %s on %s",
+                 zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
         return EN_NOEVENT;
     }
@@ -614,6 +689,11 @@ CachedObjectChangeHandlers::handleLeadershipChange(NotifyableImpl *ntp,
                  key.c_str());
         return EN_NOEVENT;
     }
+
+    LOG_DEBUG(CL_LOG,
+              "handleLeadershipChange: %s on notifyable: \"%s\"",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              ntp->getKey().c_str());
 
     group->setLeadershipChangeTime(FactoryOps::getCurrentTimeMillis());
 
@@ -655,8 +735,8 @@ CachedObjectChangeHandlers::handlePrecLeaderExistsChange(NotifyableImpl *ntp,
      */
     if (ntp == NULL) {
         LOG_WARN(CL_LOG,
-                 "Punting on event: %d on %s",
-                 etype,
+                 "handlePrecLeaderExistsChange: Punting on event: %s on %s",
+                 zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
         return EN_NOEVENT;
     }
@@ -672,6 +752,11 @@ CachedObjectChangeHandlers::handlePrecLeaderExistsChange(NotifyableImpl *ntp,
                  key.c_str());
         return EN_NOEVENT;
     }
+
+    LOG_DEBUG(CL_LOG,
+              "handlePrecLeaderExistsChange: %s on notifyable: \"%s\"",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              ntp->getKey().c_str());
 
     /*
      * Make all interested Servers participate in the
@@ -746,9 +831,10 @@ CachedObjectChangeHandlers::handlePrecLeaderExistsChange(NotifyableImpl *ntp,
 
         group1 = np1->getMyGroup();
         if (group1 == NULL) {
-            throw ClusterException(string("handlePrecLeaderChange: ") +
-                                   "NULL group containing " +
-                                   np1->getKey());
+            throw InconsistentInternalStateException(
+                string("handlePrecLeaderChange: ") +
+                "NULL group containing " +
+                np1->getKey());
         }
 
         if (group != group1) {
@@ -766,64 +852,6 @@ CachedObjectChangeHandlers::handlePrecLeaderExistsChange(NotifyableImpl *ntp,
     }
 
     return EN_LEADERSHIPCHANGE;
-}
-
-/*
- * Handle existence change for preceding lock node. This is called
- * whenever a preceding lock node being watched by a thread in this
- * abdicates.  All it does is signal the lock waiting on it to wake up
- * and try again.
- */
-Event
-CachedObjectChangeHandlers::handlePrecLockNodeExistsChange(NotifyableImpl *ntp,
-                                                           int32_t etype,
-                                                           const string &key)
-{
-    TRACE(CL_LOG, "handlePrecLockNodeExistsChange");
-
-    /*
-     * If there's no notifyable, punt.
-     */
-    if (ntp == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Punting on event: %d on %s",
-                 etype,
-                 key.c_str());
-        return EN_NOEVENT;
-    }
-
-    if (etype == ZOO_DELETED_EVENT) {
-        /*
-         * This is the only expected event.
-         */
-        LOG_DEBUG(CL_LOG, 
-                  "handlePrecLockNodeExistsChange: ZOO_DELETED_EVENT called");
-
-        /*
-         * Notify the thread waiting to acquire the lock that this
-         * lock node has finally been deleted.  Since this object
-         * cannot be deleted it should be safe 
-         */
-        WaitMap::iterator waitMapIt = 
-            getOps()->getDistrbutedLocks()->getWaitMap()->find(key);
-        if (waitMapIt != getOps()->getDistrbutedLocks()->getWaitMap()->end()) {
-            throw ClusterException("handlePrecLockNodeExistsChange: Signalling "
-                                   "the thread waiting on acquire failed");
-        }
-
-        waitMapIt->second->predSignal();
-
-        return EN_NOEVENT;
-    }
-    else {
-        LOG_ERROR(CL_LOG, 
-                  "handlePrecLockNodeExistsChange: non-ZOO_DELETED_EVENT "
-                  "event %d called", etype);
-        throw ClusterException("handlePrecLockNodeExistsChange: "
-                               "non-ZOO_DELETED_EVENT called");
-    }
-    
-    return EN_LOCKNODECHANGE;
 }
 
 /*

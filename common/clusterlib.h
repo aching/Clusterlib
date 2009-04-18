@@ -27,7 +27,7 @@
 
 #include "forwarddecls.h"
 
-#include "clusterexception.h"
+#include "clusterlibexceptions.h"
 #include "log.h"
 #include "blockingqueue.h"
 #include "mutex.h"

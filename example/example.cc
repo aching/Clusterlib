@@ -24,7 +24,6 @@ class MyTimerHandler
      */
     virtual void handleTimerEvent(clusterlib::TimerId id,
                                   clusterlib::ClientData data)
-        throw(clusterlib::ClusterException)
     {
         cerr << "Called handler for timer id: "
              << id
@@ -104,18 +103,18 @@ main(int ac, char **av)
         clusterlib::Application *app1 = dst->getMyApplication();
         if (app != app1) {
             throw
-                clusterlib::ClusterException("app->dist->app non-equivalence");
+                clusterlib::Exception("app->dist->app non-equivalence");
         }
         clusterlib::Group *grp1 = node->getMyGroup();
         if (grp != grp1) {
             throw
-                clusterlib::ClusterException(
+                clusterlib::Exception(
 		    "group->node->group non-equivalence");
         }
         app1 = grp->getMyApplication();
         if (app != app1) {
             throw
-               clusterlib::ClusterException("app->group->app non-equivalence");
+               clusterlib::Exception("app->group->app non-equivalence");
         }
 
         delete f;

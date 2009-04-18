@@ -25,6 +25,7 @@
 
 #include "notifyablekeymanipulator.h"
 #include "cachedobjectchangehandlers.h"
+#include "internalchangehandlers.h"
 #include "distributedlocks.h"
 #include "factoryops.h"
 

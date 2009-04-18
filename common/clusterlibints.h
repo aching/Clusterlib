@@ -52,8 +52,8 @@ class ClusterlibInts
   private:
     ClusterlibInts()
     {
-        throw ClusterException("ClusterlibInts is not meant "
-                               "to be constructed");
+        throw InvalidMethodException("Someone called the ClusterlibInts "
+                                     "default constructor!");
     }
 };
 

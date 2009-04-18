@@ -9,7 +9,7 @@
 #ifndef __MUTEX_H__
 #define __MUTEX_H__
 
-#include "clusterexception.h"
+#include "clusterlibexceptions.h"
 
 namespace clusterlib {
 
@@ -206,8 +206,8 @@ class Locker
      */
     Locker()
     {
-        throw ClusterException("Someone called the "
-                               "Locker default constructor!");
+        throw InvalidMethodException("Someone called the "
+                                       "Locker default constructor!");
     }
 
   private:
@@ -227,14 +227,16 @@ class RdWrLock
     {
         int ret = pthread_rwlock_init(&m_rwlock, NULL);
         if (ret != 0) {
-            throw ClusterException("RdWrLock: constructor failed");
+            throw SystemFailureException(
+                "RdWrLock: constructor failed");
         }
     }
     ~RdWrLock()
     {
         int ret = pthread_rwlock_destroy(&m_rwlock);
         if (ret != 0) {
-            throw ClusterException("RdWrLock: destructor failed");
+            throw SystemFailureException(
+                "RdWrLock: destructor failed");
         }
     }
     /**
@@ -244,7 +246,7 @@ class RdWrLock
     {
         int ret = pthread_rwlock_rdlock(&m_rwlock);
         if (ret != 0) {
-            throw ClusterException("acquireRead: failed");
+            throw SystemFailureException("acquireRead: failed");
         }
     }
     /**
@@ -254,7 +256,7 @@ class RdWrLock
     {
         int ret = pthread_rwlock_wrlock(&m_rwlock);
         if (ret != 0) {
-            throw ClusterException("acquireWrite: failed");
+            throw SystemFailureException("acquireWrite: failed");
         }
     }
     /**
@@ -264,7 +266,7 @@ class RdWrLock
     {
         int ret = pthread_rwlock_unlock(&m_rwlock);
         if (ret != 0) {
-            throw ClusterException("release: failed");
+            throw SystemFailureException("release: failed");
         }
     }
   private:
@@ -294,7 +296,8 @@ class RdWrLocker
     {
         if ((mp_lock == NULL) ||
             ((type != READLOCK) && (type != WRITELOCK))) {
-            throw ClusterException("RdWrLocker: lock or type invalid!");
+            throw SystemFailureException(
+                "RdWrLocker: lock or type invalid!");
         }
 
         if (type == READLOCK) {
@@ -319,8 +322,8 @@ class RdWrLocker
      */
     RdWrLocker()
     {
-        throw ClusterException("Someone called the "
-                               "RdWrLocker default constructor!");
+        throw InvalidMethodException("Someone called the "
+                                       "RdWrLocker default constructor!");
     }
 
   private:

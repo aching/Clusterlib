@@ -8,58 +8,100 @@
 #define MPI_TAG 1000
 
 /**
- * Must call this prior to any test being run. It synchronizes
- * clusterlib and decides whether this process will execute any code
- * below it.  Every test can be categorized into:
- * 
- * 1) Single process 
- *    - only one process allowed here, all others are don
- *     _minSize = 1, _singleProcessMode doesn't matter
- * 2) Multiple processes 
- *    - N processes required.  If requirement is not met
- *      then test automatically completes.
- *     _minSize = N, _singleProcessMode is false
- * 3) Multiple process falls back to single process
- *    - N processes desired, but if requirement is not met, a single 
- *      process does each step.  This requires that each "stage" of the 
- *      is not dependent on data from a previous stage.
- *     _minSize = N, _singleProcessMode is true
+ * MPI-enhanced test fixture.
  *
- * If this process does not meet the requirements, it will return from
- * the function and wait for the next test.
- *
- * @param _minSize if not -1, requires at least this many processes.  Otherwise
-                   runs with any amount of processes
- * @param _singleProcessMode supports running when only one process exists 
- *                           by having that one process do all work
- * @param _factory the factory pointer (if NULL, barrier is called without 
- *                 clusterlib)
+ * All tests fall into 3 categories.
+ * 1) Run with exactly N processes
+ *    - To guarantee that only these processes are interacting, wrap all 
+ *      logic with isMyRank() code blocks.
+ *    - When not enough processes are present, all isMyRank() will return false
+ *      and waitsForOrder() and allWaitsForOrder() will return immediately.
+ *    - Make sure to set singleProcessMode to false.
+ * 2) Run with either N or 1 proccess
+ *    - If N processes are not met, the all logic will only match process 0.
+ *    - Make sure to set singleProcessMode to true.
+ *    - Wrap all logic with isMyRank() 
+ * 3) Run with any number of processes
+ *    - Can use isMyRank() but isn't required as it is intended for all 
+ *      available processes
+ *    - Make sure to set minSize to -1.  singleProcessMode is irrelevant.
  */
-#define INIT_BARRIER_MPI_TEST_OR_DONE(_minSize, _singleProcessMode, _factory) \
-{ \
-    setTestSingleProcessMode(_singleProcessMode); \
-    setTestMinSize(_minSize); \
-    if (_factory) { \
-        barrier(_factory, true); \
-    } \
-    else { \
-        barrier(NULL, false); \
-    } \
-    if ((!_singleProcessMode) && \
-        (getSize() < _minSize) && \
-        (_minSize != -1)) { \
-        cerr << "test: done" << endl; \
-        return; \
-    } \
-} \
- 
 class MPITestFixture : public CppUnit::TestFixture {
   public:
     MPITestFixture() : 
-	_rank(MPI::COMM_WORLD.Get_rank()),
-	_size(MPI::COMM_WORLD.Get_size()),
-        _testSingleProcessMode(false),
-        _testMinSize(-1) {}
+	m_rank(MPI::COMM_WORLD.Get_rank()),
+	m_size(MPI::COMM_WORLD.Get_size()),
+        m_testSingleProcessMode(false),
+        m_testMinSize(-1) {}
+
+    /**
+     * Must be called prior to the beginning of any test.  It barriers
+     * and sets up the arguments to be used for the remainder of the
+     * test.
+     *
+     * @param minSize If == -1, it runs with any number of processes. If 
+     *        != -1, it requires exactly this many processes.
+     * @param singleProcessMode supports running when only less than minSize 
+     *        processes exist.  Process 0 is the only process that meets all
+     *        isMyRank() and allWaitsForOrder() conditions.
+     * @param factory the factory pointer (if NULL, barrier is called without 
+     *        the clusterlib sync)
+     * @param clusterlibSync use the clusterlib sync with the barrier?
+     * @param testName if not empty, prints a "testName: started"
+     */
+    void initializeAndBarrierMPITest(int32_t minSize, 
+                                     bool singleProcessMode, 
+                                     clusterlib::Factory *factory,
+                                     bool clusterlibSync,
+                                     std::string testName = "")
+    {
+        m_testMinSize = minSize;
+        m_testSingleProcessMode = singleProcessMode;
+        m_testName = testName;
+
+        if (m_testName.empty() == false) {
+            std::cerr << m_testName << ": initialized" << std::endl;
+        }
+
+        if (factory) {
+            barrier(factory, true);
+        }
+        else {
+            barrier(NULL, false);
+        }
+    }
+    
+    /**
+     * Must be called prior to the ending of any test.  It barriers so
+     * that all outstanding clusterlib events are propagated before
+     * the end of the test.  It also resets the minSize and testName.
+     * It should be called in the tearDown() method.  It prints the
+     * test completed output if set in initializeAndBarrierMPITest().
+     *
+     * @param factory the factory pointer (if NULL, barrier is called without 
+     *        the clusterlib sync)
+     * @param clusterlibSync use the clusterlib sync with the barrier?
+     */
+    void cleanAndBarrierMPITest(clusterlib::Factory *factory,
+                                bool clusterlibSync)
+    {
+        if (factory) {
+            barrier(factory, true);
+        }
+        else {
+            barrier(NULL, false);
+        }
+        
+        if (m_testName.empty() == false) {
+            std::cerr << m_testName << ": finished" << std::endl;
+        }
+        
+        /*
+         * Reset test parameters
+         */
+        m_testMinSize = -1;
+        m_testName.clear();
+    }
 
     /** 
      * Ensure that all processes have reached this point before
@@ -75,8 +117,7 @@ class MPITestFixture : public CppUnit::TestFixture {
     {
 	/* Synchronize */
 	MPI::COMM_WORLD.Barrier();
-        if (clusterlibSync) {
-            assert(factory);
+        if (clusterlibSync && factory) {
             factory->synchronize();
             MPI::COMM_WORLD.Barrier();
             factory->synchronize();
@@ -86,8 +127,8 @@ class MPITestFixture : public CppUnit::TestFixture {
 
     /**
      * Determine if my rank matches the rank parameter.  It returns
-     * true only if the ranks match or (singleProcessMode is set and
-     * we don't have enough processes).
+     * true only if the ranks match or (this is rank 0 and
+     * singleProcessMode is set and we don't have enough processes).
      *
      * @param rank check to see if my rank matches this
      */
@@ -95,15 +136,15 @@ class MPITestFixture : public CppUnit::TestFixture {
     {
         /*
          * Return true if singleTestProcessMode is set and there
-         * aren't enough processes.
+         * aren't enough processes and this is process 0.
          */
         if (getTestSingleProcessMode() &&
             (getTestMinSize() != -1) &&
-            (getTestMinSize() > getSize())) {
+            (getTestMinSize() > getSize()) &&
+            (getRank() == 0)) {
             return true;
         }
-
-        if (getRank() == rank) {
+        else if (getRank() == rank) {
             return true;
         }
         
@@ -115,7 +156,7 @@ class MPITestFixture : public CppUnit::TestFixture {
      * If clusterlibSync is set, all clusterlib events that have been
      * seen by process procFirst have been seen by procSecond.  If
      * singleProcessMode was set and there aren't enough processes, it
-     * simply bypasses this.
+     * simply bypasses the messaging.
      *
      * @param procFirst the first process that sends a message when completed
      * @param procSecond the process that waits for procFirst
@@ -127,9 +168,10 @@ class MPITestFixture : public CppUnit::TestFixture {
                        int procSecond,
                        clusterlib::Factory *factory = NULL,
                        bool clusterlibSync = false)
+
     {
         /*
-         * Don't do anything messasing for single process mode when
+         * Don't do anything messaging for single process mode when
          * there aren't enough processes.
          */
         if (getTestSingleProcessMode() &&
@@ -138,7 +180,6 @@ class MPITestFixture : public CppUnit::TestFixture {
             if (clusterlibSync) {
                 factory->synchronize();
             }
-
             return;
         }
 
@@ -158,6 +199,10 @@ class MPITestFixture : public CppUnit::TestFixture {
                 factory->synchronize();
             }
 	}
+
+        std::cerr << "waitsForOrder: proper waiting done with " 
+                  << getTestMinSize()
+                  << " processes exist and need " << getSize() << std::endl;
     }
 
     /** 
@@ -206,67 +251,78 @@ class MPITestFixture : public CppUnit::TestFixture {
         }
     }
 
+    /**
+     * Do not use this function directly, it helps
+     * INIT_BARRIER_MPI_TEST_OR_DONE
+     */
     bool getTestSingleProcessMode() const 
     {
-        return _testSingleProcessMode; 
+        return m_testSingleProcessMode; 
     }
 
-    /*
+    /**
      * Do not use this function directly, it helps
      * INIT_BARRIER_MPI_TEST_OR_DONE
      */
     void setTestSingleProcessMode(bool testSingleProcessMode)
     { 
-        _testSingleProcessMode = testSingleProcessMode;
+        m_testSingleProcessMode = testSingleProcessMode;
     }
 
-    /*
+    /**
      * Do not use this function directly, it helps
      * INIT_BARRIER_MPI_TEST_OR_DONE
      */
     void setTestMinSize(int testMinSize)
     { 
-        _testMinSize = testMinSize;
+        m_testMinSize = testMinSize;
     }
 
-    /*
+    /**
      * Do not use this function directly, it helps
      * INIT_BARRIER_MPI_TEST_OR_DONE
      */
-    int getSize() const { return _size; }
+    int getSize() const { return m_size; }
 
-  private:
     /** 
      * Get the rank of your process.  If MPI was started with n
      * processes, the rank will be in the range of 0 to n-1.
      */
-    int getRank() const { return _rank; }
+    int getRank() const { return m_rank; }
 
-    int getTestMinSize() const { return _testMinSize; }
+  private:
+
+    int getTestMinSize() const { return m_testMinSize; }
 
     /**
      * My process rank
      */
-    int _rank;
+    int m_rank;
 
     /**
      * Total number of processes available
      */
-    int _size;
+    int m_size;
 
-    /*
+    /**
      * Should be initialized by each test trhough
      * INIT_BARRIER_MPI_TEST_OR_DONE.  Does this test support single
      * process mode?
      */
-    bool _testSingleProcessMode;
+    bool m_testSingleProcessMode;
 
-    /*
+    /**
      * Should be initialized by each test trhough
      * INIT_BARRIER_MPI_TEST_OR_DONE.  How many processes are required
      * for this test to run?
      */     
-    int _testMinSize;
+    int m_testMinSize;
+
+    /**
+     * Should be initialized by each test through
+     * INIT_BARRIER_MPI_TEST_OR_DONE. Name of this test.
+     */
+    std::string m_testName;
 };
 
 #endif

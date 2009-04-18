@@ -132,14 +132,14 @@ class ServerImpl
     ServerImpl()
         : ClientImpl(NULL)
     {
-        throw ClusterException("Someone called the Server "
-                               "default constructor!");
+        throw InvalidMethodException("Someone called the Server "
+                                       "default constructor!");
     }
 
     /*
      * Periodically checks the health of the server.
      */
-    void checkHealth();
+    void checkHealth(void *param);
 
     /*
      * Sets the server node health

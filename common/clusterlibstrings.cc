@@ -10,7 +10,7 @@
  * ============================================================================
  */
 
-#include "clusterlib.h"
+#include "clusterlibinternal.h"
 
 using namespace std;
 
@@ -55,6 +55,8 @@ const string ClusterlibStrings::LEADERSHIP = "leadership";
 const string ClusterlibStrings::BIDS = "bids";
 const string ClusterlibStrings::CURRENTLEADER = "currentLeader";
 
+const string ClusterlibStrings::KEYVAL = "keyval";    
+
 const string ClusterlibStrings::SHARDS = "shards";
 const string ClusterlibStrings::GOLDENSHARDS = "goldenShards";
 const string ClusterlibStrings::MANUALOVERRIDES = "manualOverrides";
@@ -66,6 +68,8 @@ const string ClusterlibStrings::LOCKS = "locks";
 const string ClusterlibStrings::QUEUES = "queues";
 const string ClusterlibStrings::BARRIERS = "barriers";
 const string ClusterlibStrings::TRANSACTIONS = "transactions";
+
+const string ClusterlibStrings::ENDEVENT = "end event";
 
 /*
  * All strings that are used as ZK values or part of values.

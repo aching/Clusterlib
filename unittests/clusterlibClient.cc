@@ -61,22 +61,20 @@ class ClientClusterEventHandler
 class ClusterlibClient
     : public MPITestFixture
 {
-    CPPUNIT_TEST_SUITE( ClusterlibClient );
-    CPPUNIT_TEST( testClient1 );
-    CPPUNIT_TEST( testClient2 );
-    CPPUNIT_TEST( testClient3 );
-    CPPUNIT_TEST( testClient4 );
-    CPPUNIT_TEST( testClient5 );
-
-    CPPUNIT_TEST( testClient20 );
-    CPPUNIT_TEST( testClient21 );
-    CPPUNIT_TEST( testClient22 );
-    CPPUNIT_TEST( testClient23 );
-    CPPUNIT_TEST( testClient24 );
-    CPPUNIT_TEST( testClient25 );
-    CPPUNIT_TEST( testClient26 );
-    CPPUNIT_TEST( testClient27 );
-
+    CPPUNIT_TEST_SUITE(ClusterlibClient);
+    CPPUNIT_TEST(testClient1);
+    CPPUNIT_TEST(testClient2);
+    CPPUNIT_TEST(testClient3);
+    CPPUNIT_TEST(testClient4);
+    CPPUNIT_TEST(testClient5);
+    CPPUNIT_TEST(testClient20);
+    CPPUNIT_TEST(testClient21);
+    CPPUNIT_TEST(testClient22);
+    CPPUNIT_TEST(testClient23);
+    CPPUNIT_TEST(testClient24);
+    CPPUNIT_TEST(testClient25);
+    CPPUNIT_TEST(testClient26);
+    CPPUNIT_TEST(testClient27);
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -94,7 +92,7 @@ class ClusterlibClient
     /* Called from the timer handler. */
     void setFired0(bool v) { _fired0 = v; }
 
-    /* Runs prior to all tests */
+    /* Runs prior to each test */
     virtual void setUp() 
     {
 	_factory =
@@ -107,11 +105,10 @@ class ClusterlibClient
         CPPUNIT_ASSERT(_handler0 != NULL);
     }
 
-    /* Runs after all tests */
+    /* Runs after each test */
     virtual void tearDown() 
     {
-	cerr << "delete called " << endl;
-
+        cleanAndBarrierMPITest(_factory, true);
         /*
          * Delete only the factory, that automatically deletes
          * all the other objects.
@@ -130,10 +127,12 @@ class ClusterlibClient
 
     void testClient1()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-
-        cerr << "Test 1" << endl;
-            
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testClient1");
+       
         /*
          * Create applications with different names and
          * observe allowed creation and exceptions.
@@ -146,14 +145,16 @@ class ClusterlibClient
         try {
             _app0 = _client0->getRoot()->getApplication("/frob", true);
             CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
-        } catch (clusterlib::ClusterException &e) {
+        } catch (clusterlib::InvalidArgumentsException &e) {
         }
-        cerr << "Test 1 end" << endl;        
     }
     void testClient2()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testClient2");
         cerr << "Test 2, cp == " << this << endl;
 
         /*
@@ -177,13 +178,14 @@ class ClusterlibClient
 
         CPPUNIT_ASSERT(_cancelled0 == true);
         CPPUNIT_ASSERT(_fired0 == false);
-        cerr << "Test 2 end" << endl;
     }
     void testClient3()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-
-        cerr << "Test 3, cp == " << this << endl;
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testClient3");
 
         /*
          * Set up a timer, allow it to fire.
@@ -201,13 +203,14 @@ class ClusterlibClient
 
         CPPUNIT_ASSERT(_fired0 == true);
         CPPUNIT_ASSERT(_cancelled0 == false);
-        cerr << "Test 3 end" << endl;
     }
     void testClient4()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-
-        cerr << "Test 4" << endl;
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testClient4");
 
         /*
          * Set up a timer, cancel twice and observe that the 2nd
@@ -228,14 +231,14 @@ class ClusterlibClient
         CPPUNIT_ASSERT(_fired0 == false);
         CPPUNIT_ASSERT(_cancelled1 == false);
         cerr << "After second cancel" << endl;
-
-        cerr << "Test 4 end" << endl;
     }
     void testClient5()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-
-        cerr << "Test 5" << endl;
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testClient5");
 
         /*
          * Cancel a non-existent timer, see that it returns false.
@@ -244,72 +247,83 @@ class ClusterlibClient
 
         _cancelled0 = _client0->cancelTimer((clusterlib::TimerId) 10001);
         CPPUNIT_ASSERT(_cancelled0 == false);
-        cerr << "Test 5 end" << endl;
     }
 
     void testClient20()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testClient20");
 
-        cerr << "Test 20" << endl;
         /*
          * Register a user event handler.
          */
-        cerr << "Test 20 end" << endl;
     }
     void testClient21()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testClient21");
 
-        cerr << "Test 21" << endl;
         /*
          * Register a user event handler twice,
          * see that second registration is silently
          * ignored.
          */
-        cerr << "Test 21 end" << endl;
     }
     void testClient22()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-        
-        cerr << "Test 22" << endl;
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testClient22");
+
         /*
          * Register and cancel a user event handler,
          * see that cancellation is successful.
          */
-        cerr << "Test 22 end" << endl;
     }
     void testClient23()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testClient23");
 
-        cerr << "Test 23" << endl;
         /*
          * Register a user event handler, then
          * cause the event and see that it fired
          * and the handler was called.
          */
-        cerr << "Test 23 end" << endl;
     }
     void testClient24()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-
-        cerr << "Test 24" << endl;
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testClient24");
         /*
          * Register a user event handler, then
          * cause the event 10 times, see that it
          * fires 10 times and that the handler was
          * called 10 times.
          */
-        cerr << "Test 24 end" << endl;
     }
     void testClient25()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testClient25");
 
-        cerr << "Test 25" << endl;
         /*
          * Register a user event handler, then
          * cause the event 5 times, see that it
@@ -317,25 +331,28 @@ class ClusterlibClient
          * that it no longer fires for subsequent
          * events.
          */
-        cerr << "Test 25 end" << endl;
     }
     void testClient26()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
-
-        cerr << "Test 26" << endl;
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testClient26");
         /*
          * Register two user event handlers, then
          * cause the event, see that both handlers
          * are called.
          */
-        cerr << "Test 26 end" << endl;
     }
     void testClient27()
     {
-        INIT_BARRIER_MPI_TEST_OR_DONE(-1, true, _factory);
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testClient27");
 
-        cerr << "Test 27" << endl;
         /*
          * Register two user event handlers, then
          * cause the event, see that both handlers
@@ -343,7 +360,6 @@ class ClusterlibClient
          * event and see that the other one is still
          * being called.
          */
-        cerr << "Test 27 end" << endl;
     }
 
   private:
@@ -374,5 +390,5 @@ ClientTimerEventHandler::handleTimerEvent(clusterlib::TimerId id,
 }
 
 /* Registers the fixture into the 'registry' */
-CPPUNIT_TEST_SUITE_REGISTRATION( ClusterlibClient );
+CPPUNIT_TEST_SUITE_REGISTRATION(ClusterlibClient);
 

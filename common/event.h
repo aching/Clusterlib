@@ -231,6 +231,26 @@ class GenericEvent
      * @return type of this event
      */
     int32_t getType() const { return m_type; }
+
+    static std::string getTypeString(int32_t type)
+    {
+        std::string res;
+
+        if (type == ILLEGALEVENT) {
+            res = "ILLEGALEVENT";
+        }
+        else if (type == TIMEREVENT) {
+            res = "TIMEREVENT";
+        }
+        else if (type == ZKEVENT) {
+            res = "ZKEVENT";
+        }
+        else {
+            res = "unknown type";
+        }
+
+        return res;
+    }
         
     /**
      * \brief Returns the event's data.
@@ -306,7 +326,7 @@ class SynchronousEventAdapter
     void eventReceived(const EventSource<E> &source, const E &e)
     {
         LOG_DEBUG(EV_LOG, 
-                  "eventReceived: event 0x%x, instance 0x%x, thread %u",
+                  "eventReceived: event 0x%x, instance 0x%x, thread 0x%x",
                   (uint32_t) &e, 
                   (uint32_t) this, 
                   (uint32_t) pthread_self());
@@ -318,12 +338,17 @@ class SynchronousEventAdapter
      * \brief Returns the next available event from the underlying queue,
      * \brief possibly blocking, if no data is available.
      * 
+     * @param timeout how long to wait until an element becomes available, 
+     *                in milliseconds; if <code>0</code> then wait forever;
+     *                if <code>< 0</code> then do not wait at all.
+     * @param timedOut if not NULL then set to true whether this 
+     *                 function timed out
      * @return the next available event
      */
-    E getNextEvent()
+    E getNextEvent(int32_t timeout = 0, bool *timedOut = NULL)
     {
         LOG_DEBUG(EV_LOG, "SynchronousEventAdapter::getNextEvent: starting");
-        return m_queue.take();
+        return m_queue.take(timeout, timedOut);
     }
         
     /**
@@ -366,7 +391,7 @@ void EventSource<E>::fireEvent(EventListener<E> *lp, const E &event)
 {
     LOG_DEBUG(EV_LOG,
               "fireEvent: Sending event: event 0x%x, listener 0x%x, "
-              "thread %u", 
+              "thread 0x%x", 
               (uint32_t) &event, 
               (uint32_t) lp, 
               (uint32_t) pthread_self());
@@ -376,10 +401,11 @@ void EventSource<E>::fireEvent(EventListener<E> *lp, const E &event)
 }
 
 /*
- * This is a helper class for handling events using a member function.
+ * This is a helper class for handling externally visible clusterlib
+ * events using a member function.
  */
 template<class T>
-class EventHandler
+class NotifyableEventHandler
 {
   public:
     /*
@@ -392,21 +418,19 @@ class EventHandler
     /*
      * Constructor.
      */
-    EventHandler(T *objp, EventMethod handler)
+    NotifyableEventHandler(T *objp, EventMethod handler)
         : mp_obj(objp),    
-          m_handler(handler)
-    {
-    };
+          m_handler(handler) {}
 
     /*
-     * Deliver the event.
+     * Deliver the event with a NotifyableImpl *.
      */
     Event deliver(NotifyableImpl *np, 
                   int32_t etype,
                   const std::string &path)
     {
         return ((*mp_obj).*m_handler)(np, etype, path);
-    };
+    }
 
     /*
      * Retrieve the object on which the method
@@ -427,10 +451,65 @@ class EventHandler
 };
 
 /*
- * Generic types for delivering events. Events are
- * delivered to a CachedObjectChangeHandlers object.
+ * Externally visible events are delivered to a
+ * CachedObjectChangeHandlers object.
  */
-typedef EventHandler<CachedObjectChangeHandlers> CachedObjectEventHandler;
+typedef NotifyableEventHandler<CachedObjectChangeHandlers> 
+CachedObjectEventHandler;
+
+/*
+ * This is a helper class for handling internal clusterlib events
+ * using a member function.
+ */
+template<class T>
+class EventHandler
+{
+  public:
+    /*
+     * Define the type of the member function to invoke.
+     */
+    typedef Event (T::*EventMethod)(int32_t etype,
+                                    const std::string &path);
+
+    /*
+     * Constructor.
+     */
+    EventHandler(T *objp, EventMethod handler)
+        : mp_obj(objp),    
+          m_handler(handler) {}
+
+    /*
+     * Deliver the event.
+     */
+    Event deliver(int32_t etype,
+                  const std::string &path)
+    {
+        return ((*mp_obj).*m_handler)(etype, path);
+    }
+
+    /*
+     * Retrieve the object on which the method
+     * is being called.
+     */
+    T *getObject() { return mp_obj; }
+
+  private:
+    /*
+     * The instance.
+     */
+    T *mp_obj;
+
+    /*
+     * The handler method to call.
+     */
+    EventMethod m_handler;
+};
+
+/*
+ * Internal events are delivered to a InternalChangeHandler
+ * object.
+ */
+typedef EventHandler<InternalChangeHandlers> InternalEventHandler;
 
 /*
  * Payload for delivering events from ZooKeeper to clients of
@@ -515,6 +594,7 @@ const int32_t EN_PROPCHANGE =			(1<<13);
 const int32_t EN_APPSCHANGE =			(1<<14);
 
 const int32_t EN_LOCKNODECHANGE =               (1<<15);
+
 /*
  * Interface for cluster event handler. Must be derived
  * to define specific behavior for handling events.
@@ -767,10 +847,11 @@ class Timer
     /**
      * Executes the main loop of the worker thread.
      */
-    void sendAlarms()
+    void sendAlarms(void *param)
     {
         LOG_DEBUG(EV_LOG, 
-                  "sendAlarms, this: 0x%x, thread %u",
+                  "Starting thread with Timer::sendAlarms(), "
+                  "this: 0x%x, thread 0x%x",
                   (uint32_t) this, 
                   (uint32_t) pthread_self());
         
@@ -805,7 +886,13 @@ class Timer
             } else {
                 m_lock.unlock();
             }
-        }    
+        }
+
+        LOG_DEBUG(EV_LOG,
+                  "Ending thread with Timer::sendAlarms(): "
+                  "this: 0x%x, thread: 0x%x",
+                  (int32_t) this,
+                  (uint32_t) pthread_self());
     }
         
   private:

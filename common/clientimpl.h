@@ -114,8 +114,8 @@ class ClientImpl
      */
     ClientImpl()
     {
-        throw ClusterException("Someone called the ClientImpl "
-                               "default constructor!");
+        throw InvalidMethodException("Someone called the ClientImpl "
+                                       "default constructor!");
     }
 
   private:
@@ -123,7 +123,7 @@ class ClientImpl
      * Consume cluster events. This method runs in a separate thread,
      * see m_eventThread below.
      */
-    void consumeClusterEvents();
+    void consumeClusterEvents(void *param);
 
     /**
      * Get the event handlers registry lock.

@@ -31,7 +31,6 @@ class ClusterlibStrings
     static const std::string CLUSTERLIB;
     static const std::string CLUSTERLIBVERSION;
 
-    static const std::string PROPERTIES;
     static const std::string CONFIGURATION;
     static const std::string ALERTS;
     static const std::string SYNC;
@@ -42,6 +41,7 @@ class ClusterlibStrings
     static const std::string NODES;
     static const std::string UNMANAGEDNODES;
     static const std::string DISTRIBUTIONS;
+    static const std::string PROPERTIES;
 
     static const std::string CLIENTSTATE;
     static const std::string CLIENTSTATEDESC;
@@ -59,6 +59,8 @@ class ClusterlibStrings
     static const std::string BIDS;
     static const std::string CURRENTLEADER;
 
+    static const std::string KEYVAL;
+
     static const std::string SHARDS;
     static const std::string GOLDENSHARDS;
     static const std::string MANUALOVERRIDES;
@@ -69,6 +71,8 @@ class ClusterlibStrings
     static const std::string QUEUES;
     static const std::string BARRIERS;
     static const std::string TRANSACTIONS;
+
+    static const std::string ENDEVENT;
 
     static const std::string BIDPREFIX;
     static const std::string INFLUX;
@@ -107,8 +111,8 @@ class ClusterlibStrings
   private:
     ClusterlibStrings()
     {
-        throw ClusterException("ClusterlibStrings is not meant "
-                               "to be constructed");
+        throw InvalidMethodException("Someone called the ClusterlibStrings "
+                                     "default constructor!");
     }
 };
 

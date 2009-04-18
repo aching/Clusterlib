@@ -26,9 +26,15 @@ class NotifyableImpl
         return (other.getKey() == getKey()) ? true : false;
     }
 
-    virtual const std::string &getName() const { return m_name; }
+    virtual const std::string &getName() const 
+    {
+        return m_name; 
+    }
 
-    virtual const std::string &getKey() const { return m_key; }
+    virtual const std::string &getKey() const 
+    {
+        return m_key; 
+    }
 
 #if TO_BE_IMPLEMENTED_IF_NECESSARY
     virtual std::string getMyApplicationName() const;
@@ -42,13 +48,13 @@ class NotifyableImpl
 
     virtual Group *getMyGroup(); 
 
-    virtual Notifyable::State getState();
+    virtual Notifyable::State getState() const;
     
     virtual Properties *getProperties(bool create = false);
 
-    virtual void acquireLock();
+    virtual void acquireLock(bool acquireChildren = false);
 
-    virtual void releaseLock();
+    virtual void releaseLock(bool releaseChildren = false);
 
     virtual void remove(bool removeChildren = false);
 
@@ -67,17 +73,13 @@ class NotifyableImpl
           m_key(key),
           m_name(name),
           mp_parent(parent),
-          m_state(Notifyable::INIT) {}
-
-    /**
-     * Set the state of this notifyable.
-     */
-    void setState(Notifyable::State state);
+          m_state(Notifyable::READY),
+          m_distLockKeyCount(0) {}
 
     /*
-     * Get the associated factory delegate object.
+     * Get the associated factory object.
      */
-    FactoryOps *getDelegate() { return mp_f; }
+    FactoryOps *getOps() { return mp_f; }
 
     /*
      * Destructor.
@@ -86,44 +88,84 @@ class NotifyableImpl
 
     /**
      * Initialize the cached representation when the object is loaded
-     * into clusterlib -- must be provided by subclasses.
+     * into clusterlib.  All subclass specific handlers must be setup
+     * in this function.  The implementation must be provided by
+     * subclasses.
      */
     virtual void initializeCachedRepresentation() = 0;
 
     /**
      * Take all actions to remove all backend storage (i.e. Zookeeper data)
      */
-    virtual void removeRepositoryEntries() {}
-
-    /**
-     * Get the NotifyableImpl lock
-     */
-    virtual Mutex *getStateLock() { return &m_stateLock; }
+    virtual void removeRepositoryEntries() = 0;
 
     /**
      * Get the key of the distributed lock
      */
-    virtual const std::string &getDistributedLockKey() const 
-    {
-        return m_distLockKey; 
-    }
+    virtual const std::string &getDistributedLockKey();
 
     /**
      * Set the key of the distributed lock
      */
-    virtual void setDistributedLockKey(const std::string &distLockKey)
-    { 
-        m_distLockKey = distLockKey; 
-    }
+    virtual void setDistributedLockKey(const std::string &distLockKey);
     
+    /**
+     * Safe reference count changes for distributed locks.
+     *
+     * @return the current reference count
+     */
+    virtual int32_t incrDistributedLockKeyCount();
+    
+    /**
+     * Safe reference count changes for distributed locks.
+     *
+     * @return the current reference count
+     */
+    virtual int32_t decrDistributedLockLeyCount();
+
+    /**
+     * Get the number of references on the current distributed lock key
+     */
+    virtual int32_t getDistributedLockKeyCount();
+
+    /**
+     * Check the state of the Notifyable and throw an exception if it
+     * is removed.  This should be called prior to any Notifyable
+     * member function.
+     */
+    virtual void throwIfRemoved() const
+    {
+        if (getState() == Notifyable::REMOVED) {
+            throw ObjectRemovedException(
+                std::string("throwIfRemoved: Notifyable ") +
+                getKey() + 
+                std::string(" was removed, exiting current "
+                            "function"));
+        }
+    }
+
+    /**
+     * Get the NotifyableImpl state lock
+     */
+    virtual Mutex *getStateLock() const { return &m_stateLock; }
+
+    /**
+     * Set the state of the NotifyableImpl.  Client must hold
+     * m_stateLock to ensure atomicity.
+     */
+    void setState(NotifyableImpl::State state)
+    {
+        m_state = state;
+    }
+
   private:
     /*
      * Default constructor.
      */
     NotifyableImpl() 
     {
-        throw ClusterException("Someone called the NotifyableImpl "
-                               "default constructor!");
+        throw InvalidMethodException("Someone called the NotifyableImpl "
+                                     "default constructor!");
     }
 
   private:
@@ -154,16 +196,23 @@ class NotifyableImpl
      */
     State m_state;
     
-    /**
-     * Lock to synchronize the Notifyable state
-     */
-    Mutex m_stateLock;
-
     /** 
      * The key that represents the holder of the distributed lock of
      * this object.
      */
     std::string m_distLockKey;
+
+    /**
+     * Reference count for the distributed lock.  Allows reentrant locks.
+     */
+    int32_t m_distLockKeyCount;
+
+    /**
+     * Lock to synchronize the Notifyable state (includes distibuted
+     * lock key and count).  It is mutable since it is used by
+     * throwIfRemoved() - which is const so it can be used everywhere.
+     */
+    mutable Mutex m_stateLock;
 };
 
 };	/* End of 'namespace clusterlib' */

@@ -50,7 +50,7 @@ class Group
      * @param create create the node if doesn't exist
      * @return NULL if the named node does not exist and create
      * == false
-     * @throw ClusterException only if tried to create and couldn't create
+     * @throw Exception only if tried to create and couldn't create
      */
     virtual Node *getNode(const std::string &nodeName, 
                           bool create = false) = 0;
@@ -68,7 +68,7 @@ class Group
      * @param create create the group if doesn't exist.
      * @return NULL if the group does not exist and create
      * == false, else the Group *.
-     * @throw ClusterException only if tried to create and couldn't create
+     * @throw Exception only if tried to create and couldn't create
      */
     virtual Group *getGroup(const std::string &groupName, 
                             bool create = false) = 0;
@@ -86,7 +86,7 @@ class Group
      * 
      * @param create create the distribution if doesn't exist
      * @return NULL if no distribution exists for this notifyable
-     * @throw ClusterException only if tried to create and couldn't create
+     * @throw Exception only if tried to create and couldn't create
      */
     virtual DataDistribution *getDataDistribution(const std::string &distName,
                                                   bool create = false) = 0;

@@ -352,7 +352,7 @@ AC_SUBST(EXPAT_LIB)
 if (test $enable_release = "yes" ); then
    BASE_CXXFLAGS+="-Wall -Werror -O2 -g"
 else
-   BASE_CXXFLAGS="-Wall -Werror -g"
+   BASE_CXXFLAGS="-Wall -Werror -O0 -g -rdynamic"
 fi
 AC_SUBST(BASE_CXXFLAGS)
 

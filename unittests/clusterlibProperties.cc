@@ -3,12 +3,13 @@
 
 extern TestParams globalTestParams;
 
+using namespace clusterlib;
 using namespace std;
 
-class MyHealthChecker : public clusterlib::HealthChecker {
+class MyHealthChecker : public HealthChecker {
   public:
-    virtual clusterlib::HealthReport checkHealth() {
-        return clusterlib::HealthReport(clusterlib::HealthReport::HS_HEALTHY,
+    virtual HealthReport checkHealth() {
+        return HealthReport(HealthReport::HS_HEALTHY,
                                         "No real check");
     }
   private:
@@ -29,10 +30,10 @@ class ClusterlibProperties : public MPITestFixture {
                              _node0(NULL),
                              _properties0(NULL) {}
 
-    /* Runs prior to all tests */
+    /* Runs prior to each test */
     virtual void setUp() 
     {
-	_factory = new clusterlib::Factory(
+	_factory = new Factory(
             globalTestParams.getZkServerPortList());
 	CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
@@ -45,10 +46,10 @@ class ClusterlibProperties : public MPITestFixture {
 	CPPUNIT_ASSERT(_node0 != NULL);
     }
 
-    /* Runs after all tests */
+    /* Runs after each test */
     virtual void tearDown() 
     {
-	cerr << "delete called " << endl;
+        cleanAndBarrierMPITest(_factory, true);
 	delete _factory;
         _factory = NULL;
     }
@@ -60,8 +61,11 @@ class ClusterlibProperties : public MPITestFixture {
      */
     void testGetProperties1()
     {
-        cerr << "testGetProperties1: started" << endl;
-        INIT_BARRIER_MPI_TEST_OR_DONE(2, true, _factory);
+        initializeAndBarrierMPITest(2, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testGetProperties1");
 
         if (isMyRank(0)) {
             _properties0 = _node0->getProperties(true);
@@ -76,6 +80,7 @@ class ClusterlibProperties : public MPITestFixture {
 
         if (isMyRank(1)) {
             _properties0 = _node0->getProperties();
+            CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             string val = _properties0->getProperty("test");
             CPPUNIT_ASSERT(val == "v1");
@@ -95,8 +100,6 @@ class ClusterlibProperties : public MPITestFixture {
             CPPUNIT_ASSERT(val == "v2");
             cerr << "Got correct test = v2" << endl;
         }
-
-        cerr << "testGetProperties1: done" << endl;
     }
 
     /* 
@@ -107,8 +110,11 @@ class ClusterlibProperties : public MPITestFixture {
      */
     void testGetProperties2()
     {
-        cerr << "testGetProperties2: started" << endl;
-        INIT_BARRIER_MPI_TEST_OR_DONE(2, true, _factory);
+        initializeAndBarrierMPITest(2, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testGetProperties2");
 
         if (isMyRank(0)) { 
             _properties0 = _group0->getProperties(true);
@@ -210,17 +216,15 @@ class ClusterlibProperties : public MPITestFixture {
             CPPUNIT_ASSERT(val == "v5");
             cerr << "Got correct test = v5" << endl;
         }
-
-        cerr << "testGetProperties2: done" << endl;
     }
 
   private:
-    clusterlib::Factory *_factory;
-    clusterlib::Client *_client0;
-    clusterlib::Application *_app0;
-    clusterlib::Group *_group0;
-    clusterlib::Node *_node0;
-    clusterlib::Properties *_properties0;
+    Factory *_factory;
+    Client *_client0;
+    Application *_app0;
+    Group *_group0;
+    Node *_node0;
+    Properties *_properties0;
 };
 
 /* Registers the fixture into the 'registry' */

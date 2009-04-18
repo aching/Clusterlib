@@ -69,7 +69,8 @@ ServerImpl::ServerImpl(FactoryOps *fp,
                             (m_flags & SF_MANAGED) == SF_MANAGED,
                             (m_flags & SF_CREATEREG) == SF_CREATEREG);
     if (mp_node == NULL) {
-        throw ClusterException("Could not find or create node!");
+        throw InvalidArgumentsException(
+            "Could not find or create node!");
     }
 
     /*
@@ -145,12 +146,18 @@ ServerImpl::getHeartBeatCheckPeriod()
  * period and then check the setting of m_checkFrequency again.
  */
 void
-ServerImpl::checkHealth()
+ServerImpl::checkHealth(void *param)
 {
     TRACE(CL_LOG, "checkHealth");
     
     int32_t lastPeriod = m_checkFrequencyHealthy;   /* Initially.   */
     int32_t curPeriod = m_checkFrequencyHealthy;    /* Initially.   */
+
+    LOG_DEBUG(CL_LOG,
+              "Starting thread with ServerImpl::checkHealth(), "
+              "this: 0x%x, thread: 0x%x",
+              (int32_t) this,
+              (uint32_t) pthread_self());
 
     while (!m_healthCheckerTerminating) {
         LOG_DEBUG(CL_LOG, "About to check health");
@@ -229,6 +236,12 @@ ServerImpl::checkHealth()
         
         m_mutex.release();
     }
+    
+    LOG_DEBUG(CL_LOG,
+              "Ending thread with ServerImpl::checkHealth(): "
+              "this: 0x%x, thread: 0x%x",
+              (int32_t) this,
+              (uint32_t) pthread_self());
 }
 
 void

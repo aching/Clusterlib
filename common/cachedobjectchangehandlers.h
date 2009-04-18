@@ -1,5 +1,5 @@
 /*
- * cached objectchangehandlers.h --
+ * cachedobjectchangehandlers.h --
  *
  * The definition of CachedObjectChangeHandlers
  *
@@ -21,19 +21,13 @@ class CachedObjectChangeHandlers
 {
   public:
 
-    /**
-     * Handle ready events on notifyables.
-     */
-    Event handleNotifyableReady(NotifyableImpl *ntp,
-                                int32_t etype,
-                                const std::string &key);
 
     /**
-     * Handle existence events on notifyables.
+     * Handle state changes on notifyables.
      */
-    Event handleNotifyableExists(NotifyableImpl *ntp,
-                                 int32_t etype,
-                                 const std::string &key);
+    Event handleNotifyableStateChange(NotifyableImpl *ntp,
+                                      int32_t etype,
+                                      const std::string &key);
 
     /**
      * Handle changes in the set of applications.
@@ -128,13 +122,6 @@ class CachedObjectChangeHandlers
                                        const std::string &key);
 
     /**
-     * Handle existence change for preceding lock node.
-     */
-    Event handlePrecLockNodeExistsChange(NotifyableImpl *ntp,
-                                         int32_t etype,
-                                         const std::string &key);
-    
-    /**
      * Handle changes in synchronization of a zookeeper key.
      */
     Event handleSynchronizeChange(NotifyableImpl *ntp,
@@ -144,13 +131,9 @@ class CachedObjectChangeHandlers
     /*
      * Get the CachedObjectEventHandler for the appropriate change event
      */
-    CachedObjectEventHandler *getNotifyableReadyHandler()
+    CachedObjectEventHandler *getNotifyableStateChangeHandler()
     {
-        return &m_notifyableReadyHandler;
-    }
-    CachedObjectEventHandler *getNotifyableExistsHandler()
-    {
-        return &m_notifyableExistsHandler;
+        return &m_notifyableStateChangeHandler;
     }
     CachedObjectEventHandler *getPropertiesValueChangeHandler()
     {
@@ -200,10 +183,6 @@ class CachedObjectChangeHandlers
     {
         return &m_precLeaderExistsHandler;
     }
-    CachedObjectEventHandler *getPrecLockNodeExistsHandler()
-    {
-        return &m_precLockNodeExistsHandler;
-    }
     CachedObjectEventHandler *getSynchronizeChangeHandler()
     {
         return &m_synchronizeChangeHandler;
@@ -214,12 +193,9 @@ class CachedObjectChangeHandlers
      */
     CachedObjectChangeHandlers(FactoryOps *factoryOps) 
         : mp_ops(factoryOps),
-        m_notifyableReadyHandler(
+        m_notifyableStateChangeHandler(
             this,
-            &CachedObjectChangeHandlers::handleNotifyableReady),
-        m_notifyableExistsHandler(
-            this,
-            &CachedObjectChangeHandlers::handleNotifyableExists),
+            &CachedObjectChangeHandlers::handleNotifyableStateChange),
         m_propertiesValueChangeHandler(
             this,
             &CachedObjectChangeHandlers::handlePropertiesValueChange),
@@ -256,9 +232,6 @@ class CachedObjectChangeHandlers
         m_precLeaderExistsHandler(
             this,
             &CachedObjectChangeHandlers::handlePrecLeaderExistsChange),
-        m_precLockNodeExistsHandler(
-            this,
-            &CachedObjectChangeHandlers::handlePrecLockNodeExistsChange),
         m_synchronizeChangeHandler(
             this,
             &CachedObjectChangeHandlers::handleSynchronizeChange) {}
@@ -278,8 +251,7 @@ class CachedObjectChangeHandlers
     /*
      * Handlers for event delivery.
      */
-    CachedObjectEventHandler m_notifyableReadyHandler;
-    CachedObjectEventHandler m_notifyableExistsHandler;
+    CachedObjectEventHandler m_notifyableStateChangeHandler;
     CachedObjectEventHandler m_propertiesValueChangeHandler;
     CachedObjectEventHandler m_applicationsChangeHandler;
     CachedObjectEventHandler m_groupsChangeHandler;
@@ -292,7 +264,6 @@ class CachedObjectChangeHandlers
     CachedObjectEventHandler m_nodeConnectionChangeHandler;
     CachedObjectEventHandler m_leadershipChangeHandler;
     CachedObjectEventHandler m_precLeaderExistsHandler;
-    CachedObjectEventHandler m_precLockNodeExistsHandler;
     CachedObjectEventHandler m_synchronizeChangeHandler;
 };
 

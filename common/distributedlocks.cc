@@ -5,21 +5,13 @@ using namespace std;
 namespace clusterlib {
 
 void
-DistributedLocks::acquire(NotifyableImpl *ntp)
+DistributedLocks::acquire(Notifyable *ntp)
 {
     TRACE(CL_LOG, "acquire");
 
-    if (ntp == NULL) {
-        throw ClusterException("acquire: Notifyable is NULL");
-    }
-
-    /*
-     * Cannot acquire lock on Root.
-     */
-    NotifyableImpl *parent = 
-        dynamic_cast<NotifyableImpl *>(ntp->getMyParent());
-    if (parent == NULL) {
-        throw ClusterException("acquire: parent is NULL");
+    NotifyableImpl *castedNtp = dynamic_cast<NotifyableImpl *>(ntp);
+    if (castedNtp == NULL) {
+        InvalidArgumentsException("acquire: Notifyable is NULL");
     }
 
     /**
@@ -39,20 +31,34 @@ DistributedLocks::acquire(NotifyableImpl *ntp)
      *    notification for the pathname from the previous step before going 
      *    to step 3.
      */
-
-    string lockKey = NotifyableKeyManipulator::createLockKey(parent->getKey());
+    string lockKey = NotifyableKeyManipulator::createLockKey(
+        castedNtp->getKey());
 
     LOG_DEBUG(CL_LOG, "acquire: Creating lock node %s", lockKey.c_str());
 
-    SAFE_CALL_ZK(getOps()->getRepository()->createNode(lockKey, "", 0),
+    SAFE_CALL_ZK(getOps()->getRepository()->createNode(lockKey, "", 0, false),
                  "Creation of %s failed: %s",
                  lockKey.c_str(), 
                  true,
                  true);
 
     string lockNode = 
-        NotifyableKeyManipulator::createLockNodeKey(parent->getKey());
+        NotifyableKeyManipulator::createLockNodeKey(castedNtp->getKey());
     
+    /*
+     * If I already have the lock, just increase the reference count.
+     */
+    string::size_type pos = castedNtp->getDistributedLockKey().find(
+        lockNode);
+    if (pos != string::npos) {
+        LOG_WARN(CL_LOG, 
+                 "acquire: Already have the lock on %s (had %d references)", 
+                 castedNtp->getKey().c_str(),
+                 castedNtp->getDistributedLockKeyCount());
+        castedNtp->incrDistributedLockKeyCount();
+        return;
+    }
+
     int64_t myBid = -1;
     string createdPath;
     SAFE_CALL_ZK((myBid = getOps()->getRepository()->createSequence(
@@ -76,18 +82,18 @@ DistributedLocks::acquire(NotifyableImpl *ntp)
      * bid.  If it doesn't exist, repeat
      */
     string precZkNode;
-    int64_t tmpBid = -1, lowestBid = -1;
+    int64_t tmpBid = -1, lowerBid = -1;
     do {
         NameList childList;
         SAFE_CALL_ZK((getOps()->getRepository()->getNodeChildren(childList,
                                                                  lockKey)),
                      "Getting bids for group %s failed: %s",
                      lockKey.c_str(),
-                 false,
-                 true);
-        NameList::iterator childListIt, lowestChildIt;
+                     false,
+                     true);
+        NameList::iterator childListIt, lowerChildIt;
         tmpBid = -1;
-        lowestBid = -1;
+        lowerBid = -1;
         for (childListIt = childList.begin(); 
              childListIt != childList.end(); 
              childListIt++) {
@@ -98,7 +104,8 @@ DistributedLocks::acquire(NotifyableImpl *ntp)
                 childListIt->rfind(ClusterlibStrings::BID_SPLIT);
             if ((bidSplitIndex == string::npos) || 
                 (bidSplitIndex == childListIt->size() - 1)) {
-                throw ClusterException("acquire: Expecting a valid bid split");
+                throw InconsistentInternalStateException(
+                    "acquire: Expecting a valid bid split");
             }
 
             /*
@@ -110,134 +117,227 @@ DistributedLocks::acquire(NotifyableImpl *ntp)
                 LOG_WARN(CL_LOG, 
                          "Expecting a valid number but got %s", 
                          &(childListIt->c_str()[bidSplitIndex + 1]));
-                throw ClusterException("Expecting a valid number but got " +
+                throw InconsistentInternalStateException(
+                    "Expecting a valid number but got " +
                                        childListIt->substr(bidSplitIndex + 1));
             }
 
             LOG_DEBUG(CL_LOG, 
-                      "acquire: got bid %s with bid %lld", 
+                      "acquire: thread 0x%x, this 0x%x "
+                      "got bid %s with bid %lld", 
+                      static_cast<uint32_t>(pthread_self()),
+                      reinterpret_cast<uint32_t>(this),
                       childListIt->c_str(),
                       tmpBid);
 
             /*
-             * Compare to my current lowest bid.
+             * Try to get the bid that is highest one that is lower
+             * than mine.  I.e.
+             *
+             *     a  < b < my bid < c,     -- pick b.
+             * my bid < a < b      < c,     -- pick my bid
+             *     a  < b < c      < my bid -- pick c
+             *
+             * Compare to my current lower bid.
+             *
+             * Rules:
+             * 1) Only select an initial lowerBid if it is equal to or lower 
+             *    than mine.
+             *    - At this point, lowerBid must be <= myBid
+             * 2) Choose a tmpBid if it is less than my bid and higher than 
+             *    the lower bid
+             *    - Makes sure that high bids are chosen if tmpBid isn't myBid
+             * 3) If myBid is the lowerBid and there is a bid less than mine,
+             *    than choose it.
+             *    - Ensures that if my bid is the lowerBid, a lower one is 
+             *      always chosen.
              */
-            if ((lowestBid == -1) || (tmpBid < lowestBid)) {
-                lowestBid = tmpBid;
-                lowestChildIt = childListIt;
+            if (((lowerBid == -1) && (tmpBid <= myBid)) ||
+                ((tmpBid < myBid) && (tmpBid > lowerBid)) ||
+                ((tmpBid < myBid) && (myBid == lowerBid))) {
+                LOG_DEBUG(CL_LOG, 
+                          "acquire: Replaced lowerBid %lld with tmpBid %lld"
+                          " with myBid %lld",
+                          lowerBid,
+                          tmpBid,
+                          myBid);
+                lowerBid = tmpBid;
+                lowerChildIt = childListIt;
             }
         }
         
-        if (lowestBid != myBid) {
+        if (lowerBid < myBid) {
             bool exists = false;
-            precZkNode = lockKey;
-            precZkNode.append(ClusterlibStrings::KEYSEPARATOR);
-            precZkNode.append(*lowestChildIt);
+
+            LOG_DEBUG(CL_LOG,
+                      "acquire: waiting for lowerBid %lld for mybid %lld for "
+                      "thread 0x%x",
+                      lowerBid,
+                      myBid,
+                      (uint32_t) pthread_self());
 
             /*
-             * Set up the waiting for the handler function.
+             * No children indicates that they have been removed.  No
+             * lock can be acquired.
+             */
+            if (lowerBid == -1) {
+                throw ObjectRemovedException("acquire: No children!");
+            }
+
+            /*
+             * Set up the waiting for the handler function on the lower child.
              */
             WaitMap::iterator waitMapIt;
             PredMutexCond predMutexCond;
             {
                 Locker l1(getWaitMapLock());
-                waitMapIt = getWaitMap()->find(createdPath);
-                if (waitMapIt != getWaitMap()->end()) {
-                    throw ClusterException("acquire: Setting up waiting for "
-                                           "the handler failed");
+                waitMapIt = getWaitMap()->find(*lowerChildIt);
+                if (waitMapIt == getWaitMap()->end()) {
+                    getWaitMap()->insert(
+                        make_pair(*lowerChildIt, &predMutexCond));
+                    waitMapIt = getWaitMap()->find(*lowerChildIt);
+                    if (waitMapIt == getWaitMap()->end()) {
+                        throw InconsistentInternalStateException(
+                            "acquire: wait entry should exist");
+                    }
                 }
-                getWaitMap()->insert(make_pair(createdPath, &predMutexCond));
+                waitMapIt->second->refCount++;                    
             }
             
-            CachedObjectEventHandler *handler = 
-                getOps()->getChangeHandlers()->getPrecLockNodeExistsHandler();
+            InternalEventHandler *handler = 
+                getOps()->getInternalChangeHandlers()->
+                getPrecLockNodeExistsHandler();
             SAFE_CALL_ZK(
                 (exists = getOps()->getRepository()->nodeExists(
-                    precZkNode,
+                    (*lowerChildIt),
                     getOps()->getZooKeeperEventAdapter(),
                     handler)),
                 "Checking for preceding lock node %s failed: %s",
-                precZkNode.c_str(),
+                (*lowerChildIt).c_str(),
                 false,
                 true);
 
             /* 
              * Wait until it a signal from the from event handler
              */
+            LOG_DEBUG(CL_LOG, "acquire: Wait for handler? = %d", exists);
             if (exists) {
                 waitMapIt->second->predWait();
             }
-
+            
             /*
-             * Clean up and try again
+             * Only clean up if we are the last thread to wait on this
+             * conditional (otherwise, just decrease the reference
+             * count).  Then try again if lowerBid != myBid.
              */
-            if (!exists) {
+            {
                 Locker l1(getWaitMapLock());
-                WaitMap::iterator waitMapIt = getWaitMap()->find(createdPath);
+                WaitMap::iterator waitMapIt = getWaitMap()->find(
+                    *lowerChildIt);
                 if (waitMapIt == getWaitMap()->end()) {
-                    throw ClusterException("acquire: Setting up waiting for "
-                                           "the handler failed");
+                    throw InconsistentInternalStateException(
+                        "acquire: Setting up waiting for the handler failed");
                 }
-                getWaitMap()->erase(waitMapIt);
+
+                LOG_DEBUG(CL_LOG,
+                          "acquire: refCount prior to decrement = %d for %s",
+                          waitMapIt->second->refCount,
+                          (*lowerChildIt).c_str());
+
+                waitMapIt->second->refCount--;
+                if (waitMapIt->second->refCount == 0) {
+                    getWaitMap()->erase(waitMapIt);
+                }
             }
         }
-    } while (lowestBid != myBid);
+        else if (lowerBid > myBid) {
+            throw InconsistentInternalStateException(
+                "acquire: Impossible the loweer bid is greater than my own.");
+        }
+    } while (lowerBid != myBid);
 
     /*
      * Remember the createPath node name so it can be cleaned up at release.
      */
-    parent->setDistributedLockKey(createdPath);
+    castedNtp->setDistributedLockKey(createdPath);
+    castedNtp->incrDistributedLockKeyCount();
+    LOG_DEBUG(CL_LOG, "acquire: Setting distributed lock key of Notifyable %s "
+              "with %s (%u references)",
+              castedNtp->getKey().c_str(),
+              createdPath.c_str(),
+              castedNtp->getDistributedLockKeyCount());
 }
 
 void
-DistributedLocks::release(NotifyableImpl *ntp)
+DistributedLocks::release(Notifyable *ntp)
 {
     TRACE(CL_LOG, "release");
 
-    if (ntp == NULL) {
-        throw ClusterException("release: Notifyable is NULL");
+    NotifyableImpl *castedNtp =  dynamic_cast<NotifyableImpl *>(ntp);
+    if (castedNtp == NULL) {
+        throw InvalidArgumentsException("release: Notifyable is NULL");
     }
 
-    /*
-     * Cannot release lock on Root.
-     */
-    NotifyableImpl *parent = 
-        dynamic_cast<NotifyableImpl *>(ntp->getMyParent());
-    if (parent == NULL) {
-        throw ClusterException("release: parent is NULL");
-    }
+    string lockNode = 
+        NotifyableKeyManipulator::createLockNodeKey(castedNtp->getKey());
 
-    string lockNodeKey = 
-        NotifyableKeyManipulator::createLockNodeKey(parent->getKey());
-
-    LOG_DEBUG(CL_LOG, "release: Looking for %s in %s",
-              lockNodeKey.c_str(),
-              parent->getDistributedLockKey().c_str());
+    LOG_DEBUG(CL_LOG, "release: Looking for %s in %s (%d references)",
+              lockNode.c_str(),
+              castedNtp->getDistributedLockKey().c_str(),
+              castedNtp->getDistributedLockKeyCount());
 
     /*
-     * Make sure that I actually have the lock before I delete the node
+     * Make sure that I actually have the lock before I delete the
+     * node.  Only delete the node if my reference count drops to 0.
      */
-    string::size_type pos = parent->getDistributedLockKey().find(lockNodeKey);
+    string removeNode = castedNtp->getDistributedLockKey();
+    string::size_type pos = removeNode.find(lockNode);
     if (pos == string::npos) {
-        throw ClusterException("release: I shouldn't have the lock");
+        throw InvalidMethodException(
+            string("release: I don't have the lock on") +
+            removeNode + 
+            string(" with my node ") + 
+            lockNode);
+    }
+
+    int32_t refCount = castedNtp->decrDistributedLockLeyCount();
+    if (refCount != 0) {
+        return;
     }
     
+    castedNtp->setDistributedLockKey("");
+
     /* 
      * Delete the lock node here.
      */
     bool deleted = false;
     SAFE_CALL_ZK((deleted = getOps()->getRepository()->deleteNode(
-                      parent->getDistributedLockKey(),
+                      removeNode,
                       false,
                       -1)),
                  "release: Trying to delete lock node: %s failed: %s",
-                 parent->getDistributedLockKey().c_str(),
+                 removeNode.c_str(),
                  false,
                  true);
     if (deleted == false) {
-        throw ClusterException(string("release: Delete of node") + 
-                               parent->getDistributedLockKey() + 
-                               "failed");
+        /*
+         * Make sure that this Notifyable is still alive?  Can't release
+         * deleted Notifyables.
+         */
+        if (castedNtp->getState() == Notifyable::REMOVED) {
+            LOG_DEBUG(CL_LOG, 
+                      "release: Lock on Notifyable %s will not be released "
+                      "since it was removed",
+                      castedNtp->getKey().c_str());
+            return;
+        }
+
+        /*
+         * Also, possible that deletion failed since node was already
+         * deleted.  Cannot be diffentiated from other failures
+         * because of the deleteNode interface.  Should be fixed in
+         * the future.
+         */
     }
 }
 
