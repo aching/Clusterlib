@@ -64,6 +64,14 @@ int main(int argc, char* argv[]) {
     }
     MPI::COMM_WORLD.Gather(
         &wasSuccessful, 1, MPI::INT, successArr, 1, MPI::INT, 0);
+
+    uint32_t *pidArr = NULL;
+    if (MPI::COMM_WORLD.Get_rank() == 0) {
+        pidArr = new uint32_t[MPI::COMM_WORLD.Get_size()];
+    }
+    unsigned pid = static_cast<unsigned>(getpid());
+    MPI::COMM_WORLD.Gather(
+        &pid, 1, MPI::UNSIGNED, pidArr, 1, MPI::UNSIGNED, 0);
     if (MPI::COMM_WORLD.Get_rank() == 0) {
         for (int i = 0; i < MPI::COMM_WORLD.Get_size(); i++) {
             if (successArr[i] == 0) {
@@ -74,12 +82,12 @@ int main(int argc, char* argv[]) {
         delete [] successArr;
         successArr = NULL;
 
-        
-
         cout << (wasSuccessful ? "SUCCESS" : "FAILURE")
-             << " - See details in files (0-"
-             << MPI::COMM_WORLD.Get_size() - 1 << ")"
-             << debugExt<< endl;
+             << " - See details in files " << endl;
+        
+        for (int i = 0; i < MPI::COMM_WORLD.Get_size(); i++) {
+            cout << " " << i << ".0x" << hex << pidArr[i] << debugExt<< endl;
+        }
     }
 
     if (fclose(stderrFile)) {

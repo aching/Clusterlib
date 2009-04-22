@@ -147,6 +147,16 @@ Special note about 'switch': There should ALWAYS be a
 'default', even when it is not needed at time of writing. It may
 become needed later.
 
+If you must break up a long statement that consists of '.' or '->',
+make sure to indent the following line by 4 spaces.  For example,
+
+longNamedObjectPointer->superLongNamedObjectMemberFunction()
+
+should become:
+
+longNamedObjectPointer->
+    superLongNamedObjectMemberFunction()
+
 - Other indentation conventions
 
 * Indent 4 spaces at a time.

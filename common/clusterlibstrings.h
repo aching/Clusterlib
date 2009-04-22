@@ -55,10 +55,6 @@ class ClusterlibStrings
     static const std::string MASTERSETSTATE;
     static const std::string SUPPORTEDVERSIONS;
 
-    static const std::string LEADERSHIP;
-    static const std::string BIDS;
-    static const std::string CURRENTLEADER;
-
     static const std::string KEYVAL;
 
     static const std::string SHARDS;
@@ -67,6 +63,10 @@ class ClusterlibStrings
 
     static const std::string LOCK;
     static const std::string BID_SPLIT;
+
+    static const std::string NOTIFYABLELOCK;
+    static const std::string LEADERLOCK;
+
     static const std::string LOCKS;
     static const std::string QUEUES;
     static const std::string BARRIERS;

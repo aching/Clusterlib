@@ -347,7 +347,7 @@ class SynchronousEventAdapter
      */
     E getNextEvent(int32_t timeout = 0, bool *timedOut = NULL)
     {
-        LOG_DEBUG(EV_LOG, "SynchronousEventAdapter::getNextEvent: starting");
+        TRACE(EV_LOG, "getNextEvent");
         return m_queue.take(timeout, timedOut);
     }
         

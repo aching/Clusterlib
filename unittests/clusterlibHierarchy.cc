@@ -268,6 +268,12 @@ class ClusterlibHierarchy : public MPITestFixture {
             cerr << "Orignally had " << appCount << " applications, now has "
                  << nl.size() << " ." << endl; 
             CPPUNIT_ASSERT(appCount + 1 == nl.size());
+            /* Clean up all applications, since we are always
+             * increasing the size of it. */
+            NameList::iterator it;
+            for (it = nl.begin(); it != nl.end(); it++) {
+                _client->getRoot()->getApplication(*it)->remove(true);
+            }
         }
     }
 

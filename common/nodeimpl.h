@@ -23,11 +23,6 @@ class NodeImpl
       public virtual NotifyableImpl
 {
   public:
-    virtual bool isLeader()
-    {
-        return (mp_group->getLeader() == this) ? true : false;
-    }
-
     virtual std::string getClientState() { return m_clientState; }
 
     virtual int32_t getMasterSetState() { return m_masterSetState; }

@@ -140,8 +140,11 @@ class Notifyable
     virtual void releaseLock(bool releaseChildren = 0) = 0;    
 
     /**
-     * NOT OPERATIONAL - Do not use!!!
-     *
+     * Do I have the lock?
+     */
+    virtual bool hasLock() = 0;
+
+    /**
      * Remove the this notifyable.  This causes the object to be
      * removed in clusterlib.  It will no longer be accessable and all
      * state associated with this object will be removed.

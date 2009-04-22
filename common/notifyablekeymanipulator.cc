@@ -27,23 +27,40 @@ namespace clusterlib
  * Key creation and recognition.
  */
 string
-NotifyableKeyManipulator::createLockKey(const string &notifyableKey)
+NotifyableKeyManipulator::createLocksKey(const string &notifyableKey)
 {
     string res;
     res.append(notifyableKey);
     res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::LOCK);
+    res.append(ClusterlibStrings::LOCKS);
 
     return res;
 }
 
 string
-NotifyableKeyManipulator::createLockNodeKey(const string &notifyableKey)
+NotifyableKeyManipulator::createLockKey(const string &notifyableKey,
+                                        const string &lockName)
 {
     string res;
     res.append(notifyableKey);
     res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::LOCK);
+    res.append(ClusterlibStrings::LOCKS);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(lockName);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createLockNodeKey(const string &notifyableKey,
+                                            const string &lockName)
+{
+    string res;
+    res.append(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::LOCKS);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(lockName);
     res.append(ClusterlibStrings::KEYSEPARATOR);
 
     const int32_t bufLen = 128;

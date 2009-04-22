@@ -5,7 +5,7 @@ using namespace std;
 namespace clusterlib {
 
 void
-DistributedLocks::acquire(Notifyable *ntp)
+DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
 {
     TRACE(CL_LOG, "acquire");
 
@@ -31,8 +31,20 @@ DistributedLocks::acquire(Notifyable *ntp)
      *    notification for the pathname from the previous step before going 
      *    to step 3.
      */
-    string lockKey = NotifyableKeyManipulator::createLockKey(
+    string locksKey = NotifyableKeyManipulator::createLocksKey(
         castedNtp->getKey());
+
+    LOG_DEBUG(CL_LOG, "acquire: Creating locks node %s", locksKey.c_str());
+
+    SAFE_CALL_ZK(getOps()->getRepository()->createNode(locksKey, "", 0, false),
+                 "Creation of %s failed: %s",
+                 locksKey.c_str(), 
+                 true,
+                 true);
+
+    string lockKey = NotifyableKeyManipulator::createLockKey(
+        castedNtp->getKey(),
+        lockName);
 
     LOG_DEBUG(CL_LOG, "acquire: Creating lock node %s", lockKey.c_str());
 
@@ -43,19 +55,24 @@ DistributedLocks::acquire(Notifyable *ntp)
                  true);
 
     string lockNode = 
-        NotifyableKeyManipulator::createLockNodeKey(castedNtp->getKey());
+        NotifyableKeyManipulator::createLockNodeKey(
+            castedNtp->getKey(),
+            lockName);
     
     /*
      * If I already have the lock, just increase the reference count.
      */
-    string::size_type pos = castedNtp->getDistributedLockKey().find(
-        lockNode);
+    string::size_type pos = 
+        castedNtp->getDistributedLockOwner(
+            lockName).find(lockNode);
     if (pos != string::npos) {
         LOG_WARN(CL_LOG, 
                  "acquire: Already have the lock on %s (had %d references)", 
                  castedNtp->getKey().c_str(),
-                 castedNtp->getDistributedLockKeyCount());
-        castedNtp->incrDistributedLockKeyCount();
+                 castedNtp->getDistributedLockOwnerCount(
+                     lockName));
+        castedNtp->incrDistributedLockOwnerCount(
+            lockName);
         return;
     }
 
@@ -156,8 +173,8 @@ DistributedLocks::acquire(Notifyable *ntp)
                 ((tmpBid < myBid) && (tmpBid > lowerBid)) ||
                 ((tmpBid < myBid) && (myBid == lowerBid))) {
                 LOG_DEBUG(CL_LOG, 
-                          "acquire: Replaced lowerBid %lld with tmpBid %lld"
-                          " with myBid %lld",
+                          "acquire: Replaced lowerBid %lld with tmpBid %lld "
+                          "(myBid = %lld)",
                           lowerBid,
                           tmpBid,
                           myBid);
@@ -259,53 +276,62 @@ DistributedLocks::acquire(Notifyable *ntp)
     /*
      * Remember the createPath node name so it can be cleaned up at release.
      */
-    castedNtp->setDistributedLockKey(createdPath);
-    castedNtp->incrDistributedLockKeyCount();
+    castedNtp->setDistributedLockOwner(lockName,
+                                       createdPath);
+    castedNtp->incrDistributedLockOwnerCount(
+        lockName);
     LOG_DEBUG(CL_LOG, "acquire: Setting distributed lock key of Notifyable %s "
               "with %s (%u references)",
               castedNtp->getKey().c_str(),
               createdPath.c_str(),
-              castedNtp->getDistributedLockKeyCount());
+              castedNtp->getDistributedLockOwnerCount(
+                  lockName));
 }
 
 void
-DistributedLocks::release(Notifyable *ntp)
+DistributedLocks::release(Notifyable *ntp, const string &lockName)
 {
     TRACE(CL_LOG, "release");
 
-    NotifyableImpl *castedNtp =  dynamic_cast<NotifyableImpl *>(ntp);
+    NotifyableImpl *castedNtp = dynamic_cast<NotifyableImpl *>(ntp);
     if (castedNtp == NULL) {
         throw InvalidArgumentsException("release: Notifyable is NULL");
     }
 
     string lockNode = 
-        NotifyableKeyManipulator::createLockNodeKey(castedNtp->getKey());
+        NotifyableKeyManipulator::createLockNodeKey(
+            castedNtp->getKey(),
+            lockName);
 
     LOG_DEBUG(CL_LOG, "release: Looking for %s in %s (%d references)",
               lockNode.c_str(),
-              castedNtp->getDistributedLockKey().c_str(),
-              castedNtp->getDistributedLockKeyCount());
+              castedNtp->getDistributedLockOwner(
+                  lockName).c_str(),
+              castedNtp->getDistributedLockOwnerCount(
+                  lockName));
 
     /*
      * Make sure that I actually have the lock before I delete the
      * node.  Only delete the node if my reference count drops to 0.
      */
-    string removeNode = castedNtp->getDistributedLockKey();
+    string removeNode = castedNtp->getDistributedLockOwner(
+        lockName);
     string::size_type pos = removeNode.find(lockNode);
     if (pos == string::npos) {
         throw InvalidMethodException(
-            string("release: I don't have the lock on") +
+            string("release: I don't have the lock on ") +
             removeNode + 
             string(" with my node ") + 
             lockNode);
     }
 
-    int32_t refCount = castedNtp->decrDistributedLockLeyCount();
+    int32_t refCount = castedNtp->decrDistributedLockOwnerCount(
+        lockName);
     if (refCount != 0) {
         return;
     }
     
-    castedNtp->setDistributedLockKey("");
+    castedNtp->setDistributedLockOwner(lockName, "");
 
     /* 
      * Delete the lock node here.
@@ -339,6 +365,37 @@ DistributedLocks::release(Notifyable *ntp)
          * the future.
          */
     }
+}
+
+bool
+DistributedLocks::hasLock(Notifyable *ntp, const string &lockName)
+{
+    TRACE(CL_LOG, "hasLock");
+    
+    NotifyableImpl *castedNtp = dynamic_cast<NotifyableImpl *>(ntp);
+    if (castedNtp == NULL) {
+        throw InvalidArgumentsException("release: Notifyable is NULL");
+    }
+
+    string lockOwner = castedNtp->getDistributedLockOwner(lockName);
+    
+    string myLockNodeKey = NotifyableKeyManipulator::createLockNodeKey(
+        castedNtp->getKey(),
+        lockName);
+
+    LOG_DEBUG(CL_LOG, 
+              "hasLock: Trying to find my lock node prefix (%s) in the "
+              "lock owner (%s) for Notifyable (%s) with ref count (%d)",
+              myLockNodeKey.c_str(),
+              lockOwner.c_str(),
+              ntp->getKey().c_str(),
+              castedNtp->getDistributedLockOwnerCount(lockName));
+    
+    if (lockOwner.find(myLockNodeKey) != string::npos) {
+        return true;
+    }
+
+    return false;
 }
 
 };

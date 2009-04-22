@@ -72,29 +72,6 @@ class ServerImpl
      */
     virtual void enableHealthChecking(bool enabled);
 
-    /**
-     * \brief Participate in the leadership election protocol
-     * for the containing group.
-     *
-     * @return true if this server became the leader of its group.
-     */
-    virtual bool tryToBecomeLeader();
-
-    /**
-     * \brief Am I the leader of my group?
-     *
-     * @return true if this server is the leader of its group.
-     */
-    virtual bool amITheLeader();
-
-    /**
-     * \brief Give up leadership of my group.
-     */
-    virtual void giveUpLeadership();
-
-    /*
-     * Internal functions not used by outside clients
-     */
   public:
     /*
      * Constructor used by Factory.
@@ -216,11 +193,6 @@ class ServerImpl
      * The node that represents "my node".
      */
     NodeImpl *mp_node;
-
-    /*
-     * My leadership bid index.
-     */
-    int64_t m_myBid;
 };
 
 };	/* End of 'namespace clusterlib' */

@@ -244,7 +244,7 @@ class ClusterlibCache
         /*
          * Create the new group..
          */
-        _zk->createNode(rpath, "", 0, false);
+        _app0->getGroup("g15", true);
 
         /*
          * Wait for event propagation.
@@ -585,7 +585,7 @@ class ClusterlibCache
         /*
          * Create the new group..
          */
-        _zk->createNode(rpath, "", 0, false);
+        _grp0->getGroup("g15", true);        
 
         /*
          * Wait for event propagation.

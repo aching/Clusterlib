@@ -90,17 +90,27 @@ class DistributedLocks
      * interfering with operations on this NotifyableImpl.
      *
      * @param ntp is the Notifyable to be locked.
+     * @param lockName is the name of the lock
      * @throw Exception if the Notifyable doesn't exist
      */
-    void acquire(Notifyable *ntp);
+    void acquire(Notifyable *ntp, const std::string &lockName);
 
     /**
      * Try to unlock this Notifyable.
      *
      * @param ntp is the Notifyable to be unlocked.
+     * @param lockName is the name of the lock
      * @throw Exception if there is an unrecoverable problem
      */
-    void release(Notifyable *ntp);
+    void release(Notifyable *ntp, const std::string &lockName);
+
+    /*
+     * Does this thread have a lock on this Notifyable?
+     *
+     * @param ntp the Notifyable that is being checked
+     * @param lockName the name of the lock
+     */
+    bool hasLock(Notifyable *ntp, const std::string &lockName);
 
     /**
      * Get the map that is used to signal threads trying to acquire locks.

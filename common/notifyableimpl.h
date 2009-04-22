@@ -14,6 +14,24 @@
 namespace clusterlib
 {
 
+struct NameRef {
+    NameRef()
+        : refCount(0) {}
+
+    NameRef(int refCountArg, const std::string &lockOwnerArg)
+        : refCount(refCountArg),
+          lockOwner(lockOwnerArg) {}
+
+    /**
+     * Number of references on this lockOwner
+     */
+    int refCount;
+    /*
+     * Who actually has the lock
+     */
+    std::string lockOwner;
+};
+
 /**
  * Interface that must be derived by specific notifyable objects.
  */
@@ -55,7 +73,9 @@ class NotifyableImpl
     virtual void acquireLock(bool acquireChildren = false);
 
     virtual void releaseLock(bool releaseChildren = false);
-
+    
+    virtual bool hasLock();
+    
     virtual void remove(bool removeChildren = false);
 
     /*
@@ -73,8 +93,7 @@ class NotifyableImpl
           m_key(key),
           m_name(name),
           mp_parent(parent),
-          m_state(Notifyable::READY),
-          m_distLockKeyCount(0) {}
+          m_state(Notifyable::READY) {}
 
     /*
      * Get the associated factory object.
@@ -100,33 +119,45 @@ class NotifyableImpl
     virtual void removeRepositoryEntries() = 0;
 
     /**
-     * Get the key of the distributed lock
+     * Get the key of the distributed lock owner
+     *
+     * @param lockName the name of the lock
+     * @return the owner of the lock
      */
-    virtual const std::string &getDistributedLockKey();
+    virtual const std::string getDistributedLockOwner(
+        const std::string &lockName);
 
     /**
      * Set the key of the distributed lock
+     *
+     * @param lockName the name of the lock
+     * @param lockOwner the name of the lock owner
      */
-    virtual void setDistributedLockKey(const std::string &distLockKey);
+    virtual void setDistributedLockOwner(const std::string &lockName,
+                                         const std::string &lockOwner);
     
     /**
      * Safe reference count changes for distributed locks.
      *
-     * @return the current reference count
+     * @param lockName the name of the lock
+     * @return the reference count after the operation
      */
-    virtual int32_t incrDistributedLockKeyCount();
+    virtual int32_t incrDistributedLockOwnerCount(const std::string &lockName);
     
     /**
      * Safe reference count changes for distributed locks.
      *
-     * @return the current reference count
+     * @param lockName the name of the lock
+     * @return the reference count after the operation
      */
-    virtual int32_t decrDistributedLockLeyCount();
+    virtual int32_t decrDistributedLockOwnerCount(const std::string &lockName);
 
     /**
      * Get the number of references on the current distributed lock key
+     *
+     * @param lockName the name of the lock
      */
-    virtual int32_t getDistributedLockKeyCount();
+    virtual int32_t getDistributedLockOwnerCount(const std::string &lockName);
 
     /**
      * Check the state of the Notifyable and throw an exception if it
@@ -197,15 +228,10 @@ class NotifyableImpl
     State m_state;
     
     /** 
-     * The key that represents the holder of the distributed lock of
-     * this object.
+     * All locks, their owners and their owner's reference counts are
+     * stored here.
      */
-    std::string m_distLockKey;
-
-    /**
-     * Reference count for the distributed lock.  Allows reentrant locks.
-     */
-    int32_t m_distLockKeyCount;
+    std::map<std::string, NameRef> m_distLockMap;
 
     /**
      * Lock to synchronize the Notifyable state (includes distibuted

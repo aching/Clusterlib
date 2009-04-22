@@ -51,10 +51,6 @@ const string ClusterlibStrings::ALIVE = "alive";
 const string ClusterlibStrings::MASTERSETSTATE = "masterSetState";
 const string ClusterlibStrings::SUPPORTEDVERSIONS = "supportedVersions";
 
-const string ClusterlibStrings::LEADERSHIP = "leadership";
-const string ClusterlibStrings::BIDS = "bids";
-const string ClusterlibStrings::CURRENTLEADER = "currentLeader";
-
 const string ClusterlibStrings::KEYVAL = "keyval";    
 
 const string ClusterlibStrings::SHARDS = "shards";
@@ -63,6 +59,9 @@ const string ClusterlibStrings::MANUALOVERRIDES = "manualOverrides";
 
 const string ClusterlibStrings::LOCK = "lock";
 const string ClusterlibStrings::BID_SPLIT = "_";
+
+const string ClusterlibStrings::NOTIFYABLELOCK = "notifyableLock";
+const string ClusterlibStrings::LEADERLOCK = "leaderLock";
 
 const string ClusterlibStrings::LOCKS = "locks";
 const string ClusterlibStrings::QUEUES = "queues";

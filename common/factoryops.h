@@ -260,28 +260,6 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     NotifyableList getChildren(Notifyable *ntp);
     
     /*
-     * Leadership protocol.
-     */
-    NodeImpl *getLeader(GroupImpl *group);
-    int64_t placeBid(NodeImpl *node, ServerImpl *sp);
-    bool tryToBecomeLeader(NodeImpl *node, int64_t bid);
-    bool isLeaderKnown(NodeImpl *node);
-    void leaderIsUnknown(NodeImpl *node);
-    void giveUpLeadership(NodeImpl *node, int64_t bid);
-    LeadershipElectionMultimap &getLeadershipWatches() 
-    { 
-        return m_leadershipWatches;
-    }
-    bool leaderExists();
-
-    /*
-     * Methods to prepare strings for leadership protocol.
-     */
-    std::string getCurrentLeaderNodeName(const std::string &gkey);
-    std::string getLeadershipBidsNodeName(const std::string &gkey);
-    std::string getLeadershipBidPrefix(const std::string &gkey);
-
-    /*
      * Retrieve (and potentially create) instances of
      * objects representing applications, groups, nodes,
      * and distributions.
@@ -578,7 +556,6 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
      * Get various locks and conditionals.
      */
     Mutex *getClientsLock() { return &m_clLock; }
-    Mutex *getLeadershipWatchesLock() { return &m_lwLock; }
     Mutex *getPropertiesLock() { return &m_propLock; }
     Mutex *getDataDistributionsLock() { return &m_distLock; }
     Mutex *getRootLock() { return &m_rootLock; }
@@ -651,7 +628,7 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
      *
      * @return pointer to DistributedLocks for doing lock operations
      */
-    DistributedLocks *getDistrbutedLocks()
+    DistributedLocks *getDistributedLocks()
     {
         return &m_distributedLocks;
     }
@@ -692,12 +669,6 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
      */
     ClientImplList m_clients;
     Mutex m_clLock;
-
-    /*
-     * The registry of leadership election watches.
-     */
-    LeadershipElectionMultimap m_leadershipWatches;
-    Mutex m_lwLock;
 
     /*
      * The cached root.

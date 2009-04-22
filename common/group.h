@@ -23,19 +23,19 @@ class Group
 {
   public:
     /**
-     * Get the leader node.
-     *
-     * @return the Node * for the leader of the group, or NULL.
+     * Become the leader of this group.
      */
-    virtual Node *getLeader() = 0;
+    virtual void becomeLeader() = 0;
 
     /**
-     * Get the time at which the leadership of this group
-     * switched last.
-     *
-     * @return the time at which the leadership switched, or -1.
+     * Relinquish leadership of this group.
      */
-    virtual int64_t getLeadershipChangeTime() = 0;
+    virtual void abdicateLeader() = 0;
+
+    /**
+     * Check if I am the leader of this group
+     */
+    virtual bool isLeader() = 0;
 
     /**
      * Get a list of names of all nodes.

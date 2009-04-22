@@ -65,26 +65,6 @@ class Server
      * @param enabled whether to enable the health checking
      */
     virtual void enableHealthChecking(bool enabled) = 0;
-
-    /**
-     * \brief Participate in the leadership election protocol
-     * for the containing group.
-     *
-     * @return true if this server became the leader of its group.
-     */
-    virtual bool tryToBecomeLeader() = 0;
-
-    /**
-     * \brief Am I the leader of my group?
-     *
-     * @return true if this server is the leader of its group.
-     */
-    virtual bool amITheLeader() = 0;
-
-    /**
-     * \brief Give up leadership of my group.
-     */
-    virtual void giveUpLeadership() = 0;
 };
 
 };	/* End of 'namespace clusterlib' */

@@ -25,8 +25,11 @@ class NotifyableKeyManipulator
      * the inputs are valid.  Does not create the objects or check
      * that they exist. 
      */
-    static std::string createLockKey(const std::string &notifyableKey);
-    static std::string createLockNodeKey(const std::string &lockKey);
+    static std::string createLocksKey(const std::string &notifyableKey);
+    static std::string createLockKey(const std::string &notifyableKey,
+                                     const std::string &lockName);
+    static std::string createLockNodeKey(const std::string &notifyableKey,
+                                         const std::string &lockName);
     static std::string createNodeKey(const std::string &groupKey,
                                      const std::string &nodeName,
                                      bool managed);

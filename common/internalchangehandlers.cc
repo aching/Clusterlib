@@ -49,8 +49,9 @@ InternalChangeHandlers::handlePrecLockNodeExistsChange(int32_t etype,
          * cannot be deleted it should be safe 
          */
         WaitMap::iterator waitMapIt = 
-            getOps()->getDistrbutedLocks()->getWaitMap()->find(key);
-        if (waitMapIt == getOps()->getDistrbutedLocks()->getWaitMap()->end()) {
+            getOps()->getDistributedLocks()->getWaitMap()->find(key);
+        if (waitMapIt == 
+            getOps()->getDistributedLocks()->getWaitMap()->end()) {
             throw InconsistentInternalStateException(
                 "handlePrecLockNodeExistsChange: Signalling"
                 " the thread waiting on acquire failed");

@@ -106,22 +106,6 @@ class CachedObjectChangeHandlers
                                      const std::string &key);
 
     /**
-     * Handle changes in the leadership of a
-     * group.
-     */
-    Event handleLeadershipChange(NotifyableImpl *ntp,
-                                 int32_t etype,
-                                 const std::string &key);
-
-    /**
-     * Handle existence change for preceding leader of
-     * a group.
-     */
-    Event handlePrecLeaderExistsChange(NotifyableImpl *ntp,
-                                       int32_t etype,
-                                       const std::string &key);
-
-    /**
      * Handle changes in synchronization of a zookeeper key.
      */
     Event handleSynchronizeChange(NotifyableImpl *ntp,
@@ -175,14 +159,6 @@ class CachedObjectChangeHandlers
     {
         return &m_nodeConnectionChangeHandler;
     }
-    CachedObjectEventHandler *getLeadershipChangeHandler()
-    {
-        return &m_leadershipChangeHandler;
-    }
-    CachedObjectEventHandler *getPrecLeaderExistsHandler()
-    {
-        return &m_precLeaderExistsHandler;
-    }
     CachedObjectEventHandler *getSynchronizeChangeHandler()
     {
         return &m_synchronizeChangeHandler;
@@ -226,12 +202,6 @@ class CachedObjectChangeHandlers
         m_nodeConnectionChangeHandler(
             this,
             &CachedObjectChangeHandlers::handleNodeConnectionChange),
-        m_leadershipChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleLeadershipChange),
-        m_precLeaderExistsHandler(
-            this,
-            &CachedObjectChangeHandlers::handlePrecLeaderExistsChange),
         m_synchronizeChangeHandler(
             this,
             &CachedObjectChangeHandlers::handleSynchronizeChange) {}
@@ -262,8 +232,6 @@ class CachedObjectChangeHandlers
     CachedObjectEventHandler m_nodeClientStateChangeHandler;
     CachedObjectEventHandler m_nodeMasterSetStateChangeHandler;
     CachedObjectEventHandler m_nodeConnectionChangeHandler;
-    CachedObjectEventHandler m_leadershipChangeHandler;
-    CachedObjectEventHandler m_precLeaderExistsHandler;
     CachedObjectEventHandler m_synchronizeChangeHandler;
 };
 

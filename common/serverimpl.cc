@@ -61,8 +61,7 @@ ServerImpl::ServerImpl(FactoryOps *fp,
       m_healthCheckerTerminating(false),
       m_healthCheckingEnabled(true),
       mp_healthChecker(healthChecker),
-      m_flags(flags),
-      m_myBid(-1)
+      m_flags(flags)
 {
     mp_node = mp_f->getNode(nodeName,
                             dynamic_cast<GroupImpl *>(group),
@@ -274,80 +273,6 @@ ServerImpl::setHealthy(const HealthReport &report)
  
     mp_f->updateNodeClientState(key, value);
     mp_f->updateNodeClientStateDesc(key, report.getStateDescription());
-}
-
-/**********************************************************************/
-/* Leadership protocol.                                               */
-/**********************************************************************/
-
-/*
- * Attempt to become the leader.
- */
-bool
-ServerImpl::tryToBecomeLeader()
-{
-    TRACE(CL_LOG, "tryToBecomeLeader");
-
-    /*
-     * Initialization.
-     */
-    if (m_myBid == -1) {
-        m_myBid = mp_f->placeBid(mp_node, this);
-    }
-    LOG_INFO(CL_LOG, "My leader bid: %lld", m_myBid);
-
-    /*
-     * First check if I already that I am or I am not the leader.
-     */
-    if (amITheLeader()) {
-        return true;
-    }
-    if (mp_f->isLeaderKnown(mp_node)) {
-        return false;
-    }
-
-    /*
-     * If my bid is the lowest, then I'm the leader. Find out.
-     */
-    return mp_f->tryToBecomeLeader(mp_node, m_myBid);
-}
-
-/*
- * Is this server the leader of its group?
- */
-bool
-ServerImpl::amITheLeader()
-{
-    TRACE(CL_LOG, "amITheLeader");
-
-    return mp_node->isLeader();
-}
-
-/*
- * Give up leadership -- no-op if I'm not the leader of my
- * group, else some other server becomes the leader.
- */
-void
-ServerImpl::giveUpLeadership()
-{
-    TRACE(CL_LOG, "giveUpLeadership");
-
-    int64_t myBid = m_myBid;
-
-    /*
-     * Revert to not having a leadership bid.
-     */
-    m_myBid = -1;
-
-    /*
-     * If the previous bid was -1, I never bid, so I
-     * cannot be the leader.
-     */
-    if (myBid == -1) {
-        return;
-    }
-
-    mp_f->giveUpLeadership(mp_node, myBid);
 }
 
 };	/* End of 'namespace clusterlib' */

@@ -21,6 +21,40 @@ using namespace std;
 namespace clusterlib
 {
 
+void
+GroupImpl::becomeLeader()
+{
+    TRACE(CL_LOG, "becomeLeader");
+
+    throwIfRemoved();
+
+    getOps()->getDistributedLocks()->acquire(this,
+                                             ClusterlibStrings::LEADERLOCK);
+}
+
+void
+GroupImpl::abdicateLeader()
+{
+    TRACE(CL_LOG, "abdicateLeader");
+
+    throwIfRemoved();
+
+    getOps()->getDistributedLocks()->release(this,
+                                             ClusterlibStrings::LEADERLOCK);
+}
+
+bool
+GroupImpl::isLeader()
+{
+    TRACE(CL_LOG, "isLeader");
+
+    throwIfRemoved();
+
+    return getOps()->getDistributedLocks()->hasLock(
+        this,
+        ClusterlibStrings::LEADERLOCK);
+}
+
 NameList
 GroupImpl::getNodeNames() 
 {
@@ -113,91 +147,6 @@ void
 GroupImpl::removeRepositoryEntries()
 {
     getOps()->removeGroup(this);
-}
-
-/*
- * Return the node representing the group leader,
- * if any.
- */
-Node *
-GroupImpl::getLeader()
-{
-    TRACE(CL_LOG, "getLeader");
-
-    throwIfRemoved();
-
-    Locker l1(getLeadershipLock());
-
-    if (mp_leader == NULL) {
-        if (m_leaderIsKnown == false) {
-            updateLeader(getOps()->getLeader(this));
-        }
-    }
-    return mp_leader;
-}
-
-/*
- * Update the leader.
- */
-void
-GroupImpl::updateLeader(Node *lp)
-{
-    TRACE(CL_LOG, "updateLeader");
-
-    throwIfRemoved();
-
-    Locker l1(getLeadershipLock());
-
-    mp_leader = lp;
-    m_leaderIsKnown =
-        (lp == NULL)
-        ? false
-        : true;
-}
-
-/*
- * Methods to manage strings used in leadership protocol.
- */
-void
-GroupImpl::initializeStringsForLeadershipProtocol()
-{
-    throwIfRemoved();
-
-    Locker l1(getLeadershipLock());
-
-    if (!m_leadershipStringsInitialized) {
-        m_leadershipStringsInitialized = true;
-        m_currentLeaderNodeName =
-            getOps()->getCurrentLeaderNodeName(getKey());
-        m_leadershipBidsNodeName = 
-            getOps()->getLeadershipBidsNodeName(getKey());
-        m_leadershipBidPrefix = 
-            getOps()->getLeadershipBidPrefix(getKey());
-    }
-}
-string
-GroupImpl::getCurrentLeaderNodeName()
-{
-    throwIfRemoved();
-
-    initializeStringsForLeadershipProtocol();
-    return m_currentLeaderNodeName;
-}
-string
-GroupImpl::getLeadershipBidsNodeName()
-{
-    throwIfRemoved();
-
-    initializeStringsForLeadershipProtocol();
-    return m_leadershipBidsNodeName;
-}
-string
-GroupImpl::getLeadershipBidPrefix()
-{
-    throwIfRemoved();
-
-    initializeStringsForLeadershipProtocol();
-    return m_leadershipBidPrefix;
 }
 
 };	/* End of 'namespace clusterlib' */

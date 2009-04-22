@@ -913,7 +913,7 @@ FactoryOps::isInternalEvent(GenericEvent *ge)
 
     string lockNodePartialKey;
     lockNodePartialKey.append(ClusterlibStrings::KEYSEPARATOR);
-    lockNodePartialKey.append(ClusterlibStrings::LOCK);
+    lockNodePartialKey.append(ClusterlibStrings::LOCKS);
     lockNodePartialKey.append(ClusterlibStrings::KEYSEPARATOR);
     size_t lockNodeIndex = zp->getPath().find(lockNodePartialKey);
     if (lockNodeIndex == string::npos) {
@@ -1069,20 +1069,28 @@ FactoryOps::getApplication(const string &appName, bool create)
      * Use a distributed lock on the parent to prevent another thread
      * from interfering with creation or loading.
      */
-    getOps()->getDistrbutedLocks()->acquire(getRoot());
+    getOps()->getDistributedLocks()->acquire(
+        getRoot(), 
+        ClusterlibStrings::NOTIFYABLELOCK);
 
     ApplicationImpl *app = loadApplication(appName, key);
     if (app != NULL) {
-        getOps()->getDistrbutedLocks()->release(getRoot());
+        getOps()->getDistributedLocks()->release(
+            getRoot(),
+            ClusterlibStrings::NOTIFYABLELOCK);
         return app;
     }
     if (create == true) {
         app = createApplication(appName, key);
-        getOps()->getDistrbutedLocks()->release(getRoot());
+        getOps()->getDistributedLocks()->release(
+            getRoot(),
+            ClusterlibStrings::NOTIFYABLELOCK);
         return app;
     }
 
-    getOps()->getDistrbutedLocks()->release(getRoot());
+    getOps()->getDistributedLocks()->release(
+        getRoot(),
+        ClusterlibStrings::NOTIFYABLELOCK);
 
     LOG_WARN(CL_LOG,
              "getApplication: application %s not found nor created",
@@ -1135,22 +1143,30 @@ FactoryOps::getDataDistribution(const string &distName,
      * Use a distributed lock on the parent to prevent another thread
      * from interfering with creation or loading.
      */
-    getOps()->getDistrbutedLocks()->acquire(parentGroup);
+    getOps()->getDistributedLocks()->acquire(
+        parentGroup,
+        ClusterlibStrings::NOTIFYABLELOCK);
 
     DataDistributionImpl *dist = loadDataDistribution(distName, 
                                                       key, 
                                                       parentGroup);
     if (dist != NULL) {
-        getOps()->getDistrbutedLocks()->release(parentGroup);
+        getOps()->getDistributedLocks()->release(
+            parentGroup,
+            ClusterlibStrings::NOTIFYABLELOCK);
         return dist;
     }
     if (create == true) {
         dist = createDataDistribution(distName, key, "", "", parentGroup); 
-        getOps()->getDistrbutedLocks()->release(parentGroup);
+        getOps()->getDistributedLocks()->release(
+            parentGroup,
+            ClusterlibStrings::NOTIFYABLELOCK);
         return dist;
     }
 
-    getOps()->getDistrbutedLocks()->release(parentGroup);
+    getOps()->getDistributedLocks()->release(
+        parentGroup,
+        ClusterlibStrings::NOTIFYABLELOCK);
 
     LOG_WARN(CL_LOG,
              "getDataDistribution: data distribution %s not found "
@@ -1187,20 +1203,28 @@ FactoryOps::getProperties(Notifyable *parent,
      * Use a distributed lock on the parent to prevent another thread
      * from interfering with creation or loading.
      */
-    getOps()->getDistrbutedLocks()->acquire(parent);
+    getOps()->getDistributedLocks()->acquire(
+        parent,
+        ClusterlibStrings::NOTIFYABLELOCK);
 
     PropertiesImpl *prop = loadProperties(key, parent);
     if (prop != NULL) {
-        getOps()->getDistrbutedLocks()->release(parent);
+        getOps()->getDistributedLocks()->release(
+            parent,
+            ClusterlibStrings::NOTIFYABLELOCK);
         return prop;
     }
     if (create == true) {
         prop = createProperties(key, parent);
-        getOps()->getDistrbutedLocks()->release(parent);
+        getOps()->getDistributedLocks()->release(
+            parent,
+            ClusterlibStrings::NOTIFYABLELOCK);
         return prop;
     }
 
-    getOps()->getDistrbutedLocks()->release(parent);
+    getOps()->getDistributedLocks()->release(
+        parent,
+        ClusterlibStrings::NOTIFYABLELOCK);
 
     LOG_WARN(CL_LOG,
              "getProperties: could not find nor create "
@@ -1251,20 +1275,28 @@ FactoryOps::getGroup(const string &groupName,
      * Use a distributed lock on the parent to prevent another thread
      * from interfering with creation or loading.
      */
-    getOps()->getDistrbutedLocks()->acquire(parentGroup);
+    getOps()->getDistributedLocks()->acquire(
+        parentGroup,
+        ClusterlibStrings::NOTIFYABLELOCK);
 
     GroupImpl *group = loadGroup(groupName, key, parentGroup);
     if (group != NULL) {
-        getOps()->getDistrbutedLocks()->release(parentGroup);
+        getOps()->getDistributedLocks()->release(
+            parentGroup,
+            ClusterlibStrings::NOTIFYABLELOCK);
         return group;
     }
     if (create == true) {
         group = createGroup(groupName, key, parentGroup);
-        getOps()->getDistrbutedLocks()->release(parentGroup);
+        getOps()->getDistributedLocks()->release(
+            parentGroup,
+            ClusterlibStrings::NOTIFYABLELOCK);
         return group;
     }
 
-    getOps()->getDistrbutedLocks()->release(parentGroup);
+    getOps()->getDistributedLocks()->release(
+        parentGroup,
+        ClusterlibStrings::NOTIFYABLELOCK);
 
     LOG_WARN(CL_LOG,
              "getGroup: group %s not found nor created",
@@ -1321,20 +1353,28 @@ FactoryOps::getNode(const string &nodeName,
      * Use a distributed lock on the parent to prevent another thread
      * from interfering with creation or loading.
      */
-    getOps()->getDistrbutedLocks()->acquire(parentGroup);
+    getOps()->getDistributedLocks()->acquire(
+        parentGroup,
+        ClusterlibStrings::NOTIFYABLELOCK);
 
     NodeImpl *node = loadNode(nodeName, key, parentGroup);
     if (node != NULL) {
-        getOps()->getDistrbutedLocks()->release(parentGroup);
+        getOps()->getDistributedLocks()->release(
+            parentGroup,
+            ClusterlibStrings::NOTIFYABLELOCK);
         return node;
     }
     if (create == true) {
         node = createNode(nodeName, key, parentGroup);
-        getOps()->getDistrbutedLocks()->release(parentGroup);
+        getOps()->getDistributedLocks()->release(
+            parentGroup,
+            ClusterlibStrings::NOTIFYABLELOCK);
         return node;
     }
 
-    getOps()->getDistrbutedLocks()->release(parentGroup);
+    getOps()->getDistributedLocks()->release(
+        parentGroup,
+        ClusterlibStrings::NOTIFYABLELOCK);
 
     LOG_WARN(CL_LOG,
              "getNode: node %s not found nor created",
@@ -1419,7 +1459,8 @@ FactoryOps::updateDataDistribution(const string &distKey,
     SAFE_CALL_ZK(m_zk.getNodeData(
                      monode,
                      &m_zkEventAdapter,
-                     getCachedObjectChangeHandlers()->getManualOverridesChangeHandler()),
+                     getCachedObjectChangeHandlers()->
+                         getManualOverridesChangeHandler()),
                  "Reestablishing watch on value of %s failed: %s",
                  monode.c_str(),
                  false,
@@ -2020,6 +2061,23 @@ FactoryOps::loadApplication(const string &name,
         return dynamic_cast<ApplicationImpl *>(appIt->second);
     }
 
+    /* 
+     * Make sure that all the Zookeeper nodes exists that are part of
+     * this object.
+     */
+    string groups = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::GROUPS;
+    string dists = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::DISTRIBUTIONS;
+    string nodes =
+        key +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::NODES;
+
     SAFE_CALL_ZK((exists = m_zk.nodeExists(
                       key, 
                       &m_zkEventAdapter,
@@ -2032,6 +2090,46 @@ FactoryOps::loadApplication(const string &name,
     if (!exists) {
         return NULL;
     }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(groups)),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadApplication: Application with key %s is not fully "
+                 "constructed (%s missing)",
+                 key.c_str(),
+                 groups.c_str());
+        return NULL;
+    }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(dists)),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadApplication: Application with key %s is not fully "
+                 "constructed (%s missing)",
+                 key.c_str(),
+                 dists.c_str());
+        return NULL;
+    }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(nodes)),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadApplication: Application with key %s is not fully "
+                 "constructed (%s missing)",
+                 key.c_str(),
+                 nodes.c_str());
+        return NULL;
+    }
+
     app = new ApplicationImpl(this, 
                               key, 
                               name, 
@@ -2070,6 +2168,19 @@ FactoryOps::loadDataDistribution(const string &distName,
         return dynamic_cast<DataDistributionImpl *>(distIt->second);
     }
 
+    /* 
+     * Make sure that all the Zookeeper nodes exists that are part of
+     * this object.
+     */
+    string shards = 
+        distKey + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::SHARDS;
+    string mos = 
+        distKey + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::MANUALOVERRIDES;
+
     SAFE_CALL_ZK((exists = m_zk.nodeExists(distKey)),
                  "Could not determine whether key %s exists: %s",
                  distKey.c_str(),
@@ -2078,6 +2189,35 @@ FactoryOps::loadDataDistribution(const string &distName,
     if (!exists) {
         return NULL;
     }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(shards)),
+                 "Could not determine whether key %s exists: %s",
+                 distKey.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadGroup: Group with key %s is not fully constructed "
+                 "(%s missing)",
+                 distKey.c_str(),
+                 shards.c_str());
+        return NULL;
+    }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(mos)),
+                 "Could not determine whether key %s exists: %s",
+                 distKey.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadGroup: Group with key %s is not fully constructed "
+                 "(%s missing)",
+                 distKey.c_str(),
+                 mos.c_str());
+        return NULL;
+    }
+
+
+
     dist = new DataDistributionImpl(this,
                                     distKey,
                                     distName,
@@ -2158,6 +2298,10 @@ FactoryOps::loadProperties(const string &propKey,
         return dynamic_cast<PropertiesImpl *>(propIt->second);
     }
 
+    /* 
+     * Make sure that all the Zookeeper nodes exists that are part of
+     * this object.
+     */
     SAFE_CALL_ZK((exists = m_zk.nodeExists(propKey)),
                  "Could not determine whether key %s exists: %s",
                  propKey.c_str(),
@@ -2186,6 +2330,11 @@ string
 FactoryOps::loadKeyValMap(const string &key, int32_t &version)
 {
     Stat stat;
+
+    /* 
+     * Make sure that all the Zookeeper nodes exists that are part of
+     * this object.
+     */
     string kvnode =
         key +
         ClusterlibStrings::KEYSEPARATOR +
@@ -2223,6 +2372,23 @@ FactoryOps::loadGroup(const string &groupName,
         return dynamic_cast<GroupImpl *>(groupIt->second);
     }
 
+    /* 
+     * Make sure that all the Zookeeper nodes exists that are part of
+     * this object.
+     */
+    string nodes = 
+        groupKey + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::NODES;
+    string groups =
+        groupKey +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::GROUPS;
+    string dists =
+        groupKey +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::DISTRIBUTIONS;
+
     SAFE_CALL_ZK((exists = m_zk.nodeExists(groupKey)),
                  "Could not determine whether key %s exists: %s",
                  groupKey.c_str(),
@@ -2231,6 +2397,46 @@ FactoryOps::loadGroup(const string &groupName,
     if (!exists) {
         return NULL;
     }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(nodes)),
+                 "Could not determine whether key %s exists: %s",
+                 groupKey.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadGroup: Group with key %s is not fully constructed "
+                 "(%s missing)",
+                 groupKey.c_str(),
+                 nodes.c_str());
+        return NULL;
+    }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(groups)),
+                 "Could not determine whether key %s exists: %s",
+                 groupKey.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadGroup: Group with key %s is not fully constructed "
+                 "(%s missing)",
+                 groupKey.c_str(),
+                 groups.c_str());
+        return NULL;
+    }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(dists)),
+                 "Could not determine whether key %s exists: %s",
+                 groupKey.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadGroup: Group with key %s is not fully constructed "
+                 "(%s missing)",
+                 groupKey.c_str(),
+                 groups.c_str());
+        return NULL;
+    }
+
     group = new GroupImpl(this,
                           groupKey,
                           groupName,
@@ -2262,6 +2468,23 @@ FactoryOps::loadNode(const string &name,
     if (nodeIt != m_nodes.end()) {
         return dynamic_cast<NodeImpl *>(nodeIt->second);
     }
+    
+    /* 
+     * Make sure that all the Zookeeper nodes exists that are part of
+     * this object.
+     */
+    string cs = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::CLIENTSTATE;
+    string ms = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::MASTERSETSTATE;
+    string cv = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::CLIENTVERSION;
 
     SAFE_CALL_ZK((exists = m_zk.nodeExists(key)),
                  "Could not determine whether key %s exists: %s",
@@ -2271,6 +2494,46 @@ FactoryOps::loadNode(const string &name,
     if (!exists) {
         return NULL;
     }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(cs)),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadNode: Node with key %s is not fully constructed "
+                 "(%s missing)",
+                 key.c_str(),
+                 cs.c_str());
+        return NULL;
+    }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(ms)),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadNode: Node with key %s is not fully constructed "
+                 "(%s missing)",
+                 key.c_str(),
+                 ms.c_str());
+        return NULL;
+    }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(cv)),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadNode: Node with key %s is not fully constructed "
+                 "(%s missing)",
+                 key.c_str(),
+                 cv.c_str());
+        return NULL;
+    }
+
     node = new NodeImpl(this, key, name, group);
     node->initializeCachedRepresentation();
 
@@ -2420,14 +2683,6 @@ FactoryOps::createGroup(const string &groupName,
         groupKey + 
         ClusterlibStrings::KEYSEPARATOR + 
         ClusterlibStrings::NODES;
-    string leadership = 
-        groupKey + 
-        ClusterlibStrings::KEYSEPARATOR + 
-        ClusterlibStrings::LEADERSHIP;
-    string bids = 
-        leadership + 
-        ClusterlibStrings::KEYSEPARATOR + 
-        ClusterlibStrings::BIDS;
     string groups =
         groupKey +
         ClusterlibStrings::KEYSEPARATOR +
@@ -2445,16 +2700,6 @@ FactoryOps::createGroup(const string &groupName,
     SAFE_CALL_ZK(m_zk.createNode(nodes, "", 0),
                  "Could not create key %s: %s",
                  nodes.c_str(),
-                 true,
-                 true);
-    SAFE_CALL_ZK(m_zk.createNode(leadership, "", 0),
-                 "Could not create key %s: %s",
-                 leadership.c_str(),
-                 true,
-                 true);
-    SAFE_CALL_ZK(m_zk.createNode(bids, "", 0),
-                 "Could not create key %s: %s",
-                 bids.c_str(),
                  true,
                  true);
     SAFE_CALL_ZK(m_zk.createNode(groups, "", 0),
@@ -3020,337 +3265,6 @@ FactoryOps::getChildren(Notifyable *ntp)
         "getChildren: Unknown NotifyableImpl subclass");
 }
 
-/**********************************************************************/
-/* Leadership protocol.                                               */
-/**********************************************************************/
-
-/*
- * Get the node for the current leader of a given group.
- */
-NodeImpl *
-FactoryOps::getLeader(GroupImpl *group)
-{
-    TRACE( CL_LOG, "getLeader" );
-
-    if (group == NULL) {
-        throw InvalidArgumentsException("getLeader: NULL group");
-    }
-
-    NodeImpl *lp = NULL;
-    string lnn = group->getCurrentLeaderNodeName();
-    string ln = "";
-
-    SAFE_CALL_ZK((ln = m_zk.getNodeData(
-                      lnn, 
-                      &m_zkEventAdapter,
-                      getCachedObjectChangeHandlers()->getLeadershipChangeHandler())),
-                 "Getting current leader of group %s failed: %s",
-                 group->getKey().c_str(),
-                 true,
-                 true);
-    if (ln != "") {
-        lp = getNode(ln, group, true, false);
-    }
-    return lp;
-}
-
-int64_t
-FactoryOps::placeBid(NodeImpl *np, ServerImpl *sp)
-{
-    TRACE(CL_LOG, "placeBid");
-
-    if (np == NULL) {
-        throw InvalidArgumentsException("placeBid: NULL node");
-    }
-    if (sp == NULL) {
-        throw InvalidArgumentsException("placeBid: NULL server");
-    }
-
-    char tmp[100];
-
-    /* TODO: Follow the pthread_self() convension. */
-    snprintf(tmp, 100, "%d", getpid());
-
-    GroupImpl *group = dynamic_cast<GroupImpl *>(np->getMyGroup());
-
-    if (group == NULL) {
-        throw InvalidArgumentsException(
-            string("placeBid: NULL group containing node ") + np->getKey());
-    }
-
-    string pfx = group->getLeadershipBidPrefix();
-    string value =
-        np->getKey() +
-        ";" +
-        VERSION +
-        ";" +
-        tmp;
-    int64_t bid = 0;
-
-    string createdPath;
-    SAFE_CALL_ZK((bid = m_zk.createSequence(pfx, 
-                                            value, 
-                                            ZOO_EPHEMERAL, 
-                                            false, 
-                                            createdPath)),
-                 "Bidding with prefix %s to become leader failed: %s",
-                 pfx.c_str(),
-                 true,
-                 true);
-
-    Locker l1(getLeadershipWatchesLock());
-    m_leadershipWatches.insert(pair<const string, ServerImpl *>(np->getKey(),
-                                                                sp));
-
-    return bid;
-}
-
-/*
- * Make the given node a leader of its group if the given
- * bid is the lowest (honors system!).
- */
-bool
-FactoryOps::tryToBecomeLeader(NodeImpl *np, int64_t bid)
-{
-    TRACE(CL_LOG, "tryToBecomeLeader");
-
-    if (np == NULL) {
-        throw InvalidArgumentsException("tryToBecomeLeader: NULL node");
-    }
-
-    NameList list;
-    NameList::iterator nlIt;
-    GroupImpl *group = dynamic_cast<GroupImpl *>(np->getMyGroup());
-
-    if (group == NULL) {
-        throw InvalidArgumentsException(
-            string("tryToBecomeLeader: NULL group containing ") + 
-            np->getKey());
-    }
-
-    string lnn = group->getCurrentLeaderNodeName();
-    string bnn = group->getLeadershipBidsNodeName();
-    string pfx = group->getLeadershipBidPrefix();
-    string ln = "";
-    string val = "";
-    string suffix = "";
-    string toCheck = "";
-    int32_t len = pfx.length();
-    const char *cppfx = pfx.c_str();
-    char *ptr;
-    int64_t checkID;
-    bool exists = false;
-
-    /*
-     * If there's already a different leader, then I'm not the leader.
-     */
-
-    SAFE_CALL_ZK((m_zk.getNodeChildren(list, bnn)),
-                 "Getting bids for group %s failed: %s",
-                 group->getKey().c_str(),
-                 true,
-                 true);
-    for (nlIt = list.begin(); nlIt != list.end(); nlIt++) {
-        toCheck = *nlIt;
-
-        /*
-         * Skip any random strings that are not
-         * sequence members.
-         */
-        if (toCheck.compare(0, len, cppfx, len) != 0) {
-            continue;
-        }
-
-        /*
-         * Ensure that this is a legal sequence number.
-         */
-        suffix = toCheck.substr(len, toCheck.length() - len);
-        ptr = NULL;
-        checkID = strtol(suffix.c_str(), &ptr, 10);
-        if ((ptr != NULL) && (*ptr != '\0')) {
-            LOG_WARN(CL_LOG, "Expecting a number but got %s", suffix.c_str());
-            throw InconsistentInternalStateException(
-                "Expecting a number but got " + suffix);
-        }
-
-        /*
-         * Compare to my bid -- if smaller, then a preceding leader exists.
-         */
-        if (checkID < bid) {
-            SAFE_CALL_ZK(
-                (exists = m_zk.nodeExists(
-                    toCheck,
-                    &m_zkEventAdapter,
-                    getCachedObjectChangeHandlers()->getPrecLeaderExistsHandler())),
-                "Checking for preceding leader %s failed: %s",
-                toCheck.c_str(),
-                false,
-                true);
-            if (exists) {
-                /*
-                 * This is informational so not fatal if it fails.
-                 */
-                SAFE_CALL_ZK((val = m_zk.getNodeData(toCheck)),
-                             "Getting name of preceding leader in %s "
-                             "failed: %s",
-                             toCheck.c_str(),
-                             true,
-                             true);
-                LOG_INFO(CL_LOG,
-                         "Found preceding leader %s value %s, "
-                         "%s is not the leader",
-                         toCheck.c_str(), 
-                         val.c_str(),
-                         np->getKey().c_str() );
-
-                /*
-                 * This node did not become the leader.
-                 */
-                return false;
-            }
-        }
-    }
-
-    LOG_WARN(CL_LOG,
-             "Found no preceding leader, %s is the leader!",
-             np->getKey().c_str());
-
-    return true;
-}
-
-/*
- * Is the leader known within the group containing this node.
- */
-bool
-FactoryOps::isLeaderKnown(NodeImpl *np)
-{
-    TRACE(CL_LOG, "isLeaderKnown");
-
-    if (np == NULL) {
-        return false;
-    }
-
-    GroupImpl *group = dynamic_cast<GroupImpl *>(np->getMyGroup());
-    if (group == NULL) {
-        throw InvalidArgumentsException(string("NULL group containing ") +
-                                        np->getKey());
-    }
-
-    return group->isLeaderKnown();
-}
-
-/*
- * Denote that the leader of the group in which this node
- * is a member is unknown.
- */
-void
-FactoryOps::leaderIsUnknown(NodeImpl *np)
-{
-    TRACE(CL_LOG, "leaderIsUnknown");
-
-    if (np == NULL) {
-        return;
-    }
-
-    GroupImpl *group = dynamic_cast<GroupImpl *>(np->getMyGroup());
-    if (group == NULL) {
-        throw InvalidArgumentsException(string("NULL group containing ") +
-                                        np->getKey());
-    }
-
-    group->updateLeader(NULL);
-}
-
-/*
- * The server represented by the given node, and that owns the
- * given bid, is no longer the leader of its group (if it ever
- * was).
- */
-void
-FactoryOps::giveUpLeadership(NodeImpl *np, int64_t bid)
-{
-    TRACE(CL_LOG, "giveUpLeadership");
-
-    if (np == NULL) {
-        return;
-    }
-
-    GroupImpl *group = dynamic_cast<GroupImpl *>(np->getMyGroup());
-    if (group == NULL) {
-        throw InvalidArgumentsException(string("NULL group containing ") +
-                                        np->getKey());
-    }
-
-    /*
-     * Ensure that our view of the leader is not updated by
-     * any other thread.
-     */
-    {
-        Locker l1(group->getLeadershipLock());
-        if (group->getLeader() == np) {
-            /*
-             * Delete the current leader node.
-             */
-            SAFE_CALL_ZK(m_zk.deleteNode(group->getCurrentLeaderNodeName()),
-                         "Could not delete current leader for %s: %s",
-                         group->getKey().c_str(),
-                         true,
-                         true);
-
-            /*
-             * We no longer know who the leader of this group is.
-             */
-            group->updateLeader(NULL);
-        }
-    }
-
-    /*
-     * Delete the leadership bid for this node.
-     */
-    char buf[100];
-
-    snprintf(buf, 100, "%lld", bid);
-    string sbid = group->getLeadershipBidPrefix() + buf;
-
-    SAFE_CALL_ZK(m_zk.deleteNode(sbid),
-                 "Could not delete bid for current leader %s: %s",
-                 np->getKey().c_str(),
-                 false,
-                 true);
-}
-
-/*
- * Methods to prepare strings for leadership protocol.
- */
-string
-FactoryOps::getCurrentLeaderNodeName(const string &gkey)
-{
-    return
-        gkey +
-        ClusterlibStrings::KEYSEPARATOR +
-        ClusterlibStrings::LEADERSHIP +
-        ClusterlibStrings::KEYSEPARATOR +
-        ClusterlibStrings::CURRENTLEADER;
-}
-string
-FactoryOps::getLeadershipBidsNodeName(const string &gkey)
-{
-    return
-        gkey +
-        ClusterlibStrings::KEYSEPARATOR +
-        ClusterlibStrings::LEADERSHIP +
-        ClusterlibStrings::KEYSEPARATOR +
-        ClusterlibStrings::BIDS;
-}
-string
-FactoryOps::getLeadershipBidPrefix(const string &gkey)
-{
-    return
-        getLeadershipBidsNodeName(gkey) +
-        ClusterlibStrings::KEYSEPARATOR +
-        ClusterlibStrings::BIDPREFIX;
-}
-
 /*
  * Register a timer handler.
  */
@@ -3424,12 +3338,9 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
 
     /*
      * Get the NotifyableImpl for this key so that clusterlib clients
-     * can get these events.  There are two exceptions:
+     * can get these events.  There is one exceptions:
      * 
      * 1) SYNC doesn't get a Notifyable.
-     * 2) Any lockNode does not get its events propagated to external clients
-     *    (This would cause the event dispather thread to wait for a future 
-     *     event -- impossible).
      *
      * Note: Getting the NotifyableImpl * is best effort.  Since the
      * NotifyableImpl may have already been removed, it should return
@@ -3437,14 +3348,7 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
      * correct Notifyable since it should have been removed.  Try to
      * retrieve it if it exists, in order to delete it.
      */
-    string lockNodePartialKey;
-    lockNodePartialKey.append(ClusterlibStrings::KEYSEPARATOR);
-    lockNodePartialKey.append(ClusterlibStrings::LOCK);
-    lockNodePartialKey.append(ClusterlibStrings::KEYSEPARATOR);
     if (path.compare(ClusterlibStrings::SYNC) == 0) {
-        ntp = NULL;
-    }
-    else if (path.find(lockNodePartialKey) == 0) {
         ntp = NULL;
     }
     else {
@@ -3508,16 +3412,16 @@ FactoryOps::getNotifyableValue(const string &key,
         return false;
     }
 
-    string lname;
-    SAFE_CALL_ZK((lname = m_zk.getNodeData(key,
+    string val;
+    SAFE_CALL_ZK((val = m_zk.getNodeData(key,
                                            &m_zkEventAdapter,
                                            eventHandlerP)),
-                 "Could not read current leader for group %s: %s",
+                 "Could not get value for key %s: %s",
                  key.c_str(),
                  false,
                  true);
 
-    return lname;
+    return val;
 }
 
 void
@@ -3533,7 +3437,8 @@ FactoryOps::establishNotifyableStateChange(NotifyableImpl *ntp)
     SAFE_CALL_ZK((ready = m_zk.getNodeData(
                       ntp->getKey(),
                       &m_zkEventAdapter,
-                      getCachedObjectChangeHandlers()->getNotifyableStateChangeHandler())),
+                      getCachedObjectChangeHandlers()->
+                      getNotifyableStateChangeHandler())),
                  "Reading the value of %s failed: %s",
                  ntp->getKey().c_str(),
                  true,

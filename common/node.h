@@ -23,13 +23,6 @@ class Node
 {
   public:
     /**
-     * Is this node the leader of its group?
-     *
-     * @return true if I am the leader.
-     */
-    virtual bool isLeader() = 0;
-
-    /**
      * Get the client-state of this node.
      *
      * @return a string representing the client state for this

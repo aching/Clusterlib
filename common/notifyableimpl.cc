@@ -108,7 +108,10 @@ NotifyableImpl::acquireLock(bool acquireChildren)
             "(most likely because it is the Root!)");
     }
 
-    getOps()->getDistrbutedLocks()->acquire(getMyParent());
+    getOps()->getDistributedLocks()->acquire(
+        getMyParent(), 
+        ClusterlibStrings::NOTIFYABLELOCK);
+
     LOG_DEBUG(CL_LOG, 
               "acquireLock: acquring parent lock on %s", 
               getKey().c_str()); 
@@ -120,7 +123,9 @@ NotifyableImpl::acquireLock(bool acquireChildren)
             LOG_DEBUG(CL_LOG, 
                       "acquireLock: acquiring lock on %s", 
                       ntList[ntListIndex]->getKey().c_str());
-            getOps()->getDistrbutedLocks()->acquire(ntList[ntListIndex]);
+            getOps()->getDistributedLocks()->acquire(
+                ntList[ntListIndex],
+                ClusterlibStrings::NOTIFYABLELOCK);
             tmpNtList = getOps()->getChildren(ntList[ntListIndex]);
 
             /*
@@ -129,6 +134,11 @@ NotifyableImpl::acquireLock(bool acquireChildren)
             ntList.insert(ntList.end(), tmpNtList.begin(), tmpNtList.end()); 
             ntListIndex++;
         } while (ntListIndex != ntList.size());
+    }
+    else {
+        getOps()->getDistributedLocks()->acquire(
+            this,
+            ClusterlibStrings::NOTIFYABLELOCK);
     }
 }
 
@@ -142,14 +152,18 @@ NotifyableImpl::releaseLock(bool releaseChildren)
      * it deleted (in which case getMyParent() will throw.  If I have
      * acquired the locks and deleted this node, than no other thread
      * could possibly have deleted the parent until after I have
-     * released my locks.
+     * released my locks.  Therefore, it is safe to directly use
+     * mp_parent.
      */
     if (mp_parent == NULL) {
         throw InvalidMethodException(
             "releaseLock: Can not unlock a Notifyable that has no parent");
     }
 
-    getOps()->getDistrbutedLocks()->release(mp_parent);
+    getOps()->getDistributedLocks()->release(
+        mp_parent,
+        ClusterlibStrings::NOTIFYABLELOCK);
+
     LOG_DEBUG(CL_LOG, 
               "releaseLock: releasing parent lock on %s", 
               getKey().c_str()); 
@@ -162,7 +176,9 @@ NotifyableImpl::releaseLock(bool releaseChildren)
                       "releaseLock: releasing lock on %s", 
                       ntList[ntListIndex]->getKey().c_str());
             try {
-                getOps()->getDistrbutedLocks()->release(ntList[ntListIndex]);
+                getOps()->getDistributedLocks()->release(
+                    ntList[ntListIndex],
+                    ClusterlibStrings::NOTIFYABLELOCK);
             } catch (ObjectRemovedException &e) {
                 LOG_DEBUG(CL_LOG, 
                           "releaseLock: Object %s no longer exists "
@@ -186,6 +202,22 @@ NotifyableImpl::releaseLock(bool releaseChildren)
             ntListIndex++;
         } while (ntListIndex != ntList.size());
     }
+    else {
+        getOps()->getDistributedLocks()->release(
+            this,
+            ClusterlibStrings::NOTIFYABLELOCK);
+    }
+}
+
+bool
+NotifyableImpl::hasLock()
+{
+    TRACE(CL_LOG, "hasLock");
+
+    throwIfRemoved();
+
+    return getOps()->getDistributedLocks()->
+        hasLock(this, ClusterlibStrings::NOTIFYABLELOCK);
 }
 
 void
@@ -283,66 +315,116 @@ NotifyableImpl::remove(bool removeChildren)
     releaseLock(removeChildren);
 }
 
-const string &
-NotifyableImpl::getDistributedLockKey()
+const string
+NotifyableImpl::getDistributedLockOwner(const string &lockName)
 {
     Locker l1(getStateLock());
-    return m_distLockKey; 
+    map<string, NameRef>::iterator lockIt = m_distLockMap.find(lockName);
+    if (lockIt == m_distLockMap.end()) {
+        return string();
+    }
+    else {
+        return lockIt->second.lockOwner;
+    }
 }
 
 void
-NotifyableImpl::setDistributedLockKey(const string &distLockKey)
+NotifyableImpl::setDistributedLockOwner(const string &lockName,
+                                        const string &lockOwner)
 { 
     Locker l1(getStateLock());
-    m_distLockKey = distLockKey; 
+    map<string, NameRef>::iterator lockIt = m_distLockMap.find(lockName);
+    if (lockIt == m_distLockMap.end()) {
+        NameRef nameRef(0, lockOwner);
+        m_distLockMap.insert(pair<string, NameRef>(lockName, nameRef));
+    }
+    else {
+        if (lockIt->second.refCount != 0) {
+            LOG_ERROR(CL_LOG, 
+                      "setDistributedLockOwnerKey: refCount = %d for for old "
+                      "lock owner %s while trying to set new lock owner %s",
+                      lockIt->second.refCount,
+                      lockIt->second.lockOwner.c_str(),
+                      lockOwner.c_str());
+            throw InconsistentInternalStateException(
+                string("setDistributedLockOwnerKey: Impossible that "
+                       "refCount is non-zero for key ") + getKey());
+        }
+
+        lockIt->second.lockOwner = lockOwner;
+    }
 }
 
 int32_t
-NotifyableImpl::incrDistributedLockKeyCount()
+NotifyableImpl::incrDistributedLockOwnerCount(const string &lockName)
 {
     Locker l1(getStateLock());
-    if (m_distLockKeyCount >= 0) {
-        m_distLockKeyCount++;
+    map<string, NameRef>::iterator lockIt = m_distLockMap.find(lockName);
+    if (lockIt == m_distLockMap.end()) {
+        LOG_ERROR(CL_LOG, 
+                  "incrDistributedLockOwnerCount: Couldn't find lockName %s",
+                  lockName.c_str());
+        throw InconsistentInternalStateException(
+            "incrDistributedLockOwnerCount: Failed");
+    }
+
+    if (lockIt->second.refCount >= 0) {
+        lockIt->second.refCount++;
     }
     else {
         LOG_ERROR(CL_LOG, 
-                  "incrDistributedLockLeyCount: Impossible "
-                  "m_distLockKeyCount %d",
-                  m_distLockKeyCount);
+                  "incrDistributedLockOwnerCount: Impossible "
+                  "refCount %d",
+                  lockIt->second.refCount);
         throw InconsistentInternalStateException(
             "incrDistributedLockLeyCount: Failed");
     }
 
-    return m_distLockKeyCount;
+    return lockIt->second.refCount;
 }
     
 int32_t
-NotifyableImpl::decrDistributedLockLeyCount()
+NotifyableImpl::decrDistributedLockOwnerCount(const string &lockName)
 {
     Locker l1(getStateLock());
-    if (m_distLockKeyCount < 1) {
+    map<string, NameRef>::iterator lockIt = m_distLockMap.find(lockName);
+    if (lockIt == m_distLockMap.end()) {
         LOG_ERROR(CL_LOG, 
-                  "decrDistributedLockLeyCount: Impossible "
-                  "m_distLockKeyCount %d",
-                  m_distLockKeyCount);
+                  "decrDistributedLockOwnerCount: Couldn't find lockName %s",
+                  lockName.c_str());
+        throw InconsistentInternalStateException(
+            "decrDistributedLockOwnerCount: Failed");
+    }
+
+    if (lockIt->second.refCount > 0) {
+        lockIt->second.refCount--;
+    }
+    else {
+        LOG_ERROR(CL_LOG, 
+                  "decrDistributedLockOwnerCount: Impossible "
+                  "refCount %d",
+                  lockIt->second.refCount);
         throw InconsistentInternalStateException(
             "decrDistributedLockLeyCount: Failed");
     }
-    else {
-        m_distLockKeyCount--;
-        if (m_distLockKeyCount == 0) {
-            m_distLockKey.clear();
-        }
-    }
 
-    return m_distLockKeyCount;
+    return lockIt->second.refCount;
 }
 
 int32_t
-NotifyableImpl::getDistributedLockKeyCount()
+NotifyableImpl::getDistributedLockOwnerCount(const string &lockName)
 {
     Locker l1(getStateLock());
-    return m_distLockKeyCount;
+    map<string, NameRef>::iterator lockIt = m_distLockMap.find(lockName);
+    if (lockIt == m_distLockMap.end()) {
+        LOG_ERROR(CL_LOG, 
+                  "getDistributedLockOwnerCount: Couldn't find lockName %s",
+                  lockName.c_str());
+        throw InconsistentInternalStateException(
+            "getDistributedLockOwnerCount: Failed");
+    }
+
+    return lockIt->second.refCount;
 }
 
 };	/* End of 'namespace clusterlib' */
