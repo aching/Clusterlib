@@ -31,8 +31,7 @@ class NotifyableKeyManipulator
     static std::string createLockNodeKey(const std::string &notifyableKey,
                                          const std::string &lockName);
     static std::string createNodeKey(const std::string &groupKey,
-                                     const std::string &nodeName,
-                                     bool managed);
+                                     const std::string &nodeName);
     static std::string createGroupKey(const std::string &groupKey,
                                       const std::string &groupName);
     static std::string createAppKey(const std::string &appName);

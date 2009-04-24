@@ -88,6 +88,8 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < MPI::COMM_WORLD.Get_size(); i++) {
             cout << " " << i << ".0x" << hex << pidArr[i] << debugExt<< endl;
         }
+        delete [] pidArr;
+        pidArr = NULL;
     }
 
     if (fclose(stderrFile)) {

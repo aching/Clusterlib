@@ -6,15 +6,6 @@ extern TestParams globalTestParams;
 using namespace std;
 using namespace clusterlib;
 
-class MyHealthChecker : public HealthChecker {
-  public:
-    virtual HealthReport checkHealth() {
-        return HealthReport(HealthReport::HS_HEALTHY,
-                            "No real check");
-    }
-  private:
-};
-
 class ClusterlibHierarchy : public MPITestFixture {
     CPPUNIT_TEST_SUITE(ClusterlibHierarchy);
     CPPUNIT_TEST(testHierarchy1);

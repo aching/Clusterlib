@@ -84,21 +84,14 @@ main(int ac, char **av)
             c->getRoot()->getApplication("app", true);
         cerr << "app = " << app << endl;
         clusterlib::Group *grp = app->getGroup("grp", true);
-        clusterlib::Server *s =
-            f->createServer(grp, "node", NULL, SF_NONE);
-        cerr << "server = " << s << endl;
 
-        if (s == NULL) {
-            cerr << "BLEH, couldn't create server!" << endl;
-            exit(99);
-        }
-
-        app = s->getRoot()->getApplication("foo");
+        app = c->getRoot()->getApplication("foo", true);
         cerr << "app = " << app << endl;
 
-        grp = app->getGroup("bar");
-        clusterlib::Node *node = grp->getNode("zop");
-        clusterlib::DataDistribution *dst = app->getDataDistribution("dist");
+        grp = app->getGroup("bar", true);
+        clusterlib::Node *node = grp->getNode("zop", true);
+        clusterlib::DataDistribution *dst = app->getDataDistribution("dist",
+                                                                     true);
 
         clusterlib::Application *app1 = dst->getMyApplication();
         if (app != app1) {

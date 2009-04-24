@@ -21,7 +21,6 @@
 #include "propertiesimpl.h"
 #include "rootimpl.h"
 #include "clientimpl.h"
-#include "serverimpl.h"
 
 #include "notifyablekeymanipulator.h"
 #include "cachedobjectchangehandlers.h"

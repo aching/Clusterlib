@@ -53,22 +53,20 @@ main(int ac, char **av)
 
 	MyHealthChecker check;
 	
-	clusterlib::Server *s0 = f->createServer(grp0,
-						 "zops-0",
-						 &check,
-						 SF_CREATEREG | SF_MANAGED);
+        
+	clusterlib::Node *s0 = grp0->getNode("zops-0",
+                                             true);
+        s0->registerHealthChecker(&check);
         cerr << "server = " << s0 << endl;
 
-	clusterlib::Server *s1 = f->createServer(grp0,
-						 "zops-1",
-						 &check,
-						 SF_CREATEREG | SF_MANAGED);
+	clusterlib::Node *s1 = grp0->getNode("zops-1",
+                                             true);
+        s1->registerHealthChecker(&check);
         cerr << "server = " << s1 << endl;
 
-	clusterlib::Server *s2 = f->createServer(grp0,
-                                                 "zops-2",
-                                                 &check,
-                                                 SF_CREATEREG | SF_MANAGED);
+	clusterlib::Node *s2 = grp0->getNode("zops-2",
+                                             true);
+        s2->registerHealthChecker(&check);
         cerr << "server = " << s2 << endl;
 
 	clusterlib::DataDistribution *dst = 
@@ -85,13 +83,13 @@ main(int ac, char **av)
 	dst->setShards(shards);
 	dst->reassignShard(
             0, 
-            dynamic_cast<clusterlib::Notifyable *>(s0->getMyNode()));
+            dynamic_cast<clusterlib::Notifyable *>(s0));
 	dst->reassignShard(
             1, 
-            dynamic_cast<clusterlib::Notifyable *>(s1->getMyNode()));
+            dynamic_cast<clusterlib::Notifyable *>(s1));
 	dst->reassignShard(
             2, 
-            dynamic_cast<clusterlib::Notifyable *>(s2->getMyNode()));
+            dynamic_cast<clusterlib::Notifyable *>(s2));
 	dst->publish();
 	dst->releaseLock();
 
@@ -113,7 +111,7 @@ main(int ac, char **av)
                clusterlib::Exception("app->group->app non-equivalence");
         }
 
-	clusterlib::Properties *prop0 = app1->getProperties();
+	clusterlib::Properties *prop0 = app1->getProperties(true);
 	prop0->acquireLock();
 
 	string test = prop0->getProperty("test", true);
@@ -148,7 +146,7 @@ main(int ac, char **av)
 	cerr << "(app0) test3 (avery) = " << test3 
 	     << " and should be ching " << endl;
 
-	clusterlib::Properties *prop2 = node0->getProperties();
+	clusterlib::Properties *prop2 = node0->getProperties(true);
 	test3 = prop2->getProperty("test", true);
 	cerr << "(node) test3 (test) = " << test3 
 	     << " and should be good " << endl;

@@ -214,47 +214,6 @@ FactoryOps::createClient()
     }
 }
 
-/*
- * Create a server.
- */
-Server *
-FactoryOps::createServer(Group *group,
-                         const string &nodeName,
-                         HealthChecker *checker,
-                         ServerFlags flags)
-{
-    TRACE(CL_LOG, "createServer");
-
-    /*
-     * Ensure we're connected.
-     */
-    if (!m_connected) {
-        LOG_ERROR(CL_LOG, "Cannot create server when disconnected.");
-        return NULL;
-    }
-
-    /*
-     * Create the new server and add it to the registry.
-     */
-    try {
-        ServerImpl *sp = new ServerImpl(this,
-                                        group,
-                                        nodeName,
-                                        checker,
-                                        flags);
-        addClient(sp);
-        return sp;
-    } catch (Exception &e) {
-	LOG_WARN(CL_LOG, 
-                 "Couldn't create server with "
-                 "group %s, node %s because: %s", 
-                 group->getName().c_str(), 
-                 nodeName.c_str(), 
-                 e.what());
-        return NULL;
-    }
-}
-
 int64_t
 FactoryOps::getCurrentTimeMillis()
 {
@@ -370,8 +329,7 @@ FactoryOps::removeAllClients()
     ClientImplList::iterator clIt;
     for (clIt  = m_clients.begin();
          clIt != m_clients.end();
-         clIt++)
-    {
+         clIt++) {
 	delete *clIt;
     }
     m_clients.clear();
@@ -390,8 +348,11 @@ FactoryOps::removeAllDataDistributions()
 
     for (distIt = m_dists.begin();
          distIt != m_dists.end();
-         distIt++)
-    {
+         distIt++) {
+        LOG_DEBUG(CL_LOG, 
+                  "removeAllDataDistributions: Removed key (%s)",
+                  distIt->second->getKey().c_str());
+
 	delete distIt->second;
     }
     m_dists.clear();
@@ -406,8 +367,11 @@ FactoryOps::removeAllProperties()
 
     for (pIt = m_props.begin();
          pIt != m_props.end();
-         pIt++)
-    {
+         pIt++) {
+        LOG_DEBUG(CL_LOG, 
+                  "removeAllProperties: Removed key (%s)",
+                  pIt->second->getKey().c_str());
+
 	delete pIt->second;
     }
     m_props.clear();
@@ -422,8 +386,10 @@ FactoryOps::removeAllApplications()
 
     for (aIt = m_apps.begin();
          aIt != m_apps.end();
-         aIt++)
-    {
+         aIt++) {
+        LOG_DEBUG(CL_LOG, 
+                  "removeAllApplications: Removed key (%s)",
+                  aIt->second->getKey().c_str());
 	delete aIt->second;
     }
     m_apps.clear();
@@ -438,8 +404,10 @@ FactoryOps::removeAllGroups()
 
     for (gIt = m_groups.begin();
          gIt != m_groups.end();
-         gIt++)
-    {
+         gIt++) {
+        LOG_DEBUG(CL_LOG, 
+                  "removeAllGroups: Removed key (%s)",
+                  gIt->second->getKey().c_str());
 	delete gIt->second;
     }
     m_groups.clear();
@@ -454,8 +422,10 @@ FactoryOps::removeAllNodes()
 
     for (nIt = m_nodes.begin();
          nIt != m_nodes.end();
-         nIt++)
-    {
+         nIt++) {
+        LOG_DEBUG(CL_LOG, 
+                  "removeAllNodes: Removed key (%s)",
+                  nIt->second->getKey().c_str());
 	delete nIt->second;
     }
     m_nodes.clear();
@@ -470,8 +440,10 @@ FactoryOps::removeAllRemovedNotifyables()
 
     for (ntpIt = m_removedNotifyables.begin();
          ntpIt != m_removedNotifyables.end();
-         ntpIt++)
-    {
+         ntpIt++) {
+        LOG_DEBUG(CL_LOG, 
+                  "removeAllRemovedNotifyables: Removed key (%s)",
+                  (*ntpIt)->getKey().c_str());
 	delete *ntpIt;
     }
     m_removedNotifyables.clear();
@@ -1308,7 +1280,6 @@ FactoryOps::getGroup(const string &groupName,
 NodeImpl *
 FactoryOps::getNode(const string &nodeName,
                     GroupImpl *parentGroup,
-                    bool managed,
                     bool create)
 {
     TRACE(CL_LOG, "getNode");
@@ -1331,9 +1302,8 @@ FactoryOps::getNode(const string &nodeName,
         return NULL;
     }
 
-    string key = NotifyableKeyManipulator::createNodeKey(parentGroup->getKey(),
-                                                         nodeName,
-                                                         managed);
+   string key = NotifyableKeyManipulator::createNodeKey(parentGroup->getKey(),
+                                                         nodeName);
 
     {
         Locker l(getNodesLock());
@@ -1551,10 +1521,12 @@ FactoryOps::updateNodeClientState(const string &nodeKey,
                  csKey.c_str(),
                  false,
                  true);
+
     SAFE_CALL_ZK(m_zk.getNodeData(
                      csKey,
                      &m_zkEventAdapter,
-                     getCachedObjectChangeHandlers()->getNodeClientStateChangeHandler()),
+                     getCachedObjectChangeHandlers()->
+                         getNodeClientStateChangeHandler()),
                  "Reestablishing watch on value of %s failed: %s",
                  csKey.c_str(),
                  false,
@@ -1635,7 +1607,8 @@ FactoryOps::updateNodeMasterSetState(const string &nodeKey,
                  true);
     SAFE_CALL_ZK(m_zk.getNodeData(msKey,
                                   &m_zkEventAdapter,
-                                  getCachedObjectChangeHandlers()->getNodeMasterSetStateChangeHandler()),
+                                  getCachedObjectChangeHandlers()->
+                                      getNodeMasterSetStateChangeHandler()),
                  "Reestablishing watch on value of %s failed: %s",
                  msKey.c_str(),
                  false,
@@ -2038,7 +2011,6 @@ FactoryOps::getNodeFromComponents(const vector<string> &components,
     
     return getNode(components.at(elements - 1),
                    parent,
-                   ((components.at(elements - 2)) == ClusterlibStrings::NODES),
                    create);
 }
 
@@ -2813,7 +2785,8 @@ FactoryOps::removeGroup(GroupImpl *group)
 void
 FactoryOps::removeNode(NodeImpl *node)
 {
-    SAFE_CALL_ZK(m_zk.deleteNode(node->getKey(), true),
+    bool success = false;
+    SAFE_CALL_ZK((success = m_zk.deleteNode(node->getKey(), true)),
                  "Could not delete key %s: %s",
                  node->getKey().c_str(),
                  false,
@@ -2823,6 +2796,8 @@ FactoryOps::removeNode(NodeImpl *node)
 void 
 FactoryOps::removeNotifyableFromCacheByKey(const string &key)
 {
+    TRACE(CL_LOG, "removeNotifyableFromCacheByKey");
+
     Mutex *ntpMapLock = NULL;
     NotifyableImplMap *ntpMap = NULL;
 
@@ -2899,7 +2874,8 @@ FactoryOps::isNodeConnected(const string &nodeKey)
     SAFE_CALL_ZK((exists = m_zk.nodeExists(
                       ckey,
                       &m_zkEventAdapter,
-                      getCachedObjectChangeHandlers()->getNodeConnectionChangeHandler())),
+                      getCachedObjectChangeHandlers()->
+                          getNodeConnectionChangeHandler())),
                  "Could not determine whether key %s is connected: %s",
                  nodeKey.c_str(),
                  false,
@@ -2920,7 +2896,8 @@ FactoryOps::getNodeClientState(const string &nodeKey)
     SAFE_CALL_ZK((res = m_zk.getNodeData(
                       ckey,
                       &m_zkEventAdapter,
-                      getCachedObjectChangeHandlers()->getNodeClientStateChangeHandler())),
+                      getCachedObjectChangeHandlers()->
+                          getNodeClientStateChangeHandler())),
                  "Could not read node %s client state: %s",
                  nodeKey.c_str(),
                  false,
@@ -2942,7 +2919,8 @@ FactoryOps::getNodeMasterSetState(const string &nodeKey)
         (res = m_zk.getNodeData(
             ckey,
             &m_zkEventAdapter,
-            getCachedObjectChangeHandlers()->getNodeMasterSetStateChangeHandler())),
+            getCachedObjectChangeHandlers()->
+                getNodeMasterSetStateChangeHandler())),
         "Could not read node %s master set state: %s",
         nodeKey.c_str(),
         false,
@@ -2976,7 +2954,8 @@ FactoryOps::getApplicationNames()
                      list,
                      key, 
                      &m_zkEventAdapter,
-                     getCachedObjectChangeHandlers()->getApplicationsChangeHandler()),
+                     getCachedObjectChangeHandlers()->
+                         getApplicationsChangeHandler()),
                  "Reading the value of %s failed: %s",
                  key.c_str(),
                  true,
@@ -3012,7 +2991,8 @@ FactoryOps::getGroupNames(GroupImpl *group)
                      list,
                      key,
                      &m_zkEventAdapter,
-                     getCachedObjectChangeHandlers()->getGroupsChangeHandler()),
+                     getCachedObjectChangeHandlers()->
+                         getGroupsChangeHandler()),
                  "Reading the value of %s failed: %s",
                  key.c_str(),
                  true,
@@ -3051,7 +3031,8 @@ FactoryOps::getDataDistributionNames(GroupImpl *group)
                      list,
                      key,
                      &m_zkEventAdapter,
-                     getCachedObjectChangeHandlers()->getDataDistributionsChangeHandler()),
+                     getCachedObjectChangeHandlers()->
+                         getDataDistributionsChangeHandler()),
                  "Reading the value of %s failed: %s",
                  key.c_str(),
                  true,
@@ -3270,8 +3251,8 @@ FactoryOps::getChildren(Notifyable *ntp)
  */
 TimerId
 FactoryOps::registerTimer(TimerEventHandler *handler,
-                       uint64_t afterTime,
-                       ClientData data)
+                          uint64_t afterTime,
+                          ClientData data)
 {
     Locker l(getTimersLock());
     TimerEventPayload *tepp =
@@ -3363,6 +3344,12 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
             LOG_WARN(CL_LOG, 
                      "updateCachedObject: NotifyableImpl with key %s "
                      "no longer exists",
+                     path.c_str());
+        }
+        catch (ObjectRemovedException &e) {
+            LOG_WARN(CL_LOG, 
+                     "updateCachedObject: NotifyableImpl with key %s "
+                     "was removed",
                      path.c_str());
         }
     }

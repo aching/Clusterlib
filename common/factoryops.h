@@ -82,22 +82,6 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     Client *createClient();
 
     /**
-     * Create a cluster server object. Also
-     * create the needed registration if createReg
-     * is set to true.
-     *
-     * @param group The group this server is in
-     * @param name Name of the node in the group
-     * @param checker Health checker
-     * @param flags The flags used in creating the server
-     * @return pointer to the Server object
-     */
-    Server *createServer(Group *group,
-                         const std::string &nodeName,
-                         HealthChecker *checker,
-                         ServerFlags flags);
-
-    /**
      * Convenience function -- return the current time in ms
      * from the unix epoch.
      *
@@ -179,27 +163,12 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     bool cancelTimer(TimerId id);
     
     /*
-     * Dispatch all events. Reads from the
-     * event sources and sends events to
-     * the registered client for each event.
-     */
-    void dispatchExternalEvents(void *param);
-
-    /*
      * Dispatch timer, zk, and session events.
      */
     void dispatchTimerEvent(ClusterlibTimerEvent *tep);
     void dispatchZKEvent(zk::ZKWatcherEvent *zep);
     void dispatchSessionEvent(zk::ZKWatcherEvent *zep);
     bool dispatchEndEvent();
-
-    /**
-     * Dispatch only internal clusterlib events that will not be
-     * propaged to clusterlib clients.  Since these events are not
-     * visible to clusterlib clients, they may violate the strict
-     * ordering of events from m_zkEventAdapter.
-     */
-    void dispatchInternalEvents(void *param);
 
     /**
      * Checks whether this is an internal event.  Should only be
@@ -216,12 +185,6 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
      */
     ClusterEventPayload *updateCachedObject(CachedObjectEventHandler *cp,
                                             zk::ZKWatcherEvent *zep);
-
-    /*
-     * This method consumes timer events. It runs in a separate
-     * thread.
-     */
-    void consumeTimerEvents(void *param);
 
     /*
      * Retrieve a list of all (currently known) applications.
@@ -298,7 +261,6 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
 
     NodeImpl *getNode(const std::string &nodeName,
                       GroupImpl *parentGroup,
-                      bool managed,
                       bool create = false);
 
     DataDistributionImpl *getDataDistribution(const std::string &distName,
@@ -662,8 +624,28 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
      */
     FactoryOps *getOps() { return this; }
 
-  private:
+    /*
+     * Dispatch all events. Reads from the
+     * event sources and sends events to
+     * the registered client for each event.
+     */
+    void dispatchExternalEvents(void *param);
 
+    /**
+     * Dispatch only internal clusterlib events that will not be
+     * propaged to clusterlib clients.  Since these events are not
+     * visible to clusterlib clients, they may violate the strict
+     * ordering of events from m_zkEventAdapter.
+     */
+    void dispatchInternalEvents(void *param);
+
+    /*
+     * This method consumes timer events. It runs in a separate
+     * thread.
+     */
+    void consumeTimerEvents(void *param);
+
+  private:
     /*
      * The registry of attached clients (and servers).
      */

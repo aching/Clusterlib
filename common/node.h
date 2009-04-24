@@ -59,7 +59,32 @@ class Node
      */
     virtual bool isHealthy() = 0;
 
-    /*
+    /**
+     * \brief Registers a function that checks internal health of
+     * the caller application. 
+     *
+     * The given function will be called asynchronously by the cluster
+     * API and will provide feedback back to the cluster.  Can not be
+     * called if there is always a healthChecker that is running (will
+     * throw).  A thread is started with this health checker
+     * immediately.
+     * 
+     * @param healthChecker the callback to be used when checking for
+     *                      health; if <code>NULL</code> the health
+     *                      monitoring is disabled
+     * @param checkFrequency how often to execute the given callback,
+     *                       in seconds
+     */
+    virtual void registerHealthChecker(HealthChecker *healthChecker) = 0;
+
+    /**
+     * Unregister the health checker.  This stops the health checker
+     * thread and allows any thread to register a health checker on
+     * this node again.
+     */
+    virtual void unregisterHealthChecker() = 0;
+
+    /**
      * Destructor.
      */
     virtual ~Node() {}

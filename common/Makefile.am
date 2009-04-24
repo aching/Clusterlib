@@ -16,7 +16,6 @@ libcluster_a_SOURCES = \
 	cachedobjectchangehandlers.cc \
 	distributedlocks.cc \
 	clientimpl.cc \
-	serverimpl.cc \
 	clusterlibstrings.cc \
 	clusterlibints.cc \
 	factory.cc \

@@ -23,20 +23,47 @@ class NodeImpl
       public virtual NotifyableImpl
 {
   public:
-    virtual std::string getClientState() { return m_clientState; }
-
-    virtual int32_t getMasterSetState() { return m_masterSetState; }
-
-    virtual bool isConnected() { return m_connected; }
-
-    virtual int64_t getClientStateTime() { return m_clientStateTime; }
-    virtual int64_t getMasterSetStateTime() { return m_masterSetStateTime; }
-    virtual int64_t getConnectionTime() { return m_connectionTime; }
-
-    virtual bool isHealthy()
+    virtual std::string getClientState() 
     {
-        return (m_clientState == "healthy") ? true : false;
+        Locker l1(getStateMutex());
+        return m_clientState; 
     }
+
+    virtual int32_t getMasterSetState() 
+    {
+        Locker l1(getStateMutex());
+        return m_masterSetState; 
+    }
+
+    virtual bool isConnected() 
+    {
+        Locker l1(getStateMutex());
+        return m_connected; 
+    }
+
+    virtual int64_t getClientStateTime() 
+    {
+        Locker l1(getStateMutex());
+        return m_clientStateTime; 
+    }
+
+    virtual int64_t getMasterSetStateTime() 
+    {
+        Locker l1(getStateMutex());
+        return m_masterSetStateTime; 
+    }
+
+    virtual int64_t getConnectionTime() 
+    {
+        Locker l1(getStateMutex());
+        return m_connectionTime; 
+    }
+
+    virtual bool isHealthy();
+
+    virtual void registerHealthChecker(HealthChecker *healthChecker);
+
+    virtual void unregisterHealthChecker();
 
     /*
      * Internal functions not used by outside clients
@@ -56,34 +83,48 @@ class NodeImpl
           m_masterSetState(0),
           m_masterSetStateTime(0),
           m_connected(false),
-          m_connectionTime(0) {}
+          m_connectionTime(0),
+          mp_healthChecker(NULL),
+          m_terminateDoHealthChecks(false) {}
 
     /*
      * Destructor.
      */
-    virtual ~NodeImpl() {}
+    virtual ~NodeImpl();
 
     virtual void initializeCachedRepresentation();
 
     virtual void removeRepositoryEntries();
 
-    /*
-     * Set the client state associated with this node.
+    /**
+     * Set the client state and set time associated with this node.
      */
-    void setClientState(std::string ns) { m_clientState = ns; }
-    void setClientStateTime(int64_t t) { m_clientStateTime = t; }
+    void setClientStateAndTime(std::string ns, int64_t t) 
+    {
+        Locker l1(getStateMutex());
+        m_clientState = ns; 
+        m_clientStateTime = t; 
+    }
 
     /*
-     * Set the master-set state associated with this node.
+     * Set the master-set state and set time associated with this node.
      */
-    void setMasterSetState(int32_t ns) { m_masterSetState = ns; }
-    void setMasterSetStateTime(int64_t t) { m_masterSetStateTime = t; }
+    void setMasterSetStateAndTime(int32_t ns, int64_t t) 
+    {
+        Locker l1(getStateMutex());
+        m_masterSetState = ns; 
+        m_masterSetStateTime = t; 
+    }
 
     /*
-     * Set the connected state of this node.
+     * Set the connected state and connected time of this node.
      */
-    void setConnected(bool nc) { m_connected = nc; }
-    void setConnectionTime(int64_t t) { m_connectionTime = t; }
+    void setConnectedAndTime(bool nc, int64_t t)
+    { 
+        Locker l1(getStateMutex());
+        m_connected = nc; 
+        m_connectionTime = t; 
+    }
 
   private:
     /*
@@ -96,11 +137,41 @@ class NodeImpl
                                        "constructor!");
     }
 
+    /**
+     * mp_healthChecker is called by this member function.
+     */
+    void doHealthChecks(void *param);
+
+    /**
+     * Protects client, master, and connected state and their
+     * respective set times.
+     */
+    Mutex *getStateMutex()
+    {
+        return &m_stateMutex;
+    }
+
+    Mutex *getHealthMutex() 
+    {
+        return &m_healthMutex;
+    }
+
+    Cond *getHealthCond()
+    {
+        return &m_healthCond;
+    }
+
   private:
-    /*
+    /**
      * The group this node is in.
      */
     GroupImpl *mp_group;
+
+    /**
+     * Protects m_clientState, m_clientStateTime, m_masterSetState,
+     * m_masterSetStateTime, m_connection, m_connectionTime
+     */
+    Mutex m_stateMutex;
 
     /*
      * The client state associated with this node.
@@ -119,6 +190,33 @@ class NodeImpl
      */
     bool m_connected;
     int64_t m_connectionTime;
+
+    /**
+     * Protects healthChecker thread variables 
+     */
+    Mutex m_healthMutex;
+
+    /**
+     * Used in conjunction with m_healthMutex to be a timer and also
+     * to quit waiting if we are trying to unregisterHealthChecker.
+     */
+    Cond m_healthCond;
+
+    /**
+     * Pointer to the client object that does that actual health
+     * check.
+     */
+    HealthChecker *mp_healthChecker;
+
+    /**
+     * Continue to do the health checks?
+     */
+    volatile bool m_terminateDoHealthChecks;
+
+    /*
+     * The thread doing the health checks.
+     */
+    CXXThread<NodeImpl> m_doHealthChecksThread;
 };
 
 };	/* End of 'namespace clusterlib' */

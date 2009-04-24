@@ -90,18 +90,12 @@ NotifyableKeyManipulator::createLockNodeKey(const string &notifyableKey,
 
 string
 NotifyableKeyManipulator::createNodeKey(const string &groupKey,
-                                        const string &nodeName,
-                                        bool managed)
+                                        const string &nodeName)
 {
     string res;
     res.append(groupKey);
     res.append (ClusterlibStrings::KEYSEPARATOR);
-    if (managed) {
-        res.append(ClusterlibStrings::NODES);
-    }
-    else {
-        res.append(ClusterlibStrings::UNMANAGEDNODES);
-    }
+    res.append(ClusterlibStrings::NODES);
     res.append(ClusterlibStrings::KEYSEPARATOR);
     res.append(nodeName);
 
@@ -450,7 +444,6 @@ NotifyableKeyManipulator::isPropertiesKey(const vector<string> &components,
     if (((components.at(elements - 3) != ClusterlibStrings::APPLICATIONS) &&
          (components.at(elements - 3) != ClusterlibStrings::GROUPS) &&
          (components.at(elements - 3) != ClusterlibStrings::DISTRIBUTIONS) &&
-         (components.at(elements - 3) != ClusterlibStrings::UNMANAGEDNODES) &&
          (components.at(elements - 3) != ClusterlibStrings::NODES)) ||
         (components.at(elements - 1) != ClusterlibStrings::PROPERTIES)) {
         return false;
@@ -526,8 +519,7 @@ NotifyableKeyManipulator::isNodeKey(const vector<string> &components,
      * Check that the second to the last element is DISTRIBUTIONS and
      * that the distribution name is not empty.
      */
-    if (((components.at(elements - 2) != ClusterlibStrings::NODES) &&
-         (components.at(elements - 2) != ClusterlibStrings::UNMANAGEDNODES)) ||
+    if ((components.at(elements - 2) != ClusterlibStrings::NODES) ||
         (components.at(elements - 1).empty() == true)) {
         return false;
     } 

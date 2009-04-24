@@ -45,7 +45,6 @@
 #include "properties.h"
 #include "root.h"
 #include "client.h"
-#include "server.h"
 #include "clusterlibstrings.h"
 #include "clusterlibints.h"
 #include "factory.h"

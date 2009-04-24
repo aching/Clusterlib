@@ -23,7 +23,7 @@ class Exception
     /**
      * Constructor.
      */
-    Exception(const std::string &msg) throw() 
+    Exception(const std::string &msg) 
         : m_message(msg) 
     {
         const int32_t maxDepth = 50;

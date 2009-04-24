@@ -78,7 +78,7 @@ GroupImpl::getNode(const string &nodeName,
 
     throwIfRemoved();
 
-    return getOps()->getNode(nodeName, this, true, create);
+    return getOps()->getNode(nodeName, this, create);
 }
 
 NameList

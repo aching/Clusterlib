@@ -39,22 +39,6 @@ namespace clusterlib
     Client *createClient();
 
     /**
-     * Create a cluster server object. Also
-     * create the needed registration if createReg
-     * is set to true.
-     *
-     * @param group The group this server is in
-     * @param name Name of the node in the group
-     * @param checker Health checker
-     * @param flags The flags used in creating the server
-     * @return pointer to the Server object
-     */
-    Server *createServer(Group *group,
-                         const std::string &nodeName,
-                         HealthChecker *checker,
-                         ServerFlags flags);
-
-    /**
      * Is the factory connected to ZooKeeper?
      * 
      * @return true if connected, false otherwise

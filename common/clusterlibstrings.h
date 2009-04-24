@@ -39,7 +39,6 @@ class ClusterlibStrings
     static const std::string APPLICATIONS;
     static const std::string GROUPS;
     static const std::string NODES;
-    static const std::string UNMANAGEDNODES;
     static const std::string DISTRIBUTIONS;
     static const std::string PROPERTIES;
 

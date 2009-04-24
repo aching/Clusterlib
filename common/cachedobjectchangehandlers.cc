@@ -504,15 +504,18 @@ CachedObjectChangeHandlers::handleClientStateChange(NotifyableImpl *ntp,
         return EN_NOEVENT;
     }
 
-    LOG_DEBUG(CL_LOG,
-              "handleClientStateChange: %s on notifyable: \"%s\"",
-              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str());
-
     /*
      * Get the current client state and re-establish watch.
      */
     string ns = getOps()->getNodeClientState(np->getKey());
+
+    LOG_DEBUG(CL_LOG,
+              "handleClientStateChange: %s on notifyable: (%s) with key (%s)"
+              " with new client state (%s)",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              ntp->getKey().c_str(),
+              key.c_str(),
+              ns.c_str());
 
     /*
      * Update the cache and cause a user-level event if
@@ -522,8 +525,8 @@ CachedObjectChangeHandlers::handleClientStateChange(NotifyableImpl *ntp,
     if (ns == np->getClientState()) {
         return EN_NOEVENT;
     }
-    np->setClientState(ns);
-    np->setClientStateTime(FactoryOps::getCurrentTimeMillis());
+
+    np->setClientStateAndTime(ns, FactoryOps::getCurrentTimeMillis());
 
     return EN_CLIENTSTATECHANGE;
 }
@@ -589,8 +592,8 @@ CachedObjectChangeHandlers::handleMasterSetStateChange(NotifyableImpl *ntp,
     if (nv == np->getMasterSetState()) {
         return EN_NOEVENT;
     }
-    np->setMasterSetState(nv);
-    np->setMasterSetStateTime(FactoryOps::getCurrentTimeMillis());
+
+    np->setMasterSetStateAndTime(nv, FactoryOps::getCurrentTimeMillis());
 
     return EN_MASTERSTATECHANGE;
 }
@@ -647,8 +650,8 @@ CachedObjectChangeHandlers::handleNodeConnectionChange(NotifyableImpl *ntp,
         return EN_NOEVENT;
     }
 
-    np->setConnected(curconn);
-    np->setConnectionTime(FactoryOps::getCurrentTimeMillis());
+    np->setConnectedAndTime(curconn, FactoryOps::getCurrentTimeMillis());
+
     return (curconn == true) ? EN_CONNECTED : EN_DISCONNECTED;
 }
 

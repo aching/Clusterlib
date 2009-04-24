@@ -36,7 +36,6 @@ const string ClusterlibStrings::ROOT = "root";
 const string ClusterlibStrings::APPLICATIONS = "applications";
 const string ClusterlibStrings::GROUPS = "groups";
 const string ClusterlibStrings::NODES = "nodes";
-const string ClusterlibStrings::UNMANAGEDNODES = "unmanagedNodes";
 const string ClusterlibStrings::DISTRIBUTIONS = "distributions";
 
 const string ClusterlibStrings::CLIENTSTATE = "clientState";

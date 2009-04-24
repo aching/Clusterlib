@@ -56,23 +56,6 @@ Factory::createClient()
     return getOps()->createClient();
 }
 
-/*
- * Create a server.
- */
-Server *
-Factory::createServer(Group *group,
-                      const string &nodeName,
-                      HealthChecker *checker,
-                      ServerFlags flags)
-{
-    TRACE(CL_LOG, "createServer");
-
-    return getOps()->createServer(group,
-                                 nodeName,
-                                 checker,
-                                 flags);
-}
-
 bool
 Factory::isConnected()
 {
