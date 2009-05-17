@@ -25,5 +25,5 @@ tarball: package
 	mv $(PKGDIR) install
 
 test_tinderbox: package
-	inktest -a -b $(top_builddir) -c $(srcdir)/regressions/Regressions.itc \
+	inktest -a -b $(top_builddir) -c $(top_builddir)/regressions/Regressions.itc \
                 --verbose
