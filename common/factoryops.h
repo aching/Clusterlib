@@ -513,7 +513,13 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     bool isNodeConnected(const std::string &key);
     std::string getNodeClientState(const std::string &key);
     int32_t getNodeMasterSetState(const std::string &key);
-    
+
+    /*
+     * Manage a node's connected state.
+     */
+    bool createConnected(const std::string &key);
+    void removeConnected(const std::string &key);
+
     /*
      * Get various locks and conditionals.
      */

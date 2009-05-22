@@ -54,18 +54,30 @@ NodeImpl::registerHealthChecker(HealthChecker *healthChecker)
 {
     TRACE( CL_LOG, "registerHealthChecker" );
 
+    /*
+     * Create the "connected" node.
+     */
+    if (!getOps()->createConnected(getKey())) {
+        throw AlreadyConnectedException(
+            getKey() +
+            ": registerHealthChecker: Node already connected ");
+    }
+
     if (healthChecker == NULL) {
+        getOps()->removeConnected(getKey());
         throw InvalidArgumentsException(
             "registerHealthChecker: Cannot use a NULL healthChecker");
     }
 
     if (healthChecker->getMsecsPerCheckIfHealthy() <= 0) {
+        getOps()->removeConnected(getKey());
         throw InvalidArgumentsException(
             "registerHealthChecker: Cannot have a healthy "
             "msec check cycle <= 0");
     }
 
     if (healthChecker->getMsecsPerCheckIfUnhealthy() <= 0) {
+        getOps()->removeConnected(getKey());
         throw InvalidArgumentsException(
             "registerHealthChecker: Cannot have a unhealthy "
             "msec check cycle <= 0");
@@ -77,6 +89,7 @@ NodeImpl::registerHealthChecker(HealthChecker *healthChecker)
                   "registerHealthChecker: Already registered healthChecker "
                   "0x%x",
                   reinterpret_cast<uint32_t>(healthChecker));
+        getOps()->removeConnected(getKey());
         throw InvalidMethodException(
             "registerHealthChecker: Already registered a health checker");
     }
@@ -90,28 +103,12 @@ NodeImpl::registerHealthChecker(HealthChecker *healthChecker)
     m_doHealthChecksThread.Create(*this, &NodeImpl::doHealthChecks, NULL);
 }
 
-NodeImpl::~NodeImpl()
-{
-    /*
-     * Shut down health checking if the user forgot to do this.
-     */
-    bool stopHealthChecker = false;
-    {
-        Locker l1(getHealthMutex());
-        if (mp_healthChecker != NULL) {
-            stopHealthChecker = true;
-        }
-    }
-
-    if (stopHealthChecker == true) {
-        unregisterHealthChecker();
-    }
-}
-
 void
 NodeImpl::unregisterHealthChecker()
 {
     TRACE( CL_LOG, "unregisterHealthChecker" );
+
+    getOps()->removeConnected(getKey());
 
     {
         Locker l1(getHealthMutex());
@@ -130,6 +127,24 @@ NodeImpl::unregisterHealthChecker()
 
     Locker l1(getHealthMutex());
     mp_healthChecker = NULL;
+}
+
+NodeImpl::~NodeImpl()
+{
+    /*
+     * Shut down health checking if the user forgot to do this.
+     */
+    bool stopHealthChecker = false;
+    {
+        Locker l1(getHealthMutex());
+        if (mp_healthChecker != NULL) {
+            stopHealthChecker = true;
+        }
+    }
+
+    if (stopHealthChecker == true) {
+        unregisterHealthChecker();
+    }
 }
 
 bool

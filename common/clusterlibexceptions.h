@@ -100,6 +100,21 @@ class Exception
 };
 
 /**
+ * The node is already connected, cannot start another
+ * health checker.
+ */
+class AlreadyConnectedException
+    : public Exception
+{
+  public:
+    /*
+     * Constructor.
+     */
+    AlreadyConnectedException(const std::string &msg) throw()
+        : Exception(msg) {}
+};
+
+/**
  * Clusterlib internals are in an inconsistent state
  */
 class InconsistentInternalStateException 

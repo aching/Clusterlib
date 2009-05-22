@@ -6,12 +6,6 @@ extern TestParams globalTestParams;
 using namespace std;
 using namespace clusterlib;
 
-/*
- * Forward decl needed for the timer & user
- * event handlers.
- */
-class ClusterlibCache;
-
 class CacheClusterEventHandler
     : public ClusterEventHandler
 {

@@ -89,11 +89,7 @@ class ClientImpl
     /**
      * Send an event to this client.
      */
-
-    void sendEvent(ClusterEventPayload *cehp)
-    {
-        m_queue.put(cehp);
-    }
+    void sendEvent(ClusterEventPayload *cepp);
 
     /**
      * Make the destructor protected so it can only be invoked

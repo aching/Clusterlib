@@ -1303,7 +1303,7 @@ FactoryOps::getNode(const string &nodeName,
     }
 
    string key = NotifyableKeyManipulator::createNodeKey(parentGroup->getKey(),
-                                                         nodeName);
+                                                        nodeName);
 
     {
         Locker l(getNodesLock());
@@ -2929,6 +2929,77 @@ FactoryOps::getNodeMasterSetState(const string &nodeKey)
 }
 
 /*
+ * Create a node's connected state.
+ */
+bool
+FactoryOps::createConnected(const string &key)
+{
+    TRACE(CL_LOG, "createConnected");
+
+    char buf[1024];
+    string ckey =
+        key +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::CONNECTED;
+        
+    snprintf(buf,
+             1024,
+             "%d;%d;%lld",
+             (int32_t) getpid(),
+             (int32_t) pthread_self(),
+             (uint64_t) getCurrentTimeMillis());
+
+    try {
+        /*
+         * Create the node.
+         */
+        SAFE_CALL_ZK(m_zk.createNode(ckey, string(buf), ZOO_EPHEMERAL),
+                     "Could not create %s CONNECTED subnode -- "
+                     "already exists: %s",
+                     key.c_str(),
+                     true,
+                     true);
+        /*
+         * Establish the watch.
+         */
+        SAFE_CALL_ZK(m_zk.nodeExists(ckey,
+                                     &m_zkEventAdapter,
+                                     getCachedObjectChangeHandlers()->
+                                     getNodeConnectionChangeHandler()),
+                     "Could not establish exists watch for znode %s: %s",
+                     ckey.c_str(),
+                     false,
+                     true);
+        return true;
+    } catch (zk::ZooKeeperException &e) {
+        return false;
+    }
+}
+
+/*
+ * Actively remove a node's connected state.
+ */
+void
+FactoryOps::removeConnected(const string &key)
+{
+    TRACE(CL_LOG, "removeConnected");
+
+    string ckey =
+        key +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::CONNECTED;
+
+    /*
+     * Try to remove the node's connected state.
+     */
+    SAFE_CALL_ZK(m_zk.deleteNode(ckey, false),
+                 "Could not delete key %s: %s",
+                 ckey.c_str(),
+                 false,
+                 true);
+}
+
+/*
  * Get all entity names within a collection: all applications,
  * all groups or distributions within an application, or all
  * nodes within a group.
@@ -3340,14 +3411,14 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
                     string("Unknown event : ") + path);
             }
         }
-        catch (RepositoryInternalsFailureException &e) {
+        catch (RepositoryInternalsFailureException &reife) {
             LOG_WARN(CL_LOG, 
                      "updateCachedObject: NotifyableImpl with key %s "
                      "no longer exists",
                      path.c_str());
         }
-        catch (ObjectRemovedException &e) {
-            LOG_WARN(CL_LOG, 
+        catch (ObjectRemovedException &ore) {
+            LOG_WARN(CL_LOG,
                      "updateCachedObject: NotifyableImpl with key %s "
                      "was removed",
                      path.c_str());

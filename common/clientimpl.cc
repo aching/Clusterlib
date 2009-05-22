@@ -26,6 +26,14 @@ ClientImpl::getRoot()
     return getDelegate()->getRoot();
 }
 
+void
+ClientImpl::sendEvent(ClusterEventPayload *cepp)
+{
+    TRACE(CL_LOG, "sendEvent");
+
+    m_queue.put(cepp);
+}
+
 /*
  * The following method runs in the event handling thread,
  * invoking handlers for events as they come in.
@@ -53,7 +61,14 @@ ClientImpl::consumeClusterEvents(void *param)
 	if (cepp == NULL) {
             break;
 	}
-	
+
+	LOG_DEBUG(CL_LOG,
+                  "ConsumeClusterEvents: Received user event 0x%x with Notifyable "
+                  "0x%x and Event %d",
+                  (int32_t) cepp,
+                  (int32_t) cepp->getTarget(),
+                  cepp->getEvent());
+
         /*
          * Dispatch this event.
          */
@@ -89,6 +104,11 @@ ClientImpl::dispatchHandlers(Notifyable *np, Event e)
     EventHandlersMultimap copy;
     EventHandlersIterator ehIt;
     ClusterEventHandler *cehp;
+    int32_t counter = 0;	/* Debug counter for # of handlers found. */
+
+    LOG_INFO(CL_LOG,
+             "dispatchHandlers: Looking for handlers for event: %d on: %s",
+             e, np->getName().c_str());
 
     {
         Locker l1(getEventHandlersLock());
@@ -98,6 +118,9 @@ ClientImpl::dispatchHandlers(Notifyable *np, Event e)
          * then punt.
          */
         if (range.first == m_eventHandlers.end()) {
+            LOG_INFO(CL_LOG,
+                     "dispatchHandlers: No handlers found for event %d on %s",
+                     e, np->getName().c_str());
             return;
         }
 
@@ -135,12 +158,18 @@ ClientImpl::dispatchHandlers(Notifyable *np, Event e)
                 continue;
             }
 
+            counter++;
+
             /*
              * Make a copy of the registration.
              */
             copy.insert(pair<const string, ClusterEventHandler *>(key, cehp));
         }
     }
+
+    LOG_INFO(CL_LOG,
+             "dispatchEventHandlers: Found %d handlers for event %d on %s",
+             counter, e, np->getName().c_str());
 
     /*
      * If there are no handlers registered for this event on
@@ -157,7 +186,7 @@ ClientImpl::dispatchHandlers(Notifyable *np, Event e)
         cehp = (*ehIt).second;
 
         /*
-         * Now call the handler.
+         * Now call each handler.
          */
         cehp->handleClusterEvent(e);
     }
@@ -174,6 +203,10 @@ ClientImpl::registerHandler(ClusterEventHandler *cehp)
     TRACE(CL_LOG, "registerHandler");
 
     Locker l1(getEventHandlersLock());
+
+    cerr << "Registering handler for "
+         << cehp->getNotifyable()->getKey()
+         << endl;
 
     m_eventHandlers.insert(pair<const string, ClusterEventHandler *>
                            (cehp->getNotifyable()->getKey(), cehp));

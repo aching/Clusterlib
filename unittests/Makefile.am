@@ -25,8 +25,10 @@ unittests_SOURCES = \
 	clusterlibProperties.cc \
 	clusterlibRemove.cc \
 	clusterlibHierarchy.cc \
+	clusterlibUserEvents.cc \
 	clusterlibNotifyableKeyManipulator.cc \
 	clusterlibLeader.cc \
+	clusterlibTimer.cc \
 	clusterlibHealthCheck.cc
 
 @makefile_inc@
