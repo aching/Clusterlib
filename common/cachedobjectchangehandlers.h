@@ -14,13 +14,40 @@
 namespace clusterlib
 {
 
-/*
- * The actual factory class.
+/**
+ * The class for all cached object handlers.
  */
 class CachedObjectChangeHandlers
 {
   public:
-
+    /**
+     * Define an enum for the change handlers.
+     */
+    enum CachedObjectChange {
+        NOTIFYABLE_STATE_CHANGE,
+        APPLICATIONS_CHANGE,
+        GROUPS_CHANGE,
+        DATADISTRIBUTIONS_CHANGE,
+        NODES_CHANGE,
+        PROPERTIES_VALUES_CHANGE,
+        SHARDS_CHANGE,
+        MANUAL_OVERRIDES_CHANGE,
+        NODE_CLIENT_STATE_CHANGE,
+        NODE_MASTER_SET_STATE_CHANGE,
+        NODE_CONNECTION_CHANGE,
+        SYNCHRONIZE_CHANGE
+    };
+ 
+    /**
+     * Get the lock that protects this entire data structure.  This is
+     * primarily used to ensure that the object that manages the
+     * handlers and paths is thread-safe.  It can be used with
+     * (is|set|unset)HandlerCallbackReady() since they use the same
+     * lock and it is re-entrant.
+     *
+     * @return Pointer to the mutex
+     */
+    Mutex *getLock() { return &m_mutex; }
 
     /**
      * Handle state changes on notifyables.
@@ -112,57 +139,44 @@ class CachedObjectChangeHandlers
                                   int32_t etype,
                                   const std::string &key);
 
-    /*
+    /**
      * Get the CachedObjectEventHandler for the appropriate change event
+     *
+     * @return a pointer to the desired event handler
      */
-    CachedObjectEventHandler *getNotifyableStateChangeHandler()
-    {
-        return &m_notifyableStateChangeHandler;
-    }
-    CachedObjectEventHandler *getPropertiesValueChangeHandler()
-    {
-        return &m_propertiesValueChangeHandler;
-    }
-    CachedObjectEventHandler *getApplicationsChangeHandler()
-    {
-        return &m_applicationsChangeHandler;
-    }
-    CachedObjectEventHandler *getGroupsChangeHandler()
-    {
-        return &m_groupsChangeHandler;
-    }
-    CachedObjectEventHandler *getDataDistributionsChangeHandler()
-    {
-        return &m_dataDistributionsChangeHandler;
-    }
-    CachedObjectEventHandler *getShardsChangeHandler()
-    {
-        return &m_shardsChangeHandler;
-    }
-    CachedObjectEventHandler *getManualOverridesChangeHandler()
-    {
-        return &m_manualOverridesChangeHandler;
-    }
-    CachedObjectEventHandler *getNodesChangeHandler()
-    {
-        return &m_nodesChangeHandler;
-    }
-    CachedObjectEventHandler *getNodeClientStateChangeHandler()
-    {
-        return &m_nodeClientStateChangeHandler;
-    }
-    CachedObjectEventHandler *getNodeMasterSetStateChangeHandler()
-    {
-        return &m_nodeMasterSetStateChangeHandler;
-    }
-    CachedObjectEventHandler *getNodeConnectionChangeHandler()
-    {
-        return &m_nodeConnectionChangeHandler;
-    }
-    CachedObjectEventHandler *getSynchronizeChangeHandler()
-    {
-        return &m_synchronizeChangeHandler;
-    }
+    CachedObjectEventHandler *getChangeHandler(CachedObjectChange change);
+
+    /**
+     * Each handler needs to be called at least once per key and event
+     * they are waiting on.  Additionally, it is most beneficial for
+     * performance reasons that they are called exactly once per event
+     * they are waiting on.  This function gets the number of times it
+     * will be called per event.
+     *
+     * @param change the change handler
+     * @param key the path of the node
+     * @return if key and handler are set for callback
+     */
+    bool isHandlerCallbackReady(CachedObjectChange change, 
+                                const std::string &key);
+
+    /**
+     * Set a handler ready for a key and event.
+     *
+     * @param change the change handler
+     * @param key the path of the node
+     */
+    void setHandlerCallbackReady(CachedObjectChange change,
+                                 const std::string &key);
+
+    /**
+     * Unset a handler ready for a key and event.
+     *
+     * @param change the change handler
+     * @param key the path of the node
+     */
+    void unsetHandlerCallbackReady(CachedObjectChange change,
+                                   const std::string &key);
 
     /*
      * Constructor used by FactoryOps.
@@ -217,6 +231,19 @@ class CachedObjectChangeHandlers
      * Does all the factory operations
      */
     FactoryOps *mp_ops;
+
+    /**
+     * Protects m_handlerKeyCallbackCount from race conditions.  
+     */
+    Mutex m_mutex;
+
+    /**
+     * Each handler is represented by a CachedObjectChange and will be
+     * set to run at most once per path (string).  m_mutex protects
+     * access to this object.
+     */
+    std::map<CachedObjectChange, std::map<std::string, bool> >
+        m_handlerKeyCallbackCount;
 
     /*
      * Handlers for event delivery.

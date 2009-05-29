@@ -130,7 +130,7 @@ class ClientImpl
      * Dispatch all handlers registered for this combo of event and
      * Notifyable.
      */
-    void dispatchHandlers(Notifyable *np, Event e);
+    void dispatchHandlers(const std::string &key, Event e);
 
     /**
      * The factory delegate instance we're using.

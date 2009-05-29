@@ -141,7 +141,7 @@ class ClusterlibCache
         string hrpath =
             _nod0->getKey() +
             "/" +
-            "clientState";
+            "_clientState";
         _zk->setNodeData(hrpath, "healthy");
         _factory->synchronize();
         CPPUNIT_ASSERT(string("healthy") == _nod0->getClientState());
@@ -216,7 +216,7 @@ class ClusterlibCache
         string rpath =
             _app0->getKey() +
             "/" +
-            "groups" +
+            "_groups" +
             "/" +
             "g15";
         bool found = false;
@@ -283,7 +283,7 @@ class ClusterlibCache
         string rpath =
             _app0->getKey() +
             "/" +
-            "distributions" +
+            "_distributions" +
             "/" +
             "d15";
         bool found = false;
@@ -352,7 +352,7 @@ class ClusterlibCache
         string rpath = 
             _grp0->getKey() +
             "/" +
-            "nodes" +
+            "_nodes" +
             "/" +
             "n111";
         bool found = false;
@@ -421,7 +421,7 @@ class ClusterlibCache
         string rpath =
             _grp0->getKey() +
             "/" +
-            "distributions" +
+            "_distributions" +
             "/" +
             "d15";
         bool found = false;
@@ -489,7 +489,7 @@ class ClusterlibCache
         string rpath = 
             _app0->getKey() +
             "/" +
-            "nodes" +
+            "_nodes" +
             "/" +
             "n111";
         bool found = false;
@@ -557,7 +557,7 @@ class ClusterlibCache
         string rpath =
             _grp0->getKey() +
             "/" +
-            "groups" +
+            "_groups" +
             "/" +
             "g15";
         bool found = false;
@@ -628,7 +628,7 @@ class ClusterlibCache
         string rpath =
             _nod0->getKey() +
             "/" +
-            "connected";
+            "_connected";
 
         /*
          * Create the connectivity znode.

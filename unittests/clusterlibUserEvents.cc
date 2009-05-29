@@ -172,7 +172,7 @@ class ClusterlibUserEvents
          * Register & unregister once.
          */
         MyUserEventHandler *cehp = new MyUserEventHandler(_nod0,
-                                                          EN_CONNECTED,
+                                                          EN_CONNECTEDCHANGE,
                                                           (void *) 0x3333);
         _client0->registerHandler(cehp);
 
@@ -224,7 +224,7 @@ class ClusterlibUserEvents
          */
         MyUserEventHandler *cehp =
             new MyUserEventHandler(_nod0,
-                                   EN_CONNECTED | EN_DISCONNECTED,
+                                   EN_CONNECTEDCHANGE,
                                    (void *) 0x3333);
         UEHealthChecker *hcp = new UEHealthChecker(_nod0, _client0);
 
@@ -295,7 +295,7 @@ class ClusterlibUserEvents
          */
         MyUserEventHandler *cehp =
             new MyUserEventHandler(_nod0,
-                                   EN_CONNECTED | EN_DISCONNECTED,
+                                   EN_CONNECTEDCHANGE,
                                    (void *) 0x3333);
         UEHealthChecker *hcp = new UEHealthChecker(_nod0, _client0);
 

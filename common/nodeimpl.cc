@@ -158,7 +158,7 @@ NodeImpl::isHealthy()
               getKey().c_str(),
               m_clientState.c_str());
 
-    return (m_clientState == "healthy") ? true : false;
+    return (m_clientState == ClusterlibStrings::HEALTHY) ? true : false;
 }
 
 void

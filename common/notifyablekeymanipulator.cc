@@ -173,6 +173,118 @@ NotifyableKeyManipulator::createPropertiesKey(const string &notifyableKey)
     return res;
 }
 
+string
+NotifyableKeyManipulator::getNotifyableKeyFromKey(const string &key)
+{
+    TRACE(CL_LOG, "getNotifyableKeyFromKey");
+
+    vector<string> components;
+    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
+
+    if (static_cast<int32_t>(components.size()) < 
+        ClusterlibInts::ROOT_COMPONENTS_COUNT) {
+        return string();
+    }
+        
+    /* 
+     * Check if this key already matches a possible Zookeeper node
+     * that represents a Notifyable.  Also, strip off one path section
+     * and check again if that fails.  
+     *
+     * The current layout of Clusterlib objects in Zookeeper limits
+     * any object to having only one layer beneath them as part of
+     * that object.  If that policy changes, this function will have
+     * to change.
+     */
+    if (NotifyableKeyManipulator::isNotifyableKey(components)) {
+        return key;
+    }
+    if (NotifyableKeyManipulator::isNotifyableKey(components, 
+                                                  components.size() -1)) {
+        string res = key;
+        uint32_t keySeparator = res.rfind(ClusterlibStrings::KEYSEPARATOR);
+        if (keySeparator == string::npos) {
+            LOG_ERROR(CL_LOG,
+                      "getNotifyableKeyFromKey: Couldn't find key "
+                      "separator in key (%s)", key.c_str());
+            throw InconsistentInternalStateException(
+                "getNotifyableKeyFromKey: Couldn't find key separator");
+        }
+        res.erase(keySeparator);
+        return res;
+    }
+
+    return string();
+}
+
+bool
+NotifyableKeyManipulator::isValidNotifyableName(const string &name)
+{
+    if ((name.empty()) || 
+        (name.find(ClusterlibStrings::KEYSEPARATOR) != string::npos) ||
+        (name[0] == '_')) {
+        return false;
+    }
+        
+    return true;
+}
+
+bool
+NotifyableKeyManipulator::isNotifyableKey(const vector<string> &components,
+                                          int32_t elements)
+{
+    TRACE(CL_LOG, "isNotifyableKey");
+
+    if (elements > static_cast<int32_t>(components.size())) {
+        LOG_FATAL(CL_LOG,
+                  "isNotifyableKey: elements %d > size of components %u",
+                  elements,
+                  components.size());
+        throw InvalidArgumentsException("isNotifyableKey: elements > size of "
+                                        "components");
+    }
+
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+    /* Check all the clusterlib objects, otherwise return false. */
+    if (isApplicationKey(components, elements)) {
+        return true;
+    }
+    if (isRootKey(components, elements)) {
+        return true;
+    }
+    if (isDataDistributionKey(components, elements)) {
+        return true;
+    }
+    if (isGroupKey(components, elements)) {
+        return true;
+    }
+    if (isPropertiesKey(components, elements)) {
+        return true;
+    }
+    if (isNodeKey(components, elements)) {
+        return true;
+    }
+
+    return false;
+}
+
+bool
+NotifyableKeyManipulator::isNotifyableKey(const string &key)
+{
+    TRACE(CL_LOG, "isNotifyableKey");
+
+    vector<string> components;
+    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
+    return isNotifyableKey(components);
+}
+
+
 bool
 NotifyableKeyManipulator::isApplicationKey(const vector<string> &components,
                                            int32_t elements)

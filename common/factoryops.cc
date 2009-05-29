@@ -264,8 +264,9 @@ FactoryOps::synchronize()
     key.append(ClusterlibStrings::CLUSTERLIB);
     SAFE_CALL_ZK(m_zk.sync(key, 
                            &m_zkEventAdapter, 
-                           getCachedObjectChangeHandlers()
-                           ->getSynchronizeChangeHandler()),
+                           getCachedObjectChangeHandlers()->
+                           getChangeHandler(
+                               CachedObjectChangeHandlers::SYNCHRONIZE_CHANGE)),
                  "Could not synchronize with the underlying store %s: %s",
                  "/",
                  true,
@@ -1012,11 +1013,8 @@ ApplicationImpl *
 FactoryOps::getApplication(const string &appName, bool create)
 {
     TRACE(CL_LOG, "getApplication");
-
-    /*
-     * Do not allow empty names, and names containing '/'.
-     */
-    if (appName.empty() || (appName.find('/') != string::npos)) {
+    
+    if (!NotifyableKeyManipulator::isValidNotifyableName(appName)) {
         LOG_WARN(CL_LOG,
                  "getApplication: illegal application name %s",
                  appName.c_str());
@@ -1078,10 +1076,7 @@ FactoryOps::getDataDistribution(const string &distName,
 {
     TRACE(CL_LOG, "getDataDistribution");
 
-    /*
-     * Do not allow empty names, and names containing '/'.
-     */
-    if (distName.empty() || (distName.find('/') != string::npos)) {
+    if (!NotifyableKeyManipulator::isValidNotifyableName(distName)) {
         LOG_WARN(CL_LOG,
                  "getDataDistribution: Illegal data distribution name %s",
                  distName.c_str());
@@ -1095,7 +1090,7 @@ FactoryOps::getDataDistribution(const string &distName,
 
     if (parentGroup == NULL) {
         LOG_WARN(CL_LOG, "NULL parent group");
-        return NULL;
+        throw InvalidArgumentsException("getDataDistribution: NULL parent");
     }
 
     string key = NotifyableKeyManipulator::createDistKey(parentGroup->getKey(),
@@ -1213,10 +1208,7 @@ FactoryOps::getGroup(const string &groupName,
 {
     TRACE(CL_LOG, "getGroup");
 
-    /*
-     * Do not allow empty names, and names containing '/'.
-     */
-    if (groupName.empty() || (groupName.find('/') != string::npos)) {
+    if (!NotifyableKeyManipulator::isValidNotifyableName(groupName)) {
         LOG_WARN(CL_LOG,
                  "getGroup: Illegal group name %s",
                  groupName.c_str());
@@ -1228,7 +1220,7 @@ FactoryOps::getGroup(const string &groupName,
 
     if (parentGroup == NULL) {
         LOG_WARN(CL_LOG, "getGroup: NULL parent group");
-        return NULL;
+        throw InvalidArgumentsException("getGroup: NULL parent");
     }
     string key = 
         NotifyableKeyManipulator::createGroupKey(parentGroup->getKey(),
@@ -1284,10 +1276,7 @@ FactoryOps::getNode(const string &nodeName,
 {
     TRACE(CL_LOG, "getNode");
 
-    /*
-     * Do not allow empty names, and names containing '/'.
-     */
-    if (nodeName.empty() || (nodeName.find('/') != string::npos)) {
+    if (!NotifyableKeyManipulator::isValidNotifyableName(nodeName)) {
         LOG_WARN(CL_LOG,
                  "getNode: Illegal node name %s",
                  nodeName.c_str());
@@ -1298,12 +1287,11 @@ FactoryOps::getNode(const string &nodeName,
     }
 
     if (parentGroup == NULL) {
-        LOG_WARN(CL_LOG, "NULL parent group");
-        return NULL;
+        LOG_ERROR(CL_LOG, "getNode: NULL parent group");
+        throw InvalidArgumentsException("getNode: NULL parent");
     }
-
-   string key = NotifyableKeyManipulator::createNodeKey(parentGroup->getKey(),
-                                                        nodeName);
+    string key = NotifyableKeyManipulator::createNodeKey(parentGroup->getKey(),
+                                                         nodeName);
 
     {
         Locker l(getNodesLock());
@@ -1395,14 +1383,20 @@ FactoryOps::updateDataDistribution(const string &distKey,
                  snode.c_str(),
                  false,
                  true);
-    SAFE_CALL_ZK(m_zk.getNodeData(
-                     snode,
-                     &m_zkEventAdapter, 
-                     getCachedObjectChangeHandlers()->getShardsChangeHandler()),
-                 "Reestablishing watch on value of %s failed: %s",
-                 snode.c_str(),
-                 true,
-                 true);
+
+    SAFE_CALLBACK_ZK(
+        m_zk.getNodeData(
+            snode,
+            &m_zkEventAdapter, 
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(CachedObjectChangeHandlers::SHARDS_CHANGE)),
+        ,
+        CachedObjectChangeHandlers::SHARDS_CHANGE,
+        snode,
+        "Reestablishing watch on value of %s failed: %s",
+        snode.c_str(),
+        true,
+        true);
 
     /*
      * Update the manual overrides.
@@ -1426,15 +1420,20 @@ FactoryOps::updateDataDistribution(const string &distKey,
                  monode.c_str(),
                  false,
                  true);
-    SAFE_CALL_ZK(m_zk.getNodeData(
-                     monode,
-                     &m_zkEventAdapter,
-                     getCachedObjectChangeHandlers()->
-                         getManualOverridesChangeHandler()),
-                 "Reestablishing watch on value of %s failed: %s",
-                 monode.c_str(),
-                 false,
-                 true);
+    SAFE_CALLBACK_ZK(
+        m_zk.getNodeData(
+            monode,
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(
+                CachedObjectChangeHandlers::MANUAL_OVERRIDES_CHANGE)),
+        ,
+        CachedObjectChangeHandlers::MANUAL_OVERRIDES_CHANGE,
+        monode,
+        "Reestablishing watch on value of %s failed: %s",
+        monode.c_str(),
+        false,
+        true);
 }
 
 /*
@@ -1476,15 +1475,21 @@ FactoryOps::updateProperties(const string &propsKey,
                  kvnode.c_str(),
                  false,
                  true);
-    SAFE_CALL_ZK(m_zk.getNodeData(
-                     kvnode,
-                     &m_zkEventAdapter,
-                     getCachedObjectChangeHandlers()->getPropertiesValueChangeHandler()),
-                 "Reestablishing watch on value of %s failed: %s",
-                 propsKey.c_str(),
-                 false,
-                 true);
-
+    SAFE_CALLBACK_ZK(
+        m_zk.getNodeData(
+            kvnode,
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(
+                CachedObjectChangeHandlers::PROPERTIES_VALUES_CHANGE)),
+        ,
+        CachedObjectChangeHandlers::PROPERTIES_VALUES_CHANGE,
+        kvnode,
+        "Reestablishing watch on value of %s failed: %s",
+        propsKey.c_str(),
+        false,
+        true);  
+    
     finalVersionNumber = stat.version;
 }
 
@@ -1522,15 +1527,20 @@ FactoryOps::updateNodeClientState(const string &nodeKey,
                  false,
                  true);
 
-    SAFE_CALL_ZK(m_zk.getNodeData(
-                     csKey,
-                     &m_zkEventAdapter,
-                     getCachedObjectChangeHandlers()->
-                         getNodeClientStateChangeHandler()),
-                 "Reestablishing watch on value of %s failed: %s",
-                 csKey.c_str(),
-                 false,
-                 true);
+    SAFE_CALLBACK_ZK(
+        m_zk.getNodeData(
+            csKey,
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(
+                CachedObjectChangeHandlers::NODE_CLIENT_STATE_CHANGE)),
+        ,
+        CachedObjectChangeHandlers::NODE_CLIENT_STATE_CHANGE,
+        csKey,
+        "Reestablishing watch on value of %s failed: %s",
+        csKey.c_str(),
+        false,
+        true);
 }
 
 /*
@@ -1605,14 +1615,20 @@ FactoryOps::updateNodeMasterSetState(const string &nodeKey,
                  msKey.c_str(),
                  true,
                  true);
-    SAFE_CALL_ZK(m_zk.getNodeData(msKey,
-                                  &m_zkEventAdapter,
-                                  getCachedObjectChangeHandlers()->
-                                      getNodeMasterSetStateChangeHandler()),
-                 "Reestablishing watch on value of %s failed: %s",
-                 msKey.c_str(),
-                 false,
-                 true);
+    SAFE_CALLBACK_ZK(
+        m_zk.getNodeData(
+            msKey,
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(
+                CachedObjectChangeHandlers::NODE_MASTER_SET_STATE_CHANGE)),
+        ,
+        CachedObjectChangeHandlers::NODE_MASTER_SET_STATE_CHANGE,
+        msKey,
+        "Reestablishing watch on value of %s failed: %s",
+        msKey.c_str(),
+        false,
+        true);
 }
 
 /*
@@ -1644,61 +1660,54 @@ FactoryOps::getNotifyableFromComponents(const vector<string> &components,
 
     LOG_DEBUG(CL_LOG, "getNotifyableFromComponents: elements %d", elements);
 
-    while (clusterObjectElements >= ClusterlibInts::ROOT_COMPONENTS_COUNT) {
-        ntp = getRootFromComponents(components,
-                                    clusterObjectElements);
-        if (ntp) {
-            LOG_DEBUG(CL_LOG, 
-                      "getNotifyableFromComponents: found Root");
-            return ntp;
-        }
-        ntp = getApplicationFromComponents(components,
-                                           clusterObjectElements, 
-                                           create);
-        if (ntp) {
-            LOG_DEBUG(CL_LOG, 
-                      "getNotifyableFromComponents: found Application");
-            return ntp;
-        }
-        ntp = getPropertiesFromComponents(components,
-                                          clusterObjectElements, 
-                                          create);
-        if (ntp) {
-            LOG_DEBUG(CL_LOG, 
-                      "getNotifyableFromComponents: found Properties");
-            return ntp;
-        }
-        ntp = getDataDistributionFromComponents(components,
-                                                clusterObjectElements, 
-                                                create);
-        if (ntp) {
-            LOG_DEBUG(CL_LOG, 
-                      "getNotifyableFromComponents: found DataDistribution");
-            return ntp;
-        }
-        ntp = getGroupFromComponents(components,
-                                     clusterObjectElements, 
-                                     create);
-        if (ntp) {
-            LOG_DEBUG(CL_LOG, 
-                      "getNotifyableFromComponents: found Group");
-            return ntp;
-        }
-        ntp = getNodeFromComponents(components, 
-                                    clusterObjectElements, 
-                                    create);
-        if (ntp) {
-            LOG_DEBUG(CL_LOG, 
-                      "getNotifyableFromComponents: found Node");
-            return ntp;
-        }
-
-        clusterObjectElements = 
-            NotifyableKeyManipulator::removeObjectFromComponents(
-                components, 
-                clusterObjectElements);
+    ntp = getRootFromComponents(components,
+                                clusterObjectElements);
+    if (ntp) {
+        LOG_DEBUG(CL_LOG, 
+                  "getNotifyableFromComponents: found Root");
+        return ntp;
     }
-
+    ntp = getApplicationFromComponents(components,
+                                       clusterObjectElements, 
+                                       create);
+    if (ntp) {
+        LOG_DEBUG(CL_LOG, 
+                  "getNotifyableFromComponents: found Application");
+        return ntp;
+    }
+    ntp = getPropertiesFromComponents(components,
+                                      clusterObjectElements, 
+                                      create);
+    if (ntp) {
+        LOG_DEBUG(CL_LOG, 
+                  "getNotifyableFromComponents: found Properties");
+        return ntp;
+    }
+    ntp = getDataDistributionFromComponents(components,
+                                            clusterObjectElements, 
+                                            create);
+    if (ntp) {
+        LOG_DEBUG(CL_LOG, 
+                  "getNotifyableFromComponents: found DataDistribution");
+        return ntp;
+    }
+    ntp = getGroupFromComponents(components,
+                                 clusterObjectElements, 
+                                 create);
+    if (ntp) {
+        LOG_DEBUG(CL_LOG, 
+                  "getNotifyableFromComponents: found Group");
+        return ntp;
+    }
+    ntp = getNodeFromComponents(components, 
+                                clusterObjectElements, 
+                                create);
+    if (ntp) {
+        LOG_DEBUG(CL_LOG, 
+                  "getNotifyableFromComponents: found Node");
+        return ntp;
+    }
+    
     return NULL;
 }
 
@@ -2050,15 +2059,20 @@ FactoryOps::loadApplication(const string &name,
         ClusterlibStrings::KEYSEPARATOR +
         ClusterlibStrings::NODES;
 
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(
-                      key, 
-                      &m_zkEventAdapter,
-                      getCachedObjectChangeHandlers()->
-                      getNotifyableStateChangeHandler())),
-                 "Could not determine whether key %s exists: %s",
-                 key.c_str(),
-                 false,
-                 true);
+    SAFE_CALLBACK_ZK(
+        (exists = m_zk.nodeExists(
+            key, 
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(
+                CachedObjectChangeHandlers::NOTIFYABLE_STATE_CHANGE))),
+        (exists = m_zk.nodeExists(key)),
+        CachedObjectChangeHandlers::NOTIFYABLE_STATE_CHANGE,
+        key,
+        "Could not determine whether key %s exists: %s",
+        key.c_str(),
+        false,
+        true);
     if (!exists) {
         return NULL;
     }
@@ -2214,18 +2228,23 @@ FactoryOps::loadShards(const string &key, int32_t &version)
         key +
         ClusterlibStrings::KEYSEPARATOR +
         ClusterlibStrings::SHARDS;
-    string res = "";
+    string res;
 
     version = 0;
-    SAFE_CALL_ZK((res = m_zk.getNodeData(
-                      snode,
-                      &m_zkEventAdapter,
-                      getCachedObjectChangeHandlers()->getShardsChangeHandler(),
-                      &stat)),
-                 "Loading shards from %s failed: %s",
-                 snode.c_str(),
-                 false,
-                 true);
+    SAFE_CALLBACK_ZK(
+        (res = m_zk.getNodeData(
+            snode,
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(CachedObjectChangeHandlers::SHARDS_CHANGE),
+            &stat)),
+        (res = m_zk.getNodeData(snode, NULL, NULL, &stat)),
+        CachedObjectChangeHandlers::SHARDS_CHANGE,
+        snode,
+        "Loading shards from %s failed: %s",
+        snode.c_str(),
+        false,
+        true);
     version = stat.version;
     return res;
 }
@@ -2241,15 +2260,21 @@ FactoryOps::loadManualOverrides(const string &key, int32_t &version)
     string res = "";
 
     version = 0;
-    SAFE_CALL_ZK((res = m_zk.getNodeData(
-                      monode,
-                      &m_zkEventAdapter,
-                      getCachedObjectChangeHandlers()->getManualOverridesChangeHandler(),
-                      &stat)),
-                 "Loading manual overrides from %s failed: %s",
-                 monode.c_str(),
-                 false,
-                 true);
+    SAFE_CALLBACK_ZK(
+        (res = m_zk.getNodeData(
+            monode,
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(
+                CachedObjectChangeHandlers::MANUAL_OVERRIDES_CHANGE),
+            &stat)),
+        (res = m_zk.getNodeData(monode, NULL, NULL, &stat)),
+        CachedObjectChangeHandlers::MANUAL_OVERRIDES_CHANGE,
+        monode,
+        "Loading manual overrides from %s failed: %s",
+        monode.c_str(),
+        false,
+        true);
     version = stat.version;
     return res;
 }
@@ -2313,15 +2338,21 @@ FactoryOps::loadKeyValMap(const string &key, int32_t &version)
         ClusterlibStrings::KEYVAL;
 
     string kv;
-    SAFE_CALL_ZK((kv = m_zk.getNodeData(
-                      kvnode,
-                      &m_zkEventAdapter,
-                      getCachedObjectChangeHandlers()->getPropertiesValueChangeHandler(),
-                      &stat)),
-                 "Reading the value of %s failed: %s",
-                 key.c_str(),
-                 false,
-                 true);
+    SAFE_CALLBACK_ZK(
+        (kv = m_zk.getNodeData(
+            kvnode,
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(
+                CachedObjectChangeHandlers::PROPERTIES_VALUES_CHANGE),
+            &stat)),
+        (kv = m_zk.getNodeData(kvnode, NULL, NULL, &stat)),
+        CachedObjectChangeHandlers::PROPERTIES_VALUES_CHANGE,
+        kvnode,
+        "Reading the value of %s failed: %s",
+        key.c_str(),
+        false,
+        true);
 
     version = stat.version;
 
@@ -2871,15 +2902,21 @@ FactoryOps::isNodeConnected(const string &nodeKey)
         ClusterlibStrings::CONNECTED;
     bool exists = false;
 
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(
-                      ckey,
-                      &m_zkEventAdapter,
-                      getCachedObjectChangeHandlers()->
-                          getNodeConnectionChangeHandler())),
-                 "Could not determine whether key %s is connected: %s",
-                 nodeKey.c_str(),
-                 false,
-                 true);
+    SAFE_CALLBACK_ZK(
+        (exists = m_zk.nodeExists(
+            ckey,
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(
+                CachedObjectChangeHandlers::NODE_CONNECTION_CHANGE))),
+        (exists = m_zk.nodeExists(ckey)),
+        CachedObjectChangeHandlers::NODE_CONNECTION_CHANGE,
+        ckey,
+        "Could not determine whether key %s is connected: %s",
+        nodeKey.c_str(),
+        false,
+        true);
+
     return exists;
 }
 string
@@ -2893,15 +2930,21 @@ FactoryOps::getNodeClientState(const string &nodeKey)
         ClusterlibStrings::CLIENTSTATE;
     string res;
 
-    SAFE_CALL_ZK((res = m_zk.getNodeData(
-                      ckey,
-                      &m_zkEventAdapter,
-                      getCachedObjectChangeHandlers()->
-                          getNodeClientStateChangeHandler())),
-                 "Could not read node %s client state: %s",
-                 nodeKey.c_str(),
-                 false,
-                 true);
+    SAFE_CALLBACK_ZK(
+        (res = m_zk.getNodeData(
+            ckey,
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(
+                CachedObjectChangeHandlers::NODE_CLIENT_STATE_CHANGE))),
+        (res = m_zk.getNodeData(ckey)),
+        CachedObjectChangeHandlers::NODE_CLIENT_STATE_CHANGE,
+        ckey,
+        "Could not read node %s client state: %s",
+        nodeKey.c_str(),
+        false,
+        true);
+
     return res;
 }
 int32_t
@@ -2915,16 +2958,21 @@ FactoryOps::getNodeMasterSetState(const string &nodeKey)
         ClusterlibStrings::MASTERSETSTATE;
     string res;
 
-    SAFE_CALL_ZK(
+    SAFE_CALLBACK_ZK(
         (res = m_zk.getNodeData(
             ckey,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
-                getNodeMasterSetStateChangeHandler())),
+            getChangeHandler(
+                CachedObjectChangeHandlers::NODE_MASTER_SET_STATE_CHANGE))),
+        (res = m_zk.getNodeData(ckey)),
+        CachedObjectChangeHandlers::NODE_MASTER_SET_STATE_CHANGE,
+        ckey,
         "Could not read node %s master set state: %s",
         nodeKey.c_str(),
         false,
         true);
+    
     return ::atoi(res.c_str());
 }
 
@@ -2962,14 +3010,21 @@ FactoryOps::createConnected(const string &key)
         /*
          * Establish the watch.
          */
-        SAFE_CALL_ZK(m_zk.nodeExists(ckey,
-                                     &m_zkEventAdapter,
-                                     getCachedObjectChangeHandlers()->
-                                     getNodeConnectionChangeHandler()),
-                     "Could not establish exists watch for znode %s: %s",
-                     ckey.c_str(),
-                     false,
-                     true);
+        SAFE_CALLBACK_ZK(
+            m_zk.nodeExists(
+                ckey,
+                &m_zkEventAdapter,
+                getCachedObjectChangeHandlers()->
+                getChangeHandler(
+                    CachedObjectChangeHandlers::NODE_CONNECTION_CHANGE)),
+            ,
+            CachedObjectChangeHandlers::NODE_CONNECTION_CHANGE,
+            ckey,
+            "Could not establish exists watch for znode %s: %s",
+            ckey.c_str(),
+            false,
+            true);
+        
         return true;
     } catch (zk::ZooKeeperException &e) {
         return false;
@@ -3021,17 +3076,21 @@ FactoryOps::getApplicationNames()
         ClusterlibStrings::APPLICATIONS;
 
     list.clear();
-    SAFE_CALL_ZK(m_zk.getNodeChildren(
-                     list,
-                     key, 
-                     &m_zkEventAdapter,
-                     getCachedObjectChangeHandlers()->
-                         getApplicationsChangeHandler()),
-                 "Reading the value of %s failed: %s",
-                 key.c_str(),
-                 true,
-                 true);
-
+    SAFE_CALLBACK_ZK(
+        m_zk.getNodeChildren(
+            list,
+            key, 
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(CachedObjectChangeHandlers::APPLICATIONS_CHANGE)),
+        m_zk.getNodeChildren(list, key),
+        CachedObjectChangeHandlers::APPLICATIONS_CHANGE,
+        key,
+        "Reading the value of %s failed: %s",
+        key.c_str(),
+        true,
+        true);
+    
     for (NameList::iterator nlIt = list.begin(); nlIt != list.end(); ++nlIt) {
         /*
          * Remove the key prefix
@@ -3058,17 +3117,21 @@ FactoryOps::getGroupNames(GroupImpl *group)
         ClusterlibStrings::GROUPS;
 
     list.clear();
-    SAFE_CALL_ZK(m_zk.getNodeChildren(
-                     list,
-                     key,
-                     &m_zkEventAdapter,
-                     getCachedObjectChangeHandlers()->
-                         getGroupsChangeHandler()),
-                 "Reading the value of %s failed: %s",
-                 key.c_str(),
-                 true,
-                 true);
-
+    SAFE_CALLBACK_ZK(
+        m_zk.getNodeChildren(
+            list,
+            key,
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(CachedObjectChangeHandlers::GROUPS_CHANGE)),
+        m_zk.getNodeChildren(list, key),
+        CachedObjectChangeHandlers::GROUPS_CHANGE,
+        key,
+        "Reading the value of %s failed: %s",
+        key.c_str(),
+        true,
+        true);
+    
     for (NameList::iterator nlIt = list.begin();
          nlIt != list.end();
          ++nlIt) {
@@ -3098,17 +3161,22 @@ FactoryOps::getDataDistributionNames(GroupImpl *group)
         ClusterlibStrings::DISTRIBUTIONS;
 
     list.clear();
-    SAFE_CALL_ZK(m_zk.getNodeChildren(
-                     list,
-                     key,
-                     &m_zkEventAdapter,
-                     getCachedObjectChangeHandlers()->
-                         getDataDistributionsChangeHandler()),
-                 "Reading the value of %s failed: %s",
-                 key.c_str(),
-                 true,
-                 true);
-
+    SAFE_CALLBACK_ZK(
+        m_zk.getNodeChildren(
+            list,
+            key,
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(
+                CachedObjectChangeHandlers::DATADISTRIBUTIONS_CHANGE)),
+        m_zk.getNodeChildren(list, key),
+        CachedObjectChangeHandlers::DATADISTRIBUTIONS_CHANGE,
+        key,
+        "Reading the value of %s failed: %s",
+        key.c_str(),
+        true,
+        true);
+    
     for (NameList::iterator nlIt = list.begin();
          nlIt != list.end();
          ++nlIt) {
@@ -3137,16 +3205,21 @@ FactoryOps::getNodeNames(GroupImpl *group)
         ClusterlibStrings::NODES;
 
     list.clear();
-    SAFE_CALL_ZK(m_zk.getNodeChildren(
-                     list,
-                     key,
-                     &m_zkEventAdapter,
-                     getCachedObjectChangeHandlers()->getNodesChangeHandler()),
-                 "Reading the value of %s failed: %s",
-                 key.c_str(),
-                 true,
-                 true);
-
+    SAFE_CALLBACK_ZK(
+        m_zk.getNodeChildren(
+            list,
+            key,
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(CachedObjectChangeHandlers::NODES_CHANGE)),
+        m_zk.getNodeChildren(list, key),
+        CachedObjectChangeHandlers::NODES_CHANGE,
+        key,
+        "Reading the value of %s failed: %s",
+        key.c_str(),
+        true,
+        true);
+    
     for (NameList::iterator nlIt = list.begin();
          nlIt != list.end();
          ++nlIt) {
@@ -3376,7 +3449,6 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
         throw InvalidArgumentsException("NULL watcher event!");
     }
 
-    const string path = ep->getPath();
     int32_t etype = ep->getType();
 
     LOG_INFO(CL_LOG,
@@ -3384,44 +3456,61 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
              (int) fehp,
              (int) ep,
              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-             path.c_str());
-
-    NotifyableImpl *ntp = NULL;
+             ep->getPath().c_str());
 
     /*
-     * Get the NotifyableImpl for this key so that clusterlib clients
-     * can get these events.  There is one exceptions:
-     * 
-     * 1) SYNC doesn't get a Notifyable.
+     * Based on the path and etype, several things need to happen.
+     * 1. Get the derived path of the Notifyable that the event path refers to.
+     * 2. Get the Notifyable from the dervied path in the cache if it exists 
+     *    and update it with the appropriate CachedObjectEventHandler.
+     * 3. Pass the derived path and event as a payload in the return.
      *
-     * Note: Getting the NotifyableImpl * is best effort.  Since the
-     * NotifyableImpl may have already been removed, it should return
-     * NULL. then ZOO_DELETED_EVENT - cannot guarantee to return the
-     * correct Notifyable since it should have been removed.  Try to
-     * retrieve it if it exists, in order to delete it.
+     * There is one exception: SYNC doesn't try to get the Notifyable 
+     * since it doesn't have one.
+     *
+     * Note: Getting the NotifyableImpl * for the derived path is best
+     * effort.  The NotifyableImpl may have already been removed and
+     * in that case, should return NULL.  If the event is
+     * ZOO_DELETED_EVENT , there is no guarantee to return the correct
+     * Notifyable since it should have been removed.  Still need to
+     * try to retrieve it in the event of ZOO_DELETED_EVENT, since if
+     * it exists, it needs to be removed.
      */
-    if (path.compare(ClusterlibStrings::SYNC) == 0) {
+    string notifyablePath;
+    NotifyableImpl *ntp = NULL;
+    if (ep->getPath().compare(ClusterlibStrings::SYNC) == 0) {
+        notifyablePath = ep->getPath();
         ntp = NULL;
     }
     else {
         try {
-            ntp = getNotifyableFromKey(path); 
-            if (ntp == NULL) {
+            notifyablePath = NotifyableKeyManipulator::getNotifyableKeyFromKey(
+                    ep->getPath());
+            ntp = getNotifyableFromKey(notifyablePath); 
+            
+            LOG_DEBUG(CL_LOG, 
+                      "updateCachedObject: Got Notifyable key (%s) from "
+                      "path (%s)",
+                      notifyablePath.c_str(),
+                      ep->getPath().c_str());
+            
+            if (notifyablePath.empty()) {
                 throw InconsistentInternalStateException(
-                    string("Unknown event : ") + path);
+                    "getNotifyableKeyFromKey: Returned an empty key, "
+                    "the path is unrelated to any Notifyable!");
             }
         }
         catch (RepositoryInternalsFailureException &reife) {
             LOG_WARN(CL_LOG, 
                      "updateCachedObject: NotifyableImpl with key %s "
                      "no longer exists",
-                     path.c_str());
+                     notifyablePath.c_str());
         }
         catch (ObjectRemovedException &ore) {
             LOG_WARN(CL_LOG,
                      "updateCachedObject: NotifyableImpl with key %s "
                      "was removed",
-                     path.c_str());
+                     notifyablePath.c_str());
         }
     }
 
@@ -3430,77 +3519,39 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
      * will also return the kind of user-level event that this
      * repository event represents.
      */
-    Event e = fehp->deliver(ntp, etype, path);
+    Event e = fehp->deliver(ntp, etype, ep->getPath());
 
     if (e == EN_NOEVENT) {
         return NULL;
     }
-    return new ClusterEventPayload(ntp, e);
-}
 
-/*
- * Re-establish interest in the existence of a notifyable by its key.
- */
-bool
-FactoryOps::establishNotifyableInterest(
-    const string &key,
-    CachedObjectEventHandler *eventHandlerP)
-{
-    if (key.empty()) {
-        return false;
-    }
-
-    bool exists = false;
-    SAFE_CALL_ZK(exists = m_zk.nodeExists(key,
-                                          &m_zkEventAdapter,
-                                          eventHandlerP),
-                 "Could not reestablish exists watch on %s: %s",
-                 key.c_str(),
-                 false,
-                 true);
-
-    return exists;
-}
-
-string
-FactoryOps::getNotifyableValue(const string &key,
-                               CachedObjectEventHandler *eventHandlerP)
-{
-    if (key.empty()) {
-        return false;
-    }
-
-    string val;
-    SAFE_CALL_ZK((val = m_zk.getNodeData(key,
-                                           &m_zkEventAdapter,
-                                           eventHandlerP)),
-                 "Could not get value for key %s: %s",
-                 key.c_str(),
-                 false,
-                 true);
-
-    return val;
+    return new ClusterEventPayload(notifyablePath, e);
 }
 
 void
 FactoryOps::establishNotifyableStateChange(NotifyableImpl *ntp)
 {
-    string ready = "";
+    string ready;
     
     if (ntp == NULL) {
         throw InvalidArgumentsException(
             "establishNotifyableStateChange: with NULL NotifyableImpl *");
     }
 
-    SAFE_CALL_ZK((ready = m_zk.getNodeData(
-                      ntp->getKey(),
-                      &m_zkEventAdapter,
-                      getCachedObjectChangeHandlers()->
-                      getNotifyableStateChangeHandler())),
-                 "Reading the value of %s failed: %s",
-                 ntp->getKey().c_str(),
-                 true,
-                 true);
+    SAFE_CALLBACK_ZK(
+        (ready = m_zk.getNodeData(
+            ntp->getKey(),
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(
+                CachedObjectChangeHandlers::NOTIFYABLE_STATE_CHANGE))),
+        ,
+        CachedObjectChangeHandlers::NOTIFYABLE_STATE_CHANGE,
+        ntp->getKey(),
+        "Reading the value of %s failed: %s",
+        ntp->getKey().c_str(),
+        true,
+        true);
 }
 
 };	/* End of 'namespace clusterlib' */

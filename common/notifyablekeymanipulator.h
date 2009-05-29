@@ -41,6 +41,54 @@ class NotifyableKeyManipulator
     static std::string createPropertiesKey(const std::string &notifyableKey);
 
     /**
+     * Notifyables have one key that represent the object name in the
+     * Zookeeper repository.  Each notifyable may have zookeeper nodes
+     * attached to it (at most one level deep).  Any zookeeper node
+     * beyond one level is not part of that object.  This function
+     * will get the a key that refers to a Notifyable from any input
+     * key.  For example, if the key is
+     * .../group/client/nodes/foo-server/connected, it will return
+     * .../group/client/nodes/foo-server. If the input key is not
+     * related to any Notifyable, return an empty string.
+     * 
+     * @param key the key that should contain path that is part of a
+     *            clusterlib object
+     * @return the potential notifyable key, empty if no possible key.
+     */
+    static std::string getNotifyableKeyFromKey(const std::string &key);
+
+    /**
+     * Clusterlib object names cannot have any '/' or be any reserved
+     * clusterlib keywords.
+     *
+     * @return true if name is allowed, false otherwise
+     */
+    static bool isValidNotifyableName(const std::string &name);
+
+    /**
+     * Checks if the components (assumed from a split) make up a valid
+     * key, not if an actual Notifyable exists for that key.
+     * 
+     * @param components A vector of components in the key parsed by split
+     *                   (i.e. first component should be "")
+     * @param elements The number of elements to check with (should 
+     *                 be <= components.size()).  If it is -1, then use 
+     *                 components.size().
+     * @return true if key is valid, false if not valid
+     */
+    static bool isNotifyableKey(const std::vector<std::string> &components, 
+                                int32_t elements = -1);
+
+    /**
+     * Checks if the key is valid, not if an actual Notifyable exists
+     * for that key.
+     * 
+     * @param key A key to test if it is a notifyable
+     * @return true if key is valid, false if not valid
+     */
+    static bool isNotifyableKey(const std::string &key);
+
+    /**
      * Checks if the components (assumed from a split) make up a valid
      * key, not if an actual Application exists for that key.
      * 

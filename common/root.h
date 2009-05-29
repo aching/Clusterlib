@@ -40,6 +40,14 @@ class Root
     virtual Application *getApplication(const std::string &appName,
                                         bool create = false) = 0;
 
+    /**
+     * Get a notifyable from a key. 
+     *
+     * @param key the key that represents a notifyable.
+     * @return a pointer to that notifyable if it exists, otherwise NULL.
+     */
+    virtual Notifyable *getNotifyableFromKey(const std::string &key) = 0;
+
     /*
      * Destructor.
      */

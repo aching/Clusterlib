@@ -511,40 +511,38 @@ class EventHandler
  */
 typedef EventHandler<InternalChangeHandlers> InternalEventHandler;
 
-/*
+/**
  * Payload for delivering events from ZooKeeper to clients of
  * Clusterlib.
  */
 class ClusterEventPayload
 {
   public:
-    /*
+    /**
      * Constructor.
      */
-    ClusterEventPayload(NotifyableImpl *np, Event e)
-        : mp_np(np),
-          m_e(e)
-    {
-    }
+    ClusterEventPayload(const std::string &key, Event e)
+        : m_key(key),
+          m_e(e) {}
 
-    /*
+    /**
      * Destructor.
      */
     virtual ~ClusterEventPayload() {}
 
-    /*
+    /**
      * Retrieve fields.
      */
     Event getEvent() { return m_e; }
-    NotifyableImpl *getTarget() { return mp_np; }
+    const std::string &getKey() { return m_key; }
 
   private:
-    /*
-     * The target object clients are being notified about.
+    /**
+     * The target path that clients are being notified about.
      */
-    NotifyableImpl *mp_np;
+    std::string m_key;
 
-    /*
+    /**
      * The event that clients are being notified about.
      */
     Event m_e;
@@ -583,17 +581,16 @@ const int32_t EN_MEMBERSHIPCHANGE =		(1<<5);
 const int32_t EN_LEADERSHIPCHANGE =		(1<<6);
 
 const int32_t EN_CLIENTSTATECHANGE =		(1<<7);
-const int32_t EN_CONNECTED =			(1<<8);
-const int32_t EN_DISCONNECTED =			(1<<9);
-const int32_t EN_MASTERSTATECHANGE =		(1<<10);
+const int32_t EN_CONNECTEDCHANGE =		(1<<10);
+const int32_t EN_MASTERSTATECHANGE =		(1<<11);
 
-const int32_t EN_SHARDSCHANGE =			(1<<11);
-const int32_t EN_MANUALOVERRIDESCHANGE =	(1<<12);
+const int32_t EN_SHARDSCHANGE =			(1<<12);
+const int32_t EN_MANUALOVERRIDESCHANGE =	(1<<13);
 
-const int32_t EN_PROPCHANGE =			(1<<13);
-const int32_t EN_APPSCHANGE =			(1<<14);
+const int32_t EN_PROPCHANGE =			(1<<14);
+const int32_t EN_APPSCHANGE =			(1<<15);
 
-const int32_t EN_LOCKNODECHANGE =               (1<<15);
+const int32_t EN_LOCKNODECHANGE =               (1<<16);
 
 /*
  * Interface for cluster event handler. Must be derived

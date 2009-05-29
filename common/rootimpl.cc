@@ -37,6 +37,14 @@ RootImpl::getApplication(const string &appName, bool create)
     return  getOps()->getApplication(appName, create);
 }
 
+Notifyable *
+RootImpl::getNotifyableFromKey(const string &key)
+{
+    TRACE(CL_LOG, "getNotifyableFromKey");
+
+    return getOps()->getNotifyableFromKey(key);
+}
+
 /*
  * Initialize the cached representation of this group.
  */

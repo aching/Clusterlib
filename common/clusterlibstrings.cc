@@ -24,86 +24,88 @@ namespace clusterlib
 const string ClusterlibStrings::ROOTNODE = "/";
 const string ClusterlibStrings::KEYSEPARATOR = "/";
 
-const string ClusterlibStrings::CLUSTERLIB = "clusterlib";
-const string ClusterlibStrings::CLUSTERLIBVERSION = "1.0";
+const string ClusterlibStrings::CLUSTERLIB = "_clusterlib";
+const string ClusterlibStrings::CLUSTERLIBVERSION = "_1.0";
 
-const string ClusterlibStrings::PROPERTIES = "properties";
-const string ClusterlibStrings::CONFIGURATION = "configuration";
-const string ClusterlibStrings::ALERTS = "alerts";
-const string ClusterlibStrings::SYNC = "sync";
+const string ClusterlibStrings::PROPERTIES = "_properties";
+const string ClusterlibStrings::CONFIGURATION = "_configuration";
+const string ClusterlibStrings::ALERTS = "_alerts";
+const string ClusterlibStrings::SYNC = "_sync";
 
-const string ClusterlibStrings::ROOT = "root";
-const string ClusterlibStrings::APPLICATIONS = "applications";
-const string ClusterlibStrings::GROUPS = "groups";
-const string ClusterlibStrings::NODES = "nodes";
-const string ClusterlibStrings::DISTRIBUTIONS = "distributions";
+const string ClusterlibStrings::ROOT = "_root";
+const string ClusterlibStrings::APPLICATIONS = "_applications";
+const string ClusterlibStrings::GROUPS = "_groups";
+const string ClusterlibStrings::NODES = "_nodes";
+const string ClusterlibStrings::DISTRIBUTIONS = "_distributions";
 
-const string ClusterlibStrings::CLIENTSTATE = "clientState";
-const string ClusterlibStrings::CLIENTSTATEDESC = "clientStateDesc";
-const string ClusterlibStrings::ADDRESS = "address";
-const string ClusterlibStrings::LASTCONNECTED = "lastConnected";
-const string ClusterlibStrings::CLIENTVERSION = "clientVersion";
-const string ClusterlibStrings::CONNECTED = "connected";
-const string ClusterlibStrings::BOUNCY = "bouncy";
-const string ClusterlibStrings::READY = "ready";
-const string ClusterlibStrings::ALIVE = "alive";
-const string ClusterlibStrings::MASTERSETSTATE = "masterSetState";
-const string ClusterlibStrings::SUPPORTEDVERSIONS = "supportedVersions";
+const string ClusterlibStrings::CLIENTSTATE = "_clientState";
+const string ClusterlibStrings::CLIENTSTATEDESC = "_clientStateDesc";
+const string ClusterlibStrings::ADDRESS = "_address";
+const string ClusterlibStrings::LASTCONNECTED = "_lastConnected";
+const string ClusterlibStrings::CLIENTVERSION = "_clientVersion";
+const string ClusterlibStrings::CONNECTED = "_connected";
+const string ClusterlibStrings::BOUNCY = "_bouncy";
+const string ClusterlibStrings::READY = "_ready";
+const string ClusterlibStrings::ALIVE = "_alive";
+const string ClusterlibStrings::MASTERSETSTATE = "_masterSetState";
+const string ClusterlibStrings::SUPPORTEDVERSIONS = "_supportedVersions";
 
-const string ClusterlibStrings::KEYVAL = "keyval";    
+const string ClusterlibStrings::KEYVAL = "_keyval";    
 
-const string ClusterlibStrings::SHARDS = "shards";
-const string ClusterlibStrings::GOLDENSHARDS = "goldenShards";
-const string ClusterlibStrings::MANUALOVERRIDES = "manualOverrides";
+const string ClusterlibStrings::SHARDS = "_shards";
+const string ClusterlibStrings::GOLDENSHARDS = "_goldenShards";
+const string ClusterlibStrings::MANUALOVERRIDES = "_manualOverrides";
 
-const string ClusterlibStrings::LOCK = "lock";
-const string ClusterlibStrings::BID_SPLIT = "_";
+const string ClusterlibStrings::BID_SPLIT = "=";
 
-const string ClusterlibStrings::NOTIFYABLELOCK = "notifyableLock";
-const string ClusterlibStrings::LEADERLOCK = "leaderLock";
+const string ClusterlibStrings::NOTIFYABLELOCK = "_notifyableLock";
+const string ClusterlibStrings::LEADERLOCK = "_leaderLock";
 
-const string ClusterlibStrings::LOCKS = "locks";
-const string ClusterlibStrings::QUEUES = "queues";
-const string ClusterlibStrings::BARRIERS = "barriers";
-const string ClusterlibStrings::TRANSACTIONS = "transactions";
+const string ClusterlibStrings::LOCKS = "_locks";
+const string ClusterlibStrings::QUEUES = "_queues";
+const string ClusterlibStrings::BARRIERS = "_barriers";
+const string ClusterlibStrings::TRANSACTIONS = "_transactions";
 
-const string ClusterlibStrings::ENDEVENT = "end event";
+const string ClusterlibStrings::ENDEVENT = "_end event";
 
 /*
  * All strings that are used as ZK values or part of values.
  */
-const string ClusterlibStrings::BIDPREFIX = "L_";
-const string ClusterlibStrings::INFLUX = "influx";
-const string ClusterlibStrings::HEALTHY = "healthy";
-const string ClusterlibStrings::UNHEALTHY = "unhealthy";
+const string ClusterlibStrings::INFLUX = "_influx";
+const string ClusterlibStrings::HEALTHY = "_healthy";
+const string ClusterlibStrings::UNHEALTHY = "_unhealthy";
 
 /*
  * All strings that are used as propreties.
  */
 
-const string ClusterlibStrings::HEARTBEATMULTIPLE = "heartBeat.multiple";
+const string ClusterlibStrings::HEARTBEATMULTIPLE = "_heartBeat.multiple";
 const string ClusterlibStrings::HEARTBEATCHECKPERIOD= "heartBeat.checkPeriod";
-const string ClusterlibStrings::HEARTBEATHEALTHY = "heartBeat.healthy";
-const string ClusterlibStrings::HEARTBEATUNHEALTHY = "heatBeat.unhealthy";
-const string ClusterlibStrings::TIMEOUTUNHEALTHYYTOR = "timeOut.unhealthyYToR";
-const string ClusterlibStrings::TIMEOUTUNHEALTHYRTOD = "timeOut.unhealthyRToR";
-const string ClusterlibStrings::TIMEOUTDISCONNECTYTOR = "timeOut.disconnectYToR";
-const string ClusterlibStrings::TIMEOUTDISCONNECTRTOD = "timeOut.disconnectRToR";
-const string ClusterlibStrings::NODESTATEGREEN = "node.state.green";
-const string ClusterlibStrings::NODEBOUNCYPERIOD = "nodeBouncy.period";
-const string ClusterlibStrings::NODEBOUNCYNEVENTS = "nodeBouncy.nEvents";
-const string ClusterlibStrings::NODEMOVEBACKPERIOD = "nodeMoveBack.period";
-const string ClusterlibStrings::CLUSTERUNMANAGED = "cluster.unmanaged";
-const string ClusterlibStrings::CLUSTERDOWN = "cluster.down";
-const string ClusterlibStrings::CLUSTERFLUXPERIOD = "cluster.fluxPeriod";
-const string ClusterlibStrings::CLUSTERFLUXNEVENTS = "cluster.fluxNEvents";
-const string ClusterlibStrings::HISTORYSIZE = "history.size";
-const string ClusterlibStrings::LEADERFAILLIMIT = "leader.failLimit";
-const string ClusterlibStrings::SERVERBIN = "server.bin";
+const string ClusterlibStrings::HEARTBEATHEALTHY = "_heartBeat.healthy";
+const string ClusterlibStrings::HEARTBEATUNHEALTHY = "_heatBeat.unhealthy";
+const string ClusterlibStrings::TIMEOUTUNHEALTHYYTOR = 
+    "_timeOut.unhealthyYToR";
+const string ClusterlibStrings::TIMEOUTUNHEALTHYRTOD = 
+    "_timeOut.unhealthyRToR";
+const string ClusterlibStrings::TIMEOUTDISCONNECTYTOR = 
+    "_timeOut.disconnectYToR";
+const string ClusterlibStrings::TIMEOUTDISCONNECTRTOD = 
+    "_timeOut.disconnectRToR";
+const string ClusterlibStrings::NODESTATEGREEN = "_node.state.green";
+const string ClusterlibStrings::NODEBOUNCYPERIOD = "_nodeBouncy.period";
+const string ClusterlibStrings::NODEBOUNCYNEVENTS = "_nodeBouncy.nEvents";
+const string ClusterlibStrings::NODEMOVEBACKPERIOD = "_nodeMoveBack.period";
+const string ClusterlibStrings::CLUSTERUNMANAGED = "_cluster.unmanaged";
+const string ClusterlibStrings::CLUSTERDOWN = "_cluster.down";
+const string ClusterlibStrings::CLUSTERFLUXPERIOD = "_cluster.fluxPeriod";
+const string ClusterlibStrings::CLUSTERFLUXNEVENTS = "_cluster.fluxNEvents";
+const string ClusterlibStrings::HISTORYSIZE = "_history.size";
+const string ClusterlibStrings::LEADERFAILLIMIT = "_leader.failLimit";
+const string ClusterlibStrings::SERVERBIN = "_server.bin";
 
 /*
  * Names associated with the special clusterlib master application.
  */
-const string ClusterlibStrings::MASTER = "master";
+const string ClusterlibStrings::MASTER = "_master";
 
 };	/* End of 'namespace clusterlib' */

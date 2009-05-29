@@ -115,6 +115,7 @@ class ClusterlibTimer
         _nod0 = NULL;
         _dist0 = NULL;
         _zk = NULL;
+        delete _timer0;
         _timer0 = NULL;
     }
 

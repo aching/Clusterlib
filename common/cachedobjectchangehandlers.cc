@@ -30,13 +30,14 @@ CachedObjectChangeHandlers::handleNotifyableStateChange(NotifyableImpl *ntp,
                                                         const string &key)
 {
     TRACE(CL_LOG, "handleNotifyableStateChange");
-
     LOG_DEBUG(CL_LOG,
-              "handleNotifyableStateChange: %s on notifyable \"%s\""
+              "handleNotifyableStateChange: %s on notifyable (%s)"
               " for key %s",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
               (!ntp) ? "" : ntp->getKey().c_str(),
               key.c_str());
+
+    unsetHandlerCallbackReady(NOTIFYABLE_STATE_CHANGE, key);
     
     if (etype == ZOO_DELETED_EVENT) {
         /*
@@ -48,7 +49,7 @@ CachedObjectChangeHandlers::handleNotifyableStateChange(NotifyableImpl *ntp,
             getOps()->removeNotifyableFromCacheByKey(key);
         }
 
-        return EN_NOEVENT;
+        return EN_DELETED;
     }
 
     /*
@@ -59,7 +60,7 @@ CachedObjectChangeHandlers::handleNotifyableStateChange(NotifyableImpl *ntp,
                  "handleNotifyableStateChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
-        return EN_NOEVENT;
+        return EN_READY;
     }
 
     getOps()->establishNotifyableStateChange(ntp);
@@ -75,6 +76,8 @@ CachedObjectChangeHandlers::handleApplicationsChange(NotifyableImpl *ntp,
                                                      const string &key)
 {
     TRACE(CL_LOG, "handleApplicationsChange");
+
+    unsetHandlerCallbackReady(APPLICATIONS_CHANGE, key);
 
     /*
      * If NotifyableImpl was deleted, do not re-establish watch, pass
@@ -93,7 +96,7 @@ CachedObjectChangeHandlers::handleApplicationsChange(NotifyableImpl *ntp,
                  "handleApplicationsChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
-        return EN_NOEVENT;
+        return EN_APPSCHANGE;
     }
 
     LOG_DEBUG(CL_LOG,
@@ -109,7 +112,7 @@ CachedObjectChangeHandlers::handleApplicationsChange(NotifyableImpl *ntp,
         LOG_WARN(CL_LOG,
                  "Conversion to Root * failed for %s",
                  key.c_str());
-        return EN_NOEVENT;
+        return EN_APPSCHANGE;
     }
 
     /*
@@ -131,6 +134,8 @@ CachedObjectChangeHandlers::handleGroupsChange(NotifyableImpl *ntp,
 {
     TRACE(CL_LOG, "handleGroupsChange");
 
+    unsetHandlerCallbackReady(GROUPS_CHANGE, key);
+
     /*
      * If NotifyableImpl was deleted, do not re-establish watch, pass
      * event to clients.
@@ -148,7 +153,7 @@ CachedObjectChangeHandlers::handleGroupsChange(NotifyableImpl *ntp,
                  "handleGroupsChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
-        return EN_NOEVENT;
+        return EN_GROUPSCHANGE;
     }
 
     LOG_DEBUG(CL_LOG,
@@ -164,7 +169,7 @@ CachedObjectChangeHandlers::handleGroupsChange(NotifyableImpl *ntp,
         LOG_WARN(CL_LOG,
                  "Conversion to Group * failed for %s",
                  key.c_str());
-        return EN_NOEVENT;
+        return EN_GROUPSCHANGE;
     }
 
     /*
@@ -186,6 +191,8 @@ CachedObjectChangeHandlers::handleDataDistributionsChange(NotifyableImpl *ntp,
 {
     TRACE(CL_LOG, "handleDataDistributionsChange");
 
+    unsetHandlerCallbackReady(DATADISTRIBUTIONS_CHANGE, key);
+
     /*
      * If NotifyableImpl was deleted, do not re-establish watch, pass
      * event to clients.
@@ -203,7 +210,7 @@ CachedObjectChangeHandlers::handleDataDistributionsChange(NotifyableImpl *ntp,
                  "handleDataDistributionsChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
-        return EN_NOEVENT;
+        return EN_DISTSCHANGE;
     }
 
     /*
@@ -214,7 +221,7 @@ CachedObjectChangeHandlers::handleDataDistributionsChange(NotifyableImpl *ntp,
         LOG_WARN(CL_LOG,
                  "Conversion to Group * failed for %s",
                  key.c_str());
-        return EN_NOEVENT;
+        return EN_DISTSCHANGE;
     }
 
     LOG_DEBUG(CL_LOG,
@@ -240,6 +247,8 @@ CachedObjectChangeHandlers::handleNodesChange(NotifyableImpl *ntp,
 {
     TRACE(CL_LOG, "handleNodesChange");
 
+    unsetHandlerCallbackReady(NODES_CHANGE, key);
+
     /*                                                                        
      * If NotifyableImpl was deleted, do not re-establish watch, pass
      * event to clients.
@@ -257,7 +266,7 @@ CachedObjectChangeHandlers::handleNodesChange(NotifyableImpl *ntp,
                  "handleNodesChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
-        return EN_NOEVENT;
+        return EN_MEMBERSHIPCHANGE;
     }
 
     LOG_DEBUG(CL_LOG,
@@ -274,7 +283,7 @@ CachedObjectChangeHandlers::handleNodesChange(NotifyableImpl *ntp,
         LOG_WARN(CL_LOG,
                  "Conversion to Group * failed for %s",
                  key.c_str());
-        return EN_NOEVENT;
+        return EN_MEMBERSHIPCHANGE;
     }
 
     /*
@@ -295,6 +304,8 @@ CachedObjectChangeHandlers::handlePropertiesValueChange(NotifyableImpl *ntp,
 {
     TRACE(CL_LOG, "handlePropertiesValueChange");
 
+    unsetHandlerCallbackReady(PROPERTIES_VALUES_CHANGE, key);
+
     /*                                                                        
      * If NotifyableImpl was deleted, do not re-establish watch, pass
      * event to clients.
@@ -312,7 +323,7 @@ CachedObjectChangeHandlers::handlePropertiesValueChange(NotifyableImpl *ntp,
                  "handlePropertiesValueChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
-        return EN_NOEVENT;
+        return EN_PROPCHANGE;
     }
 
     LOG_DEBUG(CL_LOG,
@@ -331,7 +342,7 @@ CachedObjectChangeHandlers::handlePropertiesValueChange(NotifyableImpl *ntp,
         LOG_WARN(CL_LOG, 
                  "Conversion to PropertiesImpl * failed for %s",
                  key.c_str());
-        return EN_NOEVENT;
+        return EN_PROPCHANGE;
     }
 
     prop->updatePropertiesMap();
@@ -349,6 +360,8 @@ CachedObjectChangeHandlers::handleShardsChange(NotifyableImpl *ntp,
 {
     TRACE(CL_LOG, "handleShardsChange");
 
+    unsetHandlerCallbackReady(SHARDS_CHANGE, key);
+
     /*                                                                        
      * If NotifyableImpl was deleted, do not re-establish watch, pass
      * event to clients.
@@ -363,7 +376,7 @@ CachedObjectChangeHandlers::handleShardsChange(NotifyableImpl *ntp,
      */
     if (ntp == NULL) {
         LOG_WARN(CL_LOG, "No NotifyableImpl provided -- punting");
-        return EN_NOEVENT;
+        return EN_SHARDSCHANGE;
     }
 
     /*
@@ -378,7 +391,7 @@ CachedObjectChangeHandlers::handleShardsChange(NotifyableImpl *ntp,
         LOG_WARN(CL_LOG,
                  "Conversion to DataDistribution * failed for %s",
                  key.c_str());
-        return EN_NOEVENT;
+        return EN_SHARDSCHANGE;
     }
 
     LOG_DEBUG(CL_LOG,
@@ -408,6 +421,8 @@ CachedObjectChangeHandlers::handleManualOverridesChange(NotifyableImpl *ntp,
 {
     TRACE(CL_LOG, "handleManualOverridesChange");
 
+    unsetHandlerCallbackReady(MANUAL_OVERRIDES_CHANGE, key);
+
     /*                                                                        
      * If NotifyableImpl was deleted, do not re-establish watch, pass
      * event to clients.
@@ -424,7 +439,7 @@ CachedObjectChangeHandlers::handleManualOverridesChange(NotifyableImpl *ntp,
         LOG_WARN(CL_LOG, 
                  "handleManualOverridesChange: "
                  "No NotifyableImpl provided -- punting");
-        return EN_NOEVENT;
+        return EN_MANUALOVERRIDESCHANGE;
     }
 
     /*
@@ -439,7 +454,7 @@ CachedObjectChangeHandlers::handleManualOverridesChange(NotifyableImpl *ntp,
         LOG_WARN(CL_LOG,
                  "Conversion to DataDistributionImpl * failed for %s",
                  key.c_str());
-        return EN_NOEVENT;
+        return EN_MANUALOVERRIDESCHANGE;
     }
 
     LOG_DEBUG(CL_LOG,
@@ -470,6 +485,8 @@ CachedObjectChangeHandlers::handleClientStateChange(NotifyableImpl *ntp,
 {
     TRACE(CL_LOG, "handleClientStateChange");
 
+    unsetHandlerCallbackReady(NODE_CLIENT_STATE_CHANGE, key);
+
     /*                                                                       
      * If NotifyableImpl was deleted, do not re-establish watch, pass
      * event to clients.
@@ -486,7 +503,7 @@ CachedObjectChangeHandlers::handleClientStateChange(NotifyableImpl *ntp,
         LOG_WARN(CL_LOG, 
                  "handleClientStateChange:"
                  " No NotifyableImpl provided -- punting");
-        return EN_NOEVENT;
+        return EN_CLIENTSTATECHANGE;
     }
 
     /*
@@ -501,7 +518,7 @@ CachedObjectChangeHandlers::handleClientStateChange(NotifyableImpl *ntp,
         LOG_WARN(CL_LOG,
                  "Conversion to NodeImpl * failed for %s",
                  key.c_str());
-        return EN_NOEVENT;
+        return EN_CLIENTSTATECHANGE;
     }
 
     /*
@@ -542,6 +559,8 @@ CachedObjectChangeHandlers::handleMasterSetStateChange(NotifyableImpl *ntp,
 {
     TRACE(CL_LOG, "handleMasterSetStateChange");
 
+    unsetHandlerCallbackReady(NODE_MASTER_SET_STATE_CHANGE, key);
+
     /*
      * If NotifyableImpl was deleted, do not re-establish watch, pass
      * event to clients.
@@ -556,7 +575,7 @@ CachedObjectChangeHandlers::handleMasterSetStateChange(NotifyableImpl *ntp,
      */
     if (ntp == NULL) {
         LOG_WARN(CL_LOG, "No NotifyableImpl provided -- punting");
-        return EN_NOEVENT;
+        return EN_MASTERSTATECHANGE;
     }
 
     /*
@@ -571,7 +590,7 @@ CachedObjectChangeHandlers::handleMasterSetStateChange(NotifyableImpl *ntp,
         LOG_WARN(CL_LOG,
                  "Conversion to NodeImpl * failed for %s",
                  key.c_str());
-        return EN_NOEVENT;
+        return EN_MASTERSTATECHANGE;
     }
 
     LOG_DEBUG(CL_LOG,
@@ -608,12 +627,14 @@ CachedObjectChangeHandlers::handleNodeConnectionChange(NotifyableImpl *ntp,
 {
     TRACE(CL_LOG, "handleNodeConnectionChange");
 
+    unsetHandlerCallbackReady(NODE_CONNECTION_CHANGE, key);
+
     /*
      * If there's no Notifyable, punt.
      */
     if (ntp == NULL) {
         LOG_WARN(CL_LOG, "No NotifyableImpl provided -- punting");
-        return EN_NOEVENT;
+        return EN_CONNECTEDCHANGE;
     }
 
     /*
@@ -628,7 +649,7 @@ CachedObjectChangeHandlers::handleNodeConnectionChange(NotifyableImpl *ntp,
         LOG_WARN(CL_LOG,
                  "Conversion to NodeImpl * failed for %s",
                  key.c_str());
-        return EN_NOEVENT;
+        return EN_CONNECTEDCHANGE;
     }
 
     LOG_DEBUG(CL_LOG,
@@ -652,7 +673,7 @@ CachedObjectChangeHandlers::handleNodeConnectionChange(NotifyableImpl *ntp,
 
     np->setConnectedAndTime(curconn, FactoryOps::getCurrentTimeMillis());
 
-    return (curconn == true) ? EN_CONNECTED : EN_DISCONNECTED;
+    return EN_CONNECTEDCHANGE;
 }
 
 /*
@@ -668,6 +689,8 @@ CachedObjectChangeHandlers::handleSynchronizeChange(NotifyableImpl *ntp,
 {
     TRACE(CL_LOG, "handleSynchronizeChange");
 
+    /* No need to reset the callback i.e. unsetHandlerCallbackReady(). */
+
     {
         Locker l1(getOps()->getSyncLock());
         getOps()->incrSyncIdCompleted();
@@ -678,6 +701,135 @@ CachedObjectChangeHandlers::handleSynchronizeChange(NotifyableImpl *ntp,
               "handleSynchronizeChange: sent conditional signal");
 
     return EN_NOEVENT;
+}
+
+bool
+CachedObjectChangeHandlers::isHandlerCallbackReady(CachedObjectChange change,
+                                                   const string &key)
+{
+    TRACE(CL_LOG, "isHandlerCallbackReady");
+
+    Locker l1(getLock());
+
+    map<CachedObjectChange, map<string, bool> >::const_iterator changeIt = 
+        m_handlerKeyCallbackCount.find(change);
+    if (changeIt != m_handlerKeyCallbackCount.end()) {
+        map<string, bool>::const_iterator keyIt = changeIt->second.find(key);
+        if (keyIt != changeIt->second.end()) {
+            return keyIt->second;
+        }
+    }
+
+    return false;
+}
+
+void
+CachedObjectChangeHandlers::setHandlerCallbackReady(
+    CachedObjectChange change,
+    const string &key)
+{
+    TRACE(CL_LOG, "setHandlerCallbackReady");
+
+    Locker l1(getLock());
+
+    map<CachedObjectChange, map<string, bool> >::iterator changeIt = 
+        m_handlerKeyCallbackCount.find(change);
+    if (changeIt != m_handlerKeyCallbackCount.end()) {
+        map<string, bool>::iterator keyIt = changeIt->second.find(key);
+        if (keyIt != changeIt->second.end()) {
+            if (keyIt->second == true) {
+                LOG_FATAL(CL_LOG,
+                          "setHandlerCallbackReady: "
+                          "change %d, key %s, True!",
+                          change,
+                          key.c_str());
+                throw InconsistentInternalStateException(
+                    "setHandlerCallbackReady: True.");
+            }
+        }
+    }
+
+    m_handlerKeyCallbackCount[change][key] = true;
+}
+
+void
+CachedObjectChangeHandlers::unsetHandlerCallbackReady(
+    CachedObjectChange change,
+    const string &key)
+{
+    TRACE(CL_LOG, "unsetHandlerCallbackReady");
+
+    Locker l1(getLock());
+
+    map<CachedObjectChange, map<string, bool> >::iterator changeIt = 
+        m_handlerKeyCallbackCount.find(change);
+    if (changeIt == m_handlerKeyCallbackCount.end()) {
+        LOG_FATAL(CL_LOG,
+                  "unsetHandlerCallbackReady: change %d, key %s, "
+                  "change not defined.",
+                  change,
+                  key.c_str());
+        throw InconsistentInternalStateException("unsetHandlerCallbackReady: "
+                                                 "Change not initialized.");
+    }
+    map<string, bool>::iterator keyIt = 
+        changeIt->second.find(key);
+    if (keyIt == changeIt->second.end()) {
+        LOG_FATAL(CL_LOG,
+                  "unsetHandlerCallbackReady: change %d, key %s, "
+                  "key not defined.",
+                  change,
+                  key.c_str());
+        throw InconsistentInternalStateException("unsetHandlerCallbackReady: "
+                                                 "Key not initialized.");
+    }
+
+    if (keyIt->second != true) {
+        LOG_FATAL(CL_LOG,
+                  "unsetHandlerCallbackReady: change %d, key %s, Not true!",
+                  change,
+                  key.c_str());
+        throw InconsistentInternalStateException("unsetHandlerCallbackReady: "
+                                                 "Not true.");
+    }
+    
+    keyIt->second = false;
+}
+
+CachedObjectEventHandler *
+CachedObjectChangeHandlers::getChangeHandler(CachedObjectChange change) {
+    switch (change) {
+        case NOTIFYABLE_STATE_CHANGE:
+            return &m_notifyableStateChangeHandler;
+        case APPLICATIONS_CHANGE:
+            return &m_applicationsChangeHandler;
+        case GROUPS_CHANGE:
+            return &m_groupsChangeHandler;
+        case DATADISTRIBUTIONS_CHANGE:
+            return &m_dataDistributionsChangeHandler;
+        case NODES_CHANGE:
+            return &m_nodesChangeHandler;
+        case PROPERTIES_VALUES_CHANGE:
+            return &m_propertiesValueChangeHandler;
+        case SHARDS_CHANGE:
+            return &m_shardsChangeHandler;
+        case MANUAL_OVERRIDES_CHANGE:
+            return &m_manualOverridesChangeHandler;
+        case NODE_CLIENT_STATE_CHANGE:
+            return &m_nodeClientStateChangeHandler;
+        case NODE_MASTER_SET_STATE_CHANGE:
+            return &m_nodeMasterSetStateChangeHandler;
+        case NODE_CONNECTION_CHANGE:
+            return &m_nodeConnectionChangeHandler;
+        case SYNCHRONIZE_CHANGE:
+            return &m_synchronizeChangeHandler;
+        default:
+            LOG_FATAL(CL_LOG, 
+                      "getChangeHandler: Change %d is not defined\n",
+                      change);
+            throw InvalidArgumentsException("getChangeHandler: "
+                                            "change is not defined");
+    }
 }
 
 };	/* End of 'namespace clusterlib' */

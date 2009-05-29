@@ -63,16 +63,16 @@ ClientImpl::consumeClusterEvents(void *param)
 	}
 
 	LOG_DEBUG(CL_LOG,
-                  "ConsumeClusterEvents: Received user event 0x%x with Notifyable "
-                  "0x%x and Event %d",
+                  "ConsumeClusterEvents: Received user event 0x%x with "
+                  "path %s and Event %d",
                   (int32_t) cepp,
-                  (int32_t) cepp->getTarget(),
+                  cepp->getKey().c_str(),
                   cepp->getEvent());
 
         /*
          * Dispatch this event.
          */
-        dispatchHandlers(cepp->getTarget(), cepp->getEvent());
+        dispatchHandlers(cepp->getKey(), cepp->getEvent());
 
         /*
          * Recycle the payload.
@@ -91,15 +91,14 @@ ClientImpl::consumeClusterEvents(void *param)
  * Call all handlers for the given Notifyable and Event.
  */
 void
-ClientImpl::dispatchHandlers(Notifyable *np, Event e)
+ClientImpl::dispatchHandlers(const string &key, Event e)
 {
-    if (np == NULL) {
+    if (key.empty()) {
         LOG_INFO(CL_LOG,
-                 "dispatchHandlers: NULL np, not dispatching");
+                 "dispatchHandlers: empty key, not dispatching");
         return;
     }
 
-    string key = np->getKey();
     EventHandlersMultimapRange range = m_eventHandlers.equal_range(key);
     EventHandlersMultimap copy;
     EventHandlersIterator ehIt;
@@ -108,19 +107,19 @@ ClientImpl::dispatchHandlers(Notifyable *np, Event e)
 
     LOG_INFO(CL_LOG,
              "dispatchHandlers: Looking for handlers for event: %d on: %s",
-             e, np->getName().c_str());
+             e, key.c_str());
 
     {
         Locker l1(getEventHandlersLock());
 
         /*
-         * If there are no handlers registered for this Notifyable
+         * If there are no handlers registered for this key,
          * then punt.
          */
         if (range.first == m_eventHandlers.end()) {
             LOG_INFO(CL_LOG,
                      "dispatchHandlers: No handlers found for event %d on %s",
-                     e, np->getName().c_str());
+                     e, key.c_str());
             return;
         }
 
@@ -169,7 +168,7 @@ ClientImpl::dispatchHandlers(Notifyable *np, Event e)
 
     LOG_INFO(CL_LOG,
              "dispatchEventHandlers: Found %d handlers for event %d on %s",
-             counter, e, np->getName().c_str());
+             counter, e, key.c_str());
 
     /*
      * If there are no handlers registered for this event on

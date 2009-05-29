@@ -60,7 +60,6 @@ class ClusterlibStrings
     static const std::string GOLDENSHARDS;
     static const std::string MANUALOVERRIDES;
 
-    static const std::string LOCK;
     static const std::string BID_SPLIT;
 
     static const std::string NOTIFYABLELOCK;
@@ -73,7 +72,6 @@ class ClusterlibStrings
 
     static const std::string ENDEVENT;
 
-    static const std::string BIDPREFIX;
     static const std::string INFLUX;
     static const std::string HEALTHY;
     static const std::string UNHEALTHY;

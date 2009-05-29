@@ -28,6 +28,8 @@ class RootImpl
     virtual Application *getApplication(const std::string &appName,
                                         bool create = false);
 
+    virtual Notifyable *getNotifyableFromKey(const std::string &key);
+
     virtual Notifyable *getMyParent() const
     {
         throw InvalidMethodException("RootImpl does not have a parent");

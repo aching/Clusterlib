@@ -102,7 +102,9 @@ class RetryHandler {
 };
     
     
-//the implementation of the global ZK event watcher
+/*
+ * The implementation of the global ZK event watcher
+ */
 void zkWatcher(zhandle_t *zhp, 
                int32_t type, 
                int32_t state, 
@@ -111,35 +113,35 @@ void zkWatcher(zhandle_t *zhp,
 {
     TRACE(LOG, "zkWatcher");
 
-    //a workaround for buggy ZK API
-    string sPath = 
-        (path == NULL || 
-         state == ZOO_SESSION_EVENT || 
-         state == ZOO_NOTWATCHING_EVENT)
-        ? "" 
-        : string(path);
-
     LOG_DEBUG(LOG,
-              "zkWatcher: Received a ZK event - type: %s, state: %d, path: "
-              "'%s', context: '0x%x'",
+              "zkWatcher: Received a ZK event - type: %s, state: %s, path: "
+              "'%s', context: '0x%x', watcherCtx: '0x%x'",
               zk::ZooKeeperAdapter::getEventString(type).c_str(), 
-              state, 
-              sPath.c_str(), 
-              (unsigned int) zoo_get_context(zhp));
+              zk::ZooKeeperAdapter::getStateString(state).c_str(), 
+              path, 
+              (unsigned int) zoo_get_context(zhp),
+              (unsigned int) watcherCtx);
 
     ZooKeeperAdapter *zkap = (ZooKeeperAdapter *)zoo_get_context(zhp);
     if (zkap != NULL) {
-        zkap->enqueueEvent(type, state, sPath);
+        /* 
+         * If the watcherCtx is the pointer to the ZooKeeperAdapter,
+         * then do not pass it as the context, since the event expects
+         * a UserContextAndListener pointer. 
+         */
+        if (watcherCtx == zoo_get_context(zhp)) {
+            watcherCtx = NULL;
+        }
+        zkap->enqueueEvent(type, state, path, watcherCtx);
     } else {
         LOG_ERROR(LOG,
-                  "Skipping ZK event (type: %s, state: %d, path: '%s'), "
+                  "Skipping ZK event (type: %s, state: %s, path: '%s'), "
                   "because ZK passed no context",
                   zk::ZooKeeperAdapter::getEventString(type).c_str(), 
-                  state, 
-                  sPath.c_str());
+                  zk::ZooKeeperAdapter::getStateString(state).c_str(),
+                  path);
     }
 }
-
 
 
 // =======================================================================
@@ -155,20 +157,47 @@ ZooKeeperAdapter::getEventString(int32_t etype)
     else if (etype == ZOO_CHILD_EVENT) {
         res = "ZOO_CHILD_EVENT";
     }
-    else if (etype ==ZOO_CREATED_EVENT) {
+    else if (etype == ZOO_CREATED_EVENT) {
         res = "ZOO_CREATED_EVENT";
     }
-    else if (etype ==ZOO_DELETED_EVENT) {
+    else if (etype == ZOO_DELETED_EVENT) {
         res = "ZOO_DELETED_EVENT";
     }
-    else if (etype ==ZOO_NOTWATCHING_EVENT) {
+    else if (etype == ZOO_NOTWATCHING_EVENT) {
         res = "ZOO_NOTWATCHING_EVENT";
     }
-    else if (etype ==ZOO_SESSION_EVENT) {
+    else if (etype == ZOO_SESSION_EVENT) {
         res = "ZOO_SESSION_EVENT";
     }
     else {
-        res = "unknown type";
+        res = "unknown event type";
+    }
+
+    return res;
+}
+
+string
+ZooKeeperAdapter::getStateString(int32_t state)
+{
+    string res;
+
+    if (state == ZOO_EXPIRED_SESSION_STATE) {
+        res = "ZOO_EXPIRED_SESSION_STATE";
+    }
+    else if (state == ZOO_AUTH_FAILED_STATE) {
+        res = "ZOO_AUTH_FAILED_STATE";
+    }
+    else if (state == ZOO_CONNECTING_STATE) {
+        res = "ZOO_CONNECTING_STATE";
+    }
+    else if (state == ZOO_ASSOCIATING_STATE) {
+        res = "ZOO_ASSOCIATING_STATE";
+    }
+    else if (state == ZOO_CONNECTED_STATE) {
+        res = "ZOO_CONNECTED_STATE";
+    }
+    else {
+        res = "unknown state";
     }
 
     return res;
@@ -440,85 +469,65 @@ ZooKeeperAdapter::sync(const string &path,
      * At this point, we insert the sync event into the blocking queue
      * for other listeners.
      */
-    m_zkContextsMutex.acquire();
-    registerContext(SYNC_DATA, 
-                    clusterlib::ClusterlibStrings::SYNC, 
-                    listener, 
-                    context);
-    m_zkContextsMutex.release();
+
+    /*
+     * Allocate the struct passed in as context for.  It will be
+     * deallocated when the event is processed through the watcher
+     * function.
+     */
+    UserContextAndListener *userContextAndListener = 
+        new UserContextAndListener(context, listener);
     m_events.put(ZKWatcherEvent(ZOO_SESSION_EVENT, 
                                 ZOO_CONNECTED_STATE,
-                                clusterlib::ClusterlibStrings::SYNC));
-
+                                clusterlib::ClusterlibStrings::SYNC,
+                                userContextAndListener));
     return true;
 }
 
 void
-ZooKeeperAdapter::handleAsyncEvent(int32_t type, 
-				   int32_t state, 
-				   const string &path)
+ZooKeeperAdapter::handleAsyncEvent(const ZKWatcherEvent &event)
 {
     TRACE(LOG, "handleAsyncEvent");
 
     LOG_DEBUG(LOG, 
-              "handleAsyncEvent: type: %s, state %d, path: %s",
-              getEventString(type).c_str(),
-              state, 
-              path.c_str());
+              "handleAsyncEvent: type: %s, state %s, path: %s, context: 0x%x",
+              getEventString(event.getType()).c_str(),
+              getStateString(event.getState()).c_str(),
+              event.getPath().c_str(),
+              reinterpret_cast<uint32_t>(event.getContext()));
 
-    Listener2Context context, context2;
+    /* 
+     * If there is a context, then it should be of type
+     * UserContextAndListener.  If it has a listener, then send the
+     * event to on that listener.  Extract the user context if there
+     * is one.  Otherwise, send it to all listeners.
+     */
+    ZKEventListener *listener = NULL;
+    void *userContext = NULL;
+    UserContextAndListener *userContextAndListener = NULL;
+    if (event.getContext() != NULL) {
+        userContextAndListener = 
+            reinterpret_cast<UserContextAndListener *>(event.getContext());
+        listener = userContextAndListener->listener;
+        userContext = userContextAndListener->userContext;
+    }
 
-    /* Ignore internal ZK events */
-    if (((type != ZOO_SESSION_EVENT) || 
-         (!path.compare(clusterlib::ClusterlibStrings::SYNC))) &&
-        (type != ZOO_NOTWATCHING_EVENT)) {
-        m_zkContextsMutex.acquire();
-        /* Check if the user context is available */
-        if (type == ZOO_CHANGED_EVENT || type == ZOO_DELETED_EVENT) {
-            /*
-             * There could be two types of interest here.  In this
-             * case, try to notify twice.
-             */
-            context = findAndRemoveListenerContext(GET_NODE_DATA, path);
-            context2 = findAndRemoveListenerContext(NODE_EXISTS, path);
-        } 
-        else if (type == ZOO_CHILD_EVENT) {
-            context = findAndRemoveListenerContext(GET_NODE_CHILDREN, path);
-        } 
-        else if (type == ZOO_CREATED_EVENT) {
-            context = findAndRemoveListenerContext(NODE_EXISTS, path);
-        } 
-        else if ((type == ZOO_SESSION_EVENT) && 
-                 (!path.compare(clusterlib::ClusterlibStrings::SYNC))) {
-            /* Special synthetic sync event */
-            context = findAndRemoveListenerContext(SYNC_DATA, path);
-        }
-
-        m_zkContextsMutex.release();
-
-        /*
-         * Only forward events that do have context. If we
-         * do not find at least one context, throw.
-         */
-        bool contextFound = false;
-        if (!context.empty()) {
-            handleEventInContext(type, state, path, context);
-            contextFound = true;
-        }
-        if (!context2.empty()) {
-            handleEventInContext(type, state, path, context2);
-            contextFound = true;
-        }
-        if (!contextFound) {
-            throw ZooKeeperException("Tried to handle non-session event "
-                                     "without context", 
-                                     m_state == AS_CONNECTED);
-        }
+    ZKWatcherEvent sentEvent(event.getType(), 
+                             event.getState(), 
+                             event.getPath(),
+                             userContext);
+    if (listener != NULL) {
+        fireEvent(listener, sentEvent);
     }
     else {
-        /* Forward these events to listeners as they will be handled
-         * specially by listeners. */
-        handleEventInContext(type, state, path, context);
+        fireEventToAllListeners(sentEvent);
+    }
+
+    /*
+     * Clean up the context struct from memory.
+     */
+    if (userContextAndListener != NULL) {
+        delete userContextAndListener;
     }
 }
 
@@ -533,64 +542,11 @@ ZooKeeperAdapter::injectEndEvent()
                                 ClusterlibStrings::ENDEVENT.c_str()));
 }
 
-/** If there is no context, forward events to all listeners */
-void
-ZooKeeperAdapter::handleEventInContext(int32_t type,
-				       int32_t state,
-				       const string &path,
-				       const Listener2Context &listeners)
-{
-    TRACE(LOG, "handleEventInContext");
-
-    LOG_DEBUG(LOG,
-              "handleEventInContext: listeners: %u, type: %s, state: %d, "
-              "path: %s", 
-              listeners.empty() ? 0 : 1, 
-              getEventString(type).c_str(), 
-              state, 
-              path.c_str());
-    
-    if (listeners.empty()) {
-        /* Propagate with empty context - i.e. ZOO_SESSION_EVENTS */
-        ZKWatcherEvent event(type, state, path);
-        LOG_DEBUG(LOG,
-                  "handleEventInContext: Listener does not exist, event 0x%x",
-                  reinterpret_cast<uint32_t>(&event));
-        fireEventToAllListeners(event);
-    } 
-    else {
-        for (Listener2Context::const_iterator i = listeners.begin();
-             i != listeners.end();
-             ++i) {
-            ZKWatcherEvent event(type, state, path, i->second);
-            if (i->first != NULL) {
-                LOG_DEBUG(LOG,
-                          "handleEventInContext: Listener 0x%x exists, "
-                          "event 0x%x",
-                          (uint32_t) i->first,
-                          reinterpret_cast<uint32_t>(&event));
-                
-                fireEvent(i->first, event);
-            } 
-            /* 
-             * This functionality seems to apply if you want to send
-             * an event to all listeners with a context.  It is
-             * unintuitive and might need to be removed if not used.
-             */
-            else {
-                LOG_WARN(LOG,
-                         "handleEventInContext: Listener is NULL, "
-                         "but context exists!");
-                fireEventToAllListeners(event);
-            }
-        }
-    }
-}
-
 void 
 ZooKeeperAdapter::enqueueEvent(int32_t type,
                                int32_t state,
-                               const string &path)
+                               const string &path,
+                               ContextType context)
 {
     TRACE(LOG, "enqueueEvents");
 
@@ -604,7 +560,7 @@ ZooKeeperAdapter::enqueueEvent(int32_t type,
     /*
      * Pass the event to the handler.
      */
-    m_events.put(ZKWatcherEvent(type, state, path));
+    m_events.put(ZKWatcherEvent(type, state, path, context));
 }
 
 void
@@ -624,17 +580,19 @@ ZooKeeperAdapter::processEvents(void *param)
         if (!timedOut) {
             if (source.getType() == ZOO_SESSION_EVENT) {
                 LOG_INFO(LOG,
-                         "processEvents: Received SESSION event, state: %d. "
+                         "processEvents: Received SESSION event, state: %s. "
                          "Adapter state: %d",
-                         source.getState(), 
+                         getStateString(source.getState()).c_str(),
                          m_state);
                 m_stateLock.lock();
                 if (source.getState() == ZOO_CONNECTED_STATE) {
                     resetRemainingConnectTimeout();
                     setState(AS_CONNECTED);
-                } else if (source.getState() == ZOO_CONNECTING_STATE) {
+                } 
+                else if (source.getState() == ZOO_CONNECTING_STATE) {
                     setState(AS_CONNECTING);
-                } else if (source.getState() == ZOO_EXPIRED_SESSION_STATE) {
+                } 
+                else if (source.getState() == ZOO_EXPIRED_SESSION_STATE) {
                     LOG_INFO(LOG, 
                              "processEvents: Received EXPIRED_SESSION event "
                              " with path %s",
@@ -652,10 +610,10 @@ ZooKeeperAdapter::processEvents(void *param)
             }
 
             LOG_DEBUG(LOG,
-                      "processEvents: Received event, type: %s, state: %d, "
-                      "path: %s. Adapter state: %d",
+                      "processEvents: Received event, type: %s, state: %s, "
+                      "path: %s, adapter state: %d",
                       getEventString(source.getType()).c_str(), 
-                      source.getState(), 
+                      getStateString(source.getState()).c_str(),
                       source.getPath().c_str(), 
                       m_state);
 
@@ -688,20 +646,20 @@ ZooKeeperAdapter::processUserEvents(void *param)
             try {
 		LOG_INFO(LOG,
                          "processUserEvents: processing event (type: %s, "
-                         "state: %d, path: %s)",
+                         "state: %s, path: %s, context 0x%x)",
                          getEventString(source.getType()).c_str(),
-                         source.getState(),
-                         source.getPath().c_str());
-			  
-                handleAsyncEvent(source.getType(),
-                                 source.getState(),
-                                 source.getPath());
-            } catch (std::exception &e) {
+                         getStateString(source.getState()).c_str(),
+                         source.getPath().c_str(),
+                         reinterpret_cast<uint32_t>(source.getContext()));
+		
+                handleAsyncEvent(source);
+            } 
+            catch (std::exception &e) {
                 LOG_ERROR(LOG, 
-                          "Unable to process event (type: %s, state: %d, "
+                          "Unable to process event (type: %s, state: %s, "
                           "path: %s), because of exception: %s",
                           getEventString(source.getType()).c_str(),
-                          source.getState(),
+                          getStateString(source.getState()).c_str(),
                           source.getPath().c_str(),
                           e.what());
             }
@@ -713,80 +671,6 @@ ZooKeeperAdapter::processUserEvents(void *param)
              "this: 0x%x, thread: 0x%x",
              (int32_t) this,
              (uint32_t) pthread_self());
-}
-
-void 
-ZooKeeperAdapter::registerContext(WatchableMethod method,
-                                  const string &path,
-                                  ZKEventListener *listener,
-                                  ContextType context)
-{
-    TRACE(LOG, "registerContext");
-
-    LOG_DEBUG(LOG,
-	      "registerContext: method %d, path %s, listener 0x%x",
-              method,
-              path.c_str(),
-              (uint32_t) listener);
-
-    if (!listener) {
-	LOG_ERROR(LOG, 
-                  "registerContext must have a valid listener");
-	throw ZooKeeperException(
-            "registerContext must have a valid listener",
-            m_state == AS_CONNECTED);
-        
-    }
-
-    if (!context) {
-	LOG_ERROR(LOG, 
-                  "registerContext must have a valid context");
-	throw ZooKeeperException(
-            "registerContext must have a valid context",
-            m_state == AS_CONNECTED);
-    }
-
-    Path2Listener2Context::iterator listener2contextIt  =
-        m_zkContexts[method].find(path);
-    if (listener2contextIt != m_zkContexts[method].end()) {
-        Listener2Context::iterator contextIt = 
-            listener2contextIt->second.find(listener);
-        if (contextIt != listener2contextIt->second.end()) {
-            LOG_WARN(LOG, 
-                     "registerContext: Context (old = 0x%x, new = 0x%x) is "
-                     "replaced for method %d, "
-                     "path %s and listener 0x%x",
-                     (uint32_t) contextIt->second,
-                     (uint32_t) context,
-                     method,
-                     path.c_str(),
-                     (uint32_t) listener);
-        }
-    }
-    m_zkContexts[method][path][listener] = context;
-}
-
-ZooKeeperAdapter::Listener2Context
-ZooKeeperAdapter::findAndRemoveListenerContext(WatchableMethod method,
-                                               const string &path)
-{
-    TRACE(LOG, "findAndRemoveListenerContext");
-
-    Listener2Context listeners;
-    Path2Listener2Context::iterator elem = m_zkContexts[method].find(path);
-    if (elem != m_zkContexts[method].end()) {
-        listeners = elem->second;
-        m_zkContexts[method].erase(elem);
-    } 
-
-    LOG_DEBUG(LOG, 
-              "findAndRemoveListenerContext: Found and removed %u listeners "
-              "from key %s for method %d",
-              listeners.size(),
-              path.c_str(),
-              method);
-
-    return listeners;
 }
 
 void 
@@ -1122,34 +1006,41 @@ ZooKeeperAdapter::nodeExists(const string &path,
 
     int32_t rc;
     RetryHandler rh(m_zkConfig);
+
+    LOG_DEBUG(LOG,
+              "nodeExists: path (%s), listener (0x%x), "
+              "context (0x%x), stat (0x%x)\n",
+              path.c_str(),
+              reinterpret_cast<uint32_t>(listener),
+              reinterpret_cast<uint32_t>(context),
+              reinterpret_cast<uint32_t>(stat));
+
+    /*
+     * Allocate the struct passed in as context for zoo_wexists().  It
+     * will be deallocated when the event is processed through the
+     * watcher function.
+     */
+    UserContextAndListener *userContextAndListener = 
+        new UserContextAndListener(context, listener);
     do {
         verifyConnection();
-        if (context != NULL) {    
-            m_zkContextsMutex.acquire();
+        if (listener == NULL) {
             rc = zoo_exists(mp_zkHandle,
                             path.c_str(),
-                            (listener != NULL ? 1 : 0),
+                            0,
                             stat);
-            if (rc == ZOK || rc == ZNONODE) {
-                registerContext(NODE_EXISTS, path, listener, context);
-            }
-            m_zkContextsMutex.release();
-        } else {
-	    if (listener) {
-		throw ZooKeeperException(
-                    "A watch can be set only if the context is not NULL",
-                    -1,
-                    m_state == AS_CONNECTED);
-            }
-            rc = zoo_exists(mp_zkHandle,
-                            path.c_str(),
-                            (listener != NULL ? 1 : 0),
-                            stat);
+        }
+        else {
+            rc = zoo_wexists(mp_zkHandle,
+                             path.c_str(),
+                             zkWatcher,
+                             userContextAndListener,
+                             stat);
         }
     } while ((rc != ZOK) && (rh.handleRC(rc)));
     if (rc != ZOK) {
         if (rc == ZNONODE) {
-            LOG_TRACE(LOG, 
+            LOG_DEBUG(LOG, 
                       "Node %s does not exist", 
                       path.c_str());
             return false;
@@ -1158,6 +1049,7 @@ ZooKeeperAdapter::nodeExists(const string &path,
                   "nodeExists: Error %d for %s", 
                   rc, 
                   path.c_str());
+        delete userContextAndListener;
         throw ZooKeeperException(
             string("Unable to check existence of node ") + path,
             rc,
@@ -1182,29 +1074,35 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
 
     int32_t rc;
     RetryHandler rh(m_zkConfig);
+
+    LOG_DEBUG(LOG,
+              "getNodeChildren: path (%s), listener (0x%x), "
+              "context (0x%x)\n",
+              path.c_str(),
+              reinterpret_cast<uint32_t>(listener),
+              reinterpret_cast<uint32_t>(context));
+
+    /*
+     * Allocate the struct passed in as context for
+     * zoo_wget_children().  It will be deallocated when the event is
+     * processed through the watcher function.
+     */
+    UserContextAndListener *userContextAndListener = 
+        new UserContextAndListener(context, listener);
     do {
         verifyConnection();
-        if (context != NULL) {
-            m_zkContextsMutex.acquire();
+        if (listener == NULL) {
             rc = zoo_get_children(mp_zkHandle,
                                   path.c_str(), 
-                                  (listener != NULL ? 1 : 0), 
+                                  0,
                                   &children);
-            if (rc == ZOK) {
-                registerContext(GET_NODE_CHILDREN, path, listener, context);
-            }
-            m_zkContextsMutex.release();
-        } else {
-	    if (listener) {
-		throw ZooKeeperException(
-                    "A watch can be set only if the context is not NULL",
-                    -1,
-                    m_state == AS_CONNECTED);
-            }
-            rc = zoo_get_children(mp_zkHandle,
-                                  path.c_str(), 
-                                  (listener != NULL ? 1 : 0),
-                                  &children);
+        }
+        else {
+            rc = zoo_wget_children(mp_zkHandle,
+                                   path.c_str(), 
+                                   zkWatcher,
+                                   userContextAndListener,
+                                   &children);
         }
     } while ((rc != ZOK) && (rh.handleRC(rc)));
     if (rc != ZOK) {
@@ -1212,13 +1110,21 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
                   "getNodeChildren: Error %d for %s", 
                   rc, 
                   path.c_str());
+        delete userContextAndListener;
         throw ZooKeeperException(string("Unable to get children of node ") +
                                  path, 
                                  rc,
                                  m_state == AS_CONNECTED);
-    } else {
+    } 
+    else {
+        if (listener == NULL) {
+            delete userContextAndListener;
+        }
+
         for (int32_t i = 0; i < children.count; ++i) {
-            //convert each child's path from relative to absolute 
+            /*
+             * Convert each child's path from relative to absolute.
+             */
             string absPath(path);
             if (path != "/") {
                 absPath.append("/");
@@ -1226,7 +1132,10 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
             absPath.append(children.data[i]); 
             nodeList.push_back(absPath);
         }
-        //make sure the order is always deterministic
+        /*
+         * Make sure the order is always deterministic.  Note: Is this
+         * necessary?
+         */
         sort(nodeList.begin(), nodeList.end());
     }
 }
@@ -1246,8 +1155,8 @@ ZooKeeperAdapter::getNodeData(const string &path,
 
     validatePath(path);
    
-    const int32_t MAX_DATA_LENGTH = 128 * 1024;
-    char buffer[MAX_DATA_LENGTH];
+    const int32_t MAX_DATA_LENGTH = 1024 * 1024;
+    char *buffer = new char[MAX_DATA_LENGTH];
     memset(buffer, 0, MAX_DATA_LENGTH);
     struct Stat tmpStat;
     if (stat == NULL) {
@@ -1258,30 +1167,41 @@ ZooKeeperAdapter::getNodeData(const string &path,
     int32_t rc;
     int32_t len;
     RetryHandler rh(m_zkConfig);
+
+    LOG_DEBUG(LOG,
+              "getNodeData: path (%s), listener (0x%x), "
+              "context (0x%x), stat (0x%x)\n",
+              path.c_str(),
+              reinterpret_cast<uint32_t>(listener),
+              reinterpret_cast<uint32_t>(context),
+              reinterpret_cast<uint32_t>(stat));
+
+    /*
+     * Allocate the struct passed in as context for zoo_wget().  It
+     * will be deallocated when the event is processed through the
+     * watcher function.
+     */
+    UserContextAndListener *userContextAndListener = 
+        new UserContextAndListener(context, listener);
     do {
         verifyConnection();
         len = MAX_DATA_LENGTH - 1;
-        if (context != NULL) {
-            m_zkContextsMutex.acquire();
+        if (listener == NULL) {
             rc = zoo_get(mp_zkHandle, 
                          path.c_str(),
-                         (listener != NULL ? 1 : 0),
-                         buffer, &len, stat);
-            if (rc == ZOK) {
-                registerContext(GET_NODE_DATA, path, listener, context);
-            }
-            m_zkContextsMutex.release();
-        } else {
-	    if (listener) {
-		throw ZooKeeperException(
-                    "A watch can be set only if the context is not NULL",
-                    -1,
-                    m_state == AS_CONNECTED);
-            }
-            rc = zoo_get(mp_zkHandle,
-                         path.c_str(),
-                         (listener != NULL ? 1 : 0),
-                         buffer, &len, stat);
+                         0,
+                         buffer, 
+                         &len, 
+                         stat);
+        }
+        else {
+            rc = zoo_wget(mp_zkHandle, 
+                          path.c_str(),
+                          zkWatcher,
+                          userContextAndListener,
+                          buffer, 
+                          &len, 
+                          stat);
         }
     } while ((rc != ZOK) && (rh.handleRC(rc)));
     if (rc != ZOK) {
@@ -1289,12 +1209,20 @@ ZooKeeperAdapter::getNodeData(const string &path,
                   "getNodeData: Error %d for %s", 
                   rc, 
                   path.c_str());
+        delete [] buffer;
+        delete userContextAndListener;
         throw ZooKeeperException(
             string("Unable to get data of node ") + path,
             rc,
             m_state == AS_CONNECTED);
-    } else {
-        return string(buffer, buffer + len);
+    } 
+    else {
+        if (listener == NULL) {
+            delete userContextAndListener;
+        }
+        string res(buffer, buffer + len);
+        delete [] buffer;
+        return res;
     }
 }
 

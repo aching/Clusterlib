@@ -303,6 +303,27 @@ class EventHandlerWrapper
     EventHandler m_handler;
 };
 #endif
+
+/**
+ * Data structure to pass in as watcherCtx for Zookeeper zoo_w*()
+ * functions.
+ */
+struct UserContextAndListener {
+    UserContextAndListener(void *userContextParam, 
+                           ZKEventListener *listenerParam) 
+        : userContext(userContextParam), listener(listenerParam) {}
+
+    /**
+     * Context passed in from the user.
+     */
+    void *userContext;
+
+    /**
+     * Listener passed in by the user.  If NULL, fire this to all
+     * listeners.
+     */
+    ZKEventListener *listener;
+};
            
 /**
  * \brief This is a wrapper around ZK C synchrounous API.
@@ -319,6 +340,14 @@ class ZooKeeperAdapter
      * @return the stringified etype
      */
     static std::string getEventString(int32_t etype);
+
+    /**
+     * Get the state as a string (used primarily for debugging)
+     *
+     * @param state the state
+     * @return the stringified state
+     */
+    static std::string getStateString(int32_t state);
  
     /**
      * \brief The global function that handles all ZK asynchronous
@@ -331,17 +360,6 @@ class ZooKeeperAdapter
      */
     typedef void *ContextType;
         
-    /**
-     * \brief The map type of ZK event listener to user specified
-     * context mapping.
-     */
-    typedef std::map<ZKEventListener *, ContextType> Listener2Context;
-        
-    /**
-     * \brief The map type of ZK path's to listener's contexts.
-     */
-    typedef std::map<std::string, Listener2Context> Path2Listener2Context;
-                  
     /**
      * \brief All possible states of this client, in respect to 
      * \brief connection to the ZK server.
@@ -506,6 +524,10 @@ class ZooKeeperAdapter
     /**
      * \brief Retrieves list of all children of the given node.
      * 
+     * Gets the data from the node.  If the listener is set, then a
+     * watch is set on the node.  Context can be passed along with the
+     * event, but is not required.
+     * 
      * @param path the absolute path name of the node for which to 
      *             get children
      * @param listener the listener for ZK watcher events; 
@@ -620,24 +642,15 @@ class ZooKeeperAdapter
     /**
      * Handles an asynchronous event received from the ZK.
      */
-    void handleAsyncEvent(int type, 
-                          int state, 
-                          const std::string &path);
-        
-    /**
-     * Handles an asynchronous event received from the ZK.
-     * This method iterates over all listeners and passes the event 
-     * to each of them.
-     */
-    void handleEventInContext(int type, 
-                              int state, 
-                              const std::string &path, 
-                              const Listener2Context &listeners);        
+    void handleAsyncEvent(const ZKWatcherEvent &event);
         
     /**
      * \brief Enqueues the given event in {@link #m_events} queue.
      */
-    void enqueueEvent(int type, int state, const std::string &path);
+    void enqueueEvent(int type, 
+                      int state, 
+                      const std::string &path, 
+                      ContextType context);
         
     /**
      * \brief Processes all ZK adapter events in a loop.
@@ -648,32 +661,6 @@ class ZooKeeperAdapter
      * \brief Processes all user events in a loop.
      */
     void processUserEvents(void *param);
-
-    /**
-     * \brief Registers the given context in the {@link #m_zkContexts} 
-     * \brief contexts map.
-     * 
-     * @param method the method where the given path is being used
-     * @param path the path of interest
-     * @param listener the event listener to call back later on
-     * @param context the user specified context to be passed back to user
-     */
-    void registerContext(WatchableMethod method, const std::string &path, 
-                         ZKEventListener *listener, ContextType context);
-        
-    /**
-     * \brief Attempts to find a listener to context map in the contexts' 
-     * \brief map, based on the specified criteria.
-     * If the context is found, it will be removed the udnerlying map.
-     * 
-     * @param method the method type identify Listener2Context map
-     * @param path the path to be used to search in the Listener2Context map
-     * 
-     * @return the context map associated with the given method and path, 
-     *         or empty map if not found
-     */
-    Listener2Context findAndRemoveListenerContext(WatchableMethod method, 
-                                                  const std::string &path);
 
     /**
      * Sets the new state in case it's different then the current one.
@@ -728,19 +715,6 @@ class ZooKeeperAdapter
     }
                 
   private:
-        
-    /**
-     * The mutex use to protect {@link #m_zkContexts}.
-     */
-    ::clusterlib::Mutex m_zkContextsMutex;
-        
-    /**
-     * The map of registered ZK paths that are being watched.
-     * Each entry maps a function type to another map of registered contexts.
-     * 
-     * @see WatchableMethod
-     */
-    std::map<int, Path2Listener2Context> m_zkContexts;
         
     /**
      * The current ZK configuration.

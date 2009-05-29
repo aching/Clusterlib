@@ -11,7 +11,7 @@
 #ifndef	_FACTORYOPS_H_
 #define	_FACTORYOPS_H_
 
-/*
+/**
  * Macro for safely executing calls to ZooKeeper.
  *
  * NOTE: If your call needs to return a value, please use
@@ -19,14 +19,14 @@
  */
 #define SAFE_CALL_ZK(_action, _message, _node, _warning, _once) \
 { \
-    bool done = false; \
-    while (!done) { \
+    bool __done = false; \
+    while (!__done) { \
 	try { \
-	    _action ; done = true; \
+	    _action ; __done = true; \
 	} catch (zk::ZooKeeperException &ze) { \
 	    if (getOps()->isShutdown()) { \
 		LOG_WARN(CL_LOG, "Call to ZK during shutdown!"); \
-		done = true; \
+		__done = true; \
 	    } \
 	    else if (!ze.isConnected()) { \
 		throw RepositoryConnectionFailureException(ze.what()); \
@@ -37,7 +37,7 @@
 		    /* \
 		     * Only warn once. \
 		     */ \
-		    done = true; \
+		    __done = true; \
                 } \
 	    } \
 	    else { \
@@ -46,6 +46,35 @@
 	} \
     } \
 }
+
+/**
+ * Macro for safely setting up callbacks for zookeeper.
+ * @param _action1 the action that occurs if the handler callback == 0
+ * @param _action2 the action that occurs if the handler callback > 0
+ * @param _changeHandler the CachedObjectChange (i.e. NODES_CHANGE)
+ * @param _key a string that represents the ZooKeeper node
+ */
+#define SAFE_CALLBACK_ZK(_action1, \
+                         _action2, \
+                         _changeHandler, \
+                         _key, \
+                         _message, \
+                         _node, \
+                         _warning, \
+                         _once) \
+{ \
+    Locker __l1(getCachedObjectChangeHandlers()->getLock()); \
+    bool __ready = getCachedObjectChangeHandlers()-> \
+        isHandlerCallbackReady(_changeHandler, _key); \
+    if (__ready == false) { \
+        SAFE_CALL_ZK(_action1, _message, _node, _warning, _once); \
+        getCachedObjectChangeHandlers()-> \
+            setHandlerCallbackReady(_changeHandler, _key); \
+    } \
+    else { \
+        SAFE_CALL_ZK(_action2, _message, _node, _warning, _once); \
+    } \
+} 
 
 namespace clusterlib
 {
@@ -287,9 +316,7 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
                                   const std::string &ms);
     
     /**
-     * Get the notifyable represented by this key.  If this key does
-     * not represent a Notifyable, keep stripping off sections of the
-     * key until a Notifyable is found or the key is empty.
+     * Get the notifyable represented by this key. 
      *
      * @param key the key that should contain a clusterlib object
      * @param create try to create this object if it does not exist?
@@ -299,10 +326,7 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
                                          bool create = false);
 
     /**
-     * Get the notifyable represented by these components.  If the
-     * components does not represent a Notifyable, keep stripping off
-     * sections of the components until a Notifyable is found or the
-     * components run out of elements.
+     * Get the notifyable represented by these components.
      *
      * @param components Should represent the Notifyable object
      * @param elements The number of elements to use in the components
@@ -551,18 +575,6 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     {
         ++m_syncIdCompleted; 
     }
-
-    /**
-     * Re-establish interest in the existence of this notifyable by its key.
-     */
-    bool establishNotifyableInterest(const std::string &key,
-                                     CachedObjectEventHandler *eventHandlerP);
-    
-    /**
-     * Get the value of a notifyable by its key
-     */
-    std::string getNotifyableValue(const std::string &key,
-                                   CachedObjectEventHandler *eventHandlerP);
 
     /**
      * Set up event handler for changes in the clusterlib object state.
