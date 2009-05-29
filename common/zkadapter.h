@@ -305,27 +305,6 @@ class EventHandlerWrapper
 #endif
 
 /**
- * Data structure to pass in as watcherCtx for Zookeeper zoo_w*()
- * functions.
- */
-struct UserContextAndListener {
-    UserContextAndListener(void *userContextParam, 
-                           ZKEventListener *listenerParam) 
-        : userContext(userContextParam), listener(listenerParam) {}
-
-    /**
-     * Context passed in from the user.
-     */
-    void *userContext;
-
-    /**
-     * Listener passed in by the user.  If NULL, fire this to all
-     * listeners.
-     */
-    ZKEventListener *listener;
-};
-           
-/**
  * \brief This is a wrapper around ZK C synchrounous API.
  */
 class ZooKeeperAdapter
@@ -367,6 +346,8 @@ class ZooKeeperAdapter
     enum AdapterState {
         //mp_zkHandle is NULL
         AS_DISCONNECTED = 0,
+        //mp_zkHandle is NULL, but no reconnection will be allowed
+        AS_NORECONNECT,
         //mp_zkHandle is valid but this client is reconnecting
         AS_CONNECTING,
         //mp_zkHandle is valid and this client is connected
@@ -374,7 +355,7 @@ class ZooKeeperAdapter
         //mp_zkHandle is valid, however no more calls can be made to ZK API
         AS_SESSION_EXPIRED
     };
-                
+
     /**
      * \brief Constructor.
      * Attempts to create a ZK adapter, optionally connecting
@@ -418,9 +399,11 @@ class ZooKeeperAdapter
     void reconnect();
         
     /**
-     * \brief Disconnects from the ZK and unregisters {@link #mp_zkHandle}.
+     * \brief Disconnects from the ZK and unregisters {@link #mp_zkHandle}. 
+     *
+     * @param final if true, no reconnection will be allowed.
      */
-    void disconnect();
+    void disconnect(bool final = false);
 
     /**
      * \brief Stops the ZK event loop from dispatching events.
@@ -434,11 +417,6 @@ class ZooKeeperAdapter
               ZKEventListener *listener,
               void *context);
 
-    /**
-     * \brief Simulate a SESSION_EXPIRED event so that the connection ends.
-     */
-    void injectEndEvent();
-        
     /**
      * \brief Creates a new node identified by the given path. 
      * This method will optionally attempt to create all missing ancestors.
@@ -614,7 +592,29 @@ class ZooKeeperAdapter
         GET_NODE_DATA,
         SYNC_DATA
     };
-                
+
+    /**
+     * Data structure to pass in as watcherCtx for Zookeeper zoo_w*()
+     * functions.  This struct should only be memory managed using
+     * CreateUserContextAndListener() and DeleteUserContextAndListener().
+     */
+    struct UserContextAndListener {
+        UserContextAndListener(void *userContextParam, 
+                               ZKEventListener *listenerParam) 
+            : userContext(userContextParam), listener(listenerParam) {}
+        
+        /**
+         * Context passed in from the user.
+         */
+        void *userContext;
+        
+        /**
+         * Listener passed in by the user.  If NULL, fire this to all
+         * listeners.
+         */
+        ZKEventListener *listener;
+    };
+                                
     /**
      * \brief Creates a new node identified by the given path. 
      * This method is used internally to implement {@link createNode(...)} 
@@ -713,7 +713,49 @@ class ZooKeeperAdapter
     void waitedForConnect(long long time) { 
         m_remainingConnectTimeout -= time; 
     }
-                
+
+    /**
+     * \brief Simulate a SESSION_EXPIRED event so that the connection ends.
+     */
+    void injectEndEvent();
+        
+    /**
+     * Is this an end event? 
+     *
+     * @return true if this is an end event
+     */
+    bool isEndEvent(const ZKWatcherEvent &event) const;
+
+    /**
+     * Gets the lock that makes {@link #m_userContextAndListenerSet} 
+     * thread-safe.
+     *
+     * @return pointer to the lock
+     */
+    clusterlib::Mutex *getUserContextAndListenerSetLock()
+    {
+        return &m_userContextAndListenerSetLock;
+    }
+
+    /**
+     * Allocate the memory and setup with UserContextAndListener.
+     * This should be the only way to allocate memory for
+     * UserContextAndListener so it can be tracked by
+     * ZooKeeperAdapter.
+     *
+     * @param userContextAndListener the pointer to track
+     */
+    UserContextAndListener *createUserContextAndListener(
+        void *userContext,
+        ZKEventListener *listener);
+   
+    /**
+     * Free the memory associated with the UserContextAndListener and
+     * remove it from being tracked.
+     */
+    void deleteUserContextAndListener(
+        UserContextAndListener *userContextAndListener);
+
   private:
         
     /**
@@ -748,11 +790,6 @@ class ZooKeeperAdapter
     clusterlib::CXXThread<ZooKeeperAdapter> m_userEventDispatcher;
                 
     /**
-     * Whether {@link #m_eventDispatcher} is terminating.
-     */
-    volatile bool m_terminating;
-        
-    /**
      * Whether this adapter is connected to the ZK.
      */
     volatile bool m_connected;
@@ -772,6 +809,17 @@ class ZooKeeperAdapter
      */
     clusterlib::Lock m_stateLock;
 
+    /**
+     * Makes {@link #m_userContextAndListenerSet} thread-safe.
+     */
+    clusterlib::Mutex m_userContextAndListenerSetLock;
+    
+    /**
+     * Contains pointers to all the UserContextAndListeners that are
+     * on the heap.
+     */
+    std::set<UserContextAndListener *> m_userContextAndListenerSet;
+    
     /**
      * How much time left for the connect to succeed, in milliseconds.
      */

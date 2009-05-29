@@ -592,6 +592,8 @@ const int32_t EN_APPSCHANGE =			(1<<15);
 
 const int32_t EN_LOCKNODECHANGE =               (1<<16);
 
+const int32_t EN_ENDEVENT =                     (1<<17);
+
 /*
  * Interface for cluster event handler. Must be derived
  * to define specific behavior for handling events.

@@ -108,17 +108,13 @@ FactoryOps::~FactoryOps()
 {
     TRACE(CL_LOG, "~FactoryOps");
 
-    /*
-     * Zookeeper adapter will no longer process any events
+    /* 
+     * Upon disconnection, all event will be fired until the final
+     * ZOO_SESSION_EXPIRED event.  As this cascades through the the
+     * event handler threads, they deliver and then exit.
      */
-    stopZKEventDispatch();
+    m_zk.disconnect(true);
 
-    /*
-     * Although ZookeeperAdapter is no longer processing Zookeeper
-     * events, manually inject a final event in the Zookeeper event
-     * queue for clients to know when to stop.
-     */
-    injectEndEvent();
     /*
      * Allow our threads to shut down.
      */
@@ -140,34 +136,6 @@ FactoryOps::~FactoryOps()
                  "Got exception during disconnect: %s",
                  e.what());
     }
-}
-
-/*
- * Stop the ZK adapter from dispatching any more events.
- */
-void
-FactoryOps::stopZKEventDispatch()
-{
-    TRACE(CL_LOG, "stopZKEventDispatch");
-
-    m_zk.stopEventDispatch();
-}
-
-/*
- * Inject an END event so that all threads and clients
- * event loops will finish up in an orderly fashion.
- */
-void
-FactoryOps::injectEndEvent()
-{
-    TRACE(CL_LOG, "injectEndEvent");
-
-    Locker l(getEndEventLock());
-
-    if (m_endEventDispatched) {        
-        return;
-    }
-    m_zk.injectEndEvent();
 }
 
 /*
@@ -516,9 +484,9 @@ FactoryOps::dispatchExternalEvents(void *param)
                               tp->getAlarmTime());
                     
                     dispatchTimerEvent(tp);
-                    
-                    break;
                 }
+
+                break;
 
                 case ZKEVENT:
                 {
@@ -542,7 +510,7 @@ FactoryOps::dispatchExternalEvents(void *param)
                     else {
                         dispatchZKEvent(zp);
                     }
-                    
+
                     break;
                 }
             }
@@ -662,10 +630,6 @@ FactoryOps::dispatchZKEvent(zk::ZKWatcherEvent *zp)
     delete cep;
 }
 
-/*
- * Dispatch a session event. These events
- * are in fact handled directly, here.
- */
 void
 FactoryOps::dispatchSessionEvent(zk::ZKWatcherEvent *zep)
 {
@@ -727,11 +691,6 @@ FactoryOps::dispatchSessionEvent(zk::ZKWatcherEvent *zep)
     }
 }
 
-/*
- * Dispatch a final event to all registered clients
- * to indicate that no more events will be sent
- * following this one.
- */
 bool
 FactoryOps::dispatchEndEvent()
 {
@@ -764,10 +723,14 @@ FactoryOps::dispatchEndEvent()
      * Send a terminate signal to all registered
      * client-specific cluster event handler threads.
      */
+    ClusterEventPayload *cepp = NULL;
+    ClusterEventPayload cep(NotifyableKeyManipulator::createRootKey(), 
+                            EN_ENDEVENT);
     for (clIt = m_clients.begin();
          clIt != m_clients.end();
          clIt++) {
-        (*clIt)->sendEvent(NULL);
+        cepp = new ClusterEventPayload(cep);
+        (*clIt)->sendEvent(cepp);
     }
 
     return true;

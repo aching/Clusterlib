@@ -208,7 +208,6 @@ ZooKeeperAdapter::ZooKeeperAdapter(ZooKeeperConfig config,
                                    bool establishConnection) 
     : m_zkConfig(config),
       mp_zkHandle(NULL), 
-      m_terminating(false),
       m_connected(false),
       m_state(AS_DISCONNECTED),
       m_eventDispatchAllowed(true)
@@ -247,9 +246,27 @@ ZooKeeperAdapter::~ZooKeeperAdapter()
                   "An exception while disconnecting from ZK: %s",
                   e.what());
     }
-    m_terminating = true;
+
+    /* Exit our threads */
     m_userEventDispatcher.Join();
     m_eventDispatcher.Join();
+
+    /* 
+     * Clean up all memory that was allocated on the heap of type
+     * UserContextAndListener 
+     */
+    Locker l1(getUserContextAndListenerSetLock());
+    set<UserContextAndListener *>::const_iterator it;
+    for (it = m_userContextAndListenerSet.begin();
+         it != m_userContextAndListenerSet.end(); 
+         it++) {
+        /* 
+         * Doesn't use deleteUserContextAndListener since this can
+         * lead to invalid iterators.
+         */
+        delete *it;
+    }
+    m_userContextAndListenerSet.clear();
 }
 
 void
@@ -283,7 +300,7 @@ ZooKeeperAdapter::validatePath(const string &path)
 }
 
 void
-ZooKeeperAdapter::disconnect()
+ZooKeeperAdapter::disconnect(bool final)
 {
     TRACE(LOG, "disconnect");
 
@@ -295,7 +312,17 @@ ZooKeeperAdapter::disconnect()
     if (mp_zkHandle != NULL) {
         int32_t ret = zookeeper_close(mp_zkHandle);
         mp_zkHandle = NULL;
-        setState(AS_DISCONNECTED);
+        if (final == true) {
+            setState(AS_NORECONNECT);
+            /* 
+             * Pass synthetic end event into the event queue to have
+             * cascading thread exit. 
+             */
+            injectEndEvent();
+        }
+        else {
+            setState(AS_DISCONNECTED);
+        }
         LOG_INFO(LOG, "disconnect: closed with ret = %d", ret);
     }
     m_stateLock.unlock();
@@ -313,6 +340,11 @@ ZooKeeperAdapter::reconnect()
     TRACE(LOG, "reconnect");
     
     m_stateLock.lock();
+    if (m_state == AS_NORECONNECT) {
+        m_stateLock.unlock();
+        throw ZooKeeperException(
+            "reconnect: Failed since no reconnection is allowed!");
+    }
     //clear the connection state
     disconnect();
     
@@ -476,7 +508,7 @@ ZooKeeperAdapter::sync(const string &path,
      * function.
      */
     UserContextAndListener *userContextAndListener = 
-        new UserContextAndListener(context, listener);
+        createUserContextAndListener(context, listener);
     m_events.put(ZKWatcherEvent(ZOO_SESSION_EVENT, 
                                 ZOO_CONNECTED_STATE,
                                 clusterlib::ClusterlibStrings::SYNC,
@@ -527,19 +559,31 @@ ZooKeeperAdapter::handleAsyncEvent(const ZKWatcherEvent &event)
      * Clean up the context struct from memory.
      */
     if (userContextAndListener != NULL) {
-        delete userContextAndListener;
+        deleteUserContextAndListener(userContextAndListener);
     }
 }
 
-/*
- * Inject a terminating event -- we simulate SESSION_EXPIRED.
- */
 void
 ZooKeeperAdapter::injectEndEvent()
 {
     m_events.put(ZKWatcherEvent(ZOO_SESSION_EVENT,
                                 ZOO_EXPIRED_SESSION_STATE,
-                                ClusterlibStrings::ENDEVENT.c_str()));
+                                ClusterlibStrings::ENDEVENT.c_str(),
+                                NULL));
+}
+
+bool
+ZooKeeperAdapter::isEndEvent(const ZKWatcherEvent &event) const
+{
+    if ((event.getType() == ZOO_SESSION_EVENT) &&
+        (event.getState() == ZOO_EXPIRED_SESSION_STATE) &&
+        (event.getPath().compare(ClusterlibStrings::ENDEVENT) == 0) &&
+        (event.getContext() == NULL)) {
+        return true;
+    }
+    else {
+        return false;
+    }
 }
 
 void 
@@ -574,7 +618,7 @@ ZooKeeperAdapter::processEvents(void *param)
              (int32_t) this,
              (uint32_t) pthread_self());
 
-    while (!m_terminating) {
+    while (1) {
         bool timedOut = false;
         ZKWatcherEvent source = m_events.take(100, &timedOut);
         if (!timedOut) {
@@ -618,6 +662,11 @@ ZooKeeperAdapter::processEvents(void *param)
                       m_state);
 
             m_userEvents.put(source);
+            
+            /* If that was the final event, exit loop */
+            if (isEndEvent(source)) {
+                break;
+            }
         }
     }
 
@@ -639,7 +688,7 @@ ZooKeeperAdapter::processUserEvents(void *param)
              (int32_t) this,
              (uint32_t) pthread_self());
 
-    while (!m_terminating) {
+    while (1) {
         bool timedOut = false;
         ZKWatcherEvent source = m_userEvents.take(100, &timedOut);
         if (!timedOut) {
@@ -662,6 +711,11 @@ ZooKeeperAdapter::processUserEvents(void *param)
                           getStateString(source.getState()).c_str(),
                           source.getPath().c_str(),
                           e.what());
+            }
+
+            /* If that was the final event, exit loop */
+            if (isEndEvent(source)) {
+                break;
             }
         }
     }
@@ -1021,7 +1075,7 @@ ZooKeeperAdapter::nodeExists(const string &path,
      * watcher function.
      */
     UserContextAndListener *userContextAndListener = 
-        new UserContextAndListener(context, listener);
+        createUserContextAndListener(context, listener);
     do {
         verifyConnection();
         if (listener == NULL) {
@@ -1049,7 +1103,7 @@ ZooKeeperAdapter::nodeExists(const string &path,
                   "nodeExists: Error %d for %s", 
                   rc, 
                   path.c_str());
-        delete userContextAndListener;
+        deleteUserContextAndListener(userContextAndListener);
         throw ZooKeeperException(
             string("Unable to check existence of node ") + path,
             rc,
@@ -1088,7 +1142,7 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
      * processed through the watcher function.
      */
     UserContextAndListener *userContextAndListener = 
-        new UserContextAndListener(context, listener);
+        createUserContextAndListener(context, listener);
     do {
         verifyConnection();
         if (listener == NULL) {
@@ -1110,7 +1164,7 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
                   "getNodeChildren: Error %d for %s", 
                   rc, 
                   path.c_str());
-        delete userContextAndListener;
+        deleteUserContextAndListener(userContextAndListener);
         throw ZooKeeperException(string("Unable to get children of node ") +
                                  path, 
                                  rc,
@@ -1118,7 +1172,7 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
     } 
     else {
         if (listener == NULL) {
-            delete userContextAndListener;
+            deleteUserContextAndListener(userContextAndListener);
         }
 
         for (int32_t i = 0; i < children.count; ++i) {
@@ -1182,7 +1236,7 @@ ZooKeeperAdapter::getNodeData(const string &path,
      * watcher function.
      */
     UserContextAndListener *userContextAndListener = 
-        new UserContextAndListener(context, listener);
+        createUserContextAndListener(context, listener);
     do {
         verifyConnection();
         len = MAX_DATA_LENGTH - 1;
@@ -1210,7 +1264,7 @@ ZooKeeperAdapter::getNodeData(const string &path,
                   rc, 
                   path.c_str());
         delete [] buffer;
-        delete userContextAndListener;
+        deleteUserContextAndListener(userContextAndListener);
         throw ZooKeeperException(
             string("Unable to get data of node ") + path,
             rc,
@@ -1218,7 +1272,7 @@ ZooKeeperAdapter::getNodeData(const string &path,
     } 
     else {
         if (listener == NULL) {
-            delete userContextAndListener;
+            deleteUserContextAndListener(userContextAndListener);
         }
         string res(buffer, buffer + len);
         delete [] buffer;
@@ -1257,6 +1311,54 @@ ZooKeeperAdapter::setNodeData(const string &path,
                                  rc,
                                  m_state == AS_CONNECTED);
     }
+}
+
+ZooKeeperAdapter::UserContextAndListener *
+ZooKeeperAdapter::createUserContextAndListener(void *userContext,
+                                               ZKEventListener *listener)
+{
+    TRACE(LOG, "createUserContextAndListener");
+    
+    UserContextAndListener *context = new UserContextAndListener(userContext,
+                                                                 listener);
+
+    Locker l1(getUserContextAndListenerSetLock());
+    set<UserContextAndListener *>::const_iterator it = 
+        m_userContextAndListenerSet.find(context);
+    if (it != m_userContextAndListenerSet.end()) {
+        LOG_ERROR(LOG,
+                  "createUserContextAndListener: Impossible that context 0x%x"
+                  " already exists in the set!",
+                  (uint32_t) context);
+        throw ZooKeeperException("createUserContextAndListener: Unable to add "
+                                 "context to set since it already exists!");
+    }
+
+    m_userContextAndListenerSet.insert(context);
+    return context;
+}
+
+void
+ZooKeeperAdapter::deleteUserContextAndListener(
+    UserContextAndListener *userContextAndListener)
+{
+    TRACE(LOG, "deleteUserContextAndListener");
+
+    Locker l1(getUserContextAndListenerSetLock());
+    set<UserContextAndListener *>::const_iterator it = 
+        m_userContextAndListenerSet.find(userContextAndListener);
+    if (it == m_userContextAndListenerSet.end()) {
+        LOG_ERROR(LOG,
+                  "deleteUserContextAndListener: Impossible that context 0x%x"
+                  " doesn't exist in the set!",
+                  (uint32_t) userContextAndListener);
+        throw ZooKeeperException(
+            "deleteUserContextAndListener: Unable to "
+            "delete context from set since it doesn't exist!");
+    }
+
+    m_userContextAndListenerSet.erase(it);
+    delete userContextAndListener;
 }
 
 }   /* end of 'namespace zk' */

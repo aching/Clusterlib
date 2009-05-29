@@ -196,7 +196,23 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
      */
     void dispatchTimerEvent(ClusterlibTimerEvent *tep);
     void dispatchZKEvent(zk::ZKWatcherEvent *zep);
+
+    /**
+     * Dispatch a session event. These events are handled here.  This
+     * can trigger a shutdown of clusterlib threads by setting
+     * m_shutdown to true.
+     *
+     * @param zep the pointer to the event to dispatch
+     */
     void dispatchSessionEvent(zk::ZKWatcherEvent *zep);
+
+    /**
+     * Dispatch a final event to all registered clients
+     * to indicate that no more events will be sent
+     * following this one.
+     *
+     * @return true if the end event was dispatched, false if not
+     */
     bool dispatchEndEvent();
 
     /**

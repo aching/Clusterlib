@@ -147,8 +147,10 @@ class ClusterlibUserEvents
          * Delete only the factory, that automatically deletes
          * all the other objects.
          */
-	delete _factory;
-        _factory = NULL;
+        if (_factory != NULL) {
+            delete _factory;
+            _factory = NULL;
+        }
         _client0 = NULL;
         _app0 = NULL;
         _grp0 = NULL;
@@ -362,6 +364,21 @@ class ClusterlibUserEvents
                                     _factory, 
                                     true, 
                                     "testUserEvents4");
+        /*
+         * See whether an end event gets handled correctly.
+         */
+        MyUserEventHandler ueh(_client0->getRoot(), EN_ENDEVENT, NULL);
+        _client0->registerHandler(&ueh);        
+
+        /*
+         * Wait for event propagation.
+         */
+        _factory->synchronize();
+        sleep(1);
+
+        delete _factory;
+        _factory = NULL;
+        CPPUNIT_ASSERT(ueh.getCounter() == 1);
     }
     void testUserEvents5()
     {

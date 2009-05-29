@@ -51,7 +51,9 @@ ClientImpl::consumeClusterEvents(void *param)
              (int32_t) this,
              (uint32_t) pthread_self());
 
-    for (;;) {
+    bool endEventReceived = false;
+    string rootKey = NotifyableKeyManipulator::createRootKey();
+    while (endEventReceived != true) {
 	cepp = m_queue.take();
 
         /*
@@ -59,7 +61,8 @@ ClientImpl::consumeClusterEvents(void *param)
          * the Factory to terminate.
          */
 	if (cepp == NULL) {
-            break;
+            throw InconsistentInternalStateException(
+                "ConsumeClusterEvents: Got a NULL ClusterEventPayload!");
 	}
 
 	LOG_DEBUG(CL_LOG,
@@ -69,14 +72,16 @@ ClientImpl::consumeClusterEvents(void *param)
                   cepp->getKey().c_str(),
                   cepp->getEvent());
 
-        /*
-         * Dispatch this event.
-         */
+        /* Dispatch this event. */
         dispatchHandlers(cepp->getKey(), cepp->getEvent());
 
-        /*
-         * Recycle the payload.
-         */
+        /* Is this is the end event? */
+        if ((cepp->getKey().compare(rootKey) == 0) && 
+            (cepp->getEvent() == EN_ENDEVENT)) {
+            endEventReceived = true;
+        }
+
+        /* Recycle the payload. */
 	delete cepp;
     }
 
