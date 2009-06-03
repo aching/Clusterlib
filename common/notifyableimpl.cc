@@ -320,13 +320,6 @@ NotifyableImpl::remove(bool removeChildren)
             
             /* Must release lock before try to clean up from removed cache */
             releaseLock(removeChildren);
-            /* Release notifyables from getChildren() */
-            NotifyableList::iterator ntIt;
-            for (ntIt = ntList.begin(); ntIt != ntList.end(); ntIt++) {
-                if (*ntIt != this) {
-                    (*ntIt)->releaseRef();
-                }
-            }
             removeFromRemovedNotifyablesIfReleased(false);
         }
         else {
