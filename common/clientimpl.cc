@@ -27,7 +27,7 @@ ClientImpl::getRoot()
 }
 
 void
-ClientImpl::sendEvent(ClusterEventPayload *cepp)
+ClientImpl::sendEvent(UserEventPayload *cepp)
 {
     TRACE(CL_LOG, "sendEvent");
 
@@ -36,17 +36,17 @@ ClientImpl::sendEvent(ClusterEventPayload *cepp)
 
 /*
  * The following method runs in the event handling thread,
- * invoking handlers for events as they come in.
+ * invoking handlers for user events as they come in.
  */
 void
-ClientImpl::consumeClusterEvents(void *param)
+ClientImpl::consumeUserEvents(void *param)
 {
-    TRACE(CL_LOG, "consumeClusterEvents");
+    TRACE(CL_LOG, "consumeUserEvents");
 
-    ClusterEventPayload *cepp;
+    UserEventPayload *uepp;
 
     LOG_INFO(CL_LOG,
-             "Starting thread with ClientImpl::consumeClusterEvents(), "
+             "Starting thread with ClientImpl::consumeUserEvents(), "
              "this: 0x%x, thread: 0x%x",
              (int32_t) this,
              (uint32_t) pthread_self());
@@ -54,46 +54,46 @@ ClientImpl::consumeClusterEvents(void *param)
     bool endEventReceived = false;
     string rootKey = NotifyableKeyManipulator::createRootKey();
     while (endEventReceived != true) {
-	cepp = m_queue.take();
+	uepp = m_queue.take();
 
         /*
-         * Exit on NULL cluster event payload, this is a signal from
+         * Exit on NULL user event payload, this is a signal from
          * the Factory to terminate.
          */
-	if (cepp == NULL) {
+	if (uepp == NULL) {
             throw InconsistentInternalStateException(
-                "ConsumeClusterEvents: Got a NULL ClusterEventPayload!");
+                "ConsumeUserEvents: Got a NULL UserEventPayload!");
 	}
 
 	LOG_DEBUG(CL_LOG,
-                  "ConsumeClusterEvents: Received user event 0x%x with "
+                  "ConsumeUserEvents: Received user event 0x%x with "
                   "path %s and Event %d",
-                  (int32_t) cepp,
-                  cepp->getKey().c_str(),
-                  cepp->getEvent());
+                  (int32_t) uepp,
+                  uepp->getKey().c_str(),
+                  uepp->getEvent());
 
         /* Dispatch this event. */
-        dispatchHandlers(cepp->getKey(), cepp->getEvent());
+        dispatchHandlers(uepp->getKey(), uepp->getEvent());
 
         /* Is this is the end event? */
-        if ((cepp->getKey().compare(rootKey) == 0) && 
-            (cepp->getEvent() == EN_ENDEVENT)) {
+        if ((uepp->getKey().compare(rootKey) == 0) && 
+            (uepp->getEvent() == EN_ENDEVENT)) {
             endEventReceived = true;
         }
 
         /* Recycle the payload. */
-	delete cepp;
+	delete uepp;
     }
 
     LOG_INFO(CL_LOG,
-             "Ending thread with ClientImpl::consumeClusterEvents(): "
+             "Ending thread with ClientImpl::consumeUserEvents(): "
              "this = 0x%x, thread = 0x%x",
              (int32_t) this,
              (uint32_t) pthread_self());
 }
 
 /*
- * Call all handlers for the given Notifyable and Event.
+ * Call all handlers for the given Notifyable and user Event.
  */
 void
 ClientImpl::dispatchHandlers(const string &key, Event e)
@@ -107,7 +107,7 @@ ClientImpl::dispatchHandlers(const string &key, Event e)
     EventHandlersMultimapRange range = m_eventHandlers.equal_range(key);
     EventHandlersMultimap copy;
     EventHandlersIterator ehIt;
-    ClusterEventHandler *cehp;
+    UserEventHandler *uehp;
     int32_t counter = 0;	/* Debug counter for # of handlers found. */
 
     LOG_INFO(CL_LOG,
@@ -143,12 +143,12 @@ ClientImpl::dispatchHandlers(const string &key, Event e)
                 ::abort();
             }
 
-            cehp = (*ehIt).second;
+            uehp = (*ehIt).second;
 
             /*
              * Sanity check -- the handler must not be NULL.
              */
-            if (cehp == NULL) {
+            if (uehp == NULL) {
                 LOG_FATAL(CL_LOG,
                           "Internal error: event handling registered "
                           "with NULL handler");
@@ -158,7 +158,7 @@ ClientImpl::dispatchHandlers(const string &key, Event e)
             /*
              * If this handler is not for the given event, then skip it.
              */
-            if ((cehp->getMask() & e) == 0) {
+            if ((uehp->getMask() & e) == 0) {
                 continue;
             }
 
@@ -167,7 +167,7 @@ ClientImpl::dispatchHandlers(const string &key, Event e)
             /*
              * Make a copy of the registration.
              */
-            copy.insert(pair<const string, ClusterEventHandler *>(key, cehp));
+            copy.insert(pair<const string, UserEventHandler *>(key, uehp));
         }
     }
 
@@ -187,33 +187,33 @@ ClientImpl::dispatchHandlers(const string &key, Event e)
      * Iterate over the registered handlers.
      */
     for (ehIt = copy.begin(); ehIt != copy.end(); ehIt++) {
-        cehp = (*ehIt).second;
+        uehp = (*ehIt).second;
 
         /*
          * Now call each handler.
          */
-        cehp->handleClusterEvent(e);
+        uehp->handleUserEventDelivery(e);
     }
 }
 
 /*
  * Register a handler for a set of events on a given Notifyable. When
- * any of the events are triggered, the handleClusterEvent method on
+ * any of the events are triggered, the handleUserEvent method on
  * the supplied handler is called.
  */
 void
-ClientImpl::registerHandler(ClusterEventHandler *cehp)
+ClientImpl::registerHandler(UserEventHandler *uehp)
 {
     TRACE(CL_LOG, "registerHandler");
 
+    LOG_WARN(CL_LOG,
+             "Registering handler for %s",
+             uehp->getNotifyable()->getKey().c_str());
+
     Locker l1(getEventHandlersLock());
 
-    cerr << "Registering handler for "
-         << cehp->getNotifyable()->getKey()
-         << endl;
-
-    m_eventHandlers.insert(pair<const string, ClusterEventHandler *>
-                           (cehp->getNotifyable()->getKey(), cehp));
+    m_eventHandlers.insert(pair<const string, UserEventHandler *>
+                           (uehp->getNotifyable()->getKey(), uehp));
 }
 
 /*
@@ -224,17 +224,17 @@ ClientImpl::registerHandler(ClusterEventHandler *cehp)
  * Returns true if the specified handler was unregistered.
  */
 bool
-ClientImpl::cancelHandler(ClusterEventHandler *cehp)
+ClientImpl::cancelHandler(UserEventHandler *uehp)
 {
     TRACE(CL_LOG, "cancelHandler");
 
     Locker l1(getEventHandlersLock());
-    string key = cehp->getNotifyable()->getKey();
+    string key = uehp->getNotifyable()->getKey();
     EventHandlersMultimapRange range = m_eventHandlers.equal_range(key);
     EventHandlersIterator ehIt;
 
     for (ehIt = range.first; ehIt != range.second; ehIt++) {
-        if ((*ehIt).second == cehp) {
+        if ((*ehIt).second == uehp) {
             m_eventHandlers.erase(ehIt);
             return true;
         }
@@ -247,8 +247,8 @@ ClientImpl::cancelHandler(ClusterEventHandler *cehp)
  */
 TimerId
 ClientImpl::registerTimer(TimerEventHandler *tehp,
-                      uint64_t afterTime,
-                      ClientData data)
+                          uint64_t afterTime,
+                          ClientData data)
 {
     TRACE(CL_LOG, "registerTimer");
 

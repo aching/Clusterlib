@@ -19,42 +19,6 @@ class ClientTimerEventHandler
                           clusterlib::ClientData data);
 };
 
-class ClientClusterEventHandler
-    : public clusterlib::ClusterEventHandler
-{
-  public:
-    ClientClusterEventHandler(clusterlib::Client *cp,
-                              clusterlib::Event mask,
-                              clusterlib::Notifyable *np)
-        : clusterlib::ClusterEventHandler(np, mask, cp),
-          counter(0),
-          lastEvent(clusterlib::EN_NOEVENT)
-    {
-    }
-
-    int32_t getCounter() { return counter; }
-    void setCounter(int32_t newval) { counter = newval; }
-
-    clusterlib::Event getLastEvent() { return lastEvent; }
-
-    void handleClusterEvent(clusterlib::Event e)
-    {
-        counter++;
-        lastEvent = e;
-    }
-
-  private:
-    /*
-     * Count how many times this handler was called.
-     */
-    int32_t counter;
-
-    /*
-     * Last event fired.
-     */
-    clusterlib::Event lastEvent;
-};
-
 /*
  * The test class itself.
  */

@@ -515,20 +515,20 @@ typedef EventHandler<InternalChangeHandlers> InternalEventHandler;
  * Payload for delivering events from ZooKeeper to clients of
  * Clusterlib.
  */
-class ClusterEventPayload
+class UserEventPayload
 {
   public:
     /**
      * Constructor.
      */
-    ClusterEventPayload(const std::string &key, Event e)
+    UserEventPayload(const std::string &key, Event e)
         : m_key(key),
           m_e(e) {}
 
     /**
      * Destructor.
      */
-    virtual ~ClusterEventPayload() {}
+    virtual ~UserEventPayload() {}
 
     /**
      * Retrieve fields.
@@ -551,7 +551,7 @@ class ClusterEventPayload
 /*
  * Typedef for blocking queue of pointers to cluster event payload objects.
  */
-typedef BlockingQueue<ClusterEventPayload *> ClusterEventPayloadQueue;
+typedef BlockingQueue<UserEventPayload *> UserEventPayloadQueue;
 
 /***********************************************************************/
 /*                                                                     */
@@ -595,18 +595,18 @@ const int32_t EN_LOCKNODECHANGE =               (1<<16);
 const int32_t EN_ENDEVENT =                     (1<<17);
 
 /*
- * Interface for cluster event handler. Must be derived
+ * Interface for user event handler. Must be derived
  * to define specific behavior for handling events.
  */
-class ClusterEventHandler
+class UserEventHandler
 {
   public:
     /*
      * Constructor.
      */
-    ClusterEventHandler(Notifyable *np,
-                        Event mask,
-                        ClientData cd)
+    UserEventHandler(Notifyable *np,
+                     Event mask,
+                     ClientData cd)
         : mp_np(np),
           m_mask(mask),
           m_cd(cd) {}
@@ -614,7 +614,7 @@ class ClusterEventHandler
     /*
      * Destructor.
      */
-    virtual ~ClusterEventHandler() {}
+    virtual ~UserEventHandler() {}
 
     /*
      * Accessors.
@@ -630,11 +630,79 @@ class ClusterEventHandler
     Event addEvent(Event a) { m_mask |= a; return m_mask; }
     Event removeEvent(Event a) { m_mask &= (~a); return m_mask; }
 
-    /*
-     * Handle the event -- this must be
-     * implemented by subclasses.
+    /**
+     * Call the user defined handler, and then deal with conditions
+     * & waiting. Intended for use by clusterlib internals.
      */
-    virtual void handleClusterEvent(Event e) = 0;
+    void handleUserEventDelivery(Event e);
+
+    /**
+     * \brief Handle the event -- this must be implemented by subclasses.
+     *
+     * @param Event the event to be processed.
+     */
+    virtual void handleUserEvent(Event e) = 0;
+
+    /**
+     * \brief Waits until a condition is met.
+     *
+     * Before calling this, the user program must have called acquireLock,
+     * and it must call releaseLock after the call to waitUntilCondition
+     * returns. The call to waitUntilCondition blocks until an event is
+     * processed by clusterlib that causes the meetsCondition API (see below)
+     * to return true. If maxMS > 0 and the wait lasts longer than maxMS
+     * milliseconds, or if interruptible == true and the wait was interrupted,
+     * then returns false. Otherwise returns true.
+     *
+     * @param maxMs how many milliseconds to wait. default 0 means forever.
+     * @param interruptible is this wait interruptible? default is false.
+     */
+    bool waitUntilCondition(uint64_t maxMs = 0, bool interuptible = false);
+
+    /**
+     * \brief Determines if a condition is met (and waits should end).
+     *
+     * Determine whether a condition is met. The default implementation
+     * always returns true. Intended to be overridden by user programs to
+     * implement more complex waits and conditions.
+     *
+     * @param Event the event to check for meeting the condition.
+     */
+    virtual bool meetsCondition(Event e) { return true; }
+
+    /**
+     * \brief User-specified method called to reset the condition.
+     *
+     * Called when meetsCondition returns true. Intended to be redefined
+     * by user programs to clean up application-specific data associated
+     * with this condition. The default implementation does nothing.
+     */
+    virtual void resetCondition() {}
+
+    /**
+     * \brief Acquires the lock for waitUntilCondition.
+     *
+     * Advisory lock. Must be held before waitUntilCondition is called.
+     * Internal clusterlib event system always respects this lock, and relies
+     * on clients calling acquireLock in order to guarantee that conditions
+     * are checked with a consistent ordering with respect to waitUntilCondition.
+     */
+    void acquireLock() { m_waitMutex.lock(); }
+
+    /**
+     * \brief Releases the lock acquired by acquireLock.
+     *
+     * Advisory lock. Must be held before waitUntilCondition is called,
+     * and must be released via releaseLock after waitUntilCondition returns.
+     */
+    void releaseLock() { m_waitMutex.unlock(); }
+
+  private:
+    /**
+     * Notify any threads that are waiting for the condition, that it
+     * has been met.
+     */
+    void notifyWaiters() { m_waitCond.signal_all(); }
 
   private:
     /*
@@ -652,6 +720,12 @@ class ClusterEventHandler
      * event as it is triggered.
      */
     ClientData m_cd;
+
+    /*
+     * Mutex and Cond used for waiting & condition mgmt.
+     */
+    Cond m_waitCond;
+    Mutex m_waitMutex;
 };
 
 /*---------------------------------------------------------------------*/
@@ -1025,7 +1099,7 @@ class TimerEventHandler
      */
     virtual ~TimerEventHandler() {}
 
-    /*
+    /**
      * Handle the event -- this must be implemented by
      * subclasses.
      */

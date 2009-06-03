@@ -21,7 +21,7 @@ class Client
 {
   public:
     /**
-     * Get the root node that contains all applications and can be
+     * \brief Get the root node that contains all applications and can be
      * used for registering event handlers on.
      * 
      * @return the root node
@@ -29,8 +29,7 @@ class Client
     virtual Root *getRoot() = 0;
 
     /**
-     * Register a timer handler to be called after
-     * a specified delay.
+     * \brief Register a timer handler to be called after a specified delay.
      * 
      * @param tehp pointer to the handler class that is managed by the user
      * @param afterTime milliseconds to wait for the event to be triggered
@@ -40,7 +39,7 @@ class Client
                                   ClientData data) = 0;
 
     /**
-     * Cancel a previously registered timer.
+     * \brief Cancel a previously registered timer.
      *
      * @return true if successful, false otherwise
      */
@@ -49,15 +48,16 @@ class Client
     /**
      * Register and cancel a cluster event handler. 
      *
-     * @param cehp a handler class for events, managed by caller
+     * @param uehp an instance of a handler class, managed by caller
      */
-    virtual void registerHandler(ClusterEventHandler *cehp) = 0;
+    virtual void registerHandler(UserEventHandler *uehp) = 0;
+
     /**
-     * Cancel a handler for events.
+     * \brief Cancel a handler for events.
      *
      * @return true if successful, false otherwise
      */
-    virtual bool cancelHandler(ClusterEventHandler *cehp) = 0;
+    virtual bool cancelHandler(UserEventHandler *uehp) = 0;
 };
 
 };	/* End of 'namespace clusterlib' */

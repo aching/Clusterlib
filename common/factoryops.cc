@@ -586,7 +586,7 @@ FactoryOps::dispatchZKEvent(zk::ZKWatcherEvent *zp)
 
     CachedObjectEventHandler *fehp =
         (CachedObjectEventHandler *) zp->getContext();
-    ClusterEventPayload *cep, *cepp;
+    UserEventPayload *uep, *uepp;
     ClientImplList::iterator clIt;
     char buf[1024];
 
@@ -609,7 +609,7 @@ FactoryOps::dispatchZKEvent(zk::ZKWatcherEvent *zp)
     /*
      * Update the cache representation of the clusterlib
      * repository object and get back a prototypical
-     * cluster event payload to send to clients.
+     * user event payload to send to clients.
      *
      * If the event is ZOO_DELETED_EVENT, then the Notifyable * should
      * be disregarded.
@@ -617,8 +617,8 @@ FactoryOps::dispatchZKEvent(zk::ZKWatcherEvent *zp)
      * If NULL is returned, the event is not propagated
      * to clients.
      */
-    cep = updateCachedObject(fehp, zp);
-    if (cep == NULL) {
+    uep = updateCachedObject(fehp, zp);
+    if (uep == NULL) {
         LOG_DEBUG(CL_LOG, 
                   "dispatchZKEvent: NULL cluster event payload "
                   "will not propogate to clients");
@@ -636,11 +636,11 @@ FactoryOps::dispatchZKEvent(zk::ZKWatcherEvent *zp)
         for (clIt = m_clients.begin();
              clIt != m_clients.end(); 
              clIt++) {
-            cepp = new ClusterEventPayload(*cep);
-            (*clIt)->sendEvent(cepp);
+            uepp = new UserEventPayload(*uep);
+            (*clIt)->sendEvent(uepp);
         }
     }
-    delete cep;
+    delete uep;
 }
 
 void
@@ -734,16 +734,16 @@ FactoryOps::dispatchEndEvent()
 
     /*
      * Send a terminate signal to all registered
-     * client-specific cluster event handler threads.
+     * client-specific user event handler threads.
      */
-    ClusterEventPayload *cepp = NULL;
-    ClusterEventPayload cep(NotifyableKeyManipulator::createRootKey(), 
-                            EN_ENDEVENT);
+    UserEventPayload *uepp = NULL;
+    UserEventPayload uep(NotifyableKeyManipulator::createRootKey(), 
+                         EN_ENDEVENT);
     for (clIt = m_clients.begin();
          clIt != m_clients.end();
          clIt++) {
-        cepp = new ClusterEventPayload(cep);
-        (*clIt)->sendEvent(cepp);
+        uepp = new UserEventPayload(uep);
+        (*clIt)->sendEvent(uepp);
     }
 
     return true;
@@ -3430,10 +3430,10 @@ FactoryOps::cancelTimer(TimerId id)
 
 /*
  * Update the cached representation of a clusterlib repository object and
- * generate the prototypical cluster event payload to send to registered
+ * generate the prototypical user event payload to send to registered
  * clients.
  */
-ClusterEventPayload *
+UserEventPayload *
 FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
                                zk::ZKWatcherEvent *ep)
 {
@@ -3527,7 +3527,7 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
         return NULL;
     }
 
-    return new ClusterEventPayload(notifyablePath, e);
+    return new UserEventPayload(notifyablePath, e);
 }
 
 void

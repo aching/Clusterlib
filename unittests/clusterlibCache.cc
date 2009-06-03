@@ -6,42 +6,6 @@ extern TestParams globalTestParams;
 using namespace std;
 using namespace clusterlib;
 
-class CacheClusterEventHandler
-    : public ClusterEventHandler
-{
-  public:
-    CacheClusterEventHandler(Client *cp,
-                             Event mask,
-                             Notifyable *np)
-        : ClusterEventHandler(np, mask, cp),
-          counter(0),
-          lastEvent(EN_NOEVENT)
-    {
-    }
-
-    int32_t getCounter() { return counter; }
-    void setCounter(int32_t newval) { counter = newval; }
-
-    Event getLastEvent() { return lastEvent; }
-
-    void handleClusterEvent(Event e)
-    {
-        counter++;
-        lastEvent = e;
-    }
-
-  private:
-    /*
-     * Count how many times this handler was called.
-     */
-    int32_t counter;
-
-    /*
-     * Last event fired.
-     */
-    Event lastEvent;
-};
-
 /*
  * The test class itself.
  */

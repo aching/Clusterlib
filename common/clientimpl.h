@@ -45,18 +45,18 @@ class ClientImpl
     virtual bool cancelTimer(TimerId id);
 
     /**
-     * Register and cancel a cluster event handler. 
+     * \brief Register a user event handler. 
      *
-     * @param cehp a handler class for events, managed by caller
+     * @param uehp an instance of a handler class, managed by caller
      */
-    virtual void registerHandler(ClusterEventHandler *cehp);
+    virtual void registerHandler(UserEventHandler *uehp);
 
     /**
-     * Cancel a handler for events.
+     * \brief Cancel a handler for userevents.
      *
      * @return true if successful, false otherwise
      */
-    virtual bool cancelHandler(ClusterEventHandler *cehp);
+    virtual bool cancelHandler(UserEventHandler *cehp);
 
     /*
      * Internal functions not used by outside clients
@@ -78,7 +78,7 @@ class ClientImpl
          * specific user program handlers. The clusterlib cache
          * object affected by the event already has been updated.
          */
-        m_eventThread.Create(*this, &ClientImpl::consumeClusterEvents);
+        m_eventThread.Create(*this, &ClientImpl::consumeUserEvents);
     }
 
     /**
@@ -89,7 +89,7 @@ class ClientImpl
     /**
      * Send an event to this client.
      */
-    void sendEvent(ClusterEventPayload *cepp);
+    void sendEvent(UserEventPayload *cepp);
 
     /**
      * Make the destructor protected so it can only be invoked
@@ -116,10 +116,10 @@ class ClientImpl
 
   private:
     /**
-     * Consume cluster events. This method runs in a separate thread,
+     * Consume user events. This method runs in a separate thread,
      * see m_eventThread below.
      */
-    void consumeClusterEvents(void *param);
+    void consumeUserEvents(void *param);
 
     /**
      * Get the event handlers registry lock.
@@ -141,7 +141,7 @@ class ClientImpl
      * The blocking queue for delivering notifications
      * to this client.
      */
-    ClusterEventPayloadQueue m_queue;
+    UserEventPayloadQueue m_queue;
 
     /**
      * The thread consuming the events.

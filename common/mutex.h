@@ -104,6 +104,11 @@ class Cond
         pthread_cond_signal(&m_cond);
     }
 
+    void signal_all()
+    {
+        pthread_cond_broadcast(&m_cond);
+    }
+
   private:
     pthread_cond_t m_cond;
 };

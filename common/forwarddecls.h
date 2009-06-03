@@ -48,8 +48,6 @@ class ApplicationImpl;
 class CachedObjectChangeHandlers;
 class Client;
 class ClientImpl;
-class ClusterEventHandler;
-class ClusterEventPayload;
 class DataDistribution;
 class DataDistributionImpl;
 class DistributedLocks;
@@ -74,6 +72,8 @@ class ServerImpl;
 class Shard;
 class TimerEventHandler;
 class TimerEventPayload;
+class UserEventHandler;
+class UserEventPayload;
 
 /*
  * Vectors of pointers to these classes.
@@ -135,7 +135,7 @@ typedef LeadershipElectionMultimap::iterator   LeadershipIterator;
 typedef std::pair<LeadershipIterator, LeadershipIterator>
 					       LeadershipElectionMultimapRange;
 
-typedef std::multimap<const std::string, ClusterEventHandler *, ltstr>
+typedef std::multimap<const std::string, UserEventHandler *, ltstr>
 					       EventHandlersMultimap;
 typedef EventHandlersMultimap::iterator	       EventHandlersIterator;
 typedef std::pair<EventHandlersIterator, EventHandlersIterator>

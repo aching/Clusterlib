@@ -191,10 +191,10 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     /*
      * Helper method that updates the cached representation
      * of a clusterlib repository object and generates the
-     * prototypical cluster event payload to send to clients.
+     * prototypical user event payload to send to clients.
      */
-    ClusterEventPayload *updateCachedObject(CachedObjectEventHandler *cp,
-                                            zk::ZKWatcherEvent *zep);
+    UserEventPayload *updateCachedObject(CachedObjectEventHandler *cp,
+                                         zk::ZKWatcherEvent *zep);
 
     /*
      * Retrieve a list of all (currently known) applications.

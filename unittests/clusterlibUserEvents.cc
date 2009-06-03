@@ -10,7 +10,7 @@ using namespace clusterlib;
  * My user event handler.
  */
 class MyUserEventHandler
-    : public ClusterEventHandler
+    : public UserEventHandler
 {
   public:
     /*
@@ -19,12 +19,13 @@ class MyUserEventHandler
     MyUserEventHandler(Notifyable *ntp,
                        Event mask,
                        ClientData cd)
-        : ClusterEventHandler(ntp, mask, cd),
-          m_counter(0)
+        : UserEventHandler(ntp, mask, cd),
+          m_counter(0),
+          m_targetCounter(0)
     {
     }
 
-    virtual void handleClusterEvent(Event e)
+    virtual void handleUserEvent(Event e)
     {
         cerr << "Got event "
              << e
@@ -39,12 +40,24 @@ class MyUserEventHandler
     void reset() { m_counter = 0; }
     int32_t getCounter() { return m_counter; }
 
+    bool meetsCondition(Event e)
+    {
+        return (m_counter == m_targetCounter) ? true : false;
+    }
+
+    void setTargetCounter(int32_t t) { m_targetCounter = t; }
+
   private:
     /*
      * Counter for how many times the handler was
      * called.
      */
     int32_t m_counter;
+
+    /*
+     * How many calls is the target (expected)?
+     */
+    int32_t m_targetCounter;
 };
 
 /*
@@ -173,39 +186,39 @@ class ClusterlibUserEvents
         /*
          * Register & unregister once.
          */
-        MyUserEventHandler *cehp = new MyUserEventHandler(_nod0,
+        MyUserEventHandler *uehp = new MyUserEventHandler(_nod0,
                                                           EN_CONNECTEDCHANGE,
                                                           (void *) 0x3333);
-        _client0->registerHandler(cehp);
+        _client0->registerHandler(uehp);
 
-        bool deregged = _client0->cancelHandler(cehp);
+        bool deregged = _client0->cancelHandler(uehp);
         CPPUNIT_ASSERT(deregged == true);
 
-        deregged = _client0->cancelHandler(cehp);
+        deregged = _client0->cancelHandler(uehp);
         CPPUNIT_ASSERT(deregged == false);
 
         /*
          * Registering the same handler several times also works,
          * means it will be called several times!
          */
-        _client0->registerHandler(cehp);
-        _client0->registerHandler(cehp);
-        _client0->registerHandler(cehp);
+        _client0->registerHandler(uehp);
+        _client0->registerHandler(uehp);
+        _client0->registerHandler(uehp);
 
         /*
          * Cancelling several times also works...
          */
-        deregged = _client0->cancelHandler(cehp);
+        deregged = _client0->cancelHandler(uehp);
         CPPUNIT_ASSERT(deregged == true);
-        deregged = _client0->cancelHandler(cehp);
+        deregged = _client0->cancelHandler(uehp);
         CPPUNIT_ASSERT(deregged == true);
-        deregged = _client0->cancelHandler(cehp);
+        deregged = _client0->cancelHandler(uehp);
         CPPUNIT_ASSERT(deregged == true);
 
         /*
          * Cancelling N+1 times does not work...
          */
-        deregged = _client0->cancelHandler(cehp);
+        deregged = _client0->cancelHandler(uehp);
         CPPUNIT_ASSERT(deregged == false);
     }
     void testUserEvents2()
@@ -224,7 +237,7 @@ class ClusterlibUserEvents
         /*
          * My handler.
          */
-        MyUserEventHandler *cehp =
+        MyUserEventHandler *uehp =
             new MyUserEventHandler(_nod0,
                                    EN_CONNECTEDCHANGE,
                                    (void *) 0x3333);
@@ -233,9 +246,11 @@ class ClusterlibUserEvents
         /*
          * Register 3 times.
          */
-        _client0->registerHandler(cehp);
-        _client0->registerHandler(cehp);
-        _client0->registerHandler(cehp);
+        uehp->acquireLock();
+        uehp->setTargetCounter(3);
+        _client0->registerHandler(uehp);
+        _client0->registerHandler(uehp);
+        _client0->registerHandler(uehp);
 
         /*
          * Create a health checker, create the "connected" znode,
@@ -247,14 +262,16 @@ class ClusterlibUserEvents
         /*
          * Wait for event propagation.
          */
-        _factory->synchronize();
-        sleep(1);
+        bool res = uehp->waitUntilCondition();
+        CPPUNIT_ASSERT(res == true);
 
         /*
          * Event counter should be 3, since we registered the
          * handler 3 times.
          */
-        CPPUNIT_ASSERT(cehp->getCounter() == 3);
+        CPPUNIT_ASSERT(uehp->getCounter() == 3);
+
+        uehp->setTargetCounter(6);
 
         /*
          * Unregister the handler, we should get 3 more event
@@ -265,18 +282,20 @@ class ClusterlibUserEvents
         /*
          * Wait for event propagation.
          */
-        _factory->synchronize();
-        sleep(1);
+        res = uehp->waitUntilCondition();
+        CPPUNIT_ASSERT(res == true);
 
         /*
          * Event counter should now be at 6.
          */
-        CPPUNIT_ASSERT(cehp->getCounter() == 6);
+        CPPUNIT_ASSERT(uehp->getCounter() == 6);
+
+        uehp->releaseLock();
 
         /*
          * Clean up.
          */
-        delete cehp;
+        delete uehp;
         delete hcp;
     }
     void testUserEvents3()
@@ -295,7 +314,7 @@ class ClusterlibUserEvents
         /*
          * My handler.
          */
-        MyUserEventHandler *cehp =
+        MyUserEventHandler *uehp =
             new MyUserEventHandler(_nod0,
                                    EN_CONNECTEDCHANGE,
                                    (void *) 0x3333);
@@ -304,9 +323,12 @@ class ClusterlibUserEvents
         /*
          * Register 3 times.
          */
-        _client0->registerHandler(cehp);
-        _client0->registerHandler(cehp);
-        _client0->registerHandler(cehp);
+        uehp->acquireLock();
+        uehp->setTargetCounter(3);
+        _client0->registerHandler(uehp);
+        _client0->registerHandler(uehp);
+        _client0->registerHandler(uehp);
+
 
         /*
          * Create a health checker, create the "connected" znode,
@@ -318,21 +340,22 @@ class ClusterlibUserEvents
         /*
          * Wait for event propagation.
          */
-        _factory->synchronize();
-        sleep(1);
+        bool res = uehp->waitUntilCondition();
+        CPPUNIT_ASSERT(res == true); 
 
         /*
          * Event counter should be 3, since we registered the
          * handler 3 times.
          */
-        CPPUNIT_ASSERT(cehp->getCounter() == 3);
+        CPPUNIT_ASSERT(uehp->getCounter() == 3);
 
         /*
          * Cancel *one* of the handlers. This means that the
          * connection events should be delivered to only 2 handlers.
          */
-        bool cancelled = _client0->cancelHandler(cehp);
+        bool cancelled = _client0->cancelHandler(uehp);
         CPPUNIT_ASSERT(cancelled == true);
+        uehp->setTargetCounter(5);
 
         /*
          * Unregister the handler, we should get 2 more event
@@ -343,18 +366,19 @@ class ClusterlibUserEvents
         /*
          * Wait for event propagation.
          */
-        _factory->synchronize();
-        sleep(1);
+        res = uehp->waitUntilCondition();
+        CPPUNIT_ASSERT(res == true);
 
         /*
          * Event counter should now be at 5.
          */
-        CPPUNIT_ASSERT(cehp->getCounter() == 5);
+        CPPUNIT_ASSERT(uehp->getCounter() == 5);
 
         /*
          * Clean up.
          */
-        delete cehp;
+        uehp->releaseLock();
+        delete uehp;
         delete hcp;
     }
     void testUserEvents4()
@@ -371,13 +395,13 @@ class ClusterlibUserEvents
         _client0->registerHandler(&ueh);        
 
         /*
-         * Wait for event propagation.
+         * Wait for event propagation. The factory deletion should not
+         * return till the EN_ENDEVENT has propagated, so we do not
+         * wait explicitly.
          */
-        _factory->synchronize();
-        sleep(1);
-
         delete _factory;
         _factory = NULL;
+
         CPPUNIT_ASSERT(ueh.getCounter() == 1);
     }
     void testUserEvents5()
