@@ -149,41 +149,6 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     void removeClient(ClientImpl *clp);
 
     /*
-     * Clean up clients
-     */
-    void removeAllClients();
-
-    /*
-     * Clean up data distributions
-     */
-    void removeAllDataDistributions();
-
-    /*
-     * Clean up properties maps
-     */
-    void removeAllProperties();
-
-    /*
-     * Clean up applications
-     */
-    void removeAllApplications();
-
-    /*
-     * Clean up groups
-     */
-    void removeAllGroups();
-
-    /*
-     * Clean up nodes
-     */
-    void removeAllNodes();
-
-    /*
-     * Clean up all removed notifyables
-     */
-    void removeAllRemovedNotifyables();
-
-    /*
      * Register/cancel a timer handler.
      */
     TimerId registerTimer(TimerEventHandler *handler,
@@ -577,9 +542,9 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     Mutex *getEndEventLock() { return &m_endEventLock; }
 
     /**
-     * Get the removed notifyables list
+     * Get the removed notifyables set
      */
-    NotifyableList *getRemovedNotifyablesList()
+    std::set<Notifyable *> *getRemovedNotifyables()
     {
         return &m_removedNotifyables;
     }
@@ -653,6 +618,41 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     }
 
   private:
+    /**
+     * Clean up clients
+     */
+    void discardAllClients();
+
+    /**
+     * Clean up data distributions
+     */
+    void discardAllDataDistributions();
+
+    /**
+     * Clean up properties maps
+     */
+    void discardAllProperties();
+
+    /**
+     * Clean up applications
+     */
+    void discardAllApplications();
+
+    /**
+     * Clean up groups
+     */
+    void discardAllGroups();
+
+    /**
+     * Clean up nodes
+     */
+    void discardAllNodes();
+
+    /**
+     * Clean up all removed notifyables
+     */
+    void discardAllRemovedNotifyables();
+
     /**
      * Required to support SAFE_CALL_ZK macro for various classes
      */
@@ -737,9 +737,9 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
     Cond m_syncCond;
 
     /*
-     * The registry of deleted Notifyables
+     * The registry of removed Notifyables
      */
-    NotifyableList m_removedNotifyables;
+    std::set<Notifyable *> m_removedNotifyables;
     Mutex m_removedNotifyablesLock;
 
     /*

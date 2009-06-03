@@ -15,64 +15,6 @@ namespace clusterlib
 {
 
 /**
- * Grouping of a predicate, mutex, and a conditional.
- */
-struct PredMutexCond
-{
-    PredMutexCond() 
-        : pred(false),
-          refCount(0) {}
-
-    /**
-     * Signal another thread that is waiting on a predicate.  This is
-     * a one time signal .  Make sure that the predicate is set to
-     * false before calling either the predWait and predSignal
-     * functions on either thread.
-     */
-    void predSignal()
-    {
-        Locker l1(&(mutex));
-        pred = true;
-        cond.signal();
-    }
-
-    /**
-     * Wait on a predicate to be changed by another thread.  This is a
-     * one time wait.  Make sure that the predicate is set to false
-     * before calling either the predWait and predSignal functions on
-     * either thread.
-     */
-    void predWait()
-    {
-        mutex.acquire();
-        while (pred == false) {
-            cond.wait(mutex);
-        }
-        mutex.release();
-    }
-
-    /**
-     * Has the predicate been satified?
-     */
-    bool pred;
-
-    /**
-     * Used with conditional
-     */
-    Mutex mutex;
-
-    /**
-     * Used to signal betwen threads
-     */
-    Cond cond;
-
-    /**
-     * Could be more than one thread waiting on this conditional
-     */
-    int32_t refCount;
-};
-
-/**
  * Definition of DistributedLocks
  */
 class DistributedLocks

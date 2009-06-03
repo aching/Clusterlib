@@ -108,6 +108,30 @@ class Notifyable
      */
     virtual Properties *getProperties(bool create = false) = 0;
 
+    /**
+     * Get the reference count of this cachec representation of a
+     * Notifyable.  Useful for debugging, since it cannot be
+     * manipulated directly.
+     *
+     * @return the reference count
+     */
+    virtual int32_t getRefCount() = 0;
+
+    /**
+     * Any get*() (i.e. getProperties() or getNode()) increments a
+     * reference count on a cached Notifyable.  If the user wants to
+     * let clusterlib know that it will no longer access the
+     * Notifyable * that refers to a cached Notifyable, it should call
+     * this function to decrement the reference count.  Once the
+     * reference count goes to 0, the cached Notifyable will be
+     * removed from the clusterlib cache.  This function does not
+     * effect whether the cached object is removed from the
+     * repository.  It is also not required if a user has sufficient
+     * memory to hold all cached objects (current and deleted
+     * combined).
+     */
+    virtual void releaseRef() = 0;
+
     /** 
      * \brief Acquire the clusterlib lock for this Notifyable.
      *
@@ -141,6 +165,8 @@ class Notifyable
 
     /**
      * Do I have the lock?
+     *
+     * @return true is I have the lock, false otherwise
      */
     virtual bool hasLock() = 0;
 

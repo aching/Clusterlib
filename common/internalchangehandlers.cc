@@ -41,20 +41,24 @@ InternalChangeHandlers::handlePrecLockNodeExistsChange(int32_t etype,
 
     /*
      * This is the only expected event.
-         */
+     */
     if (etype == ZOO_DELETED_EVENT) {
         /*
          * Notify the thread waiting to acquire the lock that this
-         * lock node has finally been deleted.  Since this object
-         * cannot be deleted it should be safe 
+         * lock node has finally been deleted.  Since this
+         * PredMutexCond cannot be deleted, this process should be safe.
          */
-        WaitMap::iterator waitMapIt = 
-            getOps()->getDistributedLocks()->getWaitMap()->find(key);
-        if (waitMapIt == 
-            getOps()->getDistributedLocks()->getWaitMap()->end()) {
-            throw InconsistentInternalStateException(
-                "handlePrecLockNodeExistsChange: Signalling"
-                " the thread waiting on acquire failed");
+        WaitMap::iterator waitMapIt;
+        {
+            Locker l1(getOps()->getDistributedLocks()->getWaitMapLock());
+            waitMapIt = 
+                getOps()->getDistributedLocks()->getWaitMap()->find(key);
+            if (waitMapIt == 
+                getOps()->getDistributedLocks()->getWaitMap()->end()) {
+                throw InconsistentInternalStateException(
+                    "handlePrecLockNodeExistsChange: Signalling"
+                    " the thread waiting on acquire failed");
+            }
         }
 
         waitMapIt->second->predSignal();

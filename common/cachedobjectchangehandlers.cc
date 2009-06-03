@@ -21,6 +21,40 @@ using namespace boost;
 namespace clusterlib
 {
 
+string 
+CachedObjectChangeHandlers::getCachedObjectChangeString(
+    CachedObjectChange change)
+{
+    switch (change) {
+        case NOTIFYABLE_STATE_CHANGE:
+            return "NOTIFYABLE_STATE_CHANGE";
+        case APPLICATIONS_CHANGE:
+            return "APPLICATIONS_CHANGE";
+        case GROUPS_CHANGE:
+            return "GROUPS_CHANGE";
+        case DATADISTRIBUTIONS_CHANGE:
+            return "DATADISTRIBUTIONS_CHANGE";
+        case NODES_CHANGE:
+            return "NODES_CHANGE";
+        case PROPERTIES_VALUES_CHANGE:
+            return "PROPERTIES_VALUES_CHANGE";
+        case SHARDS_CHANGE:
+            return "SHARDS_CHANGE";
+        case MANUAL_OVERRIDES_CHANGE:
+            return "MANUAL_OVERRIDES_CHANGE";
+        case NODE_CLIENT_STATE_CHANGE:
+            return "NODE_CLIENT_STATE_CHANGE";
+        case NODE_MASTER_SET_STATE_CHANGE:
+            return "NODE_MASTER_SET_STATE_CHANGE";
+        case NODE_CONNECTION_CHANGE:
+            return "NODE_CONNECTION_CHANGE";
+        case SYNCHRONIZE_CHANGE:
+            return "SYNCHRONIZE_CHANGE";
+        default:
+            return "unknown change";
+    }
+}
+
 /*
  * Handle changes to the state of a Notifyable.
  */
@@ -749,6 +783,12 @@ CachedObjectChangeHandlers::setHandlerCallbackReady(
         }
     }
 
+    LOG_DEBUG(CL_LOG,
+              "setHandlerCallbackReady: "
+              "change %s, key %s",
+              getCachedObjectChangeString(change).c_str(),
+              key.c_str());
+
     m_handlerKeyCallbackCount[change][key] = true;
 }
 
@@ -792,6 +832,12 @@ CachedObjectChangeHandlers::unsetHandlerCallbackReady(
         throw InconsistentInternalStateException("unsetHandlerCallbackReady: "
                                                  "Not true.");
     }
+
+    LOG_DEBUG(CL_LOG,
+              "unsetHandlerCallbackReady: "
+              "change %s, key %s",
+              getCachedObjectChangeString(change).c_str(),
+              key.c_str());
     
     keyIt->second = false;
 }

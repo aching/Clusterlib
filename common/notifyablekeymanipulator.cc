@@ -197,6 +197,9 @@ NotifyableKeyManipulator::getNotifyableKeyFromKey(const string &key)
      * to change.
      */
     if (NotifyableKeyManipulator::isNotifyableKey(components)) {
+        LOG_DEBUG(CL_LOG,
+                  "getNotifyableKeyFromKey: From key (%s), returned same key)",
+                  key.c_str());
         return key;
     }
     if (NotifyableKeyManipulator::isNotifyableKey(components, 
@@ -211,6 +214,12 @@ NotifyableKeyManipulator::getNotifyableKeyFromKey(const string &key)
                 "getNotifyableKeyFromKey: Couldn't find key separator");
         }
         res.erase(keySeparator);
+        LOG_DEBUG(CL_LOG,
+                  "getNotifyableKeyFromKey: From key (%s), "
+                  "returned stripped key (%s))",
+                  key.c_str(),
+                  res.c_str());
+
         return res;
     }
 

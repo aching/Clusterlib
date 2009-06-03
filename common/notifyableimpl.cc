@@ -11,6 +11,7 @@
  */
 
 #include "clusterlibinternal.h"
+#include <limits>
 
 #define LOG_LEVEL LOG_WARN
 #define MODULE_NAME "ClusterLib"
@@ -28,6 +29,14 @@ NotifyableImpl::getProperties(bool create)
     throwIfRemoved();
 
     return getOps()->getProperties(this, create);
+}
+
+void
+NotifyableImpl::releaseRef()
+{
+    TRACE(CL_LOG, "releaseRef");
+
+    removeFromRemovedNotifyablesIfReleased(true);
 }
 
 Notifyable *
@@ -91,8 +100,29 @@ NotifyableImpl::getMyGroup()
 Notifyable::State
 NotifyableImpl::getState() const
 {
+    TRACE(CL_LOG, "getState");
+
     Locker l1(getStateLock());
+    LOG_DEBUG(CL_LOG, 
+              "getState: State for (%s) is %s", 
+              getKey().c_str(), 
+              NotifyableImpl::getStateString(m_state).c_str());
     return m_state;
+}
+
+string
+NotifyableImpl::getStateString(Notifyable::State state)
+{
+    TRACE(CL_LOG, "getStateString()");
+
+    switch(state) {
+        case Notifyable::READY:
+            return "ready";
+        case Notifyable::REMOVED:
+            return "removed";
+        default:
+            return "unknown state";
+    }
 }
 
 void
@@ -134,6 +164,14 @@ NotifyableImpl::acquireLock(bool acquireChildren)
             ntList.insert(ntList.end(), tmpNtList.begin(), tmpNtList.end()); 
             ntListIndex++;
         } while (ntListIndex != ntList.size());
+
+        /* Release notifyables from getChildren() */
+        NotifyableList::iterator ntIt;
+        for (ntIt = ntList.begin(); ntIt != ntList.end(); ntIt++) {
+            if (*ntIt != this) {
+                (*ntIt)->releaseRef();
+            }
+        }
     }
     else {
         getOps()->getDistributedLocks()->acquire(
@@ -201,6 +239,14 @@ NotifyableImpl::releaseLock(bool releaseChildren)
             ntList.insert(ntList.end(), tmpNtList.begin(), tmpNtList.end()); 
             ntListIndex++;
         } while (ntListIndex != ntList.size());
+
+        /* Release notifyables from getChildren() */
+        NotifyableList::iterator ntIt;
+        for (ntIt = ntList.begin(); ntIt != ntList.end(); ntIt++) {
+            if (*ntIt != this) {
+                (*ntIt)->releaseRef();
+            }
+        }
     }
     else {
         getOps()->getDistributedLocks()->release(
@@ -271,6 +317,17 @@ NotifyableImpl::remove(bool removeChildren)
             }
             getOps()->removeNotifyableFromCacheByKey(getKey());
             removeRepositoryEntries();
+            
+            /* Must release lock before try to clean up from removed cache */
+            releaseLock(removeChildren);
+            /* Release notifyables from getChildren() */
+            NotifyableList::iterator ntIt;
+            for (ntIt = ntList.begin(); ntIt != ntList.end(); ntIt++) {
+                if (*ntIt != this) {
+                    (*ntIt)->releaseRef();
+                }
+            }
+            removeFromRemovedNotifyablesIfReleased(false);
         }
         else {
             NotifyableList ntList, tmpNtList;
@@ -303,6 +360,18 @@ NotifyableImpl::remove(bool removeChildren)
                 getOps()->removeNotifyableFromCacheByKey(curNtp->getKey());
                 curNtp->removeRepositoryEntries(); 
             }
+
+            /* Must release lock before try to clean up from removed cache */
+            releaseLock(removeChildren);
+            /* Release notifyables from getChildren() */
+            for (revNtListIt = ntList.rbegin(); 
+                 revNtListIt != ntList.rend(); 
+                 revNtListIt++) {
+                if (*revNtListIt != this) {
+                    (*revNtListIt)->releaseRef();
+                }
+            }
+            removeFromRemovedNotifyablesIfReleased(false); 
         }    
     } 
     catch (Exception &e) {
@@ -311,8 +380,6 @@ NotifyableImpl::remove(bool removeChildren)
             string("remove: released lock becauase of exception: ") +
             e.what());
     }
-
-    releaseLock(removeChildren);
 }
 
 const string
@@ -426,6 +493,93 @@ NotifyableImpl::getDistributedLockOwnerCount(const string &lockName)
 
     return lockIt->second.refCount;
 }
+
+void
+NotifyableImpl::incrRefCount()
+{
+    TRACE(CL_LOG, "incrRefCount");
+
+    Locker l1(getStateLock());
+    if ((m_refCount < 0) || 
+        (m_refCount == numeric_limits<int32_t>::max())) {
+        throw InconsistentInternalStateException(
+            std::string("incrRefCount: Impossible that reference ") +
+                "count for Notifyable " + getKey().c_str() + 
+            " is <= 0 or maxed out!");
+    }
+    
+    m_refCount++;
+
+    LOG_DEBUG(CL_LOG, 
+              "incrRefCount: Notifyable (%s) now has %d references",
+              getKey().c_str(),
+              m_refCount);
+}
+
+void
+NotifyableImpl::decrRefCount()
+{
+    TRACE(CL_LOG, "incrRefCount");
+    
+    Locker l1(getStateLock());
+    if (m_refCount <= 0) {
+        throw InconsistentInternalStateException(
+            std::string("decrRefCount: Impossible that reference count") +
+            " for Notifyable " + getKey().c_str() + " is <= 0!");
+    }
+
+    m_refCount--;
+
+    LOG_DEBUG(CL_LOG, 
+              "decrRefCount: Notifyable (%s) now has %d references",
+              getKey().c_str(),
+              m_refCount);
+}
+
+void
+NotifyableImpl::removeFromRemovedNotifyablesIfReleased(bool decrRefCount)
+{
+    TRACE(CL_LOG, "removeFromRemovedNotifyablesIfReleased");
+
+    getStateLock()->acquire();
+
+    if (decrRefCount == true) {
+        NotifyableImpl::decrRefCount();
+    }
+
+    /* 
+     * If the object was removed and the reference count == 0, then no
+     * user has a valid pointer to it and no one will be able to get
+     * another pointer to it.  It is safe to remove this object from
+     * the removed object cache.
+     */
+    if ((getRefCount() == 0) && (getState() == REMOVED)) {
+        Locker l2(getOps()->getRemovedNotifyablesLock());
+        set<Notifyable *> *notifyableSet = 
+            getOps()->getRemovedNotifyables();
+        set<Notifyable *>::iterator it = notifyableSet->find(this);
+        if (it == notifyableSet->end()) {
+            throw InconsistentInternalStateException(
+                string("release: Couldn't find notifyable ") + 
+                getKey().c_str() + " in removed notifyables list to release!");
+        }
+        LOG_DEBUG(CL_LOG, 
+                  "removeFromRemovedNotifyablesIfReleased: Cleaned up (%s)",
+                  getKey().c_str());
+        notifyableSet->erase(it);
+        getStateLock()->release();
+        delete this;
+    }
+    else {
+        LOG_DEBUG(CL_LOG, 
+                  "removeFromRemovedNotifyablesIfReleased: Did not "
+                  "clean up (%s) with %d references",
+                  getKey().c_str(),
+                  getRefCount());
+        getStateLock()->release();
+    }
+}
+
 
 };	/* End of 'namespace clusterlib' */
 

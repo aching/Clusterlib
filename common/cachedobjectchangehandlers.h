@@ -37,6 +37,9 @@ class CachedObjectChangeHandlers
         NODE_CONNECTION_CHANGE,
         SYNCHRONIZE_CHANGE
     };
+
+    static std::string getCachedObjectChangeString(
+        CachedObjectChange change);
  
     /**
      * Get the lock that protects this entire data structure.  This is

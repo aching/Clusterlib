@@ -66,6 +66,11 @@ class RootImpl
         throw InvalidMethodException("RootImpl cannot be removed");
     }
 
+    virtual void releaseRef()
+    {
+        throw InvalidMethodException("RootImpl cannot be released");
+    }
+
     /*
      * Internal functions not used by outside clients
      */

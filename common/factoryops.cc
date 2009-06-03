@@ -120,13 +120,13 @@ FactoryOps::~FactoryOps()
      */
     waitForThreads();
 
-    removeAllClients();
-    removeAllDataDistributions();
-    removeAllProperties();
-    removeAllApplications();
-    removeAllGroups();
-    removeAllNodes();
-    removeAllRemovedNotifyables();
+    discardAllClients();
+    discardAllDataDistributions();
+    discardAllProperties();
+    discardAllApplications();
+    discardAllGroups();
+    discardAllNodes();
+    discardAllRemovedNotifyables();
     delete mp_root;
 
     try {
@@ -290,9 +290,9 @@ FactoryOps::removeClient(ClientImpl *clp)
 }
 
 void
-FactoryOps::removeAllClients()
+FactoryOps::discardAllClients()
 {
-    TRACE(CL_LOG, "removeAllClients");
+    TRACE(CL_LOG, "discardAllClients");
 
     Locker l(getClientsLock());
     ClientImplList::iterator clIt;
@@ -308,9 +308,9 @@ FactoryOps::removeAllClients()
  * Methods to clean up storage used by a FactoryOps.
  */
 void
-FactoryOps::removeAllDataDistributions()
+FactoryOps::discardAllDataDistributions()
 {
-    TRACE(CL_LOG, "removeAllDataDistributions");
+    TRACE(CL_LOG, "discardAllDataDistributions");
 
     Locker l(getDataDistributionsLock());
     NotifyableImplMap::iterator distIt;
@@ -319,17 +319,18 @@ FactoryOps::removeAllDataDistributions()
          distIt != m_dists.end();
          distIt++) {
         LOG_DEBUG(CL_LOG, 
-                  "removeAllDataDistributions: Removed key (%s)",
-                  distIt->second->getKey().c_str());
+                  "discardAllDataDistributions: Removed key (%s) with %d refs",
+                  distIt->second->getKey().c_str(),
+                  distIt->second->getRefCount());
 
 	delete distIt->second;
     }
     m_dists.clear();
 }
 void
-FactoryOps::removeAllProperties()
+FactoryOps::discardAllProperties()
 {
-    TRACE(CL_LOG, "removeAllProperties");
+    TRACE(CL_LOG, "discardAllProperties");
 
     Locker l(getPropertiesLock());
     NotifyableImplMap::iterator pIt;
@@ -338,17 +339,18 @@ FactoryOps::removeAllProperties()
          pIt != m_props.end();
          pIt++) {
         LOG_DEBUG(CL_LOG, 
-                  "removeAllProperties: Removed key (%s)",
-                  pIt->second->getKey().c_str());
+                  "discardAllProperties: Removed key (%s) with %d refs",
+                  pIt->second->getKey().c_str(),
+                  pIt->second->getRefCount());
 
 	delete pIt->second;
     }
     m_props.clear();
 }
 void
-FactoryOps::removeAllApplications()
+FactoryOps::discardAllApplications()
 {
-    TRACE(CL_LOG, "removeAllApplications");
+    TRACE(CL_LOG, "discardAllApplications");
 
     Locker l(getApplicationsLock());
     NotifyableImplMap::iterator aIt;
@@ -357,16 +359,17 @@ FactoryOps::removeAllApplications()
          aIt != m_apps.end();
          aIt++) {
         LOG_DEBUG(CL_LOG, 
-                  "removeAllApplications: Removed key (%s)",
-                  aIt->second->getKey().c_str());
+                  "discardAllApplications: Removed key (%s) with %d refs",
+                  aIt->second->getKey().c_str(),
+                  aIt->second->getRefCount());
 	delete aIt->second;
     }
     m_apps.clear();
 }
 void
-FactoryOps::removeAllGroups()
+FactoryOps::discardAllGroups()
 {
-    TRACE(CL_LOG, "removeAllGroups");
+    TRACE(CL_LOG, "discardAllGroups");
 
     Locker l(getGroupsLock());
     NotifyableImplMap::iterator gIt;
@@ -375,16 +378,17 @@ FactoryOps::removeAllGroups()
          gIt != m_groups.end();
          gIt++) {
         LOG_DEBUG(CL_LOG, 
-                  "removeAllGroups: Removed key (%s)",
-                  gIt->second->getKey().c_str());
+                  "discardAllGroups: Removed key (%s) with %d refs",
+                  gIt->second->getKey().c_str(),
+                  gIt->second->getRefCount());
 	delete gIt->second;
     }
     m_groups.clear();
 }
 void
-FactoryOps::removeAllNodes()
+FactoryOps::discardAllNodes()
 {
-    TRACE(CL_LOG, "removeAllNodes");
+    TRACE(CL_LOG, "discardAllNodes");
 
     Locker l(getNodesLock());
     NotifyableImplMap::iterator nIt;
@@ -393,29 +397,38 @@ FactoryOps::removeAllNodes()
          nIt != m_nodes.end();
          nIt++) {
         LOG_DEBUG(CL_LOG, 
-                  "removeAllNodes: Removed key (%s)",
-                  nIt->second->getKey().c_str());
+                  "discardAllNodes: Removed key (%s) with %d refs",
+                  nIt->second->getKey().c_str(),
+                  nIt->second->getRefCount());
 	delete nIt->second;
     }
     m_nodes.clear();
 }
 void
-FactoryOps::removeAllRemovedNotifyables()
+FactoryOps::discardAllRemovedNotifyables()
 {
-    TRACE(CL_LOG, "removeAllRemovedNotifyables");
+    TRACE(CL_LOG, "discardAllRemovedNotifyables");
 
     Locker l(getRemovedNotifyablesLock());
-    NotifyableList::iterator ntpIt;
+    set<Notifyable *>::iterator ntpIt;
 
+    int32_t count = 0;
     for (ntpIt = m_removedNotifyables.begin();
          ntpIt != m_removedNotifyables.end();
          ntpIt++) {
         LOG_DEBUG(CL_LOG, 
-                  "removeAllRemovedNotifyables: Removed key (%s)",
-                  (*ntpIt)->getKey().c_str());
+                  "discardAllRemovedNotifyables: "
+                  "Removed key (%s) with %d refs",
+                  (*ntpIt)->getKey().c_str(),
+                  (*ntpIt)->getRefCount());
 	delete *ntpIt;
+        count++;
     }
     m_removedNotifyables.clear();
+
+    LOG_INFO(CL_LOG, 
+             "discardAllRemovedNotifyables: Cleaned up %d removed notifyables",
+             count);
 }
 
 /*
@@ -830,7 +843,9 @@ FactoryOps::isInternalEvent(GenericEvent *ge)
     }
 
     /*
-     * For now, the only internal event is any lock node getting deleted.
+     * For now, the only internal events are 
+     *
+     * 1. Any lock node getting deleted.
      */
     if (ge->getType() != ZKEVENT) {
         return false;
@@ -994,6 +1009,7 @@ FactoryOps::getApplication(const string &appName, bool create)
         NotifyableImplMap::const_iterator appIt = m_apps.find(key);
 
         if (appIt != m_apps.end()) {
+            appIt->second->incrRefCount();
             return dynamic_cast<ApplicationImpl *>(appIt->second);
         }
     }
@@ -1065,6 +1081,7 @@ FactoryOps::getDataDistribution(const string &distName,
             m_dists.find(key);
 
         if (distIt != m_dists.end()) {
+            distIt->second->incrRefCount();
             return dynamic_cast<DataDistributionImpl *>(distIt->second);
         }
     }
@@ -1125,6 +1142,7 @@ FactoryOps::getProperties(Notifyable *parent,
         NotifyableImplMap::const_iterator propIt = m_props.find(key);
 
         if (propIt != m_props.end()) {
+            propIt->second->incrRefCount();
             return dynamic_cast<PropertiesImpl *>(propIt->second);
         }
     }
@@ -1194,6 +1212,7 @@ FactoryOps::getGroup(const string &groupName,
         NotifyableImplMap::const_iterator groupIt = m_groups.find(key);
 
         if (groupIt != m_groups.end()) {
+            groupIt->second->incrRefCount();
             return dynamic_cast<GroupImpl *>(groupIt->second);
         }
     }
@@ -1265,7 +1284,7 @@ FactoryOps::getNode(const string &nodeName,
                       "getNode: Found %s/%s in local cache.",
                       parentGroup->getKey().c_str(),
                       nodeName.c_str());
-                      
+            nodeIt->second->incrRefCount();
             return dynamic_cast<NodeImpl *>(nodeIt->second);
         }
     }
@@ -1742,7 +1761,7 @@ FactoryOps::getApplicationFromComponents(const vector<string> &components,
               "getApplicationFromComponents: application name = %s", 
               components.at(elements - 1).c_str());
 
-    return getApplication(components.at(elements - 1), create);    
+    return getApplication(components.at(elements - 1), create);
 }
 
 DataDistributionImpl *
@@ -1800,6 +1819,7 @@ FactoryOps::getDataDistributionFromComponents(
               parent->getKey().c_str(),
               components.at(elements - 1).c_str());
 
+    parent->releaseRef();
     return getDataDistribution(components.at(elements - 1),
                                parent,
                                create);
@@ -1857,7 +1877,8 @@ FactoryOps::getPropertiesFromComponents(const vector<string> &components,
               "properties name = %s", 
               parent->getKey().c_str(),
               components.at(elements - 1).c_str());
-    
+
+    parent->releaseRef();
     return getProperties(parent,
                          create);
 }
@@ -1924,6 +1945,7 @@ FactoryOps::getGroupFromComponents(const vector<string> &components,
               parent->getKey().c_str(),
               components.at(elements - 1).c_str());
 
+    parent->releaseRef();
     return getGroup(components.at(elements - 1),
                    parent,
                    create);
@@ -1967,8 +1989,8 @@ FactoryOps::getNodeFromComponents(const vector<string> &components,
         return NULL;
     }
     GroupImpl *parent = getGroupFromComponents(components,
-                                           parentGroupCount,
-                                           create);
+                                               parentGroupCount,
+                                               create);
     if (parent == NULL) {
         LOG_WARN(CL_LOG, "getNodeFromComponents: Tried to get "
                  "parent with name %s",
@@ -1980,7 +2002,8 @@ FactoryOps::getNodeFromComponents(const vector<string> &components,
               "getNodeFromComponents: parent key = %s, node name = %s", 
               parent->getKey().c_str(),
               components.at(elements - 1).c_str());
-    
+
+    parent->releaseRef();
     return getNode(components.at(elements - 1),
                    parent,
                    create);
@@ -2002,6 +2025,7 @@ FactoryOps::loadApplication(const string &name,
 
     NotifyableImplMap::const_iterator appIt = m_apps.find(key);
     if (appIt != m_apps.end()) {
+        appIt->second->incrRefCount();
         return dynamic_cast<ApplicationImpl *>(appIt->second);
     }
 
@@ -2022,20 +2046,11 @@ FactoryOps::loadApplication(const string &name,
         ClusterlibStrings::KEYSEPARATOR +
         ClusterlibStrings::NODES;
 
-    SAFE_CALLBACK_ZK(
-        (exists = m_zk.nodeExists(
-            key, 
-            &m_zkEventAdapter,
-            getCachedObjectChangeHandlers()->
-            getChangeHandler(
-                CachedObjectChangeHandlers::NOTIFYABLE_STATE_CHANGE))),
-        (exists = m_zk.nodeExists(key)),
-        CachedObjectChangeHandlers::NOTIFYABLE_STATE_CHANGE,
-        key,
-        "Could not determine whether key %s exists: %s",
-        key.c_str(),
-        false,
-        true);
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(key)),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
     if (!exists) {
         return NULL;
     }
@@ -2114,6 +2129,7 @@ FactoryOps::loadDataDistribution(const string &distName,
     NotifyableImplMap::const_iterator distIt = 
         m_dists.find(distKey);
     if (distIt != m_dists.end()) {
+        distIt->second->incrRefCount();
         return dynamic_cast<DataDistributionImpl *>(distIt->second);
     }
 
@@ -2164,8 +2180,6 @@ FactoryOps::loadDataDistribution(const string &distName,
                  mos.c_str());
         return NULL;
     }
-
-
 
     dist = new DataDistributionImpl(this,
                                     distKey,
@@ -2255,6 +2269,7 @@ FactoryOps::loadProperties(const string &propKey,
     NotifyableImplMap::const_iterator propIt =
         m_props.find(propKey);
     if (propIt != m_props.end()) {
+        propIt->second->incrRefCount();
         return dynamic_cast<PropertiesImpl *>(propIt->second);
     }
 
@@ -2335,6 +2350,7 @@ FactoryOps::loadGroup(const string &groupName,
 
     NotifyableImplMap::const_iterator groupIt = m_groups.find(groupKey);
     if (groupIt != m_groups.end()) {
+        groupIt->second->incrRefCount();
         return dynamic_cast<GroupImpl *>(groupIt->second);
     }
 
@@ -2432,6 +2448,7 @@ FactoryOps::loadNode(const string &name,
 
     NotifyableImplMap::const_iterator nodeIt = m_nodes.find(key);
     if (nodeIt != m_nodes.end()) {
+        nodeIt->second->incrRefCount();
         return dynamic_cast<NodeImpl *>(nodeIt->second);
     }
     
@@ -2739,6 +2756,8 @@ FactoryOps::createNode(const string &name,
 void
 FactoryOps::removeApplication(ApplicationImpl *app)
 {
+    TRACE(CL_LOG, "removeApplication");
+
     SAFE_CALL_ZK(m_zk.deleteNode(app->getKey(), true),
                  "Could not delete key %s: %s",
                  app->getKey().c_str(),
@@ -2749,6 +2768,8 @@ FactoryOps::removeApplication(ApplicationImpl *app)
 void
 FactoryOps::removeDataDistribution(DataDistributionImpl *dist)
 {
+    TRACE(CL_LOG, "removeDataDistribution");    
+
     SAFE_CALL_ZK(m_zk.deleteNode(dist->getKey(), true),
                  "Could not delete key %s: %s",
                  dist->getKey().c_str(),
@@ -2759,6 +2780,8 @@ FactoryOps::removeDataDistribution(DataDistributionImpl *dist)
 void
 FactoryOps::removeProperties(PropertiesImpl *prop)
 {
+    TRACE(CL_LOG, "removeProperties");    
+
     SAFE_CALL_ZK(m_zk.deleteNode(prop->getKey(), true),
                  "Could not delete key %s: %s",
                  prop->getKey().c_str(),
@@ -2769,6 +2792,8 @@ FactoryOps::removeProperties(PropertiesImpl *prop)
 void
 FactoryOps::removeGroup(GroupImpl *group)
 {
+    TRACE(CL_LOG, "removeGroup");    
+
     SAFE_CALL_ZK(m_zk.deleteNode(group->getKey(), true),
                  "Could not delete key %s: %s",
                  group->getKey().c_str(),
@@ -2779,8 +2804,9 @@ FactoryOps::removeGroup(GroupImpl *group)
 void
 FactoryOps::removeNode(NodeImpl *node)
 {
-    bool success = false;
-    SAFE_CALL_ZK((success = m_zk.deleteNode(node->getKey(), true)),
+    TRACE(CL_LOG, "removeNode");
+
+    SAFE_CALL_ZK(m_zk.deleteNode(node->getKey(), true),
                  "Could not delete key %s: %s",
                  node->getKey().c_str(),
                  false,
@@ -2845,7 +2871,15 @@ FactoryOps::removeNotifyableFromCacheByKey(const string &key)
     }
 
     Locker l3(getRemovedNotifyablesLock());
-    getRemovedNotifyablesList()->push_back(ntpMapIt->second);
+    set<Notifyable *>::const_iterator it = 
+        getRemovedNotifyables()->find(ntpMapIt->second);
+    if (it != getRemovedNotifyables()->end()) {
+        throw InconsistentInternalStateException(
+            string("RemoveNotifyableFromCacheByKey: Notifyable for key ") + 
+            ntpMapIt->second->getKey() + " is already in removed notifyables" +
+            " set!");
+    }
+    getRemovedNotifyables()->insert(ntpMapIt->second);
 
     ntpMapIt->second->setState(Notifyable::REMOVED);
     ntpMap->erase(ntpMapIt);
@@ -3428,7 +3462,7 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
      *    and update it with the appropriate CachedObjectEventHandler.
      * 3. Pass the derived path and event as a payload in the return.
      *
-     * There is one exception: SYNC doesn't try to get the Notifyable 
+     * Exception 1: SYNC doesn't try to get the Notifyable 
      * since it doesn't have one.
      *
      * Note: Getting the NotifyableImpl * for the derived path is best
@@ -3483,6 +3517,11 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
      * repository event represents.
      */
     Event e = fehp->deliver(ntp, etype, ep->getPath());
+    if (ntp != NULL) {
+        if (!NotifyableKeyManipulator::isRootKey(ntp->getKey())) {
+            ntp->releaseRef();
+        }
+    }
 
     if (e == EN_NOEVENT) {
         return NULL;

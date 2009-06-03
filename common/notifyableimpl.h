@@ -70,6 +70,13 @@ class NotifyableImpl
     
     virtual Properties *getProperties(bool create = false);
 
+    virtual int32_t getRefCount()
+    {
+        return m_refCount;
+    }
+
+    virtual void releaseRef();
+
     virtual void acquireLock(bool acquireChildren = false);
 
     virtual void releaseLock(bool releaseChildren = false);
@@ -82,8 +89,19 @@ class NotifyableImpl
      * Internal functions not used by outside clients
      */
   public:
-    /*
+    /**
      * Constructor.
+     *
+     * Initialize m_refCount to 1 since on creation, it must begin
+     * with 1 to allow a releaseRef().  load*() will also increment the
+     * m_refCount every time the data is acquired from the cache.
+     *
+     * Note: Currently, clusterlib does not allow a user to remove an
+     * object that has children.  If this changes, one possible
+     * solution is to always keep a reference to parent.  This
+     * prevents the parent cached representation from being removed
+     * from memory which this notifyable is in the cache.  Upon
+     * destruction, release that reference to the parent.
      */
     NotifyableImpl(FactoryOps *fp,
                    const std::string &key,
@@ -93,15 +111,17 @@ class NotifyableImpl
           m_key(key),
           m_name(name),
           mp_parent(parent),
-          m_state(Notifyable::READY) {}
+          m_state(Notifyable::READY),
+          m_refCount(1) {}
 
-    /*
+    /**
      * Get the associated factory object.
      */
     FactoryOps *getOps() { return mp_f; }
 
-    /*
+    /**
      * Destructor.
+     *
      */
     virtual ~NotifyableImpl() {}
 
@@ -181,6 +201,11 @@ class NotifyableImpl
     virtual Mutex *getStateLock() const { return &m_stateLock; }
 
     /**
+     * Return the stringified state
+     */
+    static std::string getStateString(Notifyable::State state);
+
+    /**
      * Set the state of the NotifyableImpl.  Client must hold
      * m_stateLock to ensure atomicity.
      */
@@ -188,6 +213,12 @@ class NotifyableImpl
     {
         m_state = state;
     }
+
+    /**
+     * Increment the reference count of this cached representation of
+     * the object.
+     */
+    void incrRefCount();
 
   private:
     /*
@@ -198,6 +229,20 @@ class NotifyableImpl
         throw InvalidMethodException("Someone called the NotifyableImpl "
                                      "default constructor!");
     }
+
+    /**
+     * Decrement the reference count of this cached representation of
+     * the object.
+     */
+    void decrRefCount();
+
+    /**
+     * Remove the pointer to this NotifyableImpl from the FactoryOps
+     * "removed cache" and also free the memory used iff the refcount is 0.
+     *
+     * @param decrRefCount do the decrement of the ref count as well?
+     */
+    void removeFromRemovedNotifyablesIfReleased(bool decrRefCount);
 
   private:
     /*
@@ -232,6 +277,12 @@ class NotifyableImpl
      * stored here.
      */
     std::map<std::string, NameRef> m_distLockMap;
+
+    /**
+     * Local object reference count.  Once this goes to 0 and m_state
+     * == REMOVED, it can be removed from the "removed cache".
+     */
+    int32_t m_refCount;
 
     /**
      * Lock to synchronize the Notifyable state (includes distibuted

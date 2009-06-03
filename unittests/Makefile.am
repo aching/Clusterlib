@@ -29,6 +29,7 @@ unittests_SOURCES = \
 	clusterlibNotifyableKeyManipulator.cc \
 	clusterlibLeader.cc \
 	clusterlibTimer.cc \
-	clusterlibHealthCheck.cc
+	clusterlibHealthCheck.cc \
+	clusterlibReleaseRef.cc
 
 @makefile_inc@

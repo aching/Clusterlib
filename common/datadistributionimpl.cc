@@ -214,6 +214,7 @@ DataDistributionImpl::unmarshallOverrides(const string &marshalledOverrides)
             ntp = getOps()->getNotifyableFromKey(moComponents[1]);
             // AC - TO be changed true);
             if (ntp != NULL) {
+                ntp->releaseRef();
                 /*
                  * Add the manual override to our cache.
                  */
@@ -878,11 +879,16 @@ ManualOverride::determineForwarding()
 
     if (m_key == "") {
         m_isForwarded = false;
-    } else if (dynamic_cast<Node *>(ntp)) {
+    } 
+    else if (dynamic_cast<Node *>(ntp)) {
         m_isForwarded = false;
-    } else if (dynamic_cast<DataDistribution *>(ntp)) {
+        ntp->releaseRef();
+    } 
+    else if (dynamic_cast<DataDistribution *>(ntp)) {
         m_isForwarded = true;
-    } else {
+        ntp->releaseRef();
+    } 
+    else {
         throw InconsistentInternalStateException("Key: \"" +
                                                  m_key +
                                                  "\" does not denote a node " +

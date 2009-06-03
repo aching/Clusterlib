@@ -6,7 +6,7 @@
 
 using namespace std;
 
-const string debugExt = ".unittestout";
+static const string prefix = "testOutput.";
 
 /* Global test parameters to be used in all tests */
 TestParams globalTestParams;
@@ -26,11 +26,11 @@ int main(int argc, char* argv[]) {
 
     /* Redirect all stderr log4cxxx messaging to the same files */
     stringstream fileStringStream;
+    fileStringStream << prefix;
     fileStringStream << MPI::COMM_WORLD.Get_rank();
     fileStringStream << ".0x";
     fileStringStream << hex;
     fileStringStream << getpid();
-    fileStringStream << debugExt;
     remove(fileStringStream.str().c_str());
     FILE *stderrFile = freopen(fileStringStream.str().c_str(), "a", stderr);
     if (!stderrFile) {
@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) {
              << " - See details in files " << endl;
         
         for (int i = 0; i < MPI::COMM_WORLD.Get_size(); i++) {
-            cout << " " << i << ".0x" << hex << pidArr[i] << debugExt<< endl;
+            cout << " " << prefix << i << ".0x" << hex << pidArr[i] << endl;
         }
         delete [] pidArr;
         pidArr = NULL;
