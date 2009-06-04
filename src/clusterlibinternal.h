@@ -13,6 +13,8 @@
 
 #include "clusterlib.h"
 
+#include "zkadapter.h"
+
 #include "notifyableimpl.h"
 #include "groupimpl.h"
 #include "applicationimpl.h"

@@ -3,7 +3,7 @@
  * to ensure that clusterlib can be linked into an application).
  */
 
-#include "clusterlibinternal.h"
+#include "clusterlib.h"
 
 using namespace std;
 
@@ -32,7 +32,7 @@ class MyTimerHandler
              << ", Client: "
              << mp_cp
              << ", now: "
-             << clusterlib::FactoryOps::getCurrentTimeMillis()
+             << clusterlib::TimerService::getCurrentTimeMillis()
              << endl;
     }
 
@@ -62,7 +62,7 @@ main(int ac, char **av)
              << " and client data: "
              << f
              << " for 3000msec from now, now: "
-             << clusterlib::FactoryOps::getCurrentTimeMillis()
+             << clusterlib::TimerService::getCurrentTimeMillis()
              << endl;        
         clusterlib::TimerId id1 =
             c->registerTimer(tp, 2000, (clusterlib::ClientData) c);
@@ -73,7 +73,7 @@ main(int ac, char **av)
              << " and client data: "
              << c
              << " for 2000msec from now, now: "
-             << clusterlib::FactoryOps::getCurrentTimeMillis()
+             << clusterlib::TimerService::getCurrentTimeMillis()
              << endl;        
         
         sleep(3);

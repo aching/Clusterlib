@@ -1,5 +1,5 @@
-@SOURCE_PATH@/common				/include
+@SOURCE_PATH@/include				/include
 - *.h
 
-@BUILD_PATH@/common				/lib
+@BUILD_PATH@/src				/lib
 - libcluster.a

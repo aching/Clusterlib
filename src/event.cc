@@ -25,7 +25,7 @@ UserEventHandler::waitUntilCondition(uint64_t maxMs, bool interruptible)
     TRACE(CL_LOG, "waitUntilCondition");
 
     bool result = true;
-    int64_t beginWait = FactoryOps::getCurrentTimeMillis();
+    int64_t beginWait = TimerService::getCurrentTimeMillis();
     int64_t endWait;
     uint64_t remainingMs = maxMs;
     uint64_t elapsedMs;
@@ -65,7 +65,7 @@ UserEventHandler::waitUntilCondition(uint64_t maxMs, bool interruptible)
         /*
          * This is a time-limited wait, so compute how much longer to wait.
          */
-        endWait = FactoryOps::getCurrentTimeMillis();
+        endWait = TimerService::getCurrentTimeMillis();
         elapsedMs = (uint64_t) (endWait - beginWait);
         if (elapsedMs >= maxMs) {
             remainingMs = 0;

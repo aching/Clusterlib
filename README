@@ -1,11 +1,22 @@
 README for clusterlib
 =====================
 
-Directory structure:
+Source directory structure:
 
-common		Common files that are used both on client and server
-client          Files that are only for client use
-server          Files that are only for server use
+docs                Doxygen generated content and notes
+example             Several example programs and linking
+misc                Miscellaneous scripts or configuration files
+src                 All Common files that are used both on client and server
+unittests           Unittests are stored here
+
+
+Generated directory structure:
+
+Regressions_output  Regression output is stored here by 'make test_tinderbox'
+zookeeperServerDir  Directory for storing Zookeeper data for testing
+install             Generated from 'make package': the essential headers and 
+                    library for using clusterlib
+
 
 Environment:
 
@@ -13,10 +24,18 @@ Add the following early in your path:
 
 /usr/releng/external/cppunit-1.12.0/bin
 
+
 Building:
 
-% make -f Makefile.cvs
-% automake
-% make clean
-% make -j 24
-% make test_tinderbox
+autoconf
+automake
+./configure 
+make
+
+
+Running Unittests:
+
+make test_tinderbox
+
+More details and options on how to run unittests are in the directory
+unittests.

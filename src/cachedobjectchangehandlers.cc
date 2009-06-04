@@ -577,7 +577,7 @@ CachedObjectChangeHandlers::handleClientStateChange(NotifyableImpl *ntp,
         return EN_NOEVENT;
     }
 
-    np->setClientStateAndTime(ns, FactoryOps::getCurrentTimeMillis());
+    np->setClientStateAndTime(ns, TimerService::getCurrentTimeMillis());
 
     return EN_CLIENTSTATECHANGE;
 }
@@ -646,7 +646,7 @@ CachedObjectChangeHandlers::handleMasterSetStateChange(NotifyableImpl *ntp,
         return EN_NOEVENT;
     }
 
-    np->setMasterSetStateAndTime(nv, FactoryOps::getCurrentTimeMillis());
+    np->setMasterSetStateAndTime(nv, TimerService::getCurrentTimeMillis());
 
     return EN_MASTERSTATECHANGE;
 }
@@ -705,7 +705,7 @@ CachedObjectChangeHandlers::handleNodeConnectionChange(NotifyableImpl *ntp,
         return EN_NOEVENT;
     }
 
-    np->setConnectedAndTime(curconn, FactoryOps::getCurrentTimeMillis());
+    np->setConnectedAndTime(curconn, TimerService::getCurrentTimeMillis());
 
     return EN_CONNECTEDCHANGE;
 }

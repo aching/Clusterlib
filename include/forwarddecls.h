@@ -157,4 +157,10 @@ typedef uint32_t ServerFlags;
 
 };	/* End of 'namespace clusterlib' */
 
+namespace zk {
+
+class ZooKeeperAdapter;
+
+};	/* End of 'namespace zk' */
+
 #endif	/* !_FORWARDDECLS_H_ */

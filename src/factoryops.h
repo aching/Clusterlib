@@ -90,8 +90,7 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
 /**
  * This class does all the actual work of the Factory
  */
- class FactoryOps 
-{
+class FactoryOps {
   public:
     /**
      * Constructor that should only be called from Factory
@@ -109,14 +108,6 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
      * @return a Client pointer
      */
     Client *createClient();
-
-    /**
-     * Convenience function -- return the current time in ms
-     * from the unix epoch.
-     *
-     * @return current time in milliseconds
-     */
-    static int64_t getCurrentTimeMillis();
 
     /**
      * Is the factory connected to ZooKeeper?

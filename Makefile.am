@@ -2,7 +2,7 @@
 # have all needed files, that a GNU package needs
 AUTOMAKE_OPTIONS = 1.2 foreign no-installman no-installinfo
 
-SUBDIRS = common example unittests
+SUBDIRS = src example unittests
 
 PKGDIR = @PACKAGE@_@VERSION@.@OS_TYPE@
 
@@ -11,6 +11,10 @@ PKGDIR = @PACKAGE@_@VERSION@.@OS_TYPE@
 
 package_clusterlib: $(top_builddir)/Manifest
 	devpackage $(top_builddir)/Manifest $(top_builddir)/install
+
+documentation:
+	doxygen $(top_builddir)/docs/doxygen-internal/doxygenInternalConfig
+	doxygen $(top_builddir)/docs/doxygen-user/doxygenUserConfig
 
 package: all package_clusterlib
 

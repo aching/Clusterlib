@@ -2,7 +2,7 @@
 METASOURCES = AUTO
 bin_PROGRAMS = example example2
 example_LDADD = \
-	$(top_builddir)/common/libcluster.a \
+	$(top_builddir)/src/libcluster.a \
 	@LOG4CXX_LIB@ \
 	@ZOOKEEPER_LIB@ \
 	@APR_LIB@ \
@@ -10,7 +10,7 @@ example_LDADD = \
 	@EXPAT_LIB@ \
 	@LIB_THREAD_OS@
 example2_LDADD = \
-	$(top_builddir)/common/libcluster.a \
+	$(top_builddir)/src/libcluster.a \
 	@LOG4CXX_LIB@ \
 	@ZOOKEEPER_LIB@ \
 	@APR_LIB@ \
@@ -18,7 +18,7 @@ example2_LDADD = \
 	@EXPAT_LIB@ \
 	@LIB_THREAD_OS@
 INCLUDES = \
-	-I$(top_srcdir)/common \
+	-I$(top_srcdir)/include \
 	-I@LOG4CXX_INCLUDES@ \
 	-I@ZOOKEEPER_INCLUDES@ \
 	-I@BOOST_INCLUDES@

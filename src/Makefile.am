@@ -1,7 +1,8 @@
 INCLUDES = \
 	-I@LOG4CXX_INCLUDES@ \
 	-I@BOOST_INCLUDES@ \
-	-I@ZOOKEEPER_INCLUDES@
+	-I@ZOOKEEPER_INCLUDES@ \
+        -I@top_srcdir@/include
 METASOURCES = AUTO
 lib_LIBRARIES = libcluster.a
 libcluster_a_SOURCES = \

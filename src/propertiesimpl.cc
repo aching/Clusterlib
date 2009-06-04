@@ -69,7 +69,7 @@ PropertiesImpl::updatePropertiesMap()
         m_keyValMap.clear();
         unmarshall(keyValMap);
         m_keyValMapVersion = version;
-        setValueChangeTime(FactoryOps::getCurrentTimeMillis());
+        setValueChangeTime(TimerService::getCurrentTimeMillis());
     }
     else {
         LOG_WARN(CL_LOG,

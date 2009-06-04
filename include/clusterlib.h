@@ -34,8 +34,7 @@
 #include "thread.h"
 #include "healthchecker.h"
 #include "event.h"
-#include "command.h"
-#include "zkadapter.h"
+#include "timerservice.h"
 
 #include "notifyable.h"
 #include "group.h"

@@ -182,12 +182,6 @@ FactoryOps::createClient()
     }
 }
 
-int64_t
-FactoryOps::getCurrentTimeMillis()
-{
-    return Timer<int>::getCurrentTimeMillis();
-}
-
 bool
 FactoryOps::isConnected() const
 {
@@ -2992,7 +2986,7 @@ FactoryOps::createConnected(const string &key)
              "%d;%d;%lld",
              (int32_t) getpid(),
              (int32_t) pthread_self(),
-             (uint64_t) getCurrentTimeMillis());
+             (uint64_t) TimerService::getCurrentTimeMillis());
 
     try {
         /*

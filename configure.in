@@ -1,13 +1,11 @@
 AC_INIT(configure.in)
+AC_PREREQ(2.12)
 
-#AM_CONFIG_HEADER(config.h)
 AM_INIT_AUTOMAKE(clusterlib, 0.0.2)
-
 AM_PATH_CPPUNIT(1.10.12)
 
 AC_LANG_CPLUSPLUS
 AC_PROG_CXX
-#AC_PROG_LIBTOOL
 AC_PROG_RANLIB
 
 BUILD_PATH="`pwd`"
@@ -465,11 +463,13 @@ AC_SUBST_FILE(makefile_inc)
 AC_OUTPUT(
 Manifest
 Makefile
-common/Makefile
+src/Makefile
 example/Makefile
 unittests/Makefile
 unittests/unittestsHelper.pl
 regressions/Regressions.itc
+docs/doxygen-internal/doxygenInternalConfig
+docs/doxygen-user/doxygenUserConfig
 )
 
 # Make the perl script executable
