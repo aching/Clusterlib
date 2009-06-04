@@ -48,7 +48,7 @@ fi
 OS_TYPE=$os_type
 AC_SUBST(OS_TYPE)
 
-if test "$enable_release" = "yes"; then
+if test -z "$enable_release"; then
     build_type="Optimized"
 else
     build_type="Debug"
@@ -459,6 +459,17 @@ AC_SUBST(LIBRT)
 
 makefile_inc="$srcdir/Makefile.inc"
 AC_SUBST_FILE(makefile_inc)
+
+# Create the necessary directories if they don't exist
+if test ! -d docs; then 
+   mkdir docs
+fi
+if test ! -d docs/doxygen-internal; then
+   mkdir docs/doxygen-internal
+fi
+if test ! -d docs/doxygen-user; then
+   mkdir docs/doxgyen-user
+fi
 
 AC_OUTPUT(
 Manifest
