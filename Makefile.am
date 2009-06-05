@@ -1,6 +1,6 @@
 # not a GNU package. You can remove this line, if
 # have all needed files, that a GNU package needs
-AUTOMAKE_OPTIONS = 1.2 foreign no-installman no-installinfo
+AUTOMAKE_OPTIONS = 1.2 foreign no-installman no-installinfo no-dependencies
 
 SUBDIRS = src example unittests
 

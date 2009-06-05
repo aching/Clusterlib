@@ -20,7 +20,6 @@ example2_LDADD = \
 INCLUDES = \
 	-I$(top_srcdir)/include \
 	-I@LOG4CXX_INCLUDES@ \
-	-I@ZOOKEEPER_INCLUDES@ \
 	-I@BOOST_INCLUDES@
 CXXFLAGS = @BASE_CXXFLAGS@
 
