@@ -2,7 +2,6 @@ AC_INIT(configure.in)
 AC_PREREQ(2.12)
 
 AM_INIT_AUTOMAKE(clusterlib, 0.0.2)
-AM_PATH_CPPUNIT(1.10.12)
 
 AC_LANG_CPLUSPLUS
 AC_PROG_CXX
@@ -392,6 +391,40 @@ AC_SUBST(LOG4CXX_INCLUDES)
 AC_SUBST(LOG4CXX_LIB)
 AC_SUBST(APR_LIB_PATH)
 AC_SUBST(APR_UTIL_LIB_PATH)
+
+### Cppunit ###
+
+CPPUNIT_VERSION="1.12.0"
+
+AC_MSG_CHECKING(location of cppunit headers and libraries)
+AC_ARG_WITH(cppunit_root,
+  [ --with-cppunit-root   location of cppunit libraries and headers.],
+  [ case "${withval}" in
+      yes|no)
+        AC_ERROR(Option --with-cppunit-root requires a path argument.)
+        ;;
+    esac ],
+  [
+        with_cppunit_root="/usr/releng/external/cppunit/$CPPUNIT_VERSION"
+  ]
+)
+AC_MSG_RESULT($with_cppunit_root)
+
+CPPUNIT_PATH="${with_cppunit_root}"
+CPPUNIT_LIB_PATH="$CPPUNIT_PATH/lib"
+CPPUNIT_INCLUDES="$CPPUNIT_PATH/include"
+CPPUNIT_LIB="$CPPUNIT_LIB_PATH/libcppunit.a"
+
+AM_CONDITIONAL(HAVE_CPPUNIT, test -e "$CPPUNIT_LIB")
+if test "$HAVE_CPPUNIT_TRUE" = '#'; then
+  AC_ERROR("... invalid cppunit library!")
+fi
+
+AC_SUBST(CPPUNIT)
+AC_SUBST(CPPUNIT_PATH)
+AC_SUBST(CPPUNIT_LIB_PATH)
+AC_SUBST(CPPUNIT_INCLUDES)
+AC_SUBST(CPPUNIT_LIB)
 
 ### BUILDSTAMP ###
 

@@ -41,7 +41,7 @@ sub startZookeeper;
 sub killAllZookeeper;
 
 # Parse the arguments
-my $user = getlogin() || getpwuid($<);
+my $user = getpwuid($<);
 &parseArgs();
 
 # If any of the non-test commands are run do those only then quit
