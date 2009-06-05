@@ -27,7 +27,9 @@ class TimerService {
      */
     static int64_t getCurrentTimeMillis()
     {
-        return Timer<int>::getCurrentTimeMillis();
+        struct timeval now;
+        gettimeofday(&now, NULL);
+        return now.tv_sec * 1000LL + now.tv_usec / 1000;
     }
 
 };

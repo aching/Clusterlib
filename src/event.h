@@ -565,169 +565,6 @@ typedef BlockingQueue<UserEventPayload *> UserEventPayloadQueue;
 /*                                                                     */
 /*---------------------------------------------------------------------*/
 
-/*
- * Various event notification constants.
- */
-const int32_t EN_NOEVENT =			0;
-
-const int32_t EN_CREATED =			(1<<0);
-const int32_t EN_DELETED =			(1<<1);
-const int32_t EN_READY =			(1<<2);
-
-const int32_t EN_GROUPSCHANGE =			(1<<3);
-const int32_t EN_DISTSCHANGE =			(1<<4);
-
-const int32_t EN_MEMBERSHIPCHANGE =		(1<<5);
-const int32_t EN_LEADERSHIPCHANGE =		(1<<6);
-
-const int32_t EN_CLIENTSTATECHANGE =		(1<<7);
-const int32_t EN_CONNECTEDCHANGE =		(1<<10);
-const int32_t EN_MASTERSTATECHANGE =		(1<<11);
-
-const int32_t EN_SHARDSCHANGE =			(1<<12);
-const int32_t EN_MANUALOVERRIDESCHANGE =	(1<<13);
-
-const int32_t EN_PROPCHANGE =			(1<<14);
-const int32_t EN_APPSCHANGE =			(1<<15);
-
-const int32_t EN_LOCKNODECHANGE =               (1<<16);
-
-const int32_t EN_ENDEVENT =                     (1<<17);
-
-/*
- * Interface for user event handler. Must be derived
- * to define specific behavior for handling events.
- */
-class UserEventHandler
-{
-  public:
-    /*
-     * Constructor.
-     */
-    UserEventHandler(Notifyable *np,
-                     Event mask,
-                     ClientData cd)
-        : mp_np(np),
-          m_mask(mask),
-          m_cd(cd) {}
-
-    /*
-     * Destructor.
-     */
-    virtual ~UserEventHandler() {}
-
-    /*
-     * Accessors.
-     */
-    Notifyable *getNotifyable() { return mp_np; }
-    Event getMask() { return m_mask; }
-    ClientData getClientData() { return m_cd; }
-
-    void setNotifyable(Notifyable *np) { mp_np = np; }
-    void setMask(Event e) { m_mask = e; }
-    void setClienData(ClientData cd) { m_cd = cd; }
-
-    Event addEvent(Event a) { m_mask |= a; return m_mask; }
-    Event removeEvent(Event a) { m_mask &= (~a); return m_mask; }
-
-    /**
-     * Call the user defined handler, and then deal with conditions
-     * & waiting. Intended for use by clusterlib internals.
-     */
-    void handleUserEventDelivery(Event e);
-
-    /**
-     * \brief Handle the event -- this must be implemented by subclasses.
-     *
-     * @param Event the event to be processed.
-     */
-    virtual void handleUserEvent(Event e) = 0;
-
-    /**
-     * \brief Waits until a condition is met.
-     *
-     * Before calling this, the user program must have called acquireLock,
-     * and it must call releaseLock after the call to waitUntilCondition
-     * returns. The call to waitUntilCondition blocks until an event is
-     * processed by clusterlib that causes the meetsCondition API (see below)
-     * to return true. If maxMS > 0 and the wait lasts longer than maxMS
-     * milliseconds, or if interruptible == true and the wait was interrupted,
-     * then returns false. Otherwise returns true.
-     *
-     * @param maxMs how many milliseconds to wait. default 0 means forever.
-     * @param interruptible is this wait interruptible? default is false.
-     */
-    bool waitUntilCondition(uint64_t maxMs = 0, bool interuptible = false);
-
-    /**
-     * \brief Determines if a condition is met (and waits should end).
-     *
-     * Determine whether a condition is met. The default implementation
-     * always returns true. Intended to be overridden by user programs to
-     * implement more complex waits and conditions.
-     *
-     * @param Event the event to check for meeting the condition.
-     */
-    virtual bool meetsCondition(Event e) { return true; }
-
-    /**
-     * \brief User-specified method called to reset the condition.
-     *
-     * Called when meetsCondition returns true. Intended to be redefined
-     * by user programs to clean up application-specific data associated
-     * with this condition. The default implementation does nothing.
-     */
-    virtual void resetCondition() {}
-
-    /**
-     * \brief Acquires the lock for waitUntilCondition.
-     *
-     * Advisory lock. Must be held before waitUntilCondition is called.
-     * Internal clusterlib event system always respects this lock, and relies
-     * on clients calling acquireLock in order to guarantee that conditions
-     * are checked with a consistent ordering with respect to waitUntilCondition.
-     */
-    void acquireLock() { m_waitMutex.lock(); }
-
-    /**
-     * \brief Releases the lock acquired by acquireLock.
-     *
-     * Advisory lock. Must be held before waitUntilCondition is called,
-     * and must be released via releaseLock after waitUntilCondition returns.
-     */
-    void releaseLock() { m_waitMutex.unlock(); }
-
-  private:
-    /**
-     * Notify any threads that are waiting for the condition, that it
-     * has been met.
-     */
-    void notifyWaiters() { m_waitCond.signal_all(); }
-
-  private:
-    /*
-     * The Notifyable this handler is for.
-     */
-    Notifyable *mp_np;
-
-    /*
-     * The events (a mask) that this handler is for.
-     */
-    Event m_mask;
-
-    /*
-     * Arbitrary data to pass to the handler for each
-     * event as it is triggered.
-     */
-    ClientData m_cd;
-
-    /*
-     * Mutex and Cond used for waiting & condition mgmt.
-     */
-    Cond m_waitCond;
-    Mutex m_waitMutex;
-};
-
 /*---------------------------------------------------------------------*/
 /*                                                                     */
 /* PART B: TIMER EVENTS                                                */
@@ -887,11 +724,9 @@ class Timer
      * 
      * @return the current time in milliseconds
      */
-    static int64_t getCurrentTimeMillis()
+    int64_t getCurrentTimeMillis() const
     {
-        struct timeval now;
-        gettimeofday(&now, NULL);
-        return now.tv_sec * 1000LL + now.tv_usec / 1000;
+        return TimerService::getCurrentTimeMillis();
     }
 
     /**
@@ -1079,33 +914,6 @@ class TimerEventPayload
 typedef TimerEvent<TimerEventPayload *>		ClusterlibTimerEvent;
 typedef Timer<TimerEventPayload *>		ClusterlibTimerEventSource;
 typedef BlockingQueue<TimerEventPayload *>	TimerEventQueue;
-
-/**
- * This class must be subclassed to define
- * timer event handlers that can be instantiated.
- */
-class TimerEventHandler
-{
-  public:
-    /*
-     * Constructor.
-     */
-    TimerEventHandler()
-    {
-    }
-
-    /*
-     * Destructor.
-     */
-    virtual ~TimerEventHandler() {}
-
-    /**
-     * Handle the event -- this must be implemented by
-     * subclasses.
-     */
-    virtual void handleTimerEvent(TimerId id, ClientData data)
-        = 0;
-};
 
 }   /* end of 'namespace clusterlib' */
 

@@ -14,8 +14,6 @@
 #include <assert.h>
 #include <pthread.h>
 
-#include "log.h"
-
 namespace clusterlib {
 
 class Thread

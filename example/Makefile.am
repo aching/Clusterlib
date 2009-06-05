@@ -18,9 +18,7 @@ example2_LDADD = \
 	@EXPAT_LIB@ \
 	@LIB_THREAD_OS@
 INCLUDES = \
-	-I$(top_srcdir)/include \
-	-I@LOG4CXX_INCLUDES@ \
-	-I@BOOST_INCLUDES@
+	-I$(top_srcdir)/include
 CXXFLAGS = @BASE_CXXFLAGS@
 
 example_SOURCES = \

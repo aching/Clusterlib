@@ -22,18 +22,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/split.hpp>
-
 #include "forwarddecls.h"
 
 #include "clusterlibexceptions.h"
-#include "log.h"
 #include "blockingqueue.h"
 #include "mutex.h"
 #include "thread.h"
 #include "healthchecker.h"
-#include "event.h"
 #include "timerservice.h"
 
 #include "notifyable.h"

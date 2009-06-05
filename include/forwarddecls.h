@@ -142,6 +142,12 @@ typedef std::pair<EventHandlersIterator, EventHandlersIterator>
 					       EventHandlersMultimapRange;
 
 /*
+ * Forward declaration of EventSource.
+ */
+template<typename E>
+class EventSource;
+
+/*
  * Type used for passing flags.
  */
 typedef uint32_t ServerFlags;

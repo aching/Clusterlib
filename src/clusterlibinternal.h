@@ -13,6 +13,11 @@
 
 #include "clusterlib.h"
 
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include "log.h"
+#include "event.h"
+
 #include "zkadapter.h"
 
 #include "notifyableimpl.h"
