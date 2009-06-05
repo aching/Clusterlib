@@ -73,7 +73,11 @@ class UEHealthChecker :
     UEHealthChecker(Node *np, Client *cp)
         : HealthChecker(),
           mp_np(np),
-          mp_cp(cp) {}
+          mp_cp(cp) 
+    {
+        setMsecsPerCheckIfHealthy(500);
+        setMsecsPerCheckIfUnhealthy(500);
+    }
 
     /*
      * Check health and return a health report.
@@ -228,75 +232,77 @@ class ClusterlibUserEvents
          * called if there are multiple handlers
          * registered for a user event.
          */
-        initializeAndBarrierMPITest(-1, 
+        initializeAndBarrierMPITest(1, 
                                     true, 
                                     _factory, 
                                     true, 
                                     "testUserEvents2");
 
-        /*
-         * My handler.
-         */
-        MyUserEventHandler *uehp =
-            new MyUserEventHandler(_nod0,
-                                   EN_CONNECTEDCHANGE,
-                                   (void *) 0x3333);
-        UEHealthChecker *hcp = new UEHealthChecker(_nod0, _client0);
+        if (isMyRank(0)) {
+            /*
+             * My handler.
+             */
+            MyUserEventHandler *uehp =
+                new MyUserEventHandler(_nod0,
+                                       EN_CONNECTEDCHANGE,
+                                       (void *) 0x3333);
+            UEHealthChecker *hcp = new UEHealthChecker(_nod0, _client0);
 
-        /*
-         * Register 3 times.
-         */
-        uehp->acquireLock();
-        uehp->setTargetCounter(3);
-        _client0->registerHandler(uehp);
-        _client0->registerHandler(uehp);
-        _client0->registerHandler(uehp);
+            /*
+             * Register 3 times.
+             */
+            uehp->acquireLock();
+            uehp->setTargetCounter(3);
+            _client0->registerHandler(uehp);
+            _client0->registerHandler(uehp);
+            _client0->registerHandler(uehp);
 
-        /*
-         * Create a health checker, create the "connected" znode,
-         * and in the process, cause the EN_CONNECTED event
-         * to happen on the node.
-         */
-        _nod0->registerHealthChecker(hcp);
+            /*
+             * Create a health checker, create the "connected" znode,
+             * and in the process, cause the EN_CONNECTED event
+             * to happen on the node.
+             */
+            _nod0->registerHealthChecker(hcp);
 
-        /*
-         * Wait for event propagation.
-         */
-        bool res = uehp->waitUntilCondition();
-        CPPUNIT_ASSERT(res == true);
+            /*
+             * Wait for event propagation.
+             */
+            bool res = uehp->waitUntilCondition();
+            CPPUNIT_ASSERT(res == true);
 
-        /*
-         * Event counter should be 3, since we registered the
-         * handler 3 times.
-         */
-        CPPUNIT_ASSERT(uehp->getCounter() == 3);
+            /*
+             * Event counter should be 3, since we registered the
+             * handler 3 times.
+             */
+            CPPUNIT_ASSERT(uehp->getCounter() == 3);
 
-        uehp->setTargetCounter(6);
+            uehp->setTargetCounter(6);
 
-        /*
-         * Unregister the handler, we should get 3 more event
-         * deliveries.
-         */
-        _nod0->unregisterHealthChecker();
+            /*
+             * Unregister the handler, we should get 3 more event
+             * deliveries.
+             */
+            _nod0->unregisterHealthChecker();
 
-        /*
-         * Wait for event propagation.
-         */
-        res = uehp->waitUntilCondition();
-        CPPUNIT_ASSERT(res == true);
+            /*
+             * Wait for event propagation.
+             */
+            res = uehp->waitUntilCondition();
+            CPPUNIT_ASSERT(res == true);
 
-        /*
-         * Event counter should now be at 6.
-         */
-        CPPUNIT_ASSERT(uehp->getCounter() == 6);
+            /*
+             * Event counter should now be at 6.
+             */
+            CPPUNIT_ASSERT(uehp->getCounter() == 6);
 
-        uehp->releaseLock();
+            uehp->releaseLock();
 
-        /*
-         * Clean up.
-         */
-        delete uehp;
-        delete hcp;
+            /*
+             * Clean up.
+             */
+            delete uehp;
+            delete hcp;
+        }
     }
     void testUserEvents3()
     {
@@ -305,81 +311,83 @@ class ClusterlibUserEvents
          * called if there are multiple handlers
          * registered for a user event.
          */
-        initializeAndBarrierMPITest(-1, 
+        initializeAndBarrierMPITest(1, 
                                     true, 
                                     _factory, 
                                     true, 
                                     "testUserEvents3");
 
-        /*
-         * My handler.
-         */
-        MyUserEventHandler *uehp =
-            new MyUserEventHandler(_nod0,
-                                   EN_CONNECTEDCHANGE,
-                                   (void *) 0x3333);
-        UEHealthChecker *hcp = new UEHealthChecker(_nod0, _client0);
-
-        /*
-         * Register 3 times.
-         */
-        uehp->acquireLock();
-        uehp->setTargetCounter(3);
-        _client0->registerHandler(uehp);
-        _client0->registerHandler(uehp);
-        _client0->registerHandler(uehp);
-
-
-        /*
-         * Create a health checker, create the "connected" znode,
-         * and in the process, cause the EN_CONNECTED event
-         * to happen on the node.
-         */
-        _nod0->registerHealthChecker(hcp);
-
-        /*
-         * Wait for event propagation.
-         */
-        bool res = uehp->waitUntilCondition();
-        CPPUNIT_ASSERT(res == true); 
-
-        /*
-         * Event counter should be 3, since we registered the
-         * handler 3 times.
-         */
-        CPPUNIT_ASSERT(uehp->getCounter() == 3);
-
-        /*
-         * Cancel *one* of the handlers. This means that the
-         * connection events should be delivered to only 2 handlers.
-         */
-        bool cancelled = _client0->cancelHandler(uehp);
-        CPPUNIT_ASSERT(cancelled == true);
-        uehp->setTargetCounter(5);
-
-        /*
-         * Unregister the handler, we should get 2 more event
-         * deliveries.
-         */
-        _nod0->unregisterHealthChecker();
-
-        /*
-         * Wait for event propagation.
-         */
-        res = uehp->waitUntilCondition();
-        CPPUNIT_ASSERT(res == true);
-
-        /*
-         * Event counter should now be at 5.
-         */
-        CPPUNIT_ASSERT(uehp->getCounter() == 5);
-
-        /*
-         * Clean up.
-         */
-        uehp->releaseLock();
-        delete uehp;
-        delete hcp;
+        if (isMyRank(0)) {
+            /*
+             * My handler.
+             */
+            MyUserEventHandler *uehp =
+                new MyUserEventHandler(_nod0,
+                                       EN_CONNECTEDCHANGE,
+                                       (void *) 0x3333);
+            UEHealthChecker *hcp = new UEHealthChecker(_nod0, _client0);
+            
+            /*
+             * Register 3 times.
+             */
+            uehp->acquireLock();
+            uehp->setTargetCounter(3);
+            _client0->registerHandler(uehp);
+            _client0->registerHandler(uehp);
+            _client0->registerHandler(uehp);
+            
+            
+            /*
+             * Create a health checker, create the "connected" znode,
+             * and in the process, cause the EN_CONNECTED event
+             * to happen on the node.
+             */
+            _nod0->registerHealthChecker(hcp);
+            
+            /*
+             * Wait for event propagation.
+             */
+            bool res = uehp->waitUntilCondition();
+            CPPUNIT_ASSERT(res == true); 
+            
+            /*
+             * Event counter should be 3, since we registered the
+             * handler 3 times.
+             */
+            CPPUNIT_ASSERT(uehp->getCounter() == 3);
+            
+            /*
+             * Cancel *one* of the handlers. This means that the
+             * connection events should be delivered to only 2 handlers.
+             */
+            bool cancelled = _client0->cancelHandler(uehp);
+            CPPUNIT_ASSERT(cancelled == true);
+            uehp->setTargetCounter(5);
+            
+            /*
+             * Unregister the handler, we should get 2 more event
+             * deliveries.
+             */
+            _nod0->unregisterHealthChecker();
+            
+            /*
+             * Wait for event propagation.
+             */
+            res = uehp->waitUntilCondition();
+            CPPUNIT_ASSERT(res == true);
+            
+            /*
+             * Event counter should now be at 5.
+             */
+            CPPUNIT_ASSERT(uehp->getCounter() == 5);
+            
+            /*
+             * Clean up.
+             */
+            uehp->releaseLock();
+            delete uehp;
+            delete hcp;
+        }
     }
     void testUserEvents4()
     {
