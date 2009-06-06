@@ -2,18 +2,13 @@ CONFIGURE_OPTS_opt := --with-ccache --enable-release
 
 FLAVORS := opt
 
-USE_COMMON_CONFIG := 0
+USE_COMMON_CONFIG := 1
 
 include /usr/releng/share/build_scripts/ci.mk
 
-export PATH := $(JAVA_HOME)/bin:/usr/releng/external/cppunit-1.12.0/bin:$(PATH)
+export PATH := $(JAVA_HOME)/bin:$(PATH)
 
 ############################################################
-
-config:
-	$(ACLOCAL)
-	$(AUTOMAKE) --add-missing
-	$(AUTOCONF)
 
 build_flavor:
 	mkdir -p $(BUILD_DIR)
