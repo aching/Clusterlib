@@ -20,4 +20,4 @@ package:
 	$(MAKE) -C $(BUILD_DIR) tarball
 
 test:
-	ulimit -n 1024; $(MAKE) -C $(BUILD_DIR) test_tinderbox
+	ulimit -n 1024; $(MAKE) -C $(BUILD_DIR) TAP_PREFIX= test_tinderbox
