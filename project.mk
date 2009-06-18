@@ -12,7 +12,7 @@ export PATH := $(JAVA_HOME)/bin:$(PATH)
 
 build_flavor:
 	mkdir -p $(BUILD_DIR)
-	cd $(BUILD_DIR) && ../configure $(CONFIGURE_OPTS_$(FLAVOR))
+	cd $(BUILD_DIR) && $(SRC_DIR)/configure $(CONFIGURE_OPTS_$(FLAVOR))
 	$(MAKE) -C $(BUILD_DIR)
 
 package:
