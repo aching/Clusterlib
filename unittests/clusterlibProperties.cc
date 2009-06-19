@@ -10,6 +10,8 @@ class ClusterlibProperties : public MPITestFixture {
     CPPUNIT_TEST_SUITE(ClusterlibProperties);
     CPPUNIT_TEST(testGetProperties1);
     CPPUNIT_TEST(testGetProperties2);
+    CPPUNIT_TEST(testGetProperties3);
+    CPPUNIT_TEST(testGetProperties4);
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -207,6 +209,108 @@ class ClusterlibProperties : public MPITestFixture {
             CPPUNIT_ASSERT(val == "v5");
             cerr << "Got correct test = v5" << endl;
         }
+    }
+
+    /* 
+     * Ordering and lock protection test.  No process should see the
+     * value of a property change while it is holding the distributed
+     * lock. Also, the new property value should be evident to every
+     * process at the end.
+     */
+    void testGetProperties3()
+    {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testGetProperties3");
+        string prop = "prop3";
+        if (isMyRank(0)) {
+            _properties0 = _node0->getProperties(true);
+            _properties0->deleteProperty(prop);
+        }
+
+        barrier(_factory, true);
+
+        _properties0 = _node0->getProperties();
+        if (isMyRank(0)) {
+            _properties0->acquireLock();
+            _properties0->setProperty(prop, "new value");
+            CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
+            _properties0->publish();
+            CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
+            _properties0->releaseLock();
+            CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
+        }
+        else {
+            _properties0->acquireLock();
+            string value = _properties0->getProperty(prop);
+            usleep(500000);
+            string value2 = _properties0->getProperty(prop);
+            _properties0->releaseLock();
+            CPPUNIT_ASSERT(value.compare(value2) == 0);
+        }
+
+        barrier(_factory, true);
+        CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
+    }
+
+    /* 
+     * Ordering.  If another process sets a property, another process
+     * shouldn't see the results of that operation while it has the
+     * distributed lock.
+    */
+    void testGetProperties4()
+    {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testGetProperties3");
+        bool matchedVal = false;
+        string prop = "prop3";
+        if (isMyRank(0)) {
+            _properties0 = _node0->getProperties(true);
+            _properties0->acquireLock();
+            _properties0->deleteProperty(prop);
+            _properties0->publish();
+            _properties0->releaseLock();
+        }
+
+        barrier(_factory, true);
+        _properties0 = _node0->getProperties();
+
+        if (isMyRank(0)) {
+            usleep(200000);
+            _properties0->setProperty(prop, "new value");
+            CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
+            _properties0->publish();
+            if (_properties0->getProperty(prop) == "new value") {
+                matchedVal = true;
+            }
+        }
+        else if (isMyRank(1) || isMyRank(2) || isMyRank(3)) {
+            /* 
+             * Only let up to 3 processes do the test to prevent a
+             * really long test time.
+             */
+            _properties0->acquireLock();
+            string value = _properties0->getProperty(prop);
+            usleep(500000);
+            string value2 = _properties0->getProperty(prop);
+            _properties0->releaseLock();
+            if (value.compare(value2) == 0) {
+                matchedVal = true;
+            }
+        }
+        else {
+            /* Everyone else is successful by default. */
+            matchedVal = true;
+        }
+
+        barrier(_factory, true);
+        CPPUNIT_ASSERT(matchedVal == true);
+        CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
     }
 
   private:

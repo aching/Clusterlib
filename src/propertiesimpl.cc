@@ -65,7 +65,7 @@ PropertiesImpl::updatePropertiesMap()
      * Only update if this is a newer version.
      */
     if (version > getKeyValVersion()) {
-        Locker l1(getKeyValMapLock());
+        Locker l1(getSyncLock());
         m_keyValMap.clear();
         unmarshall(keyValMap);
         m_keyValMapVersion = version;
@@ -110,7 +110,7 @@ PropertiesImpl::publish()
 {
     TRACE(CL_LOG, "publish");
 
-    Locker k(getKeyValMapLock());
+    Locker k(getSyncLock());
     string marshalledKeyValMap = marshall();
     int32_t finalVersion;
 	
@@ -136,7 +136,7 @@ PropertiesImpl::getPropertyKeys() const
 
     vector<string> keys;
 
-    Locker(getKeyValMapLock());
+    Locker(getSyncLock());
     for (KeyValMap::const_iterator kvIt = m_keyValMap.begin();
          kvIt != m_keyValMap.end(); 
          ++kvIt) {
@@ -153,7 +153,7 @@ PropertiesImpl::getProperty(const string &name, bool searchParent)
     
     throwIfRemoved();
 
-    Locker(getKeyValMapLock());
+    Locker(getSyncLock());
 
     KeyValMap::const_iterator ssIt = m_keyValMap.find(name);
 

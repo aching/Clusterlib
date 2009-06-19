@@ -120,8 +120,7 @@ DataDistributionImpl::unmarshall(const string &marshalledData)
             "Invalid data. Expecting 2 top level components");
     }
 
-    Locker s(getShardsLock());
-    Locker m(getManualOverridesLock());
+    Locker l(getSyncLock());
 
     unmarshallShards(components[0]);
     unmarshallOverrides(components[1]);
@@ -270,7 +269,7 @@ DataDistributionImpl::marshallShards()
     Notifyable *ntp;
     string notifyableKey;
 
-    Locker l(getShardsLock());
+    Locker l(getSyncLock());
     for (sIt = m_shards.begin(); sIt != m_shards.end(); sIt++) {
         /*
          * This shard may forward to another data distribution or
@@ -316,7 +315,7 @@ DataDistributionImpl::marshallOverrides()
     Notifyable *ntp;
     string notifyableKey;
 
-    Locker l(getManualOverridesLock());
+    Locker l(getSyncLock());
     for (moIt = m_manualOverrides.begin();
          moIt != m_manualOverrides.end(); 
          moIt++) {
@@ -379,7 +378,7 @@ DataDistributionImpl::updateShards()
      * to ensure that we don't lose intermediate values or
      * values installed after this update.
      */
-    Locker s(getShardsLock());
+    Locker l(getSyncLock());
 
     int32_t shardsVersion;
     string shards = getOps()->loadShards(getKey(), shardsVersion);
@@ -419,7 +418,7 @@ DataDistributionImpl::updateManualOverrides()
      * to ensure that we don't lose intermediate values or
      * values installed after this update.
      */
-    Locker m(getManualOverridesLock());
+    Locker l(getSyncLock());
 
     int32_t overridesVersion;
     string overrides =
@@ -568,7 +567,7 @@ DataDistributionImpl::isCovered()
 
     ShardList::iterator sIt;
 
-    Locker l(getShardsLock());
+    Locker l(getSyncLock());
     HashRange s;
 
     for (sIt = m_shards.begin(), s = 0;
@@ -599,7 +598,7 @@ DataDistributionImpl::setShards(vector<HashRange> &upperBounds)
     ShardList::iterator sIt;
     vector<HashRange>::iterator vIt;
 
-    Locker l(getShardsLock());
+    Locker l(getSyncLock());
     HashRange s = 0;
     uint32_t oldSize, newSize;
 
@@ -670,7 +669,7 @@ DataDistributionImpl::getShardIndex(HashRange hash)
     ShardList::iterator sIt;
     uint32_t j;
 
-    Locker l(getShardsLock());
+    Locker l(getSyncLock());
     for (sIt = m_shards.begin(), j = 0;
          sIt != m_shards.end();
          j++, sIt++) {
@@ -700,7 +699,7 @@ DataDistributionImpl::getShardDetails(uint32_t shardIndex,
 
     throwIfRemoved();
 
-    Locker l(getShardsLock());
+    Locker l(getSyncLock());
     if (shardIndex >= m_shards.size()) {
         char buf[1024];
         snprintf(buf,
@@ -737,7 +736,7 @@ DataDistributionImpl::reassignShard(uint32_t shardIndex, Notifyable *ntp)
 
     throwIfRemoved();
 
-    Locker l(getShardsLock());
+    Locker l(getSyncLock());
 
     if (shardIndex >= m_shards.size()) {
         throw InconsistentInternalStateException(
@@ -752,8 +751,7 @@ DataDistributionImpl::reassignShard(uint32_t shardIndex, const string &key)
 
     throwIfRemoved();
 
-    Locker l(getShardsLock());
-
+    Locker l(getSyncLock());
     if (shardIndex >= m_shards.size()) {
         throw InconsistentInternalStateException(
             "Shard index out of range in reassignShard");
@@ -772,7 +770,7 @@ DataDistributionImpl::reassignManualOverride(const string &pattern,
 
     throwIfRemoved();
 
-    Locker l(getManualOverridesLock());
+    Locker l(getSyncLock());
     ManualOverride *mop = m_manualOverrides[pattern];
 
     if (mop == NULL) {
@@ -790,7 +788,7 @@ DataDistributionImpl::reassignManualOverride(const string &pattern,
 
     throwIfRemoved();
 
-    Locker l(getManualOverridesLock());
+    Locker l(getSyncLock());
     ManualOverride *mop = m_manualOverrides[pattern];
 
     if (mop == NULL) {
@@ -810,8 +808,7 @@ DataDistributionImpl::publish()
 
     throwIfRemoved();
 
-    Locker s(getShardsLock());
-    Locker m(getManualOverridesLock());
+    Locker l(getSyncLock());
 
     string marshalledShards = marshallShards();
     string marshalledOverrides = marshallOverrides();

@@ -252,21 +252,10 @@ ZooKeeperAdapter::~ZooKeeperAdapter()
     m_eventDispatcher.Join();
 
     /* 
-     * Clean up all memory that was allocated on the heap of type
-     * UserContextAndListener 
+     * Clean up the CallbackAndContext objects not sent back with a
+     * watch fire. 
      */
-    Locker l1(getUserContextAndListenerSetLock());
-    set<UserContextAndListener *>::const_iterator it;
-    for (it = m_userContextAndListenerSet.begin();
-         it != m_userContextAndListenerSet.end(); 
-         it++) {
-        /* 
-         * Doesn't use deleteUserContextAndListener since this can
-         * lead to invalid iterators.
-         */
-        delete *it;
-    }
-    m_userContextAndListenerSet.clear();
+    getListenerAndContextManager()->deleteAllCallbackAndContext();
 }
 
 void
@@ -507,12 +496,13 @@ ZooKeeperAdapter::sync(const string &path,
      * deallocated when the event is processed through the watcher
      * function.
      */
-    UserContextAndListener *userContextAndListener = 
-        createUserContextAndListener(context, listener);
+    clusterlib::CallbackAndContext *callbackAndContext =
+        getListenerAndContextManager()->createCallbackAndContext(listener,
+                                                                 context);
     m_events.put(ZKWatcherEvent(ZOO_SESSION_EVENT, 
                                 ZOO_CONNECTED_STATE,
                                 clusterlib::ClusterlibStrings::SYNC,
-                                userContextAndListener));
+                                callbackAndContext));
     return true;
 }
 
@@ -536,12 +526,13 @@ ZooKeeperAdapter::handleAsyncEvent(const ZKWatcherEvent &event)
      */
     ZKEventListener *listener = NULL;
     void *userContext = NULL;
-    UserContextAndListener *userContextAndListener = NULL;
+    CallbackAndContext *callbackAndContext = NULL;
     if (event.getContext() != NULL) {
-        userContextAndListener = 
-            reinterpret_cast<UserContextAndListener *>(event.getContext());
-        listener = userContextAndListener->listener;
-        userContext = userContextAndListener->userContext;
+        callbackAndContext = 
+            reinterpret_cast<CallbackAndContext *>(event.getContext());
+        listener = 
+            reinterpret_cast<ZKEventListener *>(callbackAndContext->callback);
+        userContext = callbackAndContext->context;
     }
 
     ZKWatcherEvent sentEvent(event.getType(), 
@@ -558,8 +549,9 @@ ZooKeeperAdapter::handleAsyncEvent(const ZKWatcherEvent &event)
     /*
      * Clean up the context struct from memory.
      */
-    if (userContextAndListener != NULL) {
-        deleteUserContextAndListener(userContextAndListener);
+    if (callbackAndContext != NULL) {
+        getListenerAndContextManager()->
+            deleteCallbackAndContext(callbackAndContext);
     }
 }
 
@@ -1074,8 +1066,9 @@ ZooKeeperAdapter::nodeExists(const string &path,
      * will be deallocated when the event is processed through the
      * watcher function.
      */
-    UserContextAndListener *userContextAndListener = 
-        createUserContextAndListener(context, listener);
+    clusterlib::CallbackAndContext *callbackAndContext =
+        getListenerAndContextManager()->createCallbackAndContext(listener,
+                                                                 context);
     do {
         verifyConnection();
         if (listener == NULL) {
@@ -1088,7 +1081,7 @@ ZooKeeperAdapter::nodeExists(const string &path,
             rc = zoo_wexists(mp_zkHandle,
                              path.c_str(),
                              zkWatcher,
-                             userContextAndListener,
+                             callbackAndContext,
                              stat);
         }
     } while ((rc != ZOK) && (rh.handleRC(rc)));
@@ -1103,7 +1096,9 @@ ZooKeeperAdapter::nodeExists(const string &path,
                   "nodeExists: Error %d for %s", 
                   rc, 
                   path.c_str());
-        deleteUserContextAndListener(userContextAndListener);
+        getListenerAndContextManager()->deleteCallbackAndContext(
+            callbackAndContext);
+
         throw ZooKeeperException(
             string("Unable to check existence of node ") + path,
             rc,
@@ -1140,9 +1135,10 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
      * Allocate the struct passed in as context for
      * zoo_wget_children().  It will be deallocated when the event is
      * processed through the watcher function.
-     */
-    UserContextAndListener *userContextAndListener = 
-        createUserContextAndListener(context, listener);
+     */    
+    clusterlib::CallbackAndContext *callbackAndContext =
+        getListenerAndContextManager()->createCallbackAndContext(listener,
+                                                                 context);
     do {
         verifyConnection();
         if (listener == NULL) {
@@ -1155,7 +1151,7 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
             rc = zoo_wget_children(mp_zkHandle,
                                    path.c_str(), 
                                    zkWatcher,
-                                   userContextAndListener,
+                                   callbackAndContext,
                                    &children);
         }
     } while ((rc != ZOK) && (rh.handleRC(rc)));
@@ -1164,7 +1160,8 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
                   "getNodeChildren: Error %d for %s", 
                   rc, 
                   path.c_str());
-        deleteUserContextAndListener(userContextAndListener);
+        getListenerAndContextManager()->deleteCallbackAndContext(
+            callbackAndContext);
         throw ZooKeeperException(string("Unable to get children of node ") +
                                  path, 
                                  rc,
@@ -1172,7 +1169,8 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
     } 
     else {
         if (listener == NULL) {
-            deleteUserContextAndListener(userContextAndListener);
+            getListenerAndContextManager()->deleteCallbackAndContext(
+                callbackAndContext);
         }
 
         for (int32_t i = 0; i < children.count; ++i) {
@@ -1235,8 +1233,9 @@ ZooKeeperAdapter::getNodeData(const string &path,
      * will be deallocated when the event is processed through the
      * watcher function.
      */
-    UserContextAndListener *userContextAndListener = 
-        createUserContextAndListener(context, listener);
+    clusterlib::CallbackAndContext *callbackAndContext =
+        getListenerAndContextManager()->createCallbackAndContext(listener,
+                                                                 context);
     do {
         verifyConnection();
         len = MAX_DATA_LENGTH - 1;
@@ -1252,7 +1251,7 @@ ZooKeeperAdapter::getNodeData(const string &path,
             rc = zoo_wget(mp_zkHandle, 
                           path.c_str(),
                           zkWatcher,
-                          userContextAndListener,
+                          callbackAndContext,
                           buffer, 
                           &len, 
                           stat);
@@ -1264,7 +1263,8 @@ ZooKeeperAdapter::getNodeData(const string &path,
                   rc, 
                   path.c_str());
         delete [] buffer;
-        deleteUserContextAndListener(userContextAndListener);
+        getListenerAndContextManager()->deleteCallbackAndContext(
+            callbackAndContext);
         throw ZooKeeperException(
             string("Unable to get data of node ") + path,
             rc,
@@ -1272,7 +1272,8 @@ ZooKeeperAdapter::getNodeData(const string &path,
     } 
     else {
         if (listener == NULL) {
-            deleteUserContextAndListener(userContextAndListener);
+        getListenerAndContextManager()->deleteCallbackAndContext(
+            callbackAndContext);
         }
         string res(buffer, buffer + len);
         delete [] buffer;
@@ -1311,54 +1312,6 @@ ZooKeeperAdapter::setNodeData(const string &path,
                                  rc,
                                  m_state == AS_CONNECTED);
     }
-}
-
-ZooKeeperAdapter::UserContextAndListener *
-ZooKeeperAdapter::createUserContextAndListener(void *userContext,
-                                               ZKEventListener *listener)
-{
-    TRACE(LOG, "createUserContextAndListener");
-    
-    UserContextAndListener *context = new UserContextAndListener(userContext,
-                                                                 listener);
-
-    Locker l1(getUserContextAndListenerSetLock());
-    set<UserContextAndListener *>::const_iterator it = 
-        m_userContextAndListenerSet.find(context);
-    if (it != m_userContextAndListenerSet.end()) {
-        LOG_ERROR(LOG,
-                  "createUserContextAndListener: Impossible that context 0x%x"
-                  " already exists in the set!",
-                  (uint32_t) context);
-        throw ZooKeeperException("createUserContextAndListener: Unable to add "
-                                 "context to set since it already exists!");
-    }
-
-    m_userContextAndListenerSet.insert(context);
-    return context;
-}
-
-void
-ZooKeeperAdapter::deleteUserContextAndListener(
-    UserContextAndListener *userContextAndListener)
-{
-    TRACE(LOG, "deleteUserContextAndListener");
-
-    Locker l1(getUserContextAndListenerSetLock());
-    set<UserContextAndListener *>::const_iterator it = 
-        m_userContextAndListenerSet.find(userContextAndListener);
-    if (it == m_userContextAndListenerSet.end()) {
-        LOG_ERROR(LOG,
-                  "deleteUserContextAndListener: Impossible that context 0x%x"
-                  " doesn't exist in the set!",
-                  (uint32_t) userContextAndListener);
-        throw ZooKeeperException(
-            "deleteUserContextAndListener: Unable to "
-            "delete context from set since it doesn't exist!");
-    }
-
-    m_userContextAndListenerSet.erase(it);
-    delete userContextAndListener;
 }
 
 }   /* end of 'namespace zk' */

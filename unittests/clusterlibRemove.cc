@@ -329,13 +329,6 @@ class ClusterlibRemove : public MPITestFixture {
             _app0->remove(true);
             CPPUNIT_ASSERT(_app0->getState() == Notifyable::REMOVED);
             _app0->releaseRef();
-            /*
-             * TODO: Fix so that this isn't required.  The problem is
-             * that the remove event is processed after the lock is
-             * released by the external event queue and will remove
-             * the application that we just created! 
-             */
-            sleep(1);
             _app0 = _client0->getRoot()->getApplication(appName, true);
             CPPUNIT_ASSERT(_app0->getState() == Notifyable::READY);
         }

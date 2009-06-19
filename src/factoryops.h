@@ -171,14 +171,6 @@ class FactoryOps {
      */
     bool dispatchEndEvent();
 
-    /**
-     * Checks whether this is an internal event.  Should only be
-     * processed by dispatchInternalEvents.
-     *
-     * @param ge the GenericEvent pointer
-     */
-    bool isInternalEvent(GenericEvent *ge);
-
     /*
      * Helper method that updates the cached representation
      * of a clusterlib repository object and generates the
@@ -519,18 +511,18 @@ class FactoryOps {
     /*
      * Get various locks and conditionals.
      */
-    Mutex *getClientsLock() { return &m_clLock; }
-    Mutex *getPropertiesLock() { return &m_propLock; }
-    Mutex *getDataDistributionsLock() { return &m_distLock; }
-    Mutex *getRootLock() { return &m_rootLock; }
-    Mutex *getApplicationsLock() { return &m_appLock; }
-    Mutex *getGroupsLock() { return &m_groupLock; }
-    Mutex *getNodesLock() { return &m_nodeLock; }
-    Mutex *getRemovedNotifyablesLock() { return &m_removedNotifyablesLock; }
-    Mutex *getTimersLock() { return &m_timerRegistryLock; }
-    Mutex *getSyncLock() { return &m_syncLock; }
-    Cond *getSyncCond() { return &m_syncCond; }
-    Mutex *getEndEventLock() { return &m_endEventLock; }
+    Mutex *getClientsLock();
+    Mutex *getPropertiesLock();
+    Mutex *getDataDistributionsLock();
+    Mutex *getRootLock();
+    Mutex *getApplicationsLock();
+    Mutex *getGroupsLock();
+    Mutex *getNodesLock();
+    Mutex *getRemovedNotifyablesLock();
+    Mutex *getTimersLock();
+    Mutex *getSyncEventLock();
+    Cond *getSyncEventCond();
+    Mutex *getEndEventLock();
 
     /**
      * Get the removed notifyables set
@@ -541,11 +533,11 @@ class FactoryOps {
     }
 
     /**
-     * Increment the sync completed
+     * Increment the sync event id completed
      */
-    void incrSyncIdCompleted() 
+    void incrSyncEventIdCompleted() 
     {
-        ++m_syncIdCompleted; 
+        ++m_syncEventIdCompleted; 
     }
 
     /**
@@ -563,16 +555,6 @@ class FactoryOps {
     CachedObjectChangeHandlers *getCachedObjectChangeHandlers()
     {
         return &m_cachedObjectChangeHandlers;
-    }
-
-    /**
-     * Get the internal change handlers object
-     *
-     * @return pointer to InternalChangeHandlers for handling change
-     */
-    InternalChangeHandlers *getInternalChangeHandlers()
-    {
-        return &m_internalChangeHandlers;
     }
 
     /**
@@ -608,6 +590,19 @@ class FactoryOps {
         return m_shutdown;
     }
 
+    /**
+     * Get the CallbackAndContextManager for FactoryOps.
+     */
+    CallbackAndContextManager *getHandlerAndContextManager()
+    {
+        return &m_handlerAndContextManager;
+    }
+
+    /**
+     * Get the sync event signal map
+     */
+    SignalMap *getSyncEventSignalMap() { return &m_syncEventSignalMap; }
+    
   private:
     /**
      * Clean up clients
@@ -649,7 +644,7 @@ class FactoryOps {
      */
     FactoryOps *getOps() { return this; }
 
-    /*
+    /**
      * Dispatch all events. Reads from the
      * event sources and sends events to
      * the registered client for each event.
@@ -657,14 +652,6 @@ class FactoryOps {
     void dispatchExternalEvents(void *param);
 
     /**
-     * Dispatch only internal clusterlib events that will not be
-     * propaged to clusterlib clients.  Since these events are not
-     * visible to clusterlib clients, they may violate the strict
-     * ordering of events from m_zkEventAdapter.
-     */
-    void dispatchInternalEvents(void *param);
-
-    /*
      * This method consumes timer events. It runs in a separate
      * thread.
      */
@@ -720,12 +707,12 @@ class FactoryOps {
     Mutex m_timerRegistryLock;
 
     /*
-     * The registry of outstanding sync operations
+     * The registry of outstanding sync event operations
      */
-    int64_t m_syncId;
-    int64_t m_syncIdCompleted;
-    Mutex m_syncLock;
-    Cond m_syncCond;
+    int64_t m_syncEventId;
+    int64_t m_syncEventIdCompleted;
+    Mutex m_syncEventLock;
+    Cond m_syncEventCond;
 
     /*
      * The registry of removed Notifyables
@@ -788,18 +775,6 @@ class FactoryOps {
     CXXThread<FactoryOps> m_externalEventThread;
 
     /**
-     * Synchronous event adapter for m_internalEventAdapter.
-     */
-    SynchronousEventAdapter<GenericEvent> m_internalEventAdapter;
-
-    /**
-     * The thread that processes all clusterlib internal events from
-     * the m_eventAdapter.  It is meant to handle events that the
-     * m_clientEventThread depends on.
-     */
-    CXXThread<FactoryOps> m_internalEventThread;
-
-    /**
      * Is the event loop terminating?
      */
     volatile bool m_shutdown;
@@ -820,10 +795,15 @@ class FactoryOps {
     CachedObjectChangeHandlers m_cachedObjectChangeHandlers;
 
     /**
-     * Handles all event for internal event changes (not visible to
-     * clusterlib clients)
+     * Manages the CachedObjectChangeHandlers allocated by this object
      */
-    InternalChangeHandlers m_internalChangeHandlers;
+    clusterlib::CallbackAndContextManager m_handlerAndContextManager;
+
+    /**
+     * Keeps track of the outstanding sync events waiting to propagate
+     * up the queues.
+     */
+    SignalMap m_syncEventSignalMap;
 
     /**
      * Handles all the locks for clusterlib objects

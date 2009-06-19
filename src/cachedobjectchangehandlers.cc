@@ -1,7 +1,9 @@
 /*
  * cachedobjectchangehandlers.cc --
  *
- * Implementation of the cache change handlers.
+ * Implementation of the cache change handlers.  As a rule, none of
+ * the handlers are allowed to hold a distributed lock.  This would
+ * prevent them from completing.
  *
  * ============================================================================
  * $Header$
@@ -50,6 +52,8 @@ CachedObjectChangeHandlers::getCachedObjectChangeString(
             return "NODE_CONNECTION_CHANGE";
         case SYNCHRONIZE_CHANGE:
             return "SYNCHRONIZE_CHANGE";
+        case PREC_LOCK_NODE_EXISTS_CHANGE:
+            return "PREC_LOCK_NODE_EXISTS_CHANGE";
         default:
             return "unknown change";
     }
@@ -725,15 +729,63 @@ CachedObjectChangeHandlers::handleSynchronizeChange(NotifyableImpl *ntp,
 
     /* No need to reset the callback i.e. unsetHandlerCallbackReady(). */
 
-    {
-        Locker l1(getOps()->getSyncLock());
-        getOps()->incrSyncIdCompleted();
-        getOps()->getSyncCond()->signal();
-    }
+    /*
+     * Notify the thread waiting to acquire the lock that this
+     * lock node has finally been deleted.  Since the
+     * PredMutexCond cannot be deleted, the thread calling this
+     * function should be safe.
+     */
+    getOps()->getSyncEventSignalMap()->signalPredMutexCond(key);
 
     LOG_DEBUG(CL_LOG,
-              "handleSynchronizeChange: sent conditional signal");
+              "handleSynchronizeChange: sent conditional signal for key %s",
+              key.c_str());
 
+    return EN_NOEVENT;
+}
+
+/*
+ * Handle existence change for preceding lock node. This is called
+ * whenever a preceding lock node being watched by a thread in this
+ * abdicates.  All it does is signal the lock waiting on it to wake up
+ * and try again.
+ */
+Event
+CachedObjectChangeHandlers::handlePrecLockNodeExistsChange(NotifyableImpl *ntp,
+                                                           int32_t etype,
+                                                           const string &key)
+{
+    TRACE(CL_LOG, "handlePrecLockNodeExistsChange");
+
+    LOG_DEBUG(CL_LOG,
+              "handlePrecLockNodeExistsChange: %s on key %s",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              key.c_str());
+
+    /*
+     * This is the only expected event.
+     */
+    if (etype == ZOO_DELETED_EVENT) {
+        /*
+         * Notify the thread waiting to acquire the lock that this
+         * lock node has finally been deleted.  Since the
+         * PredMutexCond cannot be deleted, the thread calling this
+         * function should be safe.
+         */
+        getOps()->getDistributedLocks()->getSignalMap()->
+            signalPredMutexCond(key);
+
+        return EN_LOCKNODECHANGE;
+    }
+    else {
+        LOG_ERROR(CL_LOG, 
+                  "handlePrecLockNodeExistsChange: non-ZOO_DELETED_EVENT "
+                  "event %d called", etype);
+        throw InconsistentInternalStateException(
+            "handlePrecLockNodeExistsChange: "
+            "non-ZOO_DELETED_EVENT called");
+    }
+    
     return EN_NOEVENT;
 }
 
@@ -869,6 +921,8 @@ CachedObjectChangeHandlers::getChangeHandler(CachedObjectChange change) {
             return &m_nodeConnectionChangeHandler;
         case SYNCHRONIZE_CHANGE:
             return &m_synchronizeChangeHandler;
+        case PREC_LOCK_NODE_EXISTS_CHANGE:
+            return &m_precLockNodeExistsChangeHandler;
         default:
             LOG_FATAL(CL_LOG, 
                       "getChangeHandler: Change %d is not defined\n",

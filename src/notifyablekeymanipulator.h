@@ -41,6 +41,12 @@ class NotifyableKeyManipulator
     static std::string createPropertiesKey(const std::string &notifyableKey);
 
     /**
+     * Create a sync event key that will be used to figure out which
+     * PredMutexCond to signal.
+     */
+    static std::string createSyncEventKey(const int64_t &syncEventId);
+
+    /**
      * Notifyables have one key that represent the object name in the
      * Zookeeper repository.  Each notifyable may have zookeeper nodes
      * attached to it (at most one level deep).  Any zookeeper node
@@ -56,6 +62,18 @@ class NotifyableKeyManipulator
      * @return the potential notifyable key, empty if no possible key.
      */
     static std::string getNotifyableKeyFromKey(const std::string &key);
+
+    /**
+     * If there is a lot of checking Notifyable key strings, it will
+     * be more efficient to use this function to first split the key
+     * into components and then use the component Notifyable functions
+     * to do the checks.
+     *
+     * @param key the key to split
+     * @param components a reference to the output components vector
+     */
+    static void splitNotifyableKey(const std::string &key, 
+                                   std::vector<std::string> &components);
 
     /**
      * Clusterlib object names cannot have any '/' or be any reserved

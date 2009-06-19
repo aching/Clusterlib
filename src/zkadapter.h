@@ -594,28 +594,6 @@ class ZooKeeperAdapter
     };
 
     /**
-     * Data structure to pass in as watcherCtx for Zookeeper zoo_w*()
-     * functions.  This struct should only be memory managed using
-     * CreateUserContextAndListener() and DeleteUserContextAndListener().
-     */
-    struct UserContextAndListener {
-        UserContextAndListener(void *userContextParam, 
-                               ZKEventListener *listenerParam) 
-            : userContext(userContextParam), listener(listenerParam) {}
-        
-        /**
-         * Context passed in from the user.
-         */
-        void *userContext;
-        
-        /**
-         * Listener passed in by the user.  If NULL, fire this to all
-         * listeners.
-         */
-        ZKEventListener *listener;
-    };
-                                
-    /**
      * \brief Creates a new node identified by the given path. 
      * This method is used internally to implement {@link createNode(...)} 
      * and {@link createSequence(...)}. On success, this method will set
@@ -737,24 +715,13 @@ class ZooKeeperAdapter
         return &m_userContextAndListenerSetLock;
     }
 
-    /**
-     * Allocate the memory and setup with UserContextAndListener.
-     * This should be the only way to allocate memory for
-     * UserContextAndListener so it can be tracked by
-     * ZooKeeperAdapter.
-     *
-     * @param userContextAndListener the pointer to track
+    /** 
+     * Get the callback and context manager.
      */
-    UserContextAndListener *createUserContextAndListener(
-        void *userContext,
-        ZKEventListener *listener);
-   
-    /**
-     * Free the memory associated with the UserContextAndListener and
-     * remove it from being tracked.
-     */
-    void deleteUserContextAndListener(
-        UserContextAndListener *userContextAndListener);
+    clusterlib::CallbackAndContextManager *getListenerAndContextManager() 
+    { 
+        return &m_listenerAndContextManager; 
+    }
 
   private:
         
@@ -813,12 +780,11 @@ class ZooKeeperAdapter
      * Makes {@link #m_userContextAndListenerSet} thread-safe.
      */
     clusterlib::Mutex m_userContextAndListenerSetLock;
-    
-    /**
-     * Contains pointers to all the UserContextAndListeners that are
-     * on the heap.
+
+    /** 
+     * Manages the CallbackAndContexts allocated by this object. 
      */
-    std::set<UserContextAndListener *> m_userContextAndListenerSet;
+    clusterlib::CallbackAndContextManager m_listenerAndContextManager;
     
     /**
      * How much time left for the connect to succeed, in milliseconds.

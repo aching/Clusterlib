@@ -109,14 +109,10 @@ class ClusterlibUserEvents
     : public MPITestFixture
 {
     CPPUNIT_TEST_SUITE(ClusterlibUserEvents);
-
     CPPUNIT_TEST(testUserEvents1);
     CPPUNIT_TEST(testUserEvents2);
     CPPUNIT_TEST(testUserEvents3);
     CPPUNIT_TEST(testUserEvents4);
-    CPPUNIT_TEST(testUserEvents5);
-    CPPUNIT_TEST(testUserEvents6);
-
     CPPUNIT_TEST_SUITE_END();
 
   public:

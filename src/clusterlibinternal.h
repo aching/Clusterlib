@@ -17,7 +17,9 @@
 #include <boost/algorithm/string/split.hpp>
 #include "log.h"
 #include "event.h"
+#include "signalmap.h"
 
+#include "callbackandcontext.h"
 #include "zkadapter.h"
 
 #include "notifyableimpl.h"

@@ -1,8 +1,10 @@
 #include <cppunit/CompilerOutputter.h>
 #include <cppunit/extensions/TestFactoryRegistry.h>
 #include <cppunit/ui/text/TestRunner.h>
+#include <cppunit/TestResultCollector.h>
 #include <mpi.h>
 #include "testparams.h"
+#include <iomanip>
 
 using namespace std;
 
@@ -55,6 +57,7 @@ int main(int argc, char* argv[]) {
         new CppUnit::CompilerOutputter(&runner.result(), std::cerr));
 
     /* Run one or more test fixtures. */
+    double startTime = MPI_Wtime();
     int wasSuccessful = runner.run(globalTestParams.getTestFixtureName());
 
     /* Check if all processes were successful */
@@ -81,6 +84,28 @@ int main(int argc, char* argv[]) {
         }
         delete [] successArr;
         successArr = NULL;
+
+        /* Print out test results */
+        cout << setw(3) << setiosflags(ios::left) 
+             << runner.result().runTests() 
+             << " total tests" << endl << setw(3);
+        cout << setw(3) << setiosflags(ios::left) 
+             << runner.result().testFailuresTotal()
+             << " tests failed" << endl;
+        cout << setw(3) << setiosflags(ios::left) 
+             << runner.result().runTests() - 
+            runner.result().testFailuresTotal() 
+             << " tests passed" << endl << endl;
+        
+        cout << globalTestParams.getNumProcs();
+        if (globalTestParams.getNumProcs() == 1) {
+            cout << " process took ";
+        }
+        else {
+            cout << " processes took ";
+        }
+        cout << MPI_Wtime() - startTime 
+             << " seconds for all tests" << endl << endl;
 
         cout << (wasSuccessful ? "SUCCESS" : "FAILURE")
              << " - See details in files " << endl;

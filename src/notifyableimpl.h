@@ -72,6 +72,7 @@ class NotifyableImpl
 
     virtual int32_t getRefCount()
     {
+        Locker l(getRefCountLock());
         return m_refCount;
     }
 
@@ -196,9 +197,11 @@ class NotifyableImpl
     }
 
     /**
-     * Get the NotifyableImpl state lock
+     * Get the NotifyableImpl synchronization lock
+     * 
+     * @return pointer to the synchronization lock
      */
-    virtual Mutex *getStateLock() const { return &m_stateLock; }
+    Mutex *getSyncLock() const;
 
     /**
      * Return the stringified state
@@ -206,11 +209,13 @@ class NotifyableImpl
     static std::string getStateString(Notifyable::State state);
 
     /**
-     * Set the state of the NotifyableImpl.  Client must hold
-     * m_stateLock to ensure atomicity.
+     * Set the state of the NotifyableImpl.
+     *
+     * @param state the state to be set
      */
     void setState(NotifyableImpl::State state)
     {
+        Locker l1(getSyncLock());
         m_state = state;
     }
 
@@ -243,6 +248,13 @@ class NotifyableImpl
      * @param decrRefCount do the decrement of the ref count as well?
      */
     void removeFromRemovedNotifyablesIfReleased(bool decrRefCount);
+
+    /**
+     * Get the mutex that protects the reference count
+     * 
+     * @return pointer to the mutex
+     */
+    Mutex *getRefCountLock();
 
   private:
     /*
@@ -278,6 +290,11 @@ class NotifyableImpl
      */
     std::map<std::string, NameRef> m_distLockMap;
 
+    /** 
+     * Make the reference count (m_refCount) thread-safe
+     */
+    Mutex m_refCountLock;
+
     /**
      * Local object reference count.  Once this goes to 0 and m_state
      * == REMOVED, it can be removed from the "removed cache".
@@ -285,11 +302,11 @@ class NotifyableImpl
     int32_t m_refCount;
 
     /**
-     * Lock to synchronize the Notifyable state (includes distibuted
-     * lock key and count).  It is mutable since it is used by
+     * Lock to synchronize the Notifyable with the clusterlib event
+     * processing thread.  It is mutable since it is used by
      * throwIfRemoved() - which is const so it can be used everywhere.
      */
-    mutable Mutex m_stateLock;
+    mutable Mutex m_syncLock;
 };
 
 };	/* End of 'namespace clusterlib' */

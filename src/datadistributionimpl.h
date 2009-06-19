@@ -395,13 +395,6 @@ class DataDistributionImpl
     std::string marshallOverrides();
 
     /**
-     * Retrieve a pointer to the shards lock and
-     * manual overrides lock.
-     */
-    Mutex *getShardsLock() { return &m_shardsLock; }
-    Mutex *getManualOverridesLock() { return &m_manualOverridesLock; }
-
-    /**
      * The manual overrides for this data distribution.
      */
     ManualOverridesMap m_manualOverrides;

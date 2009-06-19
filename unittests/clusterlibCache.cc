@@ -23,17 +23,6 @@ class ClusterlibCache
     CPPUNIT_TEST(testCache7);
     CPPUNIT_TEST(testCache8);
     CPPUNIT_TEST(testCache9);
-    CPPUNIT_TEST(testCache10);
-    CPPUNIT_TEST(testCache11);
-    CPPUNIT_TEST(testCache12);
-    CPPUNIT_TEST(testCache13);
-    CPPUNIT_TEST(testCache14);
-    CPPUNIT_TEST(testCache15);
-    CPPUNIT_TEST(testCache16);
-    CPPUNIT_TEST(testCache17);
-    CPPUNIT_TEST(testCache18);
-    CPPUNIT_TEST(testCache19);
-
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -45,9 +34,7 @@ class ClusterlibCache
           _grp0(NULL),
           _nod0(NULL),
           _dist0(NULL),
-          _zk(NULL)
-    {
-    }
+          _zk(NULL) {}
 
     /* Runs prior to each test */
     virtual void setUp() 

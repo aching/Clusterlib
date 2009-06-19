@@ -1,9 +1,9 @@
 /* 
- * =============================================================================
+ * ============================================================================
  * $Header$
  * $Revision$
  * $Date$
- * =============================================================================
+ * ============================================================================
  */
 
 #ifndef __MUTEX_H__
@@ -25,7 +25,7 @@ class Mutex
 {
     friend class Cond;
   public:
-    Mutex()
+    Mutex() : refCount(0)
     {
         pthread_mutexattr_init(&m_mutexAttr);
         pthread_mutexattr_settype(&m_mutexAttr, PTHREAD_MUTEX_RECURSIVE_NP);
@@ -36,11 +36,15 @@ class Mutex
         pthread_mutex_destroy(&mutex);
         pthread_mutexattr_destroy(&m_mutexAttr);
     }
-    void acquire() { lock(); }
-    void release() { unlock(); }
+    void acquire();
+    void release();
     void lock()
     {
-        pthread_mutex_lock(&mutex);
+        int ret = pthread_mutex_lock(&mutex);
+        if (ret != 0) {
+            throw InconsistentInternalStateException(
+                "lock: Failed to lock");
+        }
     }
     int32_t tryLock()
     {
@@ -48,11 +52,28 @@ class Mutex
     }
     void unlock()
     {
-        pthread_mutex_unlock(&mutex);
+        int ret = pthread_mutex_unlock(&mutex); 
+        if (ret != 0) {
+            throw InconsistentInternalStateException(
+                "unlock: Failed to unlock");
+        }
+    }
+    int32_t getRefCount() const
+    {
+        return refCount;
+    }
+    void incrRefCount()
+    {
+        refCount++;
+    }
+    void decrRefCount()
+    {
+        refCount--;
     }
   private:
     pthread_mutex_t mutex;
     pthread_mutexattr_t m_mutexAttr;
+    int32_t refCount;
 };
 
 /**
@@ -191,19 +212,13 @@ class Locker
     /*
      * Constructor locks the passed mutex.
      */
-    Locker(Mutex *mp)
-    {
-        mp->lock();
-        mp_lock = mp;
-    }
+    Locker(Mutex *mp);
 
     /*
      * Destructor unlocks the mutex.
      */
-    ~Locker()
-    {
-        mp_lock->unlock();
-    }
+    ~Locker();
+
   private:
     /*
      * Make the default constructor private so it

@@ -174,6 +174,14 @@ NotifyableKeyManipulator::createPropertiesKey(const string &notifyableKey)
 }
 
 string
+NotifyableKeyManipulator::createSyncEventKey(const int64_t &syncEventId)
+{
+    ostringstream oss;
+    oss << syncEventId;
+    return oss.str();
+}
+
+string
 NotifyableKeyManipulator::getNotifyableKeyFromKey(const string &key)
 {
     TRACE(CL_LOG, "getNotifyableKeyFromKey");
@@ -226,9 +234,19 @@ NotifyableKeyManipulator::getNotifyableKeyFromKey(const string &key)
     return string();
 }
 
+void NotifyableKeyManipulator::splitNotifyableKey(const string &key,
+                                                  vector<string> &components)
+{
+    TRACE(CL_LOG, "splitKey");
+
+    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
+}
+
 bool
 NotifyableKeyManipulator::isValidNotifyableName(const string &name)
 {
+    TRACE(CL_LOG, "isValidNotifyableName");
+
     if ((name.empty()) || 
         (name.find(ClusterlibStrings::KEYSEPARATOR) != string::npos) ||
         (name[0] == '_')) {

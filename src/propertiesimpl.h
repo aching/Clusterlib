@@ -97,7 +97,7 @@ class PropertiesImpl
      */
     virtual void reset() 
     {
-        Locker l1(getKeyValMapLock());
+        Locker l1(getSyncLock());
 	m_keyValMap.clear();
     }
 
@@ -165,11 +165,6 @@ class PropertiesImpl
     void setKeyValVersion(int32_t version) { m_keyValMapVersion = version; }
 
     /*
-     * Retrieve the lock managing the map.
-     */
-    Mutex *getKeyValMapLock() { return &m_keyValMapMutex; }
-
-    /*
      * Set the time at which the value changed.
      */
     void setValueChangeTime(int64_t t) { m_valueChangeTime = t; }
@@ -192,7 +187,6 @@ class PropertiesImpl
      */
     KeyValMap m_keyValMap;
     int32_t m_keyValMapVersion;
-    Mutex m_keyValMapMutex;
 
     /*
      * The time of the last change in value.

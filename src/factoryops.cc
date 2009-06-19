@@ -33,8 +33,8 @@ namespace clusterlib
  */
 FactoryOps::FactoryOps(const string &registry)
     : mp_root(NULL),
-      m_syncId(0),
-      m_syncIdCompleted(0),
+      m_syncEventId(0),
+      m_syncEventIdCompleted(0),
       m_endEventDispatched(false),
       m_config(registry, 3000),
       m_zk(m_config, NULL, false),
@@ -43,7 +43,6 @@ FactoryOps::FactoryOps(const string &registry)
       m_shutdown(false),
       m_connected(false),
       m_cachedObjectChangeHandlers(this),
-      m_internalChangeHandlers(this),
       m_distributedLocks(this)
 {
     TRACE(CL_LOG, "FactoryOps");
@@ -52,16 +51,7 @@ FactoryOps::FactoryOps(const string &registry)
      * Link up the event sources.
      */
     m_timerEventAdapter.addListener(&m_externalEventAdapter);
-    m_zkEventAdapter.addListener(&m_internalEventAdapter);
     m_zkEventAdapter.addListener(&m_externalEventAdapter);
-
-    /*
-     * Create the internal clusterlib event dispath thread (processes
-     * only events that internal and not to be propagaged to
-     * clusterlib clients) */
-    m_internalEventThread.Create(
-        *this, 
-        &FactoryOps::dispatchInternalEvents);
 
     /*
      * Create the clusterlib event dispatch thread (processes only
@@ -136,6 +126,9 @@ FactoryOps::~FactoryOps()
                  "Got exception during disconnect: %s",
                  e.what());
     }
+
+    /* Clean up any contexts that are being waited on. */
+    m_handlerAndContextManager.deleteAllCallbackAndContext();
 }
 
 /*
@@ -147,7 +140,6 @@ FactoryOps::waitForThreads()
     TRACE(CL_LOG, "waitForThreads");
 
     m_timerHandlerThread.Join();
-    m_internalEventThread.Join();
     m_externalEventThread.Join();
 }
 
@@ -195,7 +187,7 @@ void
 FactoryOps::synchronize()
 {
     TRACE(CL_LOG, "synchronize");
-    int32_t syncId = 0;
+    int64_t syncEventId = 0;
 
     /* 
      * Simple algorithm to ensure that each synchronize() called by
@@ -203,47 +195,60 @@ FactoryOps::synchronize()
      * 2^64 sync operations in progress, this will not be a problem.
      */
     {
-        Locker l1(getSyncLock());
-        if ((m_syncId < m_syncIdCompleted) ||
-            (m_syncId == numeric_limits<int64_t>::max())) {
+        Locker l1(getSyncEventLock());
+        if ((m_syncEventId < m_syncEventIdCompleted) ||
+            (m_syncEventId == numeric_limits<int64_t>::max())) {
             throw InconsistentInternalStateException(
                 "synchronize: sync invariant not maintained");
         }
-        
         /*
-         * Reset m_syncId and m_syncIdCompleted if there are no
+         * Reset m_syncEventId and m_syncEventIdCompleted if there are no
          * outstanding syncs and are not at the initial state. 
          */
-        if ((m_syncId == m_syncIdCompleted) && (m_syncId != 0)) {
-            m_syncId = 0;
-            m_syncIdCompleted = 0;
+        if ((m_syncEventId == m_syncEventIdCompleted) && 
+            (m_syncEventId != 0)) {
+            m_syncEventId = 0;
+            m_syncEventIdCompleted = 0;
         }
-        ++m_syncId;
-        syncId = m_syncId;
+        ++m_syncEventId;
+        syncEventId = m_syncEventId;
     }
 
     string key(ClusterlibStrings::ROOTNODE);
     key.append(ClusterlibStrings::CLUSTERLIB);
-    SAFE_CALL_ZK(m_zk.sync(key, 
-                           &m_zkEventAdapter, 
-                           getCachedObjectChangeHandlers()->
-                           getChangeHandler(
-                               CachedObjectChangeHandlers::SYNCHRONIZE_CHANGE)),
+
+    string syncEventKey = 
+        NotifyableKeyManipulator::createSyncEventKey(syncEventId);
+
+    /*
+     * Pass the sync event ID to the ZooKeeperAdapter.  When the event
+     * comes back up to clusterlib, it will find the id and then try
+     * to match it to this one to ensure that this sync finished.
+     */
+    PredMutexCond predMutexCond;
+    getSyncEventSignalMap()->addRefPredMutexCond(syncEventKey,
+                                                 &predMutexCond);
+    CallbackAndContext *callbackAndContext = 
+        getHandlerAndContextManager()->createCallbackAndContext(
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(CachedObjectChangeHandlers::SYNCHRONIZE_CHANGE),
+            &syncEventId);
+
+    SAFE_CALL_ZK(m_zk.sync(
+                     key, 
+                     &m_zkEventAdapter, 
+                     callbackAndContext),
                  "Could not synchronize with the underlying store %s: %s",
                  "/",
-                 true,
+                 false,
                  true);
 
     /* 
-     * Wait for notification of the event to be received by *
-     * m_eventAdapter.
+     * Wait for this sync event to be processed through the clusterlib
+     * external event thread. 
      */
-    {
-        Locker l1(getSyncLock());
-        while (syncId > m_syncIdCompleted) {
-            m_syncCond.wait(m_syncLock);
-        }
-    }
+    getSyncEventSignalMap()->waitPredMutexCond(syncEventKey);
+    getSyncEventSignalMap()->removeRefPredMutexCond(syncEventKey);
 
     LOG_DEBUG(CL_LOG, "synchronize: Complete");
 }
@@ -452,13 +457,6 @@ FactoryOps::dispatchExternalEvents(void *param)
              * correct handler.
              */
             GenericEvent ge(m_externalEventAdapter.getNextEvent());
-
-            /*
-             * Only process external events.
-             */
-            if (isInternalEvent(&ge) == true) {
-                continue;
-            }
 
             LOG_DEBUG(CL_LOG,
                       "[%d, 0x%x] dispatchExternalEvents() received "
@@ -744,131 +742,6 @@ FactoryOps::dispatchEndEvent()
 }
 
 /*
- * Dispatch internal events to internal handler functions
- */
-void
-FactoryOps::dispatchInternalEvents(void *eventAdapter)
-{
-    TRACE(CL_LOG, "dispatchInternalEvents");
-
-    uint32_t eventSeqId = 0;
-    LOG_DEBUG(CL_LOG,
-              "Starting thread with FactoryOps::dispatchInternalEvents(), "
-              "this: 0x%x, thread: 0x%x",
-              (int32_t) this,
-              (uint32_t) pthread_self());
-
-    bool timedOut = false;
-    try {
-        while (m_shutdown == false) {
-            if (timedOut == false) {
-                LOG_INFO(CL_LOG,
-                         "[%d]: Asking for next event",
-                         eventSeqId);
-                eventSeqId++;
-            }
-
-            /*
-             * Get the next event and send it off to the correct
-             * handler.  Set a wait of 100 ms to check for possible
-             * shutdown.
-             */
-            timedOut = true;
-            GenericEvent ge(m_internalEventAdapter.getNextEvent(100, 
-                                                                &timedOut));
-            if (timedOut) {
-                continue;
-            }
-
-            /*
-             * Only process internal events.
-             */
-            if (isInternalEvent(&ge) == false) {
-                continue;
-            }
-
-            LOG_DEBUG(CL_LOG,
-                      "[%d, 0x%x] dispatchInternalEvents() received "
-                      "generic event of type: %s",
-                      eventSeqId,
-                      (unsigned int) this,
-                      GenericEvent::getTypeString(ge.getType()).c_str());
-            
-            zk::ZKWatcherEvent *zp = 
-                reinterpret_cast<zk::ZKWatcherEvent *>(ge.getEvent());
-            if (zp == NULL) {
-                throw InvalidArgumentsException(
-                    "dispatchInternalEvents: Not a ZKWatcherEvent (NULL)");
-            }
-
-            InternalEventHandler *iehp =
-                reinterpret_cast<InternalEventHandler *>(zp->getContext());
-            if (iehp == NULL) {
-                throw InconsistentInternalStateException(
-                    "dispatchInternalEvents: Got NULL context");
-            }
-            
-            iehp->deliver(zp->getType(), zp->getPath());
-        }
-
-        LOG_DEBUG(CL_LOG,
-                  "Ending thread with FactoryOps::dispatchInternalEvents(): "
-                  "this: 0x%x, thread: 0x%x",
-                  (int32_t) this,
-                  (uint32_t) pthread_self());
-    } catch (zk::ZooKeeperException &zke) {
-        LOG_ERROR(CL_LOG, "ZooKeeperException: %s", zke.what());
-        throw RepositoryInternalsFailureException(zke.what());
-    } catch (Exception &e) {
-        throw Exception(e.what());
-    } catch (std::exception &stde) {
-        LOG_ERROR(CL_LOG, "Unknown exception: %s", stde.what());
-        throw Exception(stde.what());
-    }
-}
-
-bool 
-FactoryOps::isInternalEvent(GenericEvent *ge)
-{
-    TRACE(CL_LOG, "isInternalEvent");
-
-    if (ge == NULL) {
-        throw InvalidArgumentsException("isInternalEvent: NULL ge");
-    }
-
-    /*
-     * For now, the only internal events are 
-     *
-     * 1. Any lock node getting deleted.
-     */
-    if (ge->getType() != ZKEVENT) {
-        return false;
-    }
-
-    zk::ZKWatcherEvent *zp = 
-        reinterpret_cast<zk::ZKWatcherEvent *>(ge->getEvent());
-    if (zp == NULL) {
-        throw InvalidArgumentsException(
-            "isInternalEvent: Not a ZKWatcherEvent (NULL)");
-    }
-
-    if (zp->getType() != ZOO_DELETED_EVENT) {
-        return false;
-    }
-
-    string lockNodePartialKey;
-    lockNodePartialKey.append(ClusterlibStrings::KEYSEPARATOR);
-    lockNodePartialKey.append(ClusterlibStrings::LOCKS);
-    lockNodePartialKey.append(ClusterlibStrings::KEYSEPARATOR);
-    size_t lockNodeIndex = zp->getPath().find(lockNodePartialKey);
-    if (lockNodeIndex == string::npos) {
-        return false;
-    }
-
-    return true;
-}
-
-/*
  * Consume timer events. Run the timer event handlers.
  * This runs in a special thread owned by the factory.
  */
@@ -1008,32 +881,29 @@ FactoryOps::getApplication(const string &appName, bool create)
         }
     }
 
-    /*
-     * Use a distributed lock on the parent to prevent another thread
-     * from interfering with creation or loading.
-     */
-    getOps()->getDistributedLocks()->acquire(
-        getRoot(), 
-        ClusterlibStrings::NOTIFYABLELOCK);
-
     ApplicationImpl *app = loadApplication(appName, key);
     if (app != NULL) {
-        getOps()->getDistributedLocks()->release(
-            getRoot(),
-            ClusterlibStrings::NOTIFYABLELOCK);
         return app;
     }
     if (create == true) {
-        app = createApplication(appName, key);
+        /*
+         * Use a distributed lock on the parent to prevent another thread
+         * from interfering with creation or removal.
+         */
+        getOps()->getDistributedLocks()->acquire(
+            getRoot(), 
+            ClusterlibStrings::NOTIFYABLELOCK);
+
+        app = loadApplication(appName, key);
+        if (app == NULL) {
+            app = createApplication(appName, key);
+        }
+
         getOps()->getDistributedLocks()->release(
             getRoot(),
             ClusterlibStrings::NOTIFYABLELOCK);
         return app;
     }
-
-    getOps()->getDistributedLocks()->release(
-        getRoot(),
-        ClusterlibStrings::NOTIFYABLELOCK);
 
     LOG_WARN(CL_LOG,
              "getApplication: application %s not found nor created",
@@ -1080,34 +950,33 @@ FactoryOps::getDataDistribution(const string &distName,
         }
     }
 
-    /*
-     * Use a distributed lock on the parent to prevent another thread
-     * from interfering with creation or loading.
-     */
-    getOps()->getDistributedLocks()->acquire(
-        parentGroup,
-        ClusterlibStrings::NOTIFYABLELOCK);
-
     DataDistributionImpl *dist = loadDataDistribution(distName, 
                                                       key, 
                                                       parentGroup);
     if (dist != NULL) {
-        getOps()->getDistributedLocks()->release(
-            parentGroup,
-            ClusterlibStrings::NOTIFYABLELOCK);
         return dist;
     }
     if (create == true) {
-        dist = createDataDistribution(distName, key, "", "", parentGroup); 
+        /*
+         * Use a distributed lock on the parent to prevent another thread
+         * from interfering with creation or removal.
+         */
+        getOps()->getDistributedLocks()->acquire(
+            parentGroup,
+            ClusterlibStrings::NOTIFYABLELOCK);
+
+        dist = loadDataDistribution(distName, 
+                                    key, 
+                                    parentGroup);
+        if (dist == NULL) {
+            dist = createDataDistribution(distName, key, "", "", parentGroup); 
+        }
+
         getOps()->getDistributedLocks()->release(
             parentGroup,
             ClusterlibStrings::NOTIFYABLELOCK);
         return dist;
     }
-
-    getOps()->getDistributedLocks()->release(
-        parentGroup,
-        ClusterlibStrings::NOTIFYABLELOCK);
 
     LOG_WARN(CL_LOG,
              "getDataDistribution: data distribution %s not found "
@@ -1141,32 +1010,29 @@ FactoryOps::getProperties(Notifyable *parent,
         }
     }
 
-    /*
-     * Use a distributed lock on the parent to prevent another thread
-     * from interfering with creation or loading.
-     */
-    getOps()->getDistributedLocks()->acquire(
-        parent,
-        ClusterlibStrings::NOTIFYABLELOCK);
-
     PropertiesImpl *prop = loadProperties(key, parent);
     if (prop != NULL) {
-        getOps()->getDistributedLocks()->release(
-            parent,
-            ClusterlibStrings::NOTIFYABLELOCK);
         return prop;
     }
     if (create == true) {
-        prop = createProperties(key, parent);
+        /*
+         * Use a distributed lock on the parent to prevent another thread
+         * from interfering with creation or removal.
+         */
+        getOps()->getDistributedLocks()->acquire(
+            parent,
+            ClusterlibStrings::NOTIFYABLELOCK);
+        
+        prop = loadProperties(key, parent);
+        if (prop == NULL) {
+            prop = createProperties(key, parent);
+        }
+
         getOps()->getDistributedLocks()->release(
             parent,
             ClusterlibStrings::NOTIFYABLELOCK);
         return prop;
     }
-
-    getOps()->getDistributedLocks()->release(
-        parent,
-        ClusterlibStrings::NOTIFYABLELOCK);
 
     LOG_WARN(CL_LOG,
              "getProperties: could not find nor create "
@@ -1211,32 +1077,29 @@ FactoryOps::getGroup(const string &groupName,
         }
     }
 
-    /*
-     * Use a distributed lock on the parent to prevent another thread
-     * from interfering with creation or loading.
-     */
-    getOps()->getDistributedLocks()->acquire(
-        parentGroup,
-        ClusterlibStrings::NOTIFYABLELOCK);
-
     GroupImpl *group = loadGroup(groupName, key, parentGroup);
     if (group != NULL) {
-        getOps()->getDistributedLocks()->release(
-            parentGroup,
-            ClusterlibStrings::NOTIFYABLELOCK);
         return group;
     }
     if (create == true) {
-        group = createGroup(groupName, key, parentGroup);
+        /*
+         * Use a distributed lock on the parent to prevent another thread
+         * from interfering with creation or removal.
+         */
+        getOps()->getDistributedLocks()->acquire(
+            parentGroup,
+            ClusterlibStrings::NOTIFYABLELOCK);
+
+        group = loadGroup(groupName, key, parentGroup);
+        if (group == NULL) {
+            group = createGroup(groupName, key, parentGroup);
+        }
+
         getOps()->getDistributedLocks()->release(
             parentGroup,
             ClusterlibStrings::NOTIFYABLELOCK);
         return group;
     }
-
-    getOps()->getDistributedLocks()->release(
-        parentGroup,
-        ClusterlibStrings::NOTIFYABLELOCK);
 
     LOG_WARN(CL_LOG,
              "getGroup: group %s not found nor created",
@@ -1283,32 +1146,29 @@ FactoryOps::getNode(const string &nodeName,
         }
     }
 
-    /*
-     * Use a distributed lock on the parent to prevent another thread
-     * from interfering with creation or loading.
-     */
-    getOps()->getDistributedLocks()->acquire(
-        parentGroup,
-        ClusterlibStrings::NOTIFYABLELOCK);
-
     NodeImpl *node = loadNode(nodeName, key, parentGroup);
     if (node != NULL) {
-        getOps()->getDistributedLocks()->release(
-            parentGroup,
-            ClusterlibStrings::NOTIFYABLELOCK);
         return node;
     }
     if (create == true) {
-        node = createNode(nodeName, key, parentGroup);
+        /*
+         * Use a distributed lock on the parent to prevent another thread
+         * from interfering with creation and removal.
+         */
+        getOps()->getDistributedLocks()->acquire(
+            parentGroup,
+            ClusterlibStrings::NOTIFYABLELOCK);
+
+        node = loadNode(nodeName, key, parentGroup);
+        if (node == NULL) {
+            node = createNode(nodeName, key, parentGroup);
+        }
+        
         getOps()->getDistributedLocks()->release(
             parentGroup,
             ClusterlibStrings::NOTIFYABLELOCK);
         return node;
     }
-
-    getOps()->getDistributedLocks()->release(
-        parentGroup,
-        ClusterlibStrings::NOTIFYABLELOCK);
 
     LOG_WARN(CL_LOG,
              "getNode: node %s not found nor created",
@@ -2815,27 +2675,30 @@ FactoryOps::removeNotifyableFromCacheByKey(const string &key)
     Mutex *ntpMapLock = NULL;
     NotifyableImplMap *ntpMap = NULL;
 
-    if (NotifyableKeyManipulator::isRootKey(key)) {
+    vector<string> components;
+    NotifyableKeyManipulator::splitNotifyableKey(key, components);
+
+    if (NotifyableKeyManipulator::isRootKey(components)) {
         throw InvalidMethodException(
             "RemoveNotifyableFromCacheByKey: Cannot remove root!");
     }
-    else if (NotifyableKeyManipulator::isApplicationKey(key)) {
+    else if (NotifyableKeyManipulator::isApplicationKey(components)) {
         ntpMapLock = getApplicationsLock();
         ntpMap = &m_apps;
     }
-    else if (NotifyableKeyManipulator::isGroupKey(key)) {
+    else if (NotifyableKeyManipulator::isGroupKey(components)) {
         ntpMapLock = getGroupsLock();
         ntpMap = &m_groups;
     }
-    else if (NotifyableKeyManipulator::isNodeKey(key)) {
+    else if (NotifyableKeyManipulator::isNodeKey(components)) {
         ntpMapLock = getNodesLock();
         ntpMap = &m_nodes;
     }
-    else if (NotifyableKeyManipulator::isPropertiesKey(key)) {
+    else if (NotifyableKeyManipulator::isPropertiesKey(components)) {
         ntpMapLock = getPropertiesLock();
         ntpMap = &m_props;
     }
-    else if (NotifyableKeyManipulator::isDataDistributionKey(key)) {
+    else if (NotifyableKeyManipulator::isDataDistributionKey(components)) {
         ntpMapLock = getDataDistributionsLock();
         ntpMap = &m_dists;
     }
@@ -2853,29 +2716,34 @@ FactoryOps::removeNotifyableFromCacheByKey(const string &key)
             key + string(" in the map"));
     }
 
-    Locker l2(ntpMapIt->second->getStateLock());
-    LOG_DEBUG(CL_LOG, 
-              "RemoveNotifyableFromCacheByKey: state changed to REMOVED "
-              "for Notifyable %s",
-              key.c_str());
-    if (ntpMapIt->second->getState() == Notifyable::REMOVED) {
-        throw InvalidMethodException(
-            string("RemoveNotifyableFromCacheByKey: Tried to remove 2x ") +
-            key.c_str());
+    {
+        /* Can not hold the sync lock while removing! */
+        Locker l2(ntpMapIt->second->getSyncLock());
+        LOG_DEBUG(CL_LOG, 
+                  "RemoveNotifyableFromCacheByKey: state changed to REMOVED "
+                  "for Notifyable %s",
+                  key.c_str());
+        if (ntpMapIt->second->getState() == Notifyable::REMOVED) {
+            throw InvalidMethodException(
+                string("RemoveNotifyableFromCacheByKey: Tried to remove 2x ") +
+                key.c_str());
+        }
+        
+        Locker l3(getRemovedNotifyablesLock());
+        set<Notifyable *>::const_iterator it = 
+            getRemovedNotifyables()->find(ntpMapIt->second);
+        if (it != getRemovedNotifyables()->end()) {
+            throw InconsistentInternalStateException(
+                string("RemoveNotifyableFromCacheByKey: Notifyable for key ") +
+                ntpMapIt->second->getKey() + 
+                " is already in removed notifyables" +
+                " set!");
+        }
+        getRemovedNotifyables()->insert(ntpMapIt->second);
+
+        ntpMapIt->second->setState(Notifyable::REMOVED);
     }
 
-    Locker l3(getRemovedNotifyablesLock());
-    set<Notifyable *>::const_iterator it = 
-        getRemovedNotifyables()->find(ntpMapIt->second);
-    if (it != getRemovedNotifyables()->end()) {
-        throw InconsistentInternalStateException(
-            string("RemoveNotifyableFromCacheByKey: Notifyable for key ") + 
-            ntpMapIt->second->getKey() + " is already in removed notifyables" +
-            " set!");
-    }
-    getRemovedNotifyables()->insert(ntpMapIt->second);
-
-    ntpMapIt->second->setState(Notifyable::REMOVED);
     ntpMap->erase(ntpMapIt);
 }
 
@@ -3043,6 +2911,90 @@ FactoryOps::removeConnected(const string &key)
                  ckey.c_str(),
                  false,
                  true);
+}
+
+Mutex *
+FactoryOps::getClientsLock() 
+{
+    TRACE(CL_LOG, "getClientsLock");
+    return &m_clLock; 
+}
+
+Mutex *
+FactoryOps::getPropertiesLock() 
+{
+    TRACE(CL_LOG, "getPropertiesLock");
+    return &m_propLock; 
+}
+
+Mutex *
+FactoryOps::getDataDistributionsLock() 
+{ 
+    TRACE(CL_LOG, "getDataDistributionsLock");
+    return &m_distLock; 
+}
+   
+Mutex *
+FactoryOps::getRootLock() 
+{ 
+    TRACE(CL_LOG, "getRootLock");
+    return &m_rootLock; 
+}
+
+Mutex *
+FactoryOps::getApplicationsLock() 
+{ 
+    TRACE(CL_LOG, "getApplicationsLock");
+    return &m_appLock; 
+}
+
+Mutex *
+FactoryOps::getGroupsLock() 
+{ 
+    TRACE(CL_LOG, "getGroupsLock");
+    return &m_groupLock; 
+}
+
+Mutex *
+FactoryOps::getNodesLock() 
+{ 
+    TRACE(CL_LOG, "getNodesLock");
+    return &m_nodeLock; 
+}
+
+Mutex *
+FactoryOps::getRemovedNotifyablesLock() 
+{
+    TRACE(CL_LOG, "getRemovedNotifyablesLock");
+    return &m_removedNotifyablesLock; 
+}
+
+Mutex *
+FactoryOps::getTimersLock() 
+{ 
+    TRACE(CL_LOG, "getTimersLock");
+    return &m_timerRegistryLock; 
+}
+
+Mutex *
+FactoryOps::getSyncEventLock() 
+{ 
+    TRACE(CL_LOG, "getSyncEventLock");
+    return &m_syncEventLock; 
+}
+
+Cond *
+FactoryOps::getSyncEventCond() 
+{ 
+    TRACE(CL_LOG, "getSyncEventCond");
+    return &m_syncEventCond; 
+}
+
+Mutex *
+FactoryOps::getEndEventLock() 
+{
+    TRACE(CL_LOG, "getEndEventLock");
+    return &m_endEventLock; 
 }
 
 /*
@@ -3450,14 +3402,18 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
              ep->getPath().c_str());
 
     /*
-     * Based on the path and etype, several things need to happen.
+     * Based on the path and etype, several things need to happen.  At
+     * no point in the execution loop can this function hold a
+     * distributed lock.  It may hold local locks to coordinate with
+     * user threads.
+     *
      * 1. Get the derived path of the Notifyable that the event path refers to.
-     * 2. Get the Notifyable from the dervied path in the cache if it exists 
+     * 2. Get the Notifyable from the derived path in the cache if it exists 
      *    and update it with the appropriate CachedObjectEventHandler.
      * 3. Pass the derived path and event as a payload in the return.
      *
-     * Exception 1: SYNC doesn't try to get the Notifyable 
-     * since it doesn't have one.
+     * There are exceptions where getting the notifyable is not
+     * required.  They are described in the comment below.
      *
      * Note: Getting the NotifyableImpl * for the derived path is best
      * effort.  The NotifyableImpl may have already been removed and
@@ -3469,7 +3425,29 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
      */
     string notifyablePath;
     NotifyableImpl *ntp = NULL;
+    string cachedObjectPath = ep->getPath();
+
+    /* There are two cases where the getting the Notifyable is not
+     * necessary.
+     *
+     * 1.  A sync event.
+     * 2.  A lock node deleted event.
+     */
     if (ep->getPath().compare(ClusterlibStrings::SYNC) == 0) {
+        CallbackAndContext *callbackAndContext = 
+            reinterpret_cast<CallbackAndContext *>(fehp);
+        int64_t syncEventId = 
+            *(reinterpret_cast<int64_t *>(callbackAndContext->context));
+        cachedObjectPath = 
+            NotifyableKeyManipulator::createSyncEventKey(syncEventId);
+        fehp = reinterpret_cast<CachedObjectEventHandler *>(
+            callbackAndContext->callback);
+        getHandlerAndContextManager()->deleteCallbackAndContext(
+            callbackAndContext);
+        ntp = NULL;
+    }
+    else if ((ep->getPath().find(ClusterlibStrings::PARTIALLOCKNODE) != 
+          string::npos) && (etype == ZOO_DELETED_EVENT)) {
         notifyablePath = ep->getPath();
         ntp = NULL;
     }
@@ -3510,7 +3488,7 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
      * will also return the kind of user-level event that this
      * repository event represents.
      */
-    Event e = fehp->deliver(ntp, etype, ep->getPath());
+    Event e = fehp->deliver(ntp, etype, cachedObjectPath);
     if (ntp != NULL) {
         if (!NotifyableKeyManipulator::isRootKey(ntp->getKey())) {
             ntp->releaseRef();
@@ -3528,7 +3506,7 @@ void
 FactoryOps::establishNotifyableStateChange(NotifyableImpl *ntp)
 {
     string ready;
-    
+       
     if (ntp == NULL) {
         throw InvalidArgumentsException(
             "establishNotifyableStateChange: with NULL NotifyableImpl *");

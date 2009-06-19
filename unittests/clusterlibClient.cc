@@ -31,14 +31,6 @@ class ClusterlibClient
     CPPUNIT_TEST(testClient3);
     CPPUNIT_TEST(testClient4);
     CPPUNIT_TEST(testClient5);
-    CPPUNIT_TEST(testClient20);
-    CPPUNIT_TEST(testClient21);
-    CPPUNIT_TEST(testClient22);
-    CPPUNIT_TEST(testClient23);
-    CPPUNIT_TEST(testClient24);
-    CPPUNIT_TEST(testClient25);
-    CPPUNIT_TEST(testClient26);
-    CPPUNIT_TEST(testClient27);
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -49,9 +41,7 @@ class ClusterlibClient
           _app0(NULL),
           _id0(0),
           _fired0(false),
-          _cancelled0(false)
-    {
-    }
+          _cancelled0(false) {}
 
     /* Called from the timer handler. */
     void setFired0(bool v) { _fired0 = v; }

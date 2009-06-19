@@ -71,12 +71,17 @@ class DistributedLocks
      */
     Mutex *getWaitMapLock() { return &m_waitMapLock; }
 
+    /**
+     * Get the signal map for locks
+     */
+    SignalMap *getSignalMap() { return &m_signalMap; }
+
   private:
     /**
      * Private access to mp_ops
      */
     FactoryOps *getOps() { return mp_ops; }
-    
+
   private:
     /**
      * Does all the factory operations
@@ -92,6 +97,11 @@ class DistributedLocks
      * Lock that protects m_waitMap
      */
     Mutex m_waitMapLock;
+
+    /**
+     * Keeps track of the notification of lock events
+     */
+    SignalMap m_signalMap;
 };
 
 };	/* End of 'namespace clusterlib' */

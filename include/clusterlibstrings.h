@@ -72,6 +72,8 @@ class ClusterlibStrings
 
     static const std::string ENDEVENT;
 
+    static const std::string PARTIALLOCKNODE;
+
     static const std::string INFLUX;
     static const std::string HEALTHY;
     static const std::string UNHEALTHY;

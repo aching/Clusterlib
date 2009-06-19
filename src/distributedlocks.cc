@@ -204,26 +204,13 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
             /*
              * Set up the waiting for the handler function on the lower child.
              */
-            WaitMap::iterator waitMapIt;
             PredMutexCond predMutexCond;
-            {
-                Locker l1(getWaitMapLock());
-                waitMapIt = getWaitMap()->find(*lowerChildIt);
-                if (waitMapIt == getWaitMap()->end()) {
-                    getWaitMap()->insert(
-                        make_pair(*lowerChildIt, &predMutexCond));
-                    waitMapIt = getWaitMap()->find(*lowerChildIt);
-                    if (waitMapIt == getWaitMap()->end()) {
-                        throw InconsistentInternalStateException(
-                            "acquire: wait entry should exist");
-                    }
-                }
-                waitMapIt->second->refCount++;                    
-            }
-            
-            InternalEventHandler *handler = 
-                getOps()->getInternalChangeHandlers()->
-                getPrecLockNodeExistsHandler();
+            getSignalMap()->addRefPredMutexCond(*lowerChildIt, &predMutexCond);
+
+            CachedObjectEventHandler *handler = 
+                getOps()->getCachedObjectChangeHandlers()->
+                getChangeHandler(
+                    CachedObjectChangeHandlers::PREC_LOCK_NODE_EXISTS_CHANGE);
             SAFE_CALL_ZK(
                 (exists = getOps()->getRepository()->nodeExists(
                     (*lowerChildIt),
@@ -239,7 +226,7 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
              */
             LOG_DEBUG(CL_LOG, "acquire: Wait for handler? = %d", exists);
             if (exists) {
-                waitMapIt->second->predWait();
+                getSignalMap()->waitPredMutexCond(*lowerChildIt);
             }
             
             /*
@@ -247,25 +234,7 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
              * conditional (otherwise, just decrease the reference
              * count).  Then try again if lowerBid != myBid.
              */
-            {
-                Locker l1(getWaitMapLock());
-                WaitMap::iterator waitMapIt = getWaitMap()->find(
-                    *lowerChildIt);
-                if (waitMapIt == getWaitMap()->end()) {
-                    throw InconsistentInternalStateException(
-                        "acquire: Setting up waiting for the handler failed");
-                }
-
-                LOG_DEBUG(CL_LOG,
-                          "acquire: refCount prior to decrement = %d for %s",
-                          waitMapIt->second->refCount,
-                          (*lowerChildIt).c_str());
-
-                waitMapIt->second->refCount--;
-                if (waitMapIt->second->refCount == 0) {
-                    getWaitMap()->erase(waitMapIt);
-                }
-            }
+            getSignalMap()->removeRefPredMutexCond(*lowerChildIt);
         }
         else if (lowerBid > myBid) {
             throw InconsistentInternalStateException(
@@ -286,6 +255,11 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
               createdPath.c_str(),
               castedNtp->getDistributedLockOwnerCount(
                   lockName));
+    /*
+     * Grab the local lock that synchronizes with the
+     * clusterlib event handling thread.
+     */
+    castedNtp->getSyncLock()->acquire();
 }
 
 void
@@ -332,6 +306,12 @@ DistributedLocks::release(Notifyable *ntp, const string &lockName)
     }
     
     castedNtp->setDistributedLockOwner(lockName, "");
+
+    /*
+     * Release the held local lock that synchronizes with the
+     * clusterlib event handling thread.
+     */
+    castedNtp->getSyncLock()->release();
 
     /* 
      * Delete the lock node here.

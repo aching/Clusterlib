@@ -6,6 +6,7 @@ INCLUDES = \
 METASOURCES = AUTO
 lib_LIBRARIES = libcluster.a
 libcluster_a_SOURCES = \
+	callbackandcontext.cc \
 	notifyableimpl.cc \
 	nodeimpl.cc \
 	groupimpl.cc \
@@ -22,7 +23,9 @@ libcluster_a_SOURCES = \
 	factory.cc \
 	factoryops.cc \
 	event.cc \
+	mutex.cc \
         notifyablekeymanipulator.cc \
+	signalmap.cc \
 	thread.cc \
 	zkadapter.cc
 

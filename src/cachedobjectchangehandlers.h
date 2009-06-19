@@ -35,7 +35,8 @@ class CachedObjectChangeHandlers
         NODE_CLIENT_STATE_CHANGE,
         NODE_MASTER_SET_STATE_CHANGE,
         NODE_CONNECTION_CHANGE,
-        SYNCHRONIZE_CHANGE
+        SYNCHRONIZE_CHANGE,
+        PREC_LOCK_NODE_EXISTS_CHANGE
     };
 
     static std::string getCachedObjectChangeString(
@@ -143,6 +144,13 @@ class CachedObjectChangeHandlers
                                   const std::string &key);
 
     /**
+     * Handle change of a preceding lock node exists event.
+     */
+    Event handlePrecLockNodeExistsChange(NotifyableImpl *ntp,
+                                         int32_t etype,
+                                         const std::string &key);
+
+    /**
      * Get the CachedObjectEventHandler for the appropriate change event
      *
      * @return a pointer to the desired event handler
@@ -221,7 +229,10 @@ class CachedObjectChangeHandlers
             &CachedObjectChangeHandlers::handleNodeConnectionChange),
         m_synchronizeChangeHandler(
             this,
-            &CachedObjectChangeHandlers::handleSynchronizeChange) {}
+            &CachedObjectChangeHandlers::handleSynchronizeChange),
+        m_precLockNodeExistsChangeHandler(
+            this,
+            &CachedObjectChangeHandlers::handlePrecLockNodeExistsChange) {}
 
   private:
     /**
@@ -263,6 +274,7 @@ class CachedObjectChangeHandlers
     CachedObjectEventHandler m_nodeMasterSetStateChangeHandler;
     CachedObjectEventHandler m_nodeConnectionChangeHandler;
     CachedObjectEventHandler m_synchronizeChangeHandler;
+    CachedObjectEventHandler m_precLockNodeExistsChangeHandler;
 };
 
 };	/* End of 'namespace clusterlib' */

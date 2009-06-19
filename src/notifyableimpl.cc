@@ -3,11 +3,11 @@
  *
  * Implementation of the notification classes outlined methods.
  *
- * =============================================================================
+ * ============================================================================
  * $Header:$
  * $Revision$
  * $Date$
- * =============================================================================
+ * ============================================================================
  */
 
 #include "clusterlibinternal.h"
@@ -102,12 +102,22 @@ NotifyableImpl::getState() const
 {
     TRACE(CL_LOG, "getState");
 
-    Locker l1(getStateLock());
+    Locker l1(getSyncLock());
     LOG_DEBUG(CL_LOG, 
               "getState: State for (%s) is %s", 
               getKey().c_str(), 
               NotifyableImpl::getStateString(m_state).c_str());
     return m_state;
+}
+
+Mutex *
+NotifyableImpl::getSyncLock() const
+{
+    TRACE(CL_LOG, "getSyncLock");
+
+    LOG_DEBUG(CL_LOG, "getSyncLock: For notifyable %s", getKey().c_str());
+
+    return &m_syncLock;
 }
 
 string
@@ -296,7 +306,14 @@ NotifyableImpl::remove(bool removeChildren)
      *
      * Set state after the removal of Repository entries so that if an
      * exception is thrown, the state isn't changed.
+     *
+     * In order to be sure the the effect of this remove will have
+     * been reached at the end of this call, call a sync() and then
+     * wait for the sync to have completed.  This guarantees that our
+     * remove event was already propagated through the clusterlib
+     * 'external' event thread. 
      */
+
     acquireLock(removeChildren);
 
     try {
@@ -320,6 +337,7 @@ NotifyableImpl::remove(bool removeChildren)
             
             /* Must release lock before try to clean up from removed cache */
             releaseLock(removeChildren);
+            getOps()->synchronize();
             removeFromRemovedNotifyablesIfReleased(false);
         }
         else {
@@ -364,6 +382,7 @@ NotifyableImpl::remove(bool removeChildren)
                     (*revNtListIt)->releaseRef();
                 }
             }
+            getOps()->synchronize();
             removeFromRemovedNotifyablesIfReleased(false); 
         }    
     } 
@@ -378,7 +397,7 @@ NotifyableImpl::remove(bool removeChildren)
 const string
 NotifyableImpl::getDistributedLockOwner(const string &lockName)
 {
-    Locker l1(getStateLock());
+    Locker l1(getSyncLock());
     map<string, NameRef>::iterator lockIt = m_distLockMap.find(lockName);
     if (lockIt == m_distLockMap.end()) {
         return string();
@@ -392,7 +411,7 @@ void
 NotifyableImpl::setDistributedLockOwner(const string &lockName,
                                         const string &lockOwner)
 { 
-    Locker l1(getStateLock());
+    Locker l1(getSyncLock());
     map<string, NameRef>::iterator lockIt = m_distLockMap.find(lockName);
     if (lockIt == m_distLockMap.end()) {
         NameRef nameRef(0, lockOwner);
@@ -418,7 +437,7 @@ NotifyableImpl::setDistributedLockOwner(const string &lockName,
 int32_t
 NotifyableImpl::incrDistributedLockOwnerCount(const string &lockName)
 {
-    Locker l1(getStateLock());
+    Locker l1(getSyncLock());
     map<string, NameRef>::iterator lockIt = m_distLockMap.find(lockName);
     if (lockIt == m_distLockMap.end()) {
         LOG_ERROR(CL_LOG, 
@@ -446,7 +465,7 @@ NotifyableImpl::incrDistributedLockOwnerCount(const string &lockName)
 int32_t
 NotifyableImpl::decrDistributedLockOwnerCount(const string &lockName)
 {
-    Locker l1(getStateLock());
+    Locker l1(getSyncLock());
     map<string, NameRef>::iterator lockIt = m_distLockMap.find(lockName);
     if (lockIt == m_distLockMap.end()) {
         LOG_ERROR(CL_LOG, 
@@ -474,7 +493,7 @@ NotifyableImpl::decrDistributedLockOwnerCount(const string &lockName)
 int32_t
 NotifyableImpl::getDistributedLockOwnerCount(const string &lockName)
 {
-    Locker l1(getStateLock());
+    Locker l1(getSyncLock());
     map<string, NameRef>::iterator lockIt = m_distLockMap.find(lockName);
     if (lockIt == m_distLockMap.end()) {
         LOG_ERROR(CL_LOG, 
@@ -492,7 +511,7 @@ NotifyableImpl::incrRefCount()
 {
     TRACE(CL_LOG, "incrRefCount");
 
-    Locker l1(getStateLock());
+    Locker l1(getRefCountLock());
     if ((m_refCount < 0) || 
         (m_refCount == numeric_limits<int32_t>::max())) {
         throw InconsistentInternalStateException(
@@ -512,9 +531,9 @@ NotifyableImpl::incrRefCount()
 void
 NotifyableImpl::decrRefCount()
 {
-    TRACE(CL_LOG, "incrRefCount");
+    TRACE(CL_LOG, "decrRefCount");
     
-    Locker l1(getStateLock());
+    Locker l1(getRefCountLock());
     if (m_refCount <= 0) {
         throw InconsistentInternalStateException(
             std::string("decrRefCount: Impossible that reference count") +
@@ -534,7 +553,7 @@ NotifyableImpl::removeFromRemovedNotifyablesIfReleased(bool decrRefCount)
 {
     TRACE(CL_LOG, "removeFromRemovedNotifyablesIfReleased");
 
-    getStateLock()->acquire();
+    getSyncLock()->acquire();
 
     if (decrRefCount == true) {
         NotifyableImpl::decrRefCount();
@@ -560,7 +579,7 @@ NotifyableImpl::removeFromRemovedNotifyablesIfReleased(bool decrRefCount)
                   "removeFromRemovedNotifyablesIfReleased: Cleaned up (%s)",
                   getKey().c_str());
         notifyableSet->erase(it);
-        getStateLock()->release();
+        getSyncLock()->release();
         delete this;
     }
     else {
@@ -569,10 +588,17 @@ NotifyableImpl::removeFromRemovedNotifyablesIfReleased(bool decrRefCount)
                   "clean up (%s) with %d references",
                   getKey().c_str(),
                   getRefCount());
-        getStateLock()->release();
+        getSyncLock()->release();
     }
 }
 
+Mutex *
+NotifyableImpl::getRefCountLock()
+{
+    TRACE(CL_LOG, "getRefCountLock");
+
+    return &m_refCountLock;
+}
 
 };	/* End of 'namespace clusterlib' */
 

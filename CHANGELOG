@@ -1,0 +1,7 @@
+# $Id: CHANGELOG.txt 208281 2009-05-20 15:23:04Z aching $
+# This file was added 2009-06-05
+
+[trunk] 
+2009-06-17 2804416: Combine internal and external event
+queues, use both local and global locks to ensure proper event
+delivery order [aching]

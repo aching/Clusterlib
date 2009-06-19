@@ -67,6 +67,11 @@ const string ClusterlibStrings::BARRIERS = "_barriers";
 const string ClusterlibStrings::TRANSACTIONS = "_transactions";
 
 const string ClusterlibStrings::ENDEVENT = "_end event";
+    
+const string ClusterlibStrings::PARTIALLOCKNODE = 
+    ClusterlibStrings::KEYSEPARATOR + 
+    ClusterlibStrings::LOCKS + 
+    ClusterlibStrings::KEYSEPARATOR;
 
 /*
  * All strings that are used as ZK values or part of values.
