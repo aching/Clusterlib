@@ -61,12 +61,20 @@ int main(int argc, char* argv[]) {
     int wasSuccessful = runner.run(globalTestParams.getTestFixtureName());
 
     /* Check if all processes were successful */
-    int *successArr = NULL;
+    /* [wasSuccessful, total tests, successful tests, failed tests]  */
+    const int resultArrLen = 4;
+    int resultArr[resultArrLen];
+    resultArr[0] = wasSuccessful;
+    resultArr[1] = runner.result().runTests();
+    resultArr[2] = runner.result().runTests() - 
+        runner.result().testFailuresTotal();
+    resultArr[3] = runner.result().testFailuresTotal();
+    int *allResultArr = NULL;
     if (MPI::COMM_WORLD.Get_rank() == 0) {
-        successArr = new int[MPI::COMM_WORLD.Get_size()];
+        allResultArr = new int[MPI::COMM_WORLD.Get_size() * resultArrLen];
     }
     MPI::COMM_WORLD.Gather(
-        &wasSuccessful, 1, MPI::INT, successArr, 1, MPI::INT, 0);
+        &resultArr, 4, MPI::INT, allResultArr, 4, MPI::INT, 0);
 
     uint32_t *pidArr = NULL;
     if (MPI::COMM_WORLD.Get_rank() == 0) {
@@ -77,27 +85,45 @@ int main(int argc, char* argv[]) {
         &pid, 1, MPI::UNSIGNED, pidArr, 1, MPI::UNSIGNED, 0);
     if (MPI::COMM_WORLD.Get_rank() == 0) {
         for (int i = 0; i < MPI::COMM_WORLD.Get_size(); i++) {
-            if (successArr[i] == 0) {
+            if (allResultArr[i * resultArrLen] == 0) {
                 cerr << "Process " << i << " failed" << endl;
-                wasSuccessful = successArr[i];
+                wasSuccessful = allResultArr[i * resultArrLen];
             }
         }
-        delete [] successArr;
-        successArr = NULL;
-
+ 
         /* Print out test results */
-        cout << setw(3) << setiosflags(ios::left) 
-             << runner.result().runTests() 
-             << " total tests" << endl << setw(3);
-        cout << setw(3) << setiosflags(ios::left) 
-             << runner.result().testFailuresTotal()
-             << " tests failed" << endl;
-        cout << setw(3) << setiosflags(ios::left) 
-             << runner.result().runTests() - 
-            runner.result().testFailuresTotal() 
-             << " tests passed" << endl << endl;
-        
-        cout << globalTestParams.getNumProcs();
+        for (int i = 0; i < resultArrLen; i ++) {
+            switch (i) {
+                case 0:
+                    cout << "   MPI process id ";
+                    break;
+                case 1: 
+                    cout << "      total tests ";
+                    break;
+                case 2:
+                    cout << " successful tests ";
+                    break;
+                case 3:
+                    cout << "     failed tests ";
+                    break;
+                default:
+                    cout << "Error: shouldn't have gotten here";
+            }
+            for (int j = 0; j < MPI::COMM_WORLD.Get_size(); j++) {
+                if (i == 0) {
+                    cout << setw(3) << j << " ";
+                }
+                else {
+                    cout << setw(3) 
+                         << allResultArr[i + (j * resultArrLen)] << " ";
+                }
+            }
+            cout << endl;
+        } 
+        delete [] allResultArr;
+        allResultArr = NULL;
+       
+        cout << endl << globalTestParams.getNumProcs();
         if (globalTestParams.getNumProcs() == 1) {
             cout << " process took ";
         }

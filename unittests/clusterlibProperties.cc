@@ -12,6 +12,7 @@ class ClusterlibProperties : public MPITestFixture {
     CPPUNIT_TEST(testGetProperties2);
     CPPUNIT_TEST(testGetProperties3);
     CPPUNIT_TEST(testGetProperties4);
+    CPPUNIT_TEST(testGetProperties5);
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -268,7 +269,8 @@ class ClusterlibProperties : public MPITestFixture {
                                     true, 
                                     "testGetProperties3");
         bool matchedVal = false;
-        string prop = "prop3";
+        string prop = "prop4";
+        /* Clean up the old properties */
         if (isMyRank(0)) {
             _properties0 = _node0->getProperties(true);
             _properties0->acquireLock();
@@ -278,16 +280,18 @@ class ClusterlibProperties : public MPITestFixture {
         }
 
         barrier(_factory, true);
-        _properties0 = _node0->getProperties();
+        _properties0 = _node0->getProperties(true);
 
         if (isMyRank(0)) {
             usleep(200000);
+            _properties0->acquireLock();
             _properties0->setProperty(prop, "new value");
             CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
             _properties0->publish();
             if (_properties0->getProperty(prop) == "new value") {
                 matchedVal = true;
             }
+            _properties0->releaseLock();
         }
         else if (isMyRank(1) || isMyRank(2) || isMyRank(3)) {
             /* 
@@ -311,6 +315,61 @@ class ClusterlibProperties : public MPITestFixture {
         barrier(_factory, true);
         CPPUNIT_ASSERT(matchedVal == true);
         CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
+    }
+
+    /*
+     * Shouldn't cause deadlock even if clients hold more than one
+     * distributed lock.
+     */
+    void testGetProperties5()
+    {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testGetProperties5");
+        string prop = "prop5";
+        /* Clean up the old properties */
+        if (isMyRank(0)) {
+            _properties0 = _node0->getProperties(true);
+            _properties0->acquireLock();
+            _properties0->deleteProperty(prop);
+            _properties0->publish();
+            _properties0->releaseLock();
+        }
+
+        barrier(_factory, true);
+        _properties0 = _node0->getProperties(true);
+
+        if (isMyRank(0)) {
+            _properties0->acquireLock();
+        }
+
+        barrier(_factory, true);
+
+        if (!isMyRank(0)) {
+            _properties0->getProperty(prop);
+            _properties0->setProperty(prop, "no");
+            try {
+                _properties0->publish();
+                cerr << "testGetProperties5: Published successfully" << endl;
+            }
+            catch (Exception e) {
+                /* 
+                 * Might not always succeed if lots of processes are
+                 * trying (of course a lock would fix this =) )
+                 */
+                cerr << "testGetProperties5: Safe failure to publish" << endl;
+            }
+        }
+        
+        barrier(_factory, true);
+        
+        if (isMyRank(0)) {
+            _group0->acquireLock();
+            _group0->releaseLock();
+            _properties0->releaseLock();
+        }
     }
 
   private:

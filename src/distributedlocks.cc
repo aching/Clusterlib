@@ -255,11 +255,6 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
               createdPath.c_str(),
               castedNtp->getDistributedLockOwnerCount(
                   lockName));
-    /*
-     * Grab the local lock that synchronizes with the
-     * clusterlib event handling thread.
-     */
-    castedNtp->getSyncLock()->acquire();
 }
 
 void
@@ -306,12 +301,6 @@ DistributedLocks::release(Notifyable *ntp, const string &lockName)
     }
     
     castedNtp->setDistributedLockOwner(lockName, "");
-
-    /*
-     * Release the held local lock that synchronizes with the
-     * clusterlib event handling thread.
-     */
-    castedNtp->getSyncLock()->release();
 
     /* 
      * Delete the lock node here.

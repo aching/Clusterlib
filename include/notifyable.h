@@ -135,11 +135,14 @@ class Notifyable
     /** 
      * \brief Acquire the clusterlib lock for this Notifyable.
      *
-     * Advisory lock.  Internal clusterlib event system will always
-     * respect this lock.  In order to guarantee that changes to
-     * Notifyable objects are ordered and atomic, clients must also
-     * acquire the appropirate locks.  This call can also lock all
-     * children.
+     * Advisory lock.  In order to guarantee that changes to
+     * Notifyable objects are ordered, clients must also
+     * acquire/release the appropriate locks and work with
+     * coordinating clients (that also respect locks).  This call can
+     * also lock all children.  Clients must be careful (i.e. have
+     * some resource ordering) to ensure that deadlock does not occur.
+     * The only time locks are implicitly grabbed by clusterlib is
+     * when trying to create/remove an object.
      *
      * @param acquireChildren lock the children as well?
      * @throw Exception if this Notifyable or its parent no
@@ -151,11 +154,12 @@ class Notifyable
     /** 
      * \brief Release the clusterlib lock for this Notifyable.
      *
-     * Advisory lock.  Internal clusterlib event system will always
-     * respect this lock.  In order to guarantee that changes to
-     * Notifyable objects are ordered and atomic, clients must also
-     * acquire the appropirate locks.  This call can also release all
-     * children.
+     * Advisory lock.  In order to guarantee that changes to
+     * Notifyable objects are ordered, clients must also
+     * acquire/release the appropriate locks.  This call can also
+     * release all children.  If a client does not release a lock it
+     * is held until until the client destroys the factory or a
+     * network connection is lost.
      *
      *
      * @param releaseChildren release the children as well?
