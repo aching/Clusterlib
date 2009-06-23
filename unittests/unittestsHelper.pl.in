@@ -2,6 +2,7 @@
 
 use Cwd;
 use Getopt::Long;
+use Sys::Hostname;
 
 my $cwd = &getcwd();
 my $mpichDir = '@MPICH_PATH@';
@@ -29,6 +30,13 @@ my $killAllMpd = undef;
 my $killAllZookeeper = undef;
 my $restartMpd = undef;
 my $restartZookeeper = undef;
+my $user = getpwuid($<);
+
+# If hostname cannot be found, just use localhost
+my $hostname = hostname;
+if ($hostname eq "") {
+    $hostname = "localhost"
+}
 
 # Subroutine prototypes
 sub setCmdPrintExec;
@@ -41,7 +49,6 @@ sub startZookeeper;
 sub killAllZookeeper;
 
 # Parse the arguments
-my $user = getpwuid($<);
 &parseArgs();
 
 # If any of the non-test commands are run do those only then quit
@@ -73,7 +80,7 @@ if ((defined($startMpd)) ||
 &startZookeeper($zookeeperExec);
 
 # Run the actual unittests
-my $ret = &setSystemCmdPrintExec("$mpiExec -n $numProcs $testBin -z $ENV{'HOSTNAME'}\:$zookeeperClientPort $testBinOpts");
+my $ret = &setSystemCmdPrintExec("$mpiExec -n $numProcs $testBin -z $hostname\:$zookeeperClientPort $testBinOpts");
 
 # Clean up mpd if it wasn't running before;
 if (defined($mpdPid)) {
