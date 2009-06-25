@@ -20,7 +20,10 @@ package: all package_clusterlib
 
 install: package
 
-tarball: package
+tarball: package documentation
+	mkdir install/docs
+	cp -r $(top_builddir)/docs/doxygen-internal install/docs
+	cp -r $(top_builddir)/docs/doxygen-user install/docs
 	mv install $(PKGDIR)
 	if test -f $(PKGDIR)/BoM.tar.gz; \
 		then /usr/releng/bin/gtar -czf $(PKGDIR).tar.gz $(PKGDIR)/*; \
