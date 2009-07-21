@@ -6,6 +6,8 @@ USE_COMMON_CONFIG := 1
 
 include /usr/releng/share/build_scripts/ci.mk
 
+ARTIFACTS := $(BUILD_DIR)/*.tar.gz
+
 export PATH := $(JAVA_HOME)/bin:$(PATH)
 
 ############################################################
