@@ -8,6 +8,8 @@ include /usr/releng/share/build_scripts/ci.mk
 
 ARTIFACTS := $(BUILD_DIR)/*.tar.gz
 
+TEST_OUTPUT := $(BUILD_DIR)/Regressions_output/REPORT.tap
+
 export PATH := $(JAVA_HOME)/bin:$(PATH)
 
 ############################################################
