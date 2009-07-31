@@ -580,6 +580,14 @@ class ZooKeeperAdapter
     AdapterState getState() const {
         return m_state;
     }          
+
+    /**
+     * Simulate a SESSION_EXPIRED event so that the event-delivering
+     * threads shutdown.  It does not change the state of the
+     * ZooKeeperAdapter.  Calling this multiple times will add to the
+     * event queue, but will only be delivered once.
+     */
+    void injectEndEvent();
         
   private:
         
@@ -692,11 +700,6 @@ class ZooKeeperAdapter
         m_remainingConnectTimeout -= time; 
     }
 
-    /**
-     * \brief Simulate a SESSION_EXPIRED event so that the connection ends.
-     */
-    void injectEndEvent();
-        
     /**
      * Is this an end event? 
      *

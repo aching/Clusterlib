@@ -98,12 +98,14 @@ FactoryOps::~FactoryOps()
 {
     TRACE(CL_LOG, "~FactoryOps");
 
-    /* 
-     * Upon disconnection, all event will be fired until the final
-     * ZOO_SESSION_EXPIRED event.  As this cascades through the the
-     * event handler threads, they deliver and then exit.
+    /*
+     * Zookeeper will not deliver any more events after the end event
+     * is propagated to the cache and then to the clients.  All event
+     * will be fired until the final ZOO_SESSION_EXPIRED event.  As
+     * this cascades through the the event handler threads, they
+     * deliver and then exit.
      */
-    m_zk.disconnect(true);
+    m_zk.injectEndEvent();
 
     /*
      * Allow our threads to shut down.
@@ -120,7 +122,7 @@ FactoryOps::~FactoryOps()
     delete mp_root;
 
     try {
-        m_zk.disconnect();
+        m_zk.disconnect(true);
     } catch (zk::ZooKeeperException &e) {
         LOG_WARN(CL_LOG,
                  "Got exception during disconnect: %s",

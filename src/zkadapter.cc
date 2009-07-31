@@ -305,7 +305,9 @@ ZooKeeperAdapter::disconnect(bool final)
             setState(AS_NORECONNECT);
             /* 
              * Pass synthetic end event into the event queue to have
-             * cascading thread exit. 
+             * cascading thread exit.  It is okay for this to have
+             * been called before.  The end event will only be
+             * delivered once.
              */
             injectEndEvent();
         }
