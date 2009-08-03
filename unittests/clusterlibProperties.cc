@@ -267,7 +267,7 @@ class ClusterlibProperties : public MPITestFixture {
                                     true, 
                                     _factory, 
                                     true, 
-                                    "testGetProperties3");
+                                    "testGetProperties4");
         bool matchedVal = false;
         string prop = "prop4";
         /* Clean up the old properties */
