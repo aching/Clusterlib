@@ -82,21 +82,21 @@ class ClusterlibTimer
 	_factory =
             new Factory(globalTestParams.getZkServerPortList());
 
-	CPPUNIT_ASSERT(_factory != NULL);
+	MPI_CPPUNIT_ASSERT(_factory != NULL);
         _zk = _factory->getRepository();
-        CPPUNIT_ASSERT(_zk != NULL);
+        MPI_CPPUNIT_ASSERT(_zk != NULL);
 	_client0 = _factory->createClient();
-	CPPUNIT_ASSERT(_client0 != NULL);
+	MPI_CPPUNIT_ASSERT(_client0 != NULL);
         _app0 = _client0->getRoot()->getApplication("foo-app", true);
-        CPPUNIT_ASSERT(_app0 != NULL);
+        MPI_CPPUNIT_ASSERT(_app0 != NULL);
         _grp0 = _app0->getGroup("bar-group", true);
-        CPPUNIT_ASSERT(_grp0 != NULL);
+        MPI_CPPUNIT_ASSERT(_grp0 != NULL);
         _nod0 = _grp0->getNode("nod3", true);
-        CPPUNIT_ASSERT(_nod0 != NULL);
+        MPI_CPPUNIT_ASSERT(_nod0 != NULL);
         _dist0 = _grp0->getDataDistribution("dist1", true);
-        CPPUNIT_ASSERT(_dist0 != NULL);
+        MPI_CPPUNIT_ASSERT(_dist0 != NULL);
         _timer0 = new MyTimerEventHandler();
-        CPPUNIT_ASSERT(_timer0 != NULL);
+        MPI_CPPUNIT_ASSERT(_timer0 != NULL);
     }
 
     /* Runs after each test */
@@ -131,13 +131,13 @@ class ClusterlibTimer
             return;
         }
 
-        CPPUNIT_ASSERT(_timer0->getCounter() == 0);
+        MPI_CPPUNIT_ASSERT(_timer0->getCounter() == 0);
         TimerId id1 = _client0->registerTimer(_timer0, 200, (ClientData) NULL);
         bool cancelled = _client0->cancelTimer(id1);
-        CPPUNIT_ASSERT(cancelled == true);
+        MPI_CPPUNIT_ASSERT(cancelled == true);
         cancelled = _client0->cancelTimer(id1);
-        CPPUNIT_ASSERT(cancelled == false);
-        CPPUNIT_ASSERT(_timer0->getCounter() == 0);
+        MPI_CPPUNIT_ASSERT(cancelled == false);
+        MPI_CPPUNIT_ASSERT(_timer0->getCounter() == 0);
     }
 
     void testTimer2()
@@ -154,12 +154,12 @@ class ClusterlibTimer
 
         (void) _client0->registerTimer(_timer0, 200, (ClientData) NULL);
         sleep(1);
-        CPPUNIT_ASSERT(_timer0->getCounter() == 1);
+        MPI_CPPUNIT_ASSERT(_timer0->getCounter() == 1);
         (void) _client0->registerTimer(_timer0, 200, (ClientData) NULL);
         (void) _client0->registerTimer(_timer0, 200, (ClientData) NULL);
         (void) _client0->registerTimer(_timer0, 200, (ClientData) NULL);
         sleep(1);
-        CPPUNIT_ASSERT(_timer0->getCounter() == 4);
+        MPI_CPPUNIT_ASSERT(_timer0->getCounter() == 4);
     }
 
     void testTimer3()
@@ -178,9 +178,9 @@ class ClusterlibTimer
         TimerId id2 = _client0->registerTimer(_timer0, 200, (ClientData) NULL);
         (void) _client0->registerTimer(_timer0, 200, (ClientData) NULL);
         bool cancelled = _client0->cancelTimer(id2);
-        CPPUNIT_ASSERT(cancelled == true);
+        MPI_CPPUNIT_ASSERT(cancelled == true);
         sleep(1);
-        CPPUNIT_ASSERT(_timer0->getCounter() == 2);
+        MPI_CPPUNIT_ASSERT(_timer0->getCounter() == 2);
     }
 
   private:

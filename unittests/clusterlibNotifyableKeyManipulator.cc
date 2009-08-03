@@ -25,7 +25,7 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture {
     {
 	_factory = new Factory(
             globalTestParams.getZkServerPortList());
-	CPPUNIT_ASSERT(_factory != NULL);
+	MPI_CPPUNIT_ASSERT(_factory != NULL);
     }
 
     /** 
@@ -66,7 +66,7 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture {
         cerr << "initial key = " << res
              << " final key = " << final << endl;
 
-        CPPUNIT_ASSERT(final == expectedres);
+        MPI_CPPUNIT_ASSERT(final == expectedres);
     }
 
     /** 
@@ -92,7 +92,7 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture {
         cerr << "initial key = " << res
              << " final key = " << final << endl;
 
-        CPPUNIT_ASSERT(final.empty());
+        MPI_CPPUNIT_ASSERT(final.empty());
     }
 
     /** 
@@ -131,7 +131,7 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture {
         cerr << "initial key = " << res
              << " final key = " << final << endl;
 
-        CPPUNIT_ASSERT(final == expectedres);
+        MPI_CPPUNIT_ASSERT(final == expectedres);
     }
 
   private:

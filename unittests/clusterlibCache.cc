@@ -42,19 +42,19 @@ class ClusterlibCache
 	_factory =
             new Factory(globalTestParams.getZkServerPortList());
 
-	CPPUNIT_ASSERT(_factory != NULL);
+	MPI_CPPUNIT_ASSERT(_factory != NULL);
         _zk = _factory->getRepository();
-        CPPUNIT_ASSERT(_zk != NULL);
+        MPI_CPPUNIT_ASSERT(_zk != NULL);
 	_client0 = _factory->createClient();
-	CPPUNIT_ASSERT(_client0 != NULL);
+	MPI_CPPUNIT_ASSERT(_client0 != NULL);
         _app0 = _client0->getRoot()->getApplication("foo-app", true);
-        CPPUNIT_ASSERT(_app0 != NULL);
+        MPI_CPPUNIT_ASSERT(_app0 != NULL);
         _grp0 = _app0->getGroup("bar-group", true);
-        CPPUNIT_ASSERT(_grp0 != NULL);
+        MPI_CPPUNIT_ASSERT(_grp0 != NULL);
         _nod0 = _grp0->getNode("nod3", true);
-        CPPUNIT_ASSERT(_nod0 != NULL);
+        MPI_CPPUNIT_ASSERT(_nod0 != NULL);
         _dist0 = _grp0->getDataDistribution("dist1", true);
-        CPPUNIT_ASSERT(_dist0 != NULL);
+        MPI_CPPUNIT_ASSERT(_dist0 != NULL);
     }
 
     /* Runs after each test */
@@ -96,7 +96,7 @@ class ClusterlibCache
             "_clientState";
         _zk->setNodeData(hrpath, "healthy");
         _factory->synchronize();
-        CPPUNIT_ASSERT(string("healthy") == _nod0->getClientState());
+        MPI_CPPUNIT_ASSERT(string("healthy") == _nod0->getClientState());
     }
     void testCache2()
     {
@@ -120,34 +120,34 @@ class ClusterlibCache
         string rpath = _nod0->getKey();
         _zk->setNodeData(rpath, "");
         _factory->synchronize();
-        CPPUNIT_ASSERT(_nod0->getState() == Notifyable::READY);
+        MPI_CPPUNIT_ASSERT(_nod0->getState() == Notifyable::READY);
         _zk->setNodeData(rpath, "ready");
         _factory->synchronize();
-        CPPUNIT_ASSERT(_nod0->getState() == Notifyable::READY);
+        MPI_CPPUNIT_ASSERT(_nod0->getState() == Notifyable::READY);
 
         rpath = _grp0->getKey();
         _zk->setNodeData(rpath, "");
         _factory->synchronize();
-        CPPUNIT_ASSERT(_grp0->getState() == Notifyable::READY);
+        MPI_CPPUNIT_ASSERT(_grp0->getState() == Notifyable::READY);
         _zk->setNodeData(rpath, "ready");
         _factory->synchronize();
-        CPPUNIT_ASSERT(_grp0->getState() == Notifyable::READY);
+        MPI_CPPUNIT_ASSERT(_grp0->getState() == Notifyable::READY);
 
         rpath = _app0->getKey();
         _zk->setNodeData(rpath, "");
         _factory->synchronize();
-        CPPUNIT_ASSERT(_app0->getState() == Notifyable::READY);
+        MPI_CPPUNIT_ASSERT(_app0->getState() == Notifyable::READY);
         _zk->setNodeData(rpath, "ready");
         _factory->synchronize();
-        CPPUNIT_ASSERT(_app0->getState() == Notifyable::READY);
+        MPI_CPPUNIT_ASSERT(_app0->getState() == Notifyable::READY);
 
         rpath = _dist0->getKey();
         _zk->setNodeData(rpath, "");
         _factory->synchronize();
-        CPPUNIT_ASSERT(_dist0->getState() == Notifyable::READY);
+        MPI_CPPUNIT_ASSERT(_dist0->getState() == Notifyable::READY);
         _zk->setNodeData(rpath, "ready");
         _factory->synchronize();
-        CPPUNIT_ASSERT(_dist0->getState() == Notifyable::READY);
+        MPI_CPPUNIT_ASSERT(_dist0->getState() == Notifyable::READY);
     }
     void testCache3()
     {
@@ -210,11 +210,11 @@ class ClusterlibCache
             }
         }
 
-        CPPUNIT_ASSERT(found == true);
+        MPI_CPPUNIT_ASSERT(found == true);
 
         Group *groupP = _app0->getGroup("g15");
 
-        CPPUNIT_ASSERT(groupP->getState() == Notifyable::READY);
+        MPI_CPPUNIT_ASSERT(groupP->getState() == Notifyable::READY);
     }
     void testCache4()
     {
@@ -278,11 +278,11 @@ class ClusterlibCache
             }
         }
 
-        CPPUNIT_ASSERT(found == true);
+        MPI_CPPUNIT_ASSERT(found == true);
 
         DataDistribution *distP = _app0->getDataDistribution("d15");
 
-        CPPUNIT_ASSERT(distP->getState() == Notifyable::READY);
+        MPI_CPPUNIT_ASSERT(distP->getState() == Notifyable::READY);
     }
     void testCache5()
     {
@@ -347,11 +347,11 @@ class ClusterlibCache
             }
         }
 
-        CPPUNIT_ASSERT(found == true);
+        MPI_CPPUNIT_ASSERT(found == true);
 
         Node *np = _grp0->getNode("n111");
 
-        CPPUNIT_ASSERT(np->getState() == Notifyable::READY);
+        MPI_CPPUNIT_ASSERT(np->getState() == Notifyable::READY);
     }
 
     void testCache6()
@@ -416,11 +416,11 @@ class ClusterlibCache
             }
         }
 
-        CPPUNIT_ASSERT(found == true);
+        MPI_CPPUNIT_ASSERT(found == true);
 
         DataDistribution *distP = _grp0->getDataDistribution("d15");
 
-        CPPUNIT_ASSERT(distP->getState() == Notifyable::READY);
+        MPI_CPPUNIT_ASSERT(distP->getState() == Notifyable::READY);
     }
     void testCache7()
     {
@@ -484,11 +484,11 @@ class ClusterlibCache
             }
         }
 
-        CPPUNIT_ASSERT(found == true);
+        MPI_CPPUNIT_ASSERT(found == true);
 
         Node *np = _app0->getNode("n111");
 
-        CPPUNIT_ASSERT(np->getState() == Notifyable::READY);
+        MPI_CPPUNIT_ASSERT(np->getState() == Notifyable::READY);
     }
     void testCache8()
     {
@@ -552,11 +552,11 @@ class ClusterlibCache
             }
         }
 
-        CPPUNIT_ASSERT(found == true);
+        MPI_CPPUNIT_ASSERT(found == true);
 
         Group *groupP = _grp0->getGroup("g15");
 
-        CPPUNIT_ASSERT(groupP->getState() == Notifyable::READY);
+        MPI_CPPUNIT_ASSERT(groupP->getState() == Notifyable::READY);
     }
     void testCache9()
     {
@@ -575,7 +575,7 @@ class ClusterlibCache
             return;
         }
 
-        CPPUNIT_ASSERT(_nod0->isConnected() == false);
+        MPI_CPPUNIT_ASSERT(_nod0->isConnected() == false);
 
         string rpath =
             _nod0->getKey() +
@@ -595,7 +595,7 @@ class ClusterlibCache
         /*
          * Now check that the node is "connected".
          */
-        CPPUNIT_ASSERT(_nod0->isConnected() == true);
+        MPI_CPPUNIT_ASSERT(_nod0->isConnected() == true);
 
         /*
          * Delete the connectivity znode.
@@ -610,7 +610,7 @@ class ClusterlibCache
         /*
          * Now check that the node is not "connected".
          */
-        CPPUNIT_ASSERT(_nod0->isConnected() == false);
+        MPI_CPPUNIT_ASSERT(_nod0->isConnected() == false);
     }
     void testCache10()
     {

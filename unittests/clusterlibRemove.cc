@@ -36,15 +36,15 @@ class ClusterlibRemove : public MPITestFixture {
     {
 	_factory = new Factory(
             globalTestParams.getZkServerPortList());
-	CPPUNIT_ASSERT(_factory != NULL);
+	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
-	CPPUNIT_ASSERT(_client0 != NULL);
+	MPI_CPPUNIT_ASSERT(_client0 != NULL);
 	_app0 = _client0->getRoot()->getApplication(appName, true);
-	CPPUNIT_ASSERT(_app0 != NULL);
+	MPI_CPPUNIT_ASSERT(_app0 != NULL);
 	_group0 = _app0->getGroup("servers", true);
-	CPPUNIT_ASSERT(_group0 != NULL);
+	MPI_CPPUNIT_ASSERT(_group0 != NULL);
 	_node0 = _group0->getNode("server-0", true);
-	CPPUNIT_ASSERT(_node0 != NULL);
+	MPI_CPPUNIT_ASSERT(_node0 != NULL);
     }
 
     /** 
@@ -70,9 +70,9 @@ class ClusterlibRemove : public MPITestFixture {
         
         if (isMyRank(0)) {
             Node *node = _group0->getNode("node-to-be-deleted", true);
-            CPPUNIT_ASSERT(node);
+            MPI_CPPUNIT_ASSERT(node);
             node->remove();
-            CPPUNIT_ASSERT(node->getState() == Notifyable::REMOVED);
+            MPI_CPPUNIT_ASSERT(node->getState() == Notifyable::REMOVED);
         }
     }
 
@@ -89,9 +89,9 @@ class ClusterlibRemove : public MPITestFixture {
 
         if (isMyRank(0)) {
             Properties *prop = _group0->getProperties(true);
-            CPPUNIT_ASSERT(prop);
+            MPI_CPPUNIT_ASSERT(prop);
             prop->remove();
-            CPPUNIT_ASSERT(prop->getState() == Notifyable::REMOVED);
+            MPI_CPPUNIT_ASSERT(prop->getState() == Notifyable::REMOVED);
         }
    }
 
@@ -108,9 +108,9 @@ class ClusterlibRemove : public MPITestFixture {
 
         if (isMyRank(0)) {
             Group *group = _group0->getGroup("group-to-be-deleted", true);
-            CPPUNIT_ASSERT(group);
+            MPI_CPPUNIT_ASSERT(group);
             group->remove();
-            CPPUNIT_ASSERT(group->getState() == Notifyable::REMOVED);
+            MPI_CPPUNIT_ASSERT(group->getState() == Notifyable::REMOVED);
         }
     }
 
@@ -128,9 +128,9 @@ class ClusterlibRemove : public MPITestFixture {
         if (isMyRank(0)) {
             Application *app = _client0->getRoot()->getApplication(
                 "app-to-be-deleted", true);
-            CPPUNIT_ASSERT(app);
+            MPI_CPPUNIT_ASSERT(app);
             app->remove();
-            CPPUNIT_ASSERT(app->getState() == Notifyable::REMOVED);
+            MPI_CPPUNIT_ASSERT(app->getState() == Notifyable::REMOVED);
         }
     }
 
@@ -149,9 +149,9 @@ class ClusterlibRemove : public MPITestFixture {
             DataDistribution *dist = _group0->getDataDistribution(
                 "dist-to-be-deleted", 
                 true);
-            CPPUNIT_ASSERT(dist);
+            MPI_CPPUNIT_ASSERT(dist);
             dist->remove();
-            CPPUNIT_ASSERT(dist->getState() == Notifyable::REMOVED);
+            MPI_CPPUNIT_ASSERT(dist->getState() == Notifyable::REMOVED);
         }
     }
 
@@ -170,7 +170,7 @@ class ClusterlibRemove : public MPITestFixture {
             Root *root = _client0->getRoot();
             try {
                 root->remove();
-                CPPUNIT_ASSERT("testRemove6: Shouldn't be able "
+                MPI_CPPUNIT_ASSERT("testRemove6: Shouldn't be able "
                                "to remove root" == NULL);
             } catch (InvalidMethodException &e) {
                 cerr << "testRemove6: Exception caught as expected" << endl;
@@ -191,18 +191,19 @@ class ClusterlibRemove : public MPITestFixture {
 
         if (isMyRank(0)) {
             Properties *prop = _node0->getProperties(true);
-            CPPUNIT_ASSERT(prop);
+            MPI_CPPUNIT_ASSERT(prop);
             try {
                 _node0->remove(false);
-                CPPUNIT_ASSERT("testRemove10: Can't remove a Notifyable with "
-                               "children" == 0);
+                MPI_CPPUNIT_ASSERT(
+                    "testRemove10: Can't remove a Notifyable with "
+                    "children" == 0);
             } catch (Exception &e) {
                 cerr << "testRemove10: Exception caught as expected" << endl;
             }
             
             _node0->remove(true);
-            CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
-            CPPUNIT_ASSERT(prop->getState() == Notifyable::REMOVED);
+            MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
+            MPI_CPPUNIT_ASSERT(prop->getState() == Notifyable::REMOVED);
         }
     }
 
@@ -219,8 +220,8 @@ class ClusterlibRemove : public MPITestFixture {
 
         if (isMyRank(0)) {
             _group0->remove(true);
-            CPPUNIT_ASSERT(_group0->getState() == Notifyable::REMOVED);
-            CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
+            MPI_CPPUNIT_ASSERT(_group0->getState() == Notifyable::REMOVED);
+            MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
         }
     }
 
@@ -237,9 +238,9 @@ class ClusterlibRemove : public MPITestFixture {
 
         if (isMyRank(0)) {
             _app0->remove(true);
-            CPPUNIT_ASSERT(_app0->getState() == Notifyable::REMOVED);
-            CPPUNIT_ASSERT(_group0->getState() == Notifyable::REMOVED);
-            CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
+            MPI_CPPUNIT_ASSERT(_app0->getState() == Notifyable::REMOVED);
+            MPI_CPPUNIT_ASSERT(_group0->getState() == Notifyable::REMOVED);
+            MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
         }
     }
 
@@ -257,18 +258,18 @@ class ClusterlibRemove : public MPITestFixture {
         cerr << "testRemove20: state of _node0 (" << _node0->getKey() 
              << ") is (" 
              << _node0->getState() << ")" << endl;
-        CPPUNIT_ASSERT(_node0->getState() == Notifyable::READY);
+        MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::READY);
 
         barrier(_factory, true);
 
         if (isMyRank(0)) {
             _node0->remove();
-            CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
+            MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
         }
 
         barrier(_factory, true);
         
-        CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
+        MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
     }
 
     /**
@@ -327,10 +328,10 @@ class ClusterlibRemove : public MPITestFixture {
                                     "testRemove40");
         if (isMyRank(0)) {
             _app0->remove(true);
-            CPPUNIT_ASSERT(_app0->getState() == Notifyable::REMOVED);
+            MPI_CPPUNIT_ASSERT(_app0->getState() == Notifyable::REMOVED);
             _app0->releaseRef();
             _app0 = _client0->getRoot()->getApplication(appName, true);
-            CPPUNIT_ASSERT(_app0->getState() == Notifyable::READY);
+            MPI_CPPUNIT_ASSERT(_app0->getState() == Notifyable::READY);
         }
 
         barrier(_factory, true);
@@ -340,9 +341,9 @@ class ClusterlibRemove : public MPITestFixture {
         }
 
         _app0->getState();
-        CPPUNIT_ASSERT(_app0->getState() == Notifyable::READY);
-        CPPUNIT_ASSERT(_group0->getState() == Notifyable::REMOVED);
-        CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
+        MPI_CPPUNIT_ASSERT(_app0->getState() == Notifyable::READY);
+        MPI_CPPUNIT_ASSERT(_group0->getState() == Notifyable::REMOVED);
+        MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
 
         if (isMyRank(0)) {
             _app0->releaseRef();

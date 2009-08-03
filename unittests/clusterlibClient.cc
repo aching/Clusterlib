@@ -52,11 +52,11 @@ class ClusterlibClient
 	_factory =
             new clusterlib::Factory(globalTestParams.getZkServerPortList());
 
-	CPPUNIT_ASSERT(_factory != NULL);
+	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
-	CPPUNIT_ASSERT(_client0 != NULL);
+	MPI_CPPUNIT_ASSERT(_client0 != NULL);
         _handler0 = new ClientTimerEventHandler();
-        CPPUNIT_ASSERT(_handler0 != NULL);
+        MPI_CPPUNIT_ASSERT(_handler0 != NULL);
     }
 
     /* Runs after each test */
@@ -92,13 +92,13 @@ class ClusterlibClient
          * observe allowed creation and exceptions.
          */
         _app0 = _client0->getRoot()->getApplication("foo-app", true);
-        CPPUNIT_ASSERT(_app0 != NULL);
+        MPI_CPPUNIT_ASSERT(_app0 != NULL);
         /* Should not exist, didn't try to create, so return NULL */
         _app0 = _client0->getRoot()->getApplication("", false);
-        CPPUNIT_ASSERT(_app0 == NULL);
+        MPI_CPPUNIT_ASSERT(_app0 == NULL);
         try {
             _app0 = _client0->getRoot()->getApplication("/frob", true);
-            CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
+            MPI_CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
         } catch (clusterlib::InvalidArgumentsException &e) {
         }
     }
@@ -118,20 +118,20 @@ class ClusterlibClient
         _fired0 = _cancelled0 = false;
 
         _id0 = _client0->registerTimer(_handler0, 500, this);
-        CPPUNIT_ASSERT(_id0 > -1);
-        CPPUNIT_ASSERT(_fired0 == false);
-        CPPUNIT_ASSERT(_cancelled0 == false);
+        MPI_CPPUNIT_ASSERT(_id0 > -1);
+        MPI_CPPUNIT_ASSERT(_fired0 == false);
+        MPI_CPPUNIT_ASSERT(_cancelled0 == false);
 
         _cancelled0 = _client0->cancelTimer(_id0);
-        CPPUNIT_ASSERT(_cancelled0 == true);
-        CPPUNIT_ASSERT(_fired0 == false);
+        MPI_CPPUNIT_ASSERT(_cancelled0 == true);
+        MPI_CPPUNIT_ASSERT(_fired0 == false);
 
         cerr << "Before sleep" << endl;
         sleep(1);
         cerr << "After sleep" << endl;
 
-        CPPUNIT_ASSERT(_cancelled0 == true);
-        CPPUNIT_ASSERT(_fired0 == false);
+        MPI_CPPUNIT_ASSERT(_cancelled0 == true);
+        MPI_CPPUNIT_ASSERT(_fired0 == false);
     }
     void testClient3()
     {
@@ -147,16 +147,16 @@ class ClusterlibClient
         _fired0 = _cancelled0 = false;
 
         _id0 = _client0->registerTimer(_handler0, 500, this);
-        CPPUNIT_ASSERT(_id0 > -1);
-        CPPUNIT_ASSERT(_fired0 == false);
-        CPPUNIT_ASSERT(_cancelled0 == false);
+        MPI_CPPUNIT_ASSERT(_id0 > -1);
+        MPI_CPPUNIT_ASSERT(_fired0 == false);
+        MPI_CPPUNIT_ASSERT(_cancelled0 == false);
 
         cerr << "Before sleep" << endl;
         sleep(1);
         cerr << "After sleep" << endl;
 
-        CPPUNIT_ASSERT(_fired0 == true);
-        CPPUNIT_ASSERT(_cancelled0 == false);
+        MPI_CPPUNIT_ASSERT(_fired0 == true);
+        MPI_CPPUNIT_ASSERT(_cancelled0 == false);
     }
     void testClient4()
     {
@@ -173,17 +173,17 @@ class ClusterlibClient
         _fired0 = _cancelled0 = false;
 
         _id0 = _client0->registerTimer(_handler0, 1000, this);
-        CPPUNIT_ASSERT(_fired0 == false);
-        CPPUNIT_ASSERT(_cancelled0 == false);
+        MPI_CPPUNIT_ASSERT(_fired0 == false);
+        MPI_CPPUNIT_ASSERT(_cancelled0 == false);
 
         _cancelled0 = _client0->cancelTimer(_id0);
-        CPPUNIT_ASSERT(_fired0 == false);
-        CPPUNIT_ASSERT(_cancelled0 == true);
+        MPI_CPPUNIT_ASSERT(_fired0 == false);
+        MPI_CPPUNIT_ASSERT(_cancelled0 == true);
         cerr << "After first cancel" << endl;
 
         _cancelled1 = _client0->cancelTimer(_id0);
-        CPPUNIT_ASSERT(_fired0 == false);
-        CPPUNIT_ASSERT(_cancelled1 == false);
+        MPI_CPPUNIT_ASSERT(_fired0 == false);
+        MPI_CPPUNIT_ASSERT(_cancelled1 == false);
         cerr << "After second cancel" << endl;
     }
     void testClient5()
@@ -200,7 +200,7 @@ class ClusterlibClient
         _fired0 = _cancelled0 = false;
 
         _cancelled0 = _client0->cancelTimer((clusterlib::TimerId) 10001);
-        CPPUNIT_ASSERT(_cancelled0 == false);
+        MPI_CPPUNIT_ASSERT(_cancelled0 == false);
     }
 
     void testClient20()

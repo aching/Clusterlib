@@ -29,15 +29,15 @@ class ClusterlibProperties : public MPITestFixture {
     {
 	_factory = new Factory(
             globalTestParams.getZkServerPortList());
-	CPPUNIT_ASSERT(_factory != NULL);
+	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
-	CPPUNIT_ASSERT(_client0 != NULL);
+	MPI_CPPUNIT_ASSERT(_client0 != NULL);
 	_app0 = _client0->getRoot()->getApplication("properties-app", true);
-	CPPUNIT_ASSERT(_app0 != NULL);
+	MPI_CPPUNIT_ASSERT(_app0 != NULL);
 	_group0 = _app0->getGroup("properties-group-servers", true);
-	CPPUNIT_ASSERT(_group0 != NULL);
+	MPI_CPPUNIT_ASSERT(_group0 != NULL);
 	_node0 = _group0->getNode("server-0", true);
-	CPPUNIT_ASSERT(_node0 != NULL);
+	MPI_CPPUNIT_ASSERT(_node0 != NULL);
     }
 
     /* Runs after each test */
@@ -63,7 +63,7 @@ class ClusterlibProperties : public MPITestFixture {
 
         if (isMyRank(0)) {
             _properties0 = _node0->getProperties(true);
-            CPPUNIT_ASSERT(_properties0);
+            MPI_CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             _properties0->setProperty("test", "v1");
             _properties0->publish();
@@ -74,10 +74,10 @@ class ClusterlibProperties : public MPITestFixture {
 
         if (isMyRank(1)) {
             _properties0 = _node0->getProperties();
-            CPPUNIT_ASSERT(_properties0);
+            MPI_CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             string val = _properties0->getProperty("test");
-            CPPUNIT_ASSERT(val == "v1");
+            MPI_CPPUNIT_ASSERT(val == "v1");
             cerr << "Got correct test = v1" << endl;
             _properties0->setProperty("test", "v2");
             _properties0->publish();
@@ -91,7 +91,7 @@ class ClusterlibProperties : public MPITestFixture {
             string val = _properties0->getProperty("test");
             _properties0->releaseLock();
             cerr << "Got value " << val << " (should be v2)" << endl;
-            CPPUNIT_ASSERT(val == "v2");
+            MPI_CPPUNIT_ASSERT(val == "v2");
             cerr << "Got correct test = v2" << endl;
         }
     }
@@ -112,13 +112,13 @@ class ClusterlibProperties : public MPITestFixture {
 
         if (isMyRank(0)) { 
             _properties0 = _group0->getProperties(true);
-            CPPUNIT_ASSERT(_properties0);
+            MPI_CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             _properties0->setProperty("test", "v3");
             _properties0->publish();
             _properties0->releaseLock();
             _properties0 = _node0->getProperties(true);
-            CPPUNIT_ASSERT(_properties0);
+            MPI_CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             _properties0->setProperty("test", "v4");
             _properties0->publish();
@@ -130,25 +130,25 @@ class ClusterlibProperties : public MPITestFixture {
         if (isMyRank(1)) {
             string val;
             _properties0 = _group0->getProperties();
-            CPPUNIT_ASSERT(_properties0);
+            MPI_CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             val = _properties0->getProperty("test");
-            CPPUNIT_ASSERT(val == "v3");
+            MPI_CPPUNIT_ASSERT(val == "v3");
             cerr << "Got correct test = v3" << endl;
             _properties0->releaseLock();
             
             _properties0 = _node0->getProperties();
-            CPPUNIT_ASSERT(_properties0);
+            MPI_CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             val = _properties0->getProperty("test");
-            CPPUNIT_ASSERT(val == "v4");
+            MPI_CPPUNIT_ASSERT(val == "v4");
             cerr << "Got correct test = v4" << endl;
             _properties0->deleteProperty("test");
             _properties0->publish();
             _properties0->releaseLock();
             
             _properties0 = _app0->getProperties(true);
-            CPPUNIT_ASSERT(_properties0);
+            MPI_CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             val = _properties0->getProperty("test");
             _properties0->setProperty("test", "v5");
@@ -161,23 +161,23 @@ class ClusterlibProperties : public MPITestFixture {
         if (isMyRank(0)) {
             string val;
             _properties0 = _group0->getProperties();
-            CPPUNIT_ASSERT(_properties0);
+            MPI_CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             val = _properties0->getProperty("test");
             _properties0->releaseLock();
             
             cerr << "Got value " << val << " (should be v3)" << endl;
-            CPPUNIT_ASSERT(val == "v3");
+            MPI_CPPUNIT_ASSERT(val == "v3");
             cerr << "Got correct test = v3" << endl;
             
             _properties0 = _node0->getProperties();
-            CPPUNIT_ASSERT(_properties0);
+            MPI_CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             val = _properties0->getProperty("test", false);
             _properties0->releaseLock();
             
             cerr << "Got value " << val << " (should be empty)" << endl;
-            CPPUNIT_ASSERT(val == "");
+            MPI_CPPUNIT_ASSERT(val == "");
             cerr << "Got correct test = empty" << endl;
             
             _properties0->acquireLock();
@@ -185,11 +185,11 @@ class ClusterlibProperties : public MPITestFixture {
             _properties0->releaseLock();
             
             cerr << "Got value " << val << " (should be v3)" << endl;
-            CPPUNIT_ASSERT(val == "v3");
+            MPI_CPPUNIT_ASSERT(val == "v3");
             cerr << "Got correct test = v3" << endl;
             
             _properties0 = _group0->getProperties();
-            CPPUNIT_ASSERT(_properties0);
+            MPI_CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             _properties0->deleteProperty("test");
             _properties0->publish();
@@ -201,13 +201,13 @@ class ClusterlibProperties : public MPITestFixture {
         if (isMyRank(1)) {
             string val;
             _properties0 = _node0->getProperties();
-            CPPUNIT_ASSERT(_properties0);
+            MPI_CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             val = _properties0->getProperty("test", true);
             _properties0->releaseLock();
             
             cerr << "Got value " << val << " (should be v5)" << endl;
-            CPPUNIT_ASSERT(val == "v5");
+            MPI_CPPUNIT_ASSERT(val == "v5");
             cerr << "Got correct test = v5" << endl;
         }
     }
@@ -237,11 +237,11 @@ class ClusterlibProperties : public MPITestFixture {
         if (isMyRank(0)) {
             _properties0->acquireLock();
             _properties0->setProperty(prop, "new value");
-            CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
+            MPI_CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
             _properties0->publish();
-            CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
+            MPI_CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
             _properties0->releaseLock();
-            CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
+            MPI_CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
         }
         else {
             _properties0->acquireLock();
@@ -249,11 +249,11 @@ class ClusterlibProperties : public MPITestFixture {
             usleep(500000);
             string value2 = _properties0->getProperty(prop);
             _properties0->releaseLock();
-            CPPUNIT_ASSERT(value.compare(value2) == 0);
+            MPI_CPPUNIT_ASSERT(value.compare(value2) == 0);
         }
 
         barrier(_factory, true);
-        CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
+        MPI_CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
     }
 
     /* 
@@ -286,7 +286,7 @@ class ClusterlibProperties : public MPITestFixture {
             usleep(200000);
             _properties0->acquireLock();
             _properties0->setProperty(prop, "new value");
-            CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
+            MPI_CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
             _properties0->publish();
             if (_properties0->getProperty(prop) == "new value") {
                 matchedVal = true;
@@ -313,8 +313,8 @@ class ClusterlibProperties : public MPITestFixture {
         }
 
         barrier(_factory, true);
-        CPPUNIT_ASSERT(matchedVal == true);
-        CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
+        MPI_CPPUNIT_ASSERT(matchedVal == true);
+        MPI_CPPUNIT_ASSERT(_properties0->getProperty(prop) == "new value");
     }
 
     /*

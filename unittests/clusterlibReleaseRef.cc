@@ -27,15 +27,15 @@ class ClusterlibReleaseRef : public MPITestFixture {
     {
 	_factory = new Factory(
             globalTestParams.getZkServerPortList());
-	CPPUNIT_ASSERT(_factory != NULL);
+	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
-	CPPUNIT_ASSERT(_client0 != NULL);
+	MPI_CPPUNIT_ASSERT(_client0 != NULL);
 	_app0 = _client0->getRoot()->getApplication(appName, true);
-	CPPUNIT_ASSERT(_app0 != NULL);
+	MPI_CPPUNIT_ASSERT(_app0 != NULL);
 	_group0 = _app0->getGroup("servers", true);
-	CPPUNIT_ASSERT(_group0 != NULL);
+	MPI_CPPUNIT_ASSERT(_group0 != NULL);
 	_node0 = _group0->getNode("server-0", true);
-	CPPUNIT_ASSERT(_node0 != NULL);
+	MPI_CPPUNIT_ASSERT(_node0 != NULL);
     }
 
     /** 
@@ -72,7 +72,7 @@ class ClusterlibReleaseRef : public MPITestFixture {
                                     true, 
                                     "testReleaseRef2");
         Node *node0 = _group0->getNode("server-0");
-        CPPUNIT_ASSERT(node0 != NULL);
+        MPI_CPPUNIT_ASSERT(node0 != NULL);
         node0->releaseRef();
         _node0->releaseRef();
     }
@@ -89,7 +89,7 @@ class ClusterlibReleaseRef : public MPITestFixture {
                                     "testReleaseRef3");
         if (isMyRank(0)) {
             _node0->releaseRef();
-            CPPUNIT_ASSERT(_node0);
+            MPI_CPPUNIT_ASSERT(_node0);
             _node0->remove();
         }
     }
@@ -106,7 +106,7 @@ class ClusterlibReleaseRef : public MPITestFixture {
                                     "testReleaseRef3");
         if (isMyRank(0)) {
             _node0->remove();
-            CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
+            MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
             _node0->releaseRef();
         }
     }

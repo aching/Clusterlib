@@ -31,7 +31,7 @@ Tests that can be added to any test fixture.  In this example, we use
 ClusterlibProperties.  
 
 1.  Simply add a new function (i.e. void foo()) in
-ClusterlibProperties.  Use macros CPPUNIT_ASSERT or CPPUNIT_FAIL to
+ClusterlibProperties.  Use the macro MPI_CPPUNIT_ASSERT to
 denote success or failure.
 
 2.  Add line in between macros as so.  Note that this does not

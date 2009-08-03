@@ -8,6 +8,25 @@
 #define MPI_TAG 1000
 
 /**
+ * Replacement for CPPUNIT_ASSERT() that will record error points but
+ * not exit the function it is called in.  You can call this anywhere
+ * in the test and it will record the error point and move foward.
+ * Finally, in cleanAndBarrierMPITest() the errors will be printed.
+ * Therefore, do not do any group communication after
+ * cleanAndBarrierMPITest() is called.  This macro solves the problem
+ * where group communication is expected by CPPUNIT_ASSERT() but
+ * CPPUNIT_ASSERT exits the test function without executing the
+ * communication expected.
+ */
+
+#define MPI_CPPUNIT_ASSERT(_condition) \
+{ \
+    if (!(_condition)) { \
+        addErrorFileLine(__FILE__, __LINE__); \
+    } \
+} 
+
+/**
  * MPI-enhanced test fixture.
  *
  * All tests fall into 3 categories.
@@ -33,6 +52,8 @@ class MPITestFixture : public CppUnit::TestFixture {
 	m_size(MPI::COMM_WORLD.Get_size()),
         m_testSingleProcessMode(false),
         m_testMinSize(-1) {}
+
+    virtual ~MPITestFixture() {}
 
     /**
      * Must be called prior to the beginning of any test.  It barriers
@@ -77,6 +98,7 @@ class MPITestFixture : public CppUnit::TestFixture {
      * the end of the test.  It also resets the minSize and testName.
      * It should be called in the tearDown() method.  It prints the
      * test completed output if set in initializeAndBarrierMPITest().
+     * No function should be called after it in the tearDown() method.
      *
      * @param factory the factory pointer (if NULL, barrier is called without 
      *        the clusterlib sync)
@@ -95,12 +117,22 @@ class MPITestFixture : public CppUnit::TestFixture {
         if (m_testName.empty() == false) {
             std::cerr << m_testName << ": finished" << std::endl;
         }
-        
+
         /*
          * Reset test parameters
          */
         m_testMinSize = -1;
         m_testName.clear();
+
+        /*
+         * Print out the errors if there were any with
+         * CPPUNIT_ASSERT_MESSAGE.
+         */
+        if (m_testError.empty() == false) {
+            std::string testError(m_testError);
+            m_testError.clear();
+            CPPUNIT_ASSERT_MESSAGE(testError, false);
+        }
     }
 
     /** 
@@ -290,6 +322,24 @@ class MPITestFixture : public CppUnit::TestFixture {
      */
     int getRank() const { return m_rank; }
 
+    /**
+     * Add an error message for this test for file and line number.
+     * Used by MPI_CPPUNIT_ASSERT.
+     *
+     * @param file name of the file the error happened in
+     * @param line the line number where the error happened.
+     */
+    void addErrorFileLine(const std::string &file, int32_t line)
+    {
+        std::stringstream ss;
+        ss << "Assert failed in file: " << file << ", line: " 
+           << line << std::endl;
+        if (m_testError.empty()) {
+            m_testError.append("\n");
+        }
+        m_testError.append(ss.str());
+    }
+
   private:
 
     int getTestMinSize() const { return m_testMinSize; }
@@ -323,6 +373,12 @@ class MPITestFixture : public CppUnit::TestFixture {
      * INIT_BARRIER_MPI_TEST_OR_DONE. Name of this test.
      */
     std::string m_testName;
+
+    /**
+     * This saves the first error that this test ran into.  It should
+     * be outputted by the cleanAndBarrierMPITest() in the tearDown().
+     */
+    std::string m_testError;
 };
 
 #endif

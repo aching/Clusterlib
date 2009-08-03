@@ -46,9 +46,9 @@ class ClusterlibEndEvent : public MPITestFixture {
     {
 	_factory = new Factory(
             globalTestParams.getZkServerPortList());
-	CPPUNIT_ASSERT(_factory != NULL);
+	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client = _factory->createClient();
-	CPPUNIT_ASSERT(_client != NULL);
+	MPI_CPPUNIT_ASSERT(_client != NULL);
         if (isMyRank(0)) {
             _app = _client->getRoot()->getApplication("endevent-app");
             if (_app != NULL) {
@@ -57,7 +57,7 @@ class ClusterlibEndEvent : public MPITestFixture {
         }
         barrier(_factory, true);
 	_app = _client->getRoot()->getApplication("endevent-app", true);
-	CPPUNIT_ASSERT(_app != NULL);
+	MPI_CPPUNIT_ASSERT(_app != NULL);
     }
 
     /** 
@@ -87,14 +87,13 @@ class ClusterlibEndEvent : public MPITestFixture {
         ss << "node" << getRank();
         
         Node *myNode = _app->getNode(ss.str(), true);
-        CPPUNIT_ASSERT(myNode != NULL);
+        MPI_CPPUNIT_ASSERT(myNode != NULL);
         _checker = new MyHealthChecker();
         myNode->registerHealthChecker(_checker);
         _checker->setMsecsPerCheckIfHealthy(1);
         _checker->setMsecsPerCheckIfUnhealthy(1);
         _checker->setMsecsAllowedPerHealthCheck(1);
         barrier(_factory, true);
-
 	delete _factory;
         delete _checker;
     }

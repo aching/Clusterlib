@@ -137,19 +137,19 @@ class ClusterlibUserEvents
 	_factory =
             new Factory(globalTestParams.getZkServerPortList());
 
-	CPPUNIT_ASSERT(_factory != NULL);
+	MPI_CPPUNIT_ASSERT(_factory != NULL);
         _zk = _factory->getRepository();
-        CPPUNIT_ASSERT(_zk != NULL);
+        MPI_CPPUNIT_ASSERT(_zk != NULL);
 	_client0 = _factory->createClient();
-	CPPUNIT_ASSERT(_client0 != NULL);
+	MPI_CPPUNIT_ASSERT(_client0 != NULL);
         _app0 = _client0->getRoot()->getApplication("foo-app", true);
-        CPPUNIT_ASSERT(_app0 != NULL);
+        MPI_CPPUNIT_ASSERT(_app0 != NULL);
         _grp0 = _app0->getGroup("bar-group", true);
-        CPPUNIT_ASSERT(_grp0 != NULL);
+        MPI_CPPUNIT_ASSERT(_grp0 != NULL);
         _nod0 = _grp0->getNode("nod3", true);
-        CPPUNIT_ASSERT(_nod0 != NULL);
+        MPI_CPPUNIT_ASSERT(_nod0 != NULL);
         _dist0 = _grp0->getDataDistribution("dist1", true);
-        CPPUNIT_ASSERT(_dist0 != NULL);
+        MPI_CPPUNIT_ASSERT(_dist0 != NULL);
     }
 
     /* Runs after each test */
@@ -192,10 +192,10 @@ class ClusterlibUserEvents
         _client0->registerHandler(uehp);
 
         bool deregged = _client0->cancelHandler(uehp);
-        CPPUNIT_ASSERT(deregged == true);
+        MPI_CPPUNIT_ASSERT(deregged == true);
 
         deregged = _client0->cancelHandler(uehp);
-        CPPUNIT_ASSERT(deregged == false);
+        MPI_CPPUNIT_ASSERT(deregged == false);
 
         /*
          * Registering the same handler several times also works,
@@ -209,17 +209,17 @@ class ClusterlibUserEvents
          * Cancelling several times also works...
          */
         deregged = _client0->cancelHandler(uehp);
-        CPPUNIT_ASSERT(deregged == true);
+        MPI_CPPUNIT_ASSERT(deregged == true);
         deregged = _client0->cancelHandler(uehp);
-        CPPUNIT_ASSERT(deregged == true);
+        MPI_CPPUNIT_ASSERT(deregged == true);
         deregged = _client0->cancelHandler(uehp);
-        CPPUNIT_ASSERT(deregged == true);
+        MPI_CPPUNIT_ASSERT(deregged == true);
 
         /*
          * Cancelling N+1 times does not work...
          */
         deregged = _client0->cancelHandler(uehp);
-        CPPUNIT_ASSERT(deregged == false);
+        MPI_CPPUNIT_ASSERT(deregged == false);
     }
     void testUserEvents2()
     {
@@ -264,13 +264,13 @@ class ClusterlibUserEvents
              * Wait for event propagation.
              */
             bool res = uehp->waitUntilCondition();
-            CPPUNIT_ASSERT(res == true);
+            MPI_CPPUNIT_ASSERT(res == true);
 
             /*
              * Event counter should be 3, since we registered the
              * handler 3 times.
              */
-            CPPUNIT_ASSERT(uehp->getCounter() == 3);
+            MPI_CPPUNIT_ASSERT(uehp->getCounter() == 3);
 
             uehp->setTargetCounter(6);
 
@@ -284,12 +284,12 @@ class ClusterlibUserEvents
              * Wait for event propagation.
              */
             res = uehp->waitUntilCondition();
-            CPPUNIT_ASSERT(res == true);
+            MPI_CPPUNIT_ASSERT(res == true);
 
             /*
              * Event counter should now be at 6.
              */
-            CPPUNIT_ASSERT(uehp->getCounter() == 6);
+            MPI_CPPUNIT_ASSERT(uehp->getCounter() == 6);
 
             uehp->releaseLock();
 
@@ -344,20 +344,20 @@ class ClusterlibUserEvents
              * Wait for event propagation.
              */
             bool res = uehp->waitUntilCondition();
-            CPPUNIT_ASSERT(res == true); 
+            MPI_CPPUNIT_ASSERT(res == true); 
             
             /*
              * Event counter should be 3, since we registered the
              * handler 3 times.
              */
-            CPPUNIT_ASSERT(uehp->getCounter() == 3);
+            MPI_CPPUNIT_ASSERT(uehp->getCounter() == 3);
             
             /*
              * Cancel *one* of the handlers. This means that the
              * connection events should be delivered to only 2 handlers.
              */
             bool cancelled = _client0->cancelHandler(uehp);
-            CPPUNIT_ASSERT(cancelled == true);
+            MPI_CPPUNIT_ASSERT(cancelled == true);
             uehp->setTargetCounter(5);
             
             /*
@@ -370,12 +370,12 @@ class ClusterlibUserEvents
              * Wait for event propagation.
              */
             res = uehp->waitUntilCondition();
-            CPPUNIT_ASSERT(res == true);
+            MPI_CPPUNIT_ASSERT(res == true);
             
             /*
              * Event counter should now be at 5.
              */
-            CPPUNIT_ASSERT(uehp->getCounter() == 5);
+            MPI_CPPUNIT_ASSERT(uehp->getCounter() == 5);
             
             /*
              * Clean up.
@@ -406,7 +406,7 @@ class ClusterlibUserEvents
         delete _factory;
         _factory = NULL;
 
-        CPPUNIT_ASSERT(ueh.getCounter() == 1);
+        MPI_CPPUNIT_ASSERT(ueh.getCounter() == 1);
     }
     void testUserEvents5()
     {

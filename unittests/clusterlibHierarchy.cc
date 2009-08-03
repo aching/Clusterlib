@@ -26,11 +26,11 @@ class ClusterlibHierarchy : public MPITestFixture {
     {
 	_factory = new Factory(
             globalTestParams.getZkServerPortList());
-	CPPUNIT_ASSERT(_factory != NULL);
+	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client = _factory->createClient();
-	CPPUNIT_ASSERT(_client != NULL);
+	MPI_CPPUNIT_ASSERT(_client != NULL);
 	_app = _client->getRoot()->getApplication("hierarchy-app", true);
-	CPPUNIT_ASSERT(_app != NULL);
+	MPI_CPPUNIT_ASSERT(_app != NULL);
     }
 
     /** 
@@ -58,65 +58,65 @@ class ClusterlibHierarchy : public MPITestFixture {
 
         if (isMyRank(0)) {
             Group *group = _app->getGroup("hierarchy-group", true);
-	    CPPUNIT_ASSERT(group);
+	    MPI_CPPUNIT_ASSERT(group);
 	    DataDistribution *dist = 
 		group->getDataDistribution("hierarchy-dist",
 					    true);
-	    CPPUNIT_ASSERT(dist);
+	    MPI_CPPUNIT_ASSERT(dist);
 	    Node *node = group->getNode("hierarchy-node", true);
-	    CPPUNIT_ASSERT(node);
+	    MPI_CPPUNIT_ASSERT(node);
 	    Properties *prop = node->getProperties(true);
-	    CPPUNIT_ASSERT(prop);
+	    MPI_CPPUNIT_ASSERT(prop);
         }
 	
 	waitsForOrder(0, 1, _factory, true);
 
         if (isMyRank(1)) {
-	    CPPUNIT_ASSERT(_app);
+	    MPI_CPPUNIT_ASSERT(_app);
 
             /* Applications now have parents! */
             try {
-                CPPUNIT_ASSERT(_app->getMyParent() == _client->getRoot());
+                MPI_CPPUNIT_ASSERT(_app->getMyParent() == _client->getRoot());
             } catch (Exception &e) { 
-                CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
+                MPI_CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
                 cerr << "Caught app->getMyParent() exception correctly" 
                      << endl;
             }
             
             try {
                 _app->getMyGroup();
-                CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
+                MPI_CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
             } catch (InvalidMethodException &e) {                
                 cerr << "Caught app->getMyGroup() exception correctly" 
                      << endl;
             }
 
-	    CPPUNIT_ASSERT(_app->getMyApplication() == _app);
+	    MPI_CPPUNIT_ASSERT(_app->getMyApplication() == _app);
 	    
 	    Group *group = _app->getGroup("hierarchy-group");
-	    CPPUNIT_ASSERT(group);
-	    CPPUNIT_ASSERT(group->getMyParent() == _app);
-	    CPPUNIT_ASSERT(group->getMyGroup() == _app);
-	    CPPUNIT_ASSERT(group->getMyApplication() == _app);
+	    MPI_CPPUNIT_ASSERT(group);
+	    MPI_CPPUNIT_ASSERT(group->getMyParent() == _app);
+	    MPI_CPPUNIT_ASSERT(group->getMyGroup() == _app);
+	    MPI_CPPUNIT_ASSERT(group->getMyApplication() == _app);
 	    
 	    DataDistribution *dist = 
 		group->getDataDistribution("hierarchy-dist");
-	    CPPUNIT_ASSERT(dist);
-	    CPPUNIT_ASSERT(dist->getMyParent() == group);
-	    CPPUNIT_ASSERT(dist->getMyGroup() == group);
-	    CPPUNIT_ASSERT(dist->getMyApplication() == _app);
+	    MPI_CPPUNIT_ASSERT(dist);
+	    MPI_CPPUNIT_ASSERT(dist->getMyParent() == group);
+	    MPI_CPPUNIT_ASSERT(dist->getMyGroup() == group);
+	    MPI_CPPUNIT_ASSERT(dist->getMyApplication() == _app);
 
 	    Node *node = group->getNode("hierarchy-node");
-	    CPPUNIT_ASSERT(node);
-	    CPPUNIT_ASSERT(node->getMyParent() == group);
-	    CPPUNIT_ASSERT(node->getMyGroup() == group);
-	    CPPUNIT_ASSERT(node->getMyApplication() == _app);
+	    MPI_CPPUNIT_ASSERT(node);
+	    MPI_CPPUNIT_ASSERT(node->getMyParent() == group);
+	    MPI_CPPUNIT_ASSERT(node->getMyGroup() == group);
+	    MPI_CPPUNIT_ASSERT(node->getMyApplication() == _app);
 	    
 	    Properties *prop = node->getProperties();
-	    CPPUNIT_ASSERT(prop);
-	    CPPUNIT_ASSERT(prop->getMyParent() == node);
-	    CPPUNIT_ASSERT(prop->getMyGroup() == group);
-	    CPPUNIT_ASSERT(prop->getMyApplication() == _app);
+	    MPI_CPPUNIT_ASSERT(prop);
+	    MPI_CPPUNIT_ASSERT(prop->getMyParent() == node);
+	    MPI_CPPUNIT_ASSERT(prop->getMyGroup() == group);
+	    MPI_CPPUNIT_ASSERT(prop->getMyApplication() == _app);
         }
     }
 
@@ -135,75 +135,75 @@ class ClusterlibHierarchy : public MPITestFixture {
 
         if (isMyRank(0)) {
 	    Node *node1 = _app->getNode("node1", true);
-	    CPPUNIT_ASSERT(node1);
+	    MPI_CPPUNIT_ASSERT(node1);
 
 	    Group *group1 = _app->getGroup("hier-group1", true);
-	    CPPUNIT_ASSERT(group1);
+	    MPI_CPPUNIT_ASSERT(group1);
 	    Node *node2 = group1->getNode("node2", true);
-	    CPPUNIT_ASSERT(node2);
+	    MPI_CPPUNIT_ASSERT(node2);
 
 	    Group *group2 = group1->getGroup("hier-group2", true);
-	    CPPUNIT_ASSERT(group2);
+	    MPI_CPPUNIT_ASSERT(group2);
 	    Node *node3 = group2->getNode("node3", true);
-	    CPPUNIT_ASSERT(node3);
+	    MPI_CPPUNIT_ASSERT(node3);
 
             Properties *prop = node3->getProperties(true);
-	    CPPUNIT_ASSERT(prop);
+	    MPI_CPPUNIT_ASSERT(prop);
         }
 	
 	waitsForOrder(0, 1, _factory, true);
 
         if (isMyRank(1)) {
-	    CPPUNIT_ASSERT(_app);
+	    MPI_CPPUNIT_ASSERT(_app);
 
             /* Applications now have parents! */
             try {
-                CPPUNIT_ASSERT(_app->getMyParent() == _client->getRoot());
+                MPI_CPPUNIT_ASSERT(_app->getMyParent() == _client->getRoot());
             } catch (Exception &e) { 
-                CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
+                MPI_CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
                 cerr << "Caught app->getMyParent() exception incorrectly" 
                      << endl;
             }
             
             try {
                 _app->getMyGroup();
-                CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
+                MPI_CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
             } catch (InvalidMethodException &e) {                
                 cerr << "Caught app->getMyGroup() exception incorrectly" 
                      << endl;
             }
 
-	    CPPUNIT_ASSERT(_app->getMyApplication() == _app);
+	    MPI_CPPUNIT_ASSERT(_app->getMyApplication() == _app);
 	    
 	    Node *node1 = _app->getNode("node1");
-            CPPUNIT_ASSERT(node1->getMyParent() == _app);
-            CPPUNIT_ASSERT(node1->getMyGroup() == _app);
-            CPPUNIT_ASSERT(node1->getMyApplication() == _app);
+            MPI_CPPUNIT_ASSERT(node1->getMyParent() == _app);
+            MPI_CPPUNIT_ASSERT(node1->getMyGroup() == _app);
+            MPI_CPPUNIT_ASSERT(node1->getMyApplication() == _app);
 
             Group *group1 = _app->getGroup("hier-group1");
-            CPPUNIT_ASSERT(group1->getMyParent() == _app);
-            CPPUNIT_ASSERT(group1->getMyGroup() == _app);
-            CPPUNIT_ASSERT(group1->getMyApplication() == _app);
+            MPI_CPPUNIT_ASSERT(group1->getMyParent() == _app);
+            MPI_CPPUNIT_ASSERT(group1->getMyGroup() == _app);
+            MPI_CPPUNIT_ASSERT(group1->getMyApplication() == _app);
 
 	    Node *node2 = group1->getNode("node2", true);
-            CPPUNIT_ASSERT(node2->getMyParent() == group1);
-            CPPUNIT_ASSERT(node2->getMyGroup() == group1);
-            CPPUNIT_ASSERT(node2->getMyApplication() == _app);
+            MPI_CPPUNIT_ASSERT(node2->getMyParent() == group1);
+            MPI_CPPUNIT_ASSERT(node2->getMyGroup() == group1);
+            MPI_CPPUNIT_ASSERT(node2->getMyApplication() == _app);
 
             Group *group2 = group1->getGroup("hier-group2");
-            CPPUNIT_ASSERT(group2->getMyParent() == group1);
-            CPPUNIT_ASSERT(group2->getMyGroup() == group1);
-            CPPUNIT_ASSERT(group2->getMyApplication() == _app);
+            MPI_CPPUNIT_ASSERT(group2->getMyParent() == group1);
+            MPI_CPPUNIT_ASSERT(group2->getMyGroup() == group1);
+            MPI_CPPUNIT_ASSERT(group2->getMyApplication() == _app);
 
 	    Node *node3 = group2->getNode("node3");
-            CPPUNIT_ASSERT(node3->getMyParent() == group2);
-            CPPUNIT_ASSERT(node3->getMyGroup() == group2);
-            CPPUNIT_ASSERT(node3->getMyApplication() == _app);
+            MPI_CPPUNIT_ASSERT(node3->getMyParent() == group2);
+            MPI_CPPUNIT_ASSERT(node3->getMyGroup() == group2);
+            MPI_CPPUNIT_ASSERT(node3->getMyApplication() == _app);
 
 	    Properties *prop = node3->getProperties();
-            CPPUNIT_ASSERT(prop->getMyParent() == node3);
-            CPPUNIT_ASSERT(prop->getMyGroup() == group2);
-            CPPUNIT_ASSERT(prop->getMyApplication() == _app);
+            MPI_CPPUNIT_ASSERT(prop->getMyParent() == node3);
+            MPI_CPPUNIT_ASSERT(prop->getMyGroup() == group2);
+            MPI_CPPUNIT_ASSERT(prop->getMyApplication() == _app);
         }
     }
 
@@ -249,7 +249,7 @@ class ClusterlibHierarchy : public MPITestFixture {
             string newkey = nl[index] + "next";
             Application *app0 = 
                 _client->getRoot()->getApplication(newkey, true);
-            CPPUNIT_ASSERT(app0);
+            MPI_CPPUNIT_ASSERT(app0);
         }        
         
 	waitsForOrder(0, 1, _factory, true);
@@ -258,7 +258,7 @@ class ClusterlibHierarchy : public MPITestFixture {
             NameList nl =  _client->getRoot()->getApplicationNames();
             cerr << "Orignally had " << appCount << " applications, now has "
                  << nl.size() << " ." << endl; 
-            CPPUNIT_ASSERT(appCount + 1 == nl.size());
+            MPI_CPPUNIT_ASSERT(appCount + 1 == nl.size());
             /* Clean up all applications, since we are always
              * increasing the size of it. */
             NameList::iterator it;

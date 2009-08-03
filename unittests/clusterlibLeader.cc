@@ -26,15 +26,15 @@ class ClusterlibLeader : public MPITestFixture {
     {
 	_factory = new Factory(
             globalTestParams.getZkServerPortList());
-	CPPUNIT_ASSERT(_factory != NULL);
+	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
-	CPPUNIT_ASSERT(_client0 != NULL);
+	MPI_CPPUNIT_ASSERT(_client0 != NULL);
 	_app0 = _client0->getRoot()->getApplication(appName, true);
-	CPPUNIT_ASSERT(_app0 != NULL);
+	MPI_CPPUNIT_ASSERT(_app0 != NULL);
 	_group0 = _app0->getGroup("servers", true);
-	CPPUNIT_ASSERT(_group0 != NULL);
+	MPI_CPPUNIT_ASSERT(_group0 != NULL);
 	_node0 = _group0->getNode("server-0", true);
-	CPPUNIT_ASSERT(_node0 != NULL);
+	MPI_CPPUNIT_ASSERT(_node0 != NULL);
     }
 
     /** 
@@ -60,9 +60,9 @@ class ClusterlibLeader : public MPITestFixture {
         
         if (isMyRank(0)) {
             _group0->becomeLeader();
-            CPPUNIT_ASSERT(_group0->isLeader() == true);
+            MPI_CPPUNIT_ASSERT(_group0->isLeader() == true);
             _group0->abdicateLeader();
-            CPPUNIT_ASSERT(_group0->isLeader() == false);
+            MPI_CPPUNIT_ASSERT(_group0->isLeader() == false);
         }
     }
 
@@ -79,16 +79,16 @@ class ClusterlibLeader : public MPITestFixture {
 
         if (isMyRank(0)) {
             _group0->becomeLeader();
-            CPPUNIT_ASSERT(_group0->isLeader() == true);
+            MPI_CPPUNIT_ASSERT(_group0->isLeader() == true);
             _group0->abdicateLeader();
-            CPPUNIT_ASSERT(_group0->isLeader() == false);
+            MPI_CPPUNIT_ASSERT(_group0->isLeader() == false);
         }
         waitsForOrder(0, 1, _factory, true);
         if (isMyRank(1)) {
             _group0->becomeLeader();
-            CPPUNIT_ASSERT(_group0->isLeader() == true);
+            MPI_CPPUNIT_ASSERT(_group0->isLeader() == true);
             _group0->abdicateLeader();
-            CPPUNIT_ASSERT(_group0->isLeader() == false);
+            MPI_CPPUNIT_ASSERT(_group0->isLeader() == false);
         }        
    }
 
@@ -105,9 +105,9 @@ class ClusterlibLeader : public MPITestFixture {
                                     "testLeader3");
 
         _group0->becomeLeader();
-        CPPUNIT_ASSERT(_group0->isLeader() == true);
+        MPI_CPPUNIT_ASSERT(_group0->isLeader() == true);
         _group0->abdicateLeader();
-        CPPUNIT_ASSERT(_group0->isLeader() == false);
+        MPI_CPPUNIT_ASSERT(_group0->isLeader() == false);
     }
 
   private:

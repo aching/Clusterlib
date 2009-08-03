@@ -50,15 +50,15 @@ class ClusterlibHealthCheck : public MPITestFixture {
         _checker = new MyHealthChecker();
 	_factory = new Factory(
             globalTestParams.getZkServerPortList());
-	CPPUNIT_ASSERT(_factory != NULL);
+	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
-	CPPUNIT_ASSERT(_client0 != NULL);
+	MPI_CPPUNIT_ASSERT(_client0 != NULL);
 	_app0 = _client0->getRoot()->getApplication(appName, true);
-	CPPUNIT_ASSERT(_app0 != NULL);
+	MPI_CPPUNIT_ASSERT(_app0 != NULL);
 	_group0 = _app0->getGroup("servers", true);
-	CPPUNIT_ASSERT(_group0 != NULL);
+	MPI_CPPUNIT_ASSERT(_group0 != NULL);
 	_node0 = _group0->getNode("server-0", true);
-	CPPUNIT_ASSERT(_node0 != NULL);
+	MPI_CPPUNIT_ASSERT(_node0 != NULL);
     }
 
     /** 
@@ -85,9 +85,9 @@ class ClusterlibHealthCheck : public MPITestFixture {
                                     "testHealthCheck1");
         
         if (isMyRank(0)) {
-            CPPUNIT_ASSERT(_node0->getState() == Notifyable::READY);
+            MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::READY);
             _node0->remove(true);
-            CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
+            MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
             /*
              * This synchronization is required since it is currently
              * possible to have a removed event handler destroy a new
@@ -97,18 +97,18 @@ class ClusterlibHealthCheck : public MPITestFixture {
              */
             _factory->synchronize();
             _node0 = _group0->getNode("server-0", true);
-            CPPUNIT_ASSERT(_node0);
-            CPPUNIT_ASSERT(_node0->getState() == Notifyable::READY);
+            MPI_CPPUNIT_ASSERT(_node0);
+            MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::READY);
             _checker->setMsecsPerCheckIfHealthy(10);
             _checker->setMsecsPerCheckIfUnhealthy(10);
-            CPPUNIT_ASSERT(_node0->isHealthy() == false);
+            MPI_CPPUNIT_ASSERT(_node0->isHealthy() == false);
             _node0->registerHealthChecker(_checker);
             sleep(1);
             /*
              * Since the time to check is 10 ms, 1 second should be
              * enough time to get the health updated in the cache.
              */
-            CPPUNIT_ASSERT(_node0->isHealthy() == true);
+            MPI_CPPUNIT_ASSERT(_node0->isHealthy() == true);
             _node0->unregisterHealthChecker();
         }
     }
@@ -126,7 +126,7 @@ class ClusterlibHealthCheck : public MPITestFixture {
         if (isMyRank(0)) {
             try {
                 _node0->unregisterHealthChecker();
-                CPPUNIT_ASSERT("Shouldn't have been successful" == 0);
+                MPI_CPPUNIT_ASSERT("Shouldn't have been successful" == 0);
             }
             catch (InvalidMethodException &e) {
             }
@@ -153,9 +153,9 @@ class ClusterlibHealthCheck : public MPITestFixture {
 
         
         if (isMyRank(0)) {
-            CPPUNIT_ASSERT(_node0->getState() == Notifyable::READY);
+            MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::READY);
             _node0->remove(true);
-            CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
+            MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
             /*
              * This synchronization is required since it is currently
              * possible to have a removed event handler destroy a new
@@ -165,18 +165,18 @@ class ClusterlibHealthCheck : public MPITestFixture {
              */
             _factory->synchronize();
             _node0 = _group0->getNode("server-0", true);
-            CPPUNIT_ASSERT(_node0);
-            CPPUNIT_ASSERT(_node0->getState() == Notifyable::READY);
+            MPI_CPPUNIT_ASSERT(_node0);
+            MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::READY);
             _checker->setMsecsPerCheckIfHealthy(10);
             _checker->setMsecsPerCheckIfUnhealthy(10);
-            CPPUNIT_ASSERT(_node0->isHealthy() == false);
+            MPI_CPPUNIT_ASSERT(_node0->isHealthy() == false);
             _node0->registerHealthChecker(_checker);
             sleep(1);
             /*
              * Since the time to check is 10 ms, 1 second should be
              * enough time to get the health updated in the cache.
              */
-            CPPUNIT_ASSERT(_node0->isHealthy() == true);
+            MPI_CPPUNIT_ASSERT(_node0->isHealthy() == true);
 
         }
 
@@ -184,8 +184,8 @@ class ClusterlibHealthCheck : public MPITestFixture {
 
         if (isMyRank(1)) {
             _node0 = _group0->getNode("server-0");
-            CPPUNIT_ASSERT(_node0);
-            CPPUNIT_ASSERT(_node0->isHealthy() == true);
+            MPI_CPPUNIT_ASSERT(_node0);
+            MPI_CPPUNIT_ASSERT(_node0->isHealthy() == true);
         }
             
         waitsForOrder(1, 0, _factory, true);
@@ -193,13 +193,13 @@ class ClusterlibHealthCheck : public MPITestFixture {
         if (isMyRank(0)) {
             _checker->setHealth(false);
             sleep(1);
-            CPPUNIT_ASSERT(_node0->isHealthy() == false);
+            MPI_CPPUNIT_ASSERT(_node0->isHealthy() == false);
         }
 
         waitsForOrder(0, 1, _factory, true);
 
         if (isMyRank(1)) {
-            CPPUNIT_ASSERT(_node0->isHealthy() == false);
+            MPI_CPPUNIT_ASSERT(_node0->isHealthy() == false);
         }
 
         if (isMyRank(0)) {
