@@ -7,16 +7,23 @@
  */
 class TestParams {
   public:
+    enum OutputType {
+        CONSOLE,
+        FILE
+    };
+
     TestParams() :
         m_myId(-1),
         m_numProcs(-1),
         m_zkServerPortList("localhost:2221"),
+        m_outputType(FILE),
         m_parseArgsState(-1) {}
 
     TestParams(int32_t myId, int32_t numProcs) :
         m_myId(myId),
         m_numProcs(numProcs),
         m_zkServerPortList("localhost:2221"),
+        m_outputType(FILE),
         m_parseArgsState(-1) {}
 
     void printUsage(char *exec) const;
@@ -48,6 +55,9 @@ class TestParams {
     }
 
     const std::string &getTestFixtureName() { return m_testFixtureName; }
+
+    OutputType getOutputType() const { return m_outputType; }
+
   private:
     /**
      * The rank of this proccess.
@@ -70,6 +80,11 @@ class TestParams {
      * are desired.
      */
     std::string m_testFixtureName;
+
+    /**
+     * Output type 
+     */
+    OutputType m_outputType;
 
     /**
      * -1 for failure, 0 for success

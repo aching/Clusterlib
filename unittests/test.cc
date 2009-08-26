@@ -37,7 +37,9 @@ int main(int argc, char* argv[]) {
     unsigned pid = static_cast<unsigned>(getpid());
     MPI::COMM_WORLD.Gather(
         &pid, 1, MPI::UNSIGNED, pidArr, 1, MPI::UNSIGNED, 0);
-    if (MPI::COMM_WORLD.Get_rank() == 0) {
+
+    if ((MPI::COMM_WORLD.Get_rank() == 0) && 
+        (globalTestParams.getOutputType() == TestParams::FILE)) {
         cout << endl << "Output files:" << endl;
         for (int i = 0; i < MPI::COMM_WORLD.Get_size(); i++) {
             cout << " " << prefix << i << ".0x" << hex << pidArr[i] << endl;
@@ -45,19 +47,27 @@ int main(int argc, char* argv[]) {
         cout << endl;
     }
 
-    /* Redirect all stderr log4cxxx messaging to the same files */
-    stringstream fileStringStream;
-    fileStringStream << prefix;
-    fileStringStream << MPI::COMM_WORLD.Get_rank();
-    fileStringStream << ".0x";
-    fileStringStream << hex;
-    fileStringStream << getpid();
-    remove(fileStringStream.str().c_str());
-    FILE *stderrFile = freopen(fileStringStream.str().c_str(), "a", stderr);
-    if (!stderrFile) {
-        cerr << "freopen to redirect stderr failed" << endl;
-        MPI::Finalize();
-        return -1;
+    /* 
+     * Redirect all stderr log4cxxx messaging to the same files if the
+     * file out put type is chosen. 
+     */
+    FILE *stderrFile = NULL;
+    if (globalTestParams.getOutputType() == TestParams::FILE) {
+        stringstream fileStringStream;
+        fileStringStream << prefix;
+        fileStringStream << MPI::COMM_WORLD.Get_rank();
+        fileStringStream << ".0x";
+        fileStringStream << hex;
+        fileStringStream << getpid();
+        remove(fileStringStream.str().c_str());
+        stderrFile = freopen(fileStringStream.str().c_str(), 
+                             "a", 
+                             stderr);
+        if (!stderrFile) {
+            cerr << "freopen to redirect stderr failed" << endl;
+            MPI::Finalize();
+            return -1;
+        }
     }
 
     /* MPI set error handler to throw exceptions */
@@ -150,8 +160,10 @@ int main(int argc, char* argv[]) {
         pidArr = NULL;
     }
 
-    if (fclose(stderrFile)) {
-        cerr << "fclose stderrFile failed.";
+    if (stderrFile != NULL) {
+        if (fclose(stderrFile)) {
+            cerr << "fclose stderrFile failed.";
+        }
     }
 
     /* MPI Finalization */

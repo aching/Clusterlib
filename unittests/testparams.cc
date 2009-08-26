@@ -11,6 +11,9 @@ void TestParams::printUsage(char *exec) const
         "Usage: " << exec <<
         " [OPTION]... [VAR=VALUE]...\n\n"
         " -h  --help            Display this help and exit.\n"
+        " -o  --output_type     Choose the output type.\n"
+        "                       console - console output\n"
+        "                       file - file output (default)\n"
         " -t  --test_fixture    Run a particular test fixture\n"
         "                       (choices are below)\n";
     /* Get the top level suite from the registry. */
@@ -39,6 +42,7 @@ int32_t TestParams::rootParseArgs(int argc, char **argv)
     {
         {"help", 0, NULL, 'h'},
         {"test_fixture", 1, NULL, 't'},
+        {"output_type", 1, NULL, 'o'},
         {"zk_server_port_list", 1, NULL, 'z'},
         {0,0,0,0}
     };
@@ -47,7 +51,7 @@ int32_t TestParams::rootParseArgs(int argc, char **argv)
     int32_t option_index = 0;
     int32_t err = -1;
     int32_t ret = 0;
-    const char *optstring = ":ht:z:";
+    const char *optstring = ":ht:o:z:";
     bool found = false;
 
     /* Parse all standard command line arguments */
@@ -78,6 +82,21 @@ int32_t TestParams::rootParseArgs(int argc, char **argv)
                 else {
                     cout << optarg << " is an unknown test fixture" << endl;
                     ret = -1;
+                }
+                break;
+            case 'o':
+                {
+                    string arg(optarg);
+                    if (arg.compare("console") == 0) {
+                        m_outputType = CONSOLE;
+                    }
+                    else if (arg.compare("file") == 0) {
+                        m_outputType = FILE;
+                    }
+                    else {
+                        cout << optarg << " is an unknown output type" << endl;
+                        ret = -1;
+                    }
                 }
                 break;
             case 'z':

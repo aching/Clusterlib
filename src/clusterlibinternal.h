@@ -16,6 +16,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include "log.h"
+#include "intervaltree.h"
 #include "event.h"
 #include "signalmap.h"
 
