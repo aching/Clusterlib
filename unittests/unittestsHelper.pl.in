@@ -210,7 +210,7 @@ sub startMpd()
 	print "\nStarting up mpd ($bin) for user $user...\n";
 	&setSystemCmdPrintExec("$bin \&");
 	# Make sure the process has time to start up
-	sleep(2);
+	sleep(5);
 	$mpdPid = `ps -ef | grep $user | grep python | grep mpd | grep -v grep | awk '{print \$2}'`;
 	chomp($mpdPid);
 	if ($mpdPid eq "") {
@@ -257,7 +257,7 @@ sub startZookeeper()
 	&setSystemCmdPrintExec("$bin \>\& $zookeeperOut \&");
 	&setCmdPrintExec("chdir(\"$cwd\")");
 	# Make sure the process has time to start up
-	sleep(2);
+	sleep(8);
 	$zookeeperPid = `ps -ef | grep $user | grep zookeeper | grep $zookeeperCfg | grep -v grep | awk '{print \$2}'`;
 	chomp($zookeeperPid);
 	if ($zookeeperPid eq "") {
