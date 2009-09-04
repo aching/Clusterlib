@@ -35,6 +35,8 @@ PropertiesImpl::getProperties(bool create)
 void 
 PropertiesImpl::initializeCachedRepresentation()
 {
+    TRACE(CL_LOG, "initializeCachedRepresentation");
+
     updatePropertiesMap();
 }
 
@@ -68,7 +70,7 @@ PropertiesImpl::updatePropertiesMap()
         Locker l1(getSyncLock());
         m_keyValMap.clear();
         unmarshall(keyValMap);
-        m_keyValMapVersion = version;
+        setKeyValVersion(version);
         setValueChangeTime(TimerService::getCurrentTimeMillis());
     }
     else {

@@ -10,6 +10,7 @@ METASOURCES = AUTO
 bin_PROGRAMS = unittests
 unittests_LDADD = \
 	$(top_builddir)/src/libcluster.a \
+	$(top_builddir)/src/md5/libmd5.a \
 	@LOG4CXX_LIB@ \
 	@ZOOKEEPER_LIB@ \
 	@CPPUNIT_LIB@ \
@@ -23,6 +24,7 @@ unittests_SOURCES = \
 	test.cc \
 	testparams.cc \
 	clusterlibIntervalTree.cc \
+	clusterlibDataDistribution.cc \
 	clusterlibEndEvent.cc \
 	clusterlibCache.cc \
 	clusterlibClient.cc \

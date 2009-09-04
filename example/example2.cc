@@ -80,16 +80,9 @@ main(int ac, char **av)
 	shards.push_back(10000);
 
 	dst->acquireLock();
-	dst->setShards(shards);
-	dst->reassignShard(
-            0, 
-            dynamic_cast<clusterlib::Notifyable *>(s0));
-	dst->reassignShard(
-            1, 
-            dynamic_cast<clusterlib::Notifyable *>(s1));
-	dst->reassignShard(
-            2, 
-            dynamic_cast<clusterlib::Notifyable *>(s2));
+        dst->insertShard(0, 99, s0);
+        dst->insertShard(100, 199, s1);        
+        dst->insertShard(200, 299, s2);
 	dst->publish();
 	dst->releaseLock();
 

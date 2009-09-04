@@ -263,15 +263,14 @@ class FactoryOps {
     PropertiesImpl *getProperties(Notifyable *parent,
                                   bool create = false);
 
-    void updateDataDistribution(const std::string &key,
+    void updateDataDistribution(const std::string &distKey,
                                 const std::string &shards,
-                                const std::string &manualOverrides,
-                                int32_t shardsVersion,
-                                int32_t manualOverridesVersion);
+                                int32_t version,
+                                int32_t &finalVersion);
     void updateProperties(const std::string &key,
 			  const std::string &properties,
-			  int32_t versionNumber,
-                          int32_t &finalVersionNumber);
+			  int32_t version,
+                          int32_t &finalVersion);
     void updateNodeClientState(const std::string &key,
                                const std::string &cs);
     void updateNodeClientStateDesc(const std::string &key,
@@ -457,7 +456,6 @@ class FactoryOps {
                        GroupImpl *parentGroup);
 
     std::string loadShards(const std::string &key, int32_t &version);
-    std::string loadManualOverrides(const std::string &key, int32_t &version);
     std::string loadKeyValMap(const std::string &key, int32_t &version);
 
     /*

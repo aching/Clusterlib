@@ -6,6 +6,7 @@ INCLUDES = \
 METASOURCES = AUTO
 lib_LIBRARIES = libcluster.a
 libcluster_a_SOURCES = \
+	md5key.cc \
 	callbackandcontext.cc \
 	notifyableimpl.cc \
 	nodeimpl.cc \
@@ -28,6 +29,7 @@ libcluster_a_SOURCES = \
 	signalmap.cc \
 	thread.cc \
 	zkadapter.cc
+SUBDIRS = md5
 
 CXXFLAGS = @BASE_CXXFLAGS@
 

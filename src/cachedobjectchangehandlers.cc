@@ -42,8 +42,6 @@ CachedObjectChangeHandlers::getCachedObjectChangeString(
             return "PROPERTIES_VALUES_CHANGE";
         case SHARDS_CHANGE:
             return "SHARDS_CHANGE";
-        case MANUAL_OVERRIDES_CHANGE:
-            return "MANUAL_OVERRIDES_CHANGE";
         case NODE_CLIENT_STATE_CHANGE:
             return "NODE_CLIENT_STATE_CHANGE";
         case NODE_MASTER_SET_STATE_CHANGE:
@@ -389,14 +387,15 @@ CachedObjectChangeHandlers::handlePropertiesValueChange(NotifyableImpl *ntp,
 }
 
 /*
- * Handle change in shards of a data distribution.
+ * Handle change in the shards of a data distribution.
  */
 Event
-CachedObjectChangeHandlers::handleShardsChange(NotifyableImpl *ntp,
-                                               int32_t etype,
-                                               const string &key)
+CachedObjectChangeHandlers::handleDataDistributionShardsChange(
+    NotifyableImpl *ntp,
+    int32_t etype,
+    const string &key)
 {
-    TRACE(CL_LOG, "handleShardsChange");
+    TRACE(CL_LOG, "handleDataDistributionShardsChange");
 
     unsetHandlerCallbackReady(SHARDS_CHANGE, key);
 
@@ -405,7 +404,7 @@ CachedObjectChangeHandlers::handleShardsChange(NotifyableImpl *ntp,
      * event to clients.
      */
     if (etype == ZOO_DELETED_EVENT) {
-        LOG_DEBUG(CL_LOG, "handleShardsChange: deleted");
+        LOG_DEBUG(CL_LOG, "handleDataDistributionShardsChange: deleted");
         return EN_DELETED;
     }
 
@@ -439,7 +438,7 @@ CachedObjectChangeHandlers::handleShardsChange(NotifyableImpl *ntp,
     /*
      * If there was no change, return EN_NOEVENT.
      */
-    if (!distp->updateShards()) {
+    if (!distp->update()) {
         return EN_NOEVENT;
     }
 
@@ -447,70 +446,6 @@ CachedObjectChangeHandlers::handleShardsChange(NotifyableImpl *ntp,
      * Propagate to client.
      */
     return EN_SHARDSCHANGE;
-}
-
-/*
- * Handle change in manual overrides of a data distribution.
- */
-Event
-CachedObjectChangeHandlers::handleManualOverridesChange(NotifyableImpl *ntp,
-                                                        int32_t etype,
-                                                        const string &key)
-{
-    TRACE(CL_LOG, "handleManualOverridesChange");
-
-    unsetHandlerCallbackReady(MANUAL_OVERRIDES_CHANGE, key);
-
-    /*                                                                        
-     * If NotifyableImpl was deleted, do not re-establish watch, pass
-     * event to clients.
-     */
-    if (etype == ZOO_DELETED_EVENT) {
-        LOG_DEBUG(CL_LOG, "handleManualOverridesChange: deleted");
-        return EN_DELETED;
-    }
-
-    /*
-     * If the given NotifyableImpl is NULL, punt.
-     */
-    if (ntp == NULL) {
-        LOG_WARN(CL_LOG, 
-                 "handleManualOverridesChange: "
-                 "No NotifyableImpl provided -- punting");
-        return EN_MANUALOVERRIDESCHANGE;
-    }
-
-    /*
-     * Convert it into a DataDistribution *.
-     */
-    DataDistributionImpl *distp = dynamic_cast<DataDistributionImpl *>(ntp);
-
-    /*
-     * If there's no data distribution, punt.
-     */
-    if (distp == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Conversion to DataDistributionImpl * failed for %s",
-                 key.c_str());
-        return EN_MANUALOVERRIDESCHANGE;
-    }
-
-    LOG_DEBUG(CL_LOG,
-              "handleManualOverridesChange: %s on notifyable with key: \"%s\"",
-              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str());
-
-    /*
-     * If there was no change, return EN_NOEVENT.
-     */
-    if (!distp->updateManualOverrides()) {
-        return EN_NOEVENT;
-    }
-
-    /*
-     * Propagate to client.
-     */
-    return EN_MANUALOVERRIDESCHANGE;
 }
 
 /*
@@ -857,9 +792,9 @@ CachedObjectChangeHandlers::unsetHandlerCallbackReady(
         m_handlerKeyCallbackCount.find(change);
     if (changeIt == m_handlerKeyCallbackCount.end()) {
         LOG_FATAL(CL_LOG,
-                  "unsetHandlerCallbackReady: change %d, key %s, "
+                  "unsetHandlerCallbackReady: change %s, key %s, "
                   "change not defined.",
-                  change,
+                  getCachedObjectChangeString(change).c_str(),
                   key.c_str());
         throw InconsistentInternalStateException("unsetHandlerCallbackReady: "
                                                  "Change not initialized.");
@@ -868,9 +803,9 @@ CachedObjectChangeHandlers::unsetHandlerCallbackReady(
         changeIt->second.find(key);
     if (keyIt == changeIt->second.end()) {
         LOG_FATAL(CL_LOG,
-                  "unsetHandlerCallbackReady: change %d, key %s, "
+                  "unsetHandlerCallbackReady: change %s, key %s, "
                   "key not defined.",
-                  change,
+                  getCachedObjectChangeString(change).c_str(),
                   key.c_str());
         throw InconsistentInternalStateException("unsetHandlerCallbackReady: "
                                                  "Key not initialized.");
@@ -878,8 +813,8 @@ CachedObjectChangeHandlers::unsetHandlerCallbackReady(
 
     if (keyIt->second != true) {
         LOG_FATAL(CL_LOG,
-                  "unsetHandlerCallbackReady: change %d, key %s, Not true!",
-                  change,
+                  "unsetHandlerCallbackReady: change %s, key %s, Not true!",
+                  getCachedObjectChangeString(change).c_str(),
                   key.c_str());
         throw InconsistentInternalStateException("unsetHandlerCallbackReady: "
                                                  "Not true.");
@@ -910,9 +845,7 @@ CachedObjectChangeHandlers::getChangeHandler(CachedObjectChange change) {
         case PROPERTIES_VALUES_CHANGE:
             return &m_propertiesValueChangeHandler;
         case SHARDS_CHANGE:
-            return &m_shardsChangeHandler;
-        case MANUAL_OVERRIDES_CHANGE:
-            return &m_manualOverridesChangeHandler;
+            return &m_dataDistributionShardsChangeHandler;
         case NODE_CLIENT_STATE_CHANGE:
             return &m_nodeClientStateChangeHandler;
         case NODE_MASTER_SET_STATE_CHANGE:

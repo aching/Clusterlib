@@ -2,7 +2,8 @@
  * datadistribution.h --
  *
  * Interface of class DataDistribution; it represents a data
- * distribution (mapping from a key to a node) in clusterlib.
+ * distribution (mapping from a key or a HashRange to a node) in
+ * clusterlib.
  *
  * $Header:$
  * $Revision$
@@ -23,103 +24,102 @@ class DataDistribution
 {
   public:
     /**
-     * Enum of hash functions to use.
+     * Find the Nodes that the key maps to.  Sorted by priority (high
+     * to low)
+     *
+     * @param key the key to find.
+     * @return the vector of node pointer that have this key
      */
-    enum HashFunctions {
-        DD_HF_USERDEF	= -1,
-        DD_HF_MD5	= 0,
-        DD_HF_JENKINS	= 1,
-        DD_HF_END	= 2
-    };
+    virtual std::vector<const Node *> getNodes(const Key &key) = 0;
 
     /**
-     * Constants for identifying the various parts of a shard definition.
+     * Find the Nodes that the hashedKey maps to.  Sorted by priority
+     * (high to low)
+     *
+     * @param hashedKey the hashed key to find
+     * @return the vector of node pointer that have this hashed key
      */
-    static const int32_t SC_LOWBOUND_IDX;
-    static const int32_t SC_HIBOUND_IDX;
-    static const int32_t SC_NOTIFYABLEKEY_IDX;
-
-    /**
-     * Find the Node that the key maps to (recursively
-     * following forwards).
-     */
-    virtual Node *map(const std::string &key) = 0;
+    virtual std::vector<const Node *> getNodes(HashRange hashedKey) = 0;
     
     /**
-     * Hash a key.
-     */
-    virtual HashRange hashWork(const std::string &key) = 0;
-
-    /**
-     * Return the manual override string that matches this
-     * key if one exists (returns the first one found, in
-     * an unspecified order) or the empty string if none.
-     */
-    virtual std::string matchesManualOverride(const std::string &key) = 0;
-
-    /**
-     * Return the number of shards in this data distribution.
+     * Return the number of shards in this cached data distribution.
+     * 
+     * @return the number of shards at this time (could change
+     *         immediately after this function return if the distributed 
+     *         lock is not held)
      */
     virtual uint32_t getShardCount() = 0;
 
     /**
-     * Is the distribution covered (at the time of checking)?
+     * Is the distribution covered (at the time of checking)?  This
+     * operation is atomic, but the shards may change just after the
+     * function returns if the distributed lock is not held.
+     *
+     * @return true if the entire HashRange is covered (could change
+     *         immediately after this function return if the distributed 
+     *         lock is not held)
      */
     virtual bool isCovered() = 0;
 
     /**
-     * Get/set the hash function to use.
+     * Split the HashRange into a fixed number of shards.  Users can
+     * use this helper function in association with insertShard to
+     * create a simple data distribution.  It is meant as a
+     * convenience function (shards do not have to be the same size).
+     *
+     * @numShards the number of shards to split the HashRange range into
+     * @return the vector of lower bound HashRange.  The upper bound
+     *         is the next lower bound HashRange in the vector minus 1.
      */
-    virtual HashFunctionId getHashFunctionIndex() = 0;
-    virtual void setHashFunctionIndex(HashFunctionId idx) = 0;
-    virtual void setHashFunction(HashFunction *fn) = 0;
-        
+    virtual std::vector<HashRange> splitHashRange(int32_t numShards) = 0;
+
     /**
-     * Assign new shards.
+     * Add a shard to this data distribution.  The changes are not
+     * propagated to the repository until after a publish() is
+     * successful.
+     *
+     * @param start the start of the range (inclusive)
+     * @param end the end of the range (inclusive)
+     * @node the node that will handle this range
+     * @priority the priority of this shard (-1 is reserved, do not use)
      */
-    virtual void setShards(std::vector<HashRange> &upperBounds) = 0;
+    virtual void insertShard(HashRange start,
+                             HashRange end,
+                             const Node *node,
+                             int32_t priority = 0) = 0;
     
     /**
-     * Get the shard index for a work item, or for a hash value.
-     */
-    virtual uint32_t getShardIndex(const std::string &workItem) = 0;
-    virtual uint32_t getShardIndex(HashRange v) = 0;
-
-    /**
-     * Get all info out of a shard.
-     */
-    virtual Notifyable *getShardDetails(uint32_t shardIndex,
-                                        HashRange *low = NULL,
-                                        HashRange *hi = NULL,
-                                        bool *isForwarded = NULL) = 0;
-
-    /**
-     * Reassign a shard to a different notifyable.
-     */
-    virtual void reassignShard(uint32_t shardIndex, Notifyable *ntp) = 0;
-    virtual void reassignShard(uint32_t shardIndex, 
-                               const std::string &key) = 0;
-
-    /**
-     * Assign - or reassign - a manual override to a different
-     * notifyable.
-     */
-    virtual void reassignManualOverride(const std::string &pattern,
-                                        Notifyable *ntp) = 0;
-    virtual void reassignManualOverride(const std::string &pattern,
-                                        const std::string &key) = 0;
-
-#if TO_BE_IMPLEMENTED
-    /**
-     * Remove a manual override.
-     */
-    virtual bool removeManualOverride(const std::string &pattern) = 0;
-#endif
-
-    /**
-     *  Publish any changes to the clusterlib repository.
+     *  Publish any changes to the clusterlib repository.  An
+     *  exception will be thrown if any of the Shards have NULL nodes.
      */
     virtual void publish() = 0;
+
+    /**
+     * Get all the shards in this data distribution ordered by the
+     * start range that match the correct node and/or priority if
+     * specified.
+     *
+     * @param node the node to filter on (NULL turns off filter)
+     * @param priority the priority filter (-1 turns off filter)
+     * @return a vector of shards in the distribution
+     */
+    virtual std::vector<Shard> getAllShards(const Node *node = NULL,
+                                            int32_t priority = -1) = 0;
+
+    /**
+     * Remove a shard (administrative).  Needs to be published to make
+     * the changes pushed to the repository.
+     *
+     * @param shard the shard to be removed from the data distribution
+     * @return true if the shard was removed (false if not found)
+     */
+    virtual bool removeShard(const Shard &shard) = 0;
+
+    /**
+     * Remove all shard from the local cached object (need to
+     * publish()) afterward to push this change to the repository.
+     */
+    virtual void clear() = 0;
 
     /**
      * Destructor to clean up shards and manual overrides

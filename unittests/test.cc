@@ -133,10 +133,10 @@ int main(int argc, char* argv[]) {
             }
             for (int j = 0; j < MPI::COMM_WORLD.Get_size(); j++) {
                 if (i == 0) {
-                    cout << setw(3) << j << " ";
+                    cout << setw(3) << dec << j << " ";
                 }
                 else {
-                    cout << setw(3) 
+                    cout << setw(3) << dec
                          << allResultArr[i + (j * resultArrLen)] << " ";
                 }
             }

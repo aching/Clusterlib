@@ -35,6 +35,8 @@
 #include "group.h"
 #include "application.h"
 #include "node.h"
+#include "key.h"
+#include "shard.h"
 #include "datadistribution.h"
 #include "properties.h"
 #include "root.h"
@@ -42,5 +44,7 @@
 #include "clusterlibstrings.h"
 #include "clusterlibints.h"
 #include "factory.h"
+
+#include "md5key.h"
 
 #endif	/* !_CLUSTERLIB_H_ */

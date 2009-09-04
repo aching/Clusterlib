@@ -31,7 +31,6 @@ class CachedObjectChangeHandlers
         NODES_CHANGE,
         PROPERTIES_VALUES_CHANGE,
         SHARDS_CHANGE,
-        MANUAL_OVERRIDES_CHANGE,
         NODE_CLIENT_STATE_CHANGE,
         NODE_MASTER_SET_STATE_CHANGE,
         NODE_CONNECTION_CHANGE,
@@ -100,17 +99,9 @@ class CachedObjectChangeHandlers
     /**
      * Handle changes in shards of a distribution.
      */
-    Event handleShardsChange(NotifyableImpl *ntp,
-                             int32_t etype,
-                             const std::string &key);
-
-    /**
-     * Handle changes in manual overrides in
-     * a distribution.
-     */
-    Event handleManualOverridesChange(NotifyableImpl *ntp,
-                                      int32_t etype,
-                                      const std::string &key);
+    Event handleDataDistributionShardsChange(NotifyableImpl *ntp,
+                                             int32_t etype,
+                                             const std::string &key);
 
     /**
      * Handle changes in client-reported state for
@@ -209,12 +200,9 @@ class CachedObjectChangeHandlers
         m_dataDistributionsChangeHandler(
             this,
             &CachedObjectChangeHandlers::handleDataDistributionsChange),
-        m_shardsChangeHandler(
+        m_dataDistributionShardsChangeHandler(
             this,
-            &CachedObjectChangeHandlers::handleShardsChange),
-        m_manualOverridesChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleManualOverridesChange),
+            &CachedObjectChangeHandlers::handleDataDistributionShardsChange),
         m_nodesChangeHandler(
             this,
             &CachedObjectChangeHandlers::handleNodesChange),
@@ -267,8 +255,7 @@ class CachedObjectChangeHandlers
     CachedObjectEventHandler m_applicationsChangeHandler;
     CachedObjectEventHandler m_groupsChangeHandler;
     CachedObjectEventHandler m_dataDistributionsChangeHandler;
-    CachedObjectEventHandler m_shardsChangeHandler;
-    CachedObjectEventHandler m_manualOverridesChangeHandler;
+    CachedObjectEventHandler m_dataDistributionShardsChangeHandler;
     CachedObjectEventHandler m_nodesChangeHandler;
     CachedObjectEventHandler m_nodeClientStateChangeHandler;
     CachedObjectEventHandler m_nodeMasterSetStateChangeHandler;

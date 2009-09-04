@@ -13,6 +13,7 @@ class ClusterlibIntervalTree : public MPITestFixture {
     CPPUNIT_TEST(testIntervalTree2);
     CPPUNIT_TEST(testIntervalTree3);
     CPPUNIT_TEST(testIntervalTree4);
+    CPPUNIT_TEST(testIntervalTree5);
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -26,7 +27,7 @@ class ClusterlibIntervalTree : public MPITestFixture {
 
     /* Runs after each test */
     virtual void tearDown() 
-    {
+   {
         cleanAndBarrierMPITest(NULL, false);
     }
 
@@ -144,6 +145,34 @@ class ClusterlibIntervalTree : public MPITestFixture {
             tree.deleteNode(node);
             MPI_CPPUNIT_ASSERT(tree.verifyTree());
         }        
+    }
+
+    /* 
+     * Iterator tests.
+     */
+    void testIntervalTree5()
+    {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    NULL,
+                                    false, 
+                                    "testIntervalTree3");
+        
+        IntervalTree<int, int *> tree;
+        for (int i = 0; i < 10*10; i += 10) {
+            tree.insertNode(i, i + 9, NULL);
+            MPI_CPPUNIT_ASSERT(tree.verifyTree());
+        }
+        IntervalTree<int, int *>::iterator it = tree.begin();
+        int count = 0;
+        while (it != tree.end()) {
+            MPI_CPPUNIT_ASSERT(it->getStartRange() == count * 10);
+            MPI_CPPUNIT_ASSERT(it->getEndRange() == ((count * 10) + 9));
+            ++it;
+            count++;
+        }
+        
+        MPI_CPPUNIT_ASSERT(count == 10);
     }
 
   private:

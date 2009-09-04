@@ -184,6 +184,19 @@ LOG_ERROR(LOG,
           state,
           sPath.c_str());
 
+This applies to all paramater lists.  For example,
+
+for (expression; expression;
+     expression) {
+}
+
+Instead do 
+
+for (expression; 
+     expression;
+     expression) {
+}
+
 - File Names
 
 C++ source files use the suffix .cc. 

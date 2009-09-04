@@ -20,7 +20,6 @@ namespace clusterlib
  */
 typedef uint64_t HashRange;
 typedef int32_t  HashFunctionId;
-typedef HashRange (HashFunction)(const std::string &key);
 
 /*
  * Random bits owned by the user program. Clusterlib just
@@ -43,6 +42,7 @@ typedef int32_t TimerId;
 /*
  * Alphabetical order of forward declared classes.
  */
+class Md5Key;
 class Application;
 class ApplicationImpl;
 class CachedObjectChangeHandlers;
@@ -59,7 +59,7 @@ class Group;
 class GroupImpl;
 class HealthChecker;
 class InternalChangeHandlers;
-class ManualOverride;
+class Key;
 class Mutex;
 class Node;
 class NodeImpl;
@@ -72,6 +72,7 @@ class PropertiesImpl;
 class Server;
 class ServerImpl;
 class Shard;
+class ShardTreeData;
 class SignalMap;
 class TimerEventHandler;
 class TimerEventPayload;
@@ -109,7 +110,6 @@ typedef std::map<std::string, Group *>		       GroupMap;
 typedef std::map<std::string, GroupImpl *>	       GroupImplMap;
 typedef std::map<std::string, HealthChecker *>	       HealthCheckerMap;
 typedef std::map<std::string, std::string>             KeyValMap;
-typedef std::map<std::string, ManualOverride *>	       ManualOverridesMap;
 typedef std::map<std::string, Node *>	               NodeMap;
 typedef std::map<std::string, NodeImpl *>	       NodeImplMap;
 typedef std::map<std::string, NotifyableImpl *>	       NotifyableImplMap;

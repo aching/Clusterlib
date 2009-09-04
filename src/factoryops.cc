@@ -1185,9 +1185,8 @@ FactoryOps::getNode(const string &nodeName,
 void
 FactoryOps::updateDataDistribution(const string &distKey,
                                    const string &shards,
-                                   const string &manualOverrides,
-                                   int32_t shardsVersion,
-                                   int32_t manualOverridesVersion)
+                                   int32_t version,
+                                   int32_t &finalVersion)
 {
     TRACE(CL_LOG, "updateDataDistribution");
     
@@ -1195,10 +1194,7 @@ FactoryOps::updateDataDistribution(const string &distKey,
 	distKey +
         ClusterlibStrings::KEYSEPARATOR +
 	ClusterlibStrings::SHARDS;
-    string monode =
-        distKey +
-        ClusterlibStrings::KEYSEPARATOR +
-        ClusterlibStrings::MANUALOVERRIDES;
+    Stat stat;
     bool exists = false;
 
     /*
@@ -1216,7 +1212,8 @@ FactoryOps::updateDataDistribution(const string &distKey,
                      true,
                      true);
     }
-    SAFE_CALL_ZK(m_zk.setNodeData(snode, shards, shardsVersion),
+
+    SAFE_CALL_ZK(m_zk.setNodeData(snode, shards, version, &stat),
                  "Setting of %s failed: %s",
                  snode.c_str(),
                  false,
@@ -1236,42 +1233,7 @@ FactoryOps::updateDataDistribution(const string &distKey,
         true,
         true);
 
-    /*
-     * Update the manual overrides.
-     */
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(monode)),
-                 "Could not determine whether key %s exists: %s",
-                 monode.c_str(),
-                 true,
-                 true);
-    if (!exists) {
-        SAFE_CALL_ZK(m_zk.createNode(monode, manualOverrides, 0),
-                     "Creation of %s failed: %s",
-                     monode.c_str(),
-                     true,
-                     true);
-    }
-    SAFE_CALL_ZK(m_zk.setNodeData(monode,
-                                  manualOverrides,
-                                  manualOverridesVersion),
-                 "Setting of %s failed: %s",
-                 monode.c_str(),
-                 false,
-                 true);
-    SAFE_CALLBACK_ZK(
-        m_zk.getNodeData(
-            monode,
-            &m_zkEventAdapter,
-            getCachedObjectChangeHandlers()->
-            getChangeHandler(
-                CachedObjectChangeHandlers::MANUAL_OVERRIDES_CHANGE)),
-        ,
-        CachedObjectChangeHandlers::MANUAL_OVERRIDES_CHANGE,
-        monode,
-        "Reestablishing watch on value of %s failed: %s",
-        monode.c_str(),
-        false,
-        true);
+    finalVersion = stat.version;
 }
 
 /*
@@ -1280,8 +1242,8 @@ FactoryOps::updateDataDistribution(const string &distKey,
 void
 FactoryOps::updateProperties(const string &propsKey,
                              const string &propsValue,
-                             int32_t versionNumber,
-                             int32_t &finalVersionNumber)
+                             int32_t version,
+                             int32_t &finalVersion)
 {
     TRACE(CL_LOG, "updateProperties");
 
@@ -1307,7 +1269,7 @@ FactoryOps::updateProperties(const string &propsKey,
     }
     SAFE_CALL_ZK(m_zk.setNodeData(kvnode,
                                   propsValue, 
-                                  versionNumber, 
+                                  version, 
                                   &stat),
                  "Setting of %s failed: %s",
                  kvnode.c_str(),
@@ -1328,7 +1290,7 @@ FactoryOps::updateProperties(const string &propsKey,
         false,
         true);  
     
-    finalVersionNumber = stat.version;
+    finalVersion = stat.version;
 }
 
 /*
@@ -2076,36 +2038,6 @@ FactoryOps::loadShards(const string &key, int32_t &version)
         snode,
         "Loading shards from %s failed: %s",
         snode.c_str(),
-        false,
-        true);
-    version = stat.version;
-    return res;
-}
-
-string
-FactoryOps::loadManualOverrides(const string &key, int32_t &version)
-{
-    Stat stat;
-    string monode =
-        key +
-        ClusterlibStrings::KEYSEPARATOR +
-        ClusterlibStrings::MANUALOVERRIDES;
-    string res = "";
-
-    version = 0;
-    SAFE_CALLBACK_ZK(
-        (res = m_zk.getNodeData(
-            monode,
-            &m_zkEventAdapter,
-            getCachedObjectChangeHandlers()->
-            getChangeHandler(
-                CachedObjectChangeHandlers::MANUAL_OVERRIDES_CHANGE),
-            &stat)),
-        (res = m_zk.getNodeData(monode, NULL, NULL, &stat)),
-        CachedObjectChangeHandlers::MANUAL_OVERRIDES_CHANGE,
-        monode,
-        "Loading manual overrides from %s failed: %s",
-        monode.c_str(),
         false,
         true);
     version = stat.version;

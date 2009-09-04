@@ -508,6 +508,7 @@ AC_OUTPUT(
 Manifest
 Makefile
 src/Makefile
+src/md5/Makefile
 example/Makefile
 unittests/Makefile
 unittests/unittestsHelper.pl
