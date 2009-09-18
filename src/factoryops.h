@@ -205,6 +205,13 @@ class FactoryOps {
      */
     NameList getNodeNames(GroupImpl *group);
 
+    /*
+     * Retrieve a list of all (currently known) properties names
+     * within the given notifyable. This also establishes a
+     * watch on properties changes.
+     */
+    NameList getPropertiesNames(NotifyableImpl *ntp);
+
     /**
      * Get any immediate children of this NotifyableImpl.  In order to
      * guarantee that this is atomic, hold the lock of this
@@ -260,22 +267,23 @@ class FactoryOps {
                                               GroupImpl *parentGroup,
                                               bool create = false);
 
-    PropertiesImpl *getProperties(Notifyable *parent,
+    PropertiesImpl *getProperties(const std::string &propsName,
+                                  Notifyable *parent,
                                   bool create = false);
 
     void updateDataDistribution(const std::string &distKey,
                                 const std::string &shards,
                                 int32_t version,
                                 int32_t &finalVersion);
-    void updateProperties(const std::string &key,
-			  const std::string &properties,
+    void updateProperties(const std::string &propsKey,
+			  const std::string &propsValue,
 			  int32_t version,
                           int32_t &finalVersion);
-    void updateNodeClientState(const std::string &key,
+    void updateNodeClientState(const std::string &nodeKey,
                                const std::string &cs);
-    void updateNodeClientStateDesc(const std::string &key,
+    void updateNodeClientStateDesc(const std::string &nodeKey,
                                    const std::string &desc);
-    void updateNodeMasterSetState(const std::string &key,
+    void updateNodeMasterSetState(const std::string &nodeKey,
                                   const std::string &ms);
     
     /**
@@ -446,7 +454,8 @@ class FactoryOps {
     DataDistributionImpl *loadDataDistribution(const std::string &distName,
                                                const std::string &distKey,
                                                GroupImpl *parentGroup);
-    PropertiesImpl* loadProperties(const std::string &key,
+    PropertiesImpl* loadProperties(const std::string &propsName,
+                                   const std::string &propsKey,
                                    Notifyable *parent);
     GroupImpl *loadGroup(const std::string &groupName,
                          const std::string &groupKey,
@@ -467,9 +476,9 @@ class FactoryOps {
 	const std::string &distName,
         const std::string &distKey,
         const std::string &marshalledShards,
-        const std::string &marshalledManualOverrides,
         GroupImpl *parentGroup);
-    PropertiesImpl *createProperties(const std::string &propsKey,
+    PropertiesImpl *createProperties(const std::string &propsName,
+                                     const std::string &propsKey,
                                      Notifyable *parent);
     GroupImpl *createGroup(const std::string &groupName,
                            const std::string &groupKey,
@@ -483,7 +492,7 @@ class FactoryOps {
      */
     void removeApplication(ApplicationImpl *app);
     void removeDataDistribution(DataDistributionImpl *dist);
-    void removeProperties(PropertiesImpl *prop);
+    void removeProperties(PropertiesImpl *props);
     void removeGroup(GroupImpl *group);
     void removeNode(NodeImpl *ntp);
 
@@ -672,7 +681,7 @@ class FactoryOps {
      * The registry of cached properties maps.
      */
     NotifyableImplMap m_props;
-    Mutex m_propLock;
+    Mutex m_propsLock;
 
     /*
      * The registry of cached data distributions.

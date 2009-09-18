@@ -198,6 +198,8 @@ PropertiesImpl::getProperty(const string &name, bool searchParent)
         }
         parentKey.append(ClusterlibStrings::KEYSEPARATOR);
         parentKey.append(ClusterlibStrings::PROPERTIES);
+        parentKey.append(ClusterlibStrings::KEYSEPARATOR);
+        parentKey.append(getName());
 
         LOG_DEBUG(CL_LOG,
                   "getProperty: Trying new key %s from old key %s",

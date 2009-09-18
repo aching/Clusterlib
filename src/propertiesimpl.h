@@ -122,8 +122,9 @@ class PropertiesImpl
      */
     PropertiesImpl(FactoryOps *fp,
                    const std::string &key,
+                   const std::string &name,
                    NotifyableImpl *parent)
-        : NotifyableImpl(fp, key, "", parent),
+        : NotifyableImpl(fp, key, name, parent),
           m_keyValMapVersion(-2),
           m_valueChangeTime(0) {}
 

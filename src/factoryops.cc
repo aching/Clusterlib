@@ -334,17 +334,17 @@ FactoryOps::discardAllProperties()
     TRACE(CL_LOG, "discardAllProperties");
 
     Locker l(getPropertiesLock());
-    NotifyableImplMap::iterator pIt;
+    NotifyableImplMap::iterator propsIt;
 
-    for (pIt = m_props.begin();
-         pIt != m_props.end();
-         pIt++) {
+    for (propsIt = m_props.begin();
+         propsIt != m_props.end();
+         propsIt++) {
         LOG_DEBUG(CL_LOG, 
                   "discardAllProperties: Removed key (%s) with %d refs",
-                  pIt->second->getKey().c_str(),
-                  pIt->second->getRefCount());
+                  propsIt->second->getKey().c_str(),
+                  propsIt->second->getRefCount());
 
-	delete pIt->second;
+	delete propsIt->second;
     }
     m_props.clear();
 }
@@ -871,7 +871,7 @@ FactoryOps::getApplication(const string &appName, bool create)
         return NULL;
     }
 
-    string key = NotifyableKeyManipulator::createAppKey(appName);
+    string key = NotifyableKeyManipulator::createApplicationKey(appName);
 
     {
         Locker l(getApplicationsLock());
@@ -938,8 +938,9 @@ FactoryOps::getDataDistribution(const string &distName,
         throw InvalidArgumentsException("getDataDistribution: NULL parent");
     }
 
-    string key = NotifyableKeyManipulator::createDistKey(parentGroup->getKey(),
-                                                         distName);
+    string key = NotifyableKeyManipulator::createDataDistributionKey(
+        parentGroup->getKey(),
+        distName);
 
     {
         Locker l(getDataDistributionsLock());
@@ -971,7 +972,7 @@ FactoryOps::getDataDistribution(const string &distName,
                                     key, 
                                     parentGroup);
         if (dist == NULL) {
-            dist = createDataDistribution(distName, key, "", "", parentGroup); 
+            dist = createDataDistribution(distName, key, "", parentGroup); 
         }
 
         getOps()->getDistributedLocks()->release(
@@ -989,7 +990,8 @@ FactoryOps::getDataDistribution(const string &distName,
 }
 
 PropertiesImpl *
-FactoryOps::getProperties(Notifyable *parent,
+FactoryOps::getProperties(const string &propsName,
+                          Notifyable *parent,
                           bool create)
 {
     TRACE(CL_LOG, "getProperties");
@@ -1000,7 +1002,8 @@ FactoryOps::getProperties(Notifyable *parent,
     }
 
     string key = 
-        NotifyableKeyManipulator::createPropertiesKey(parent->getKey());
+        NotifyableKeyManipulator::createPropertiesKey(parent->getKey(),
+                                                      propsName);
 
     {
         Locker l(getPropertiesLock());
@@ -1012,9 +1015,9 @@ FactoryOps::getProperties(Notifyable *parent,
         }
     }
 
-    PropertiesImpl *prop = loadProperties(key, parent);
-    if (prop != NULL) {
-        return prop;
+    PropertiesImpl *props = loadProperties(propsName, key, parent);
+    if (props != NULL) {
+        return props;
     }
     if (create == true) {
         /*
@@ -1025,15 +1028,15 @@ FactoryOps::getProperties(Notifyable *parent,
             parent,
             ClusterlibStrings::NOTIFYABLELOCK);
         
-        prop = loadProperties(key, parent);
-        if (prop == NULL) {
-            prop = createProperties(key, parent);
+        props = loadProperties(propsName, key, parent);
+        if (props == NULL) {
+            props = createProperties(propsName, key, parent);
         }
 
         getOps()->getDistributedLocks()->release(
             parent,
             ClusterlibStrings::NOTIFYABLELOCK);
-        return prop;
+        return props;
     }
 
     LOG_WARN(CL_LOG,
@@ -1388,7 +1391,7 @@ FactoryOps::updateNodeClientStateDesc(const string &nodeKey,
  */
 void
 FactoryOps::updateNodeMasterSetState(const string &nodeKey,
-                                  const string &ms)
+                                     const string &ms)
 {
     TRACE(CL_LOG, "updateNodeMasterSetState");
 
@@ -1697,7 +1700,8 @@ FactoryOps::getPropertiesFromComponents(const vector<string> &components,
               components.at(elements - 1).c_str());
 
     parent->releaseRef();
-    return getProperties(parent,
+    return getProperties(components.at(elements - 1),
+                         parent,
                          create);
 }
 
@@ -1959,10 +1963,6 @@ FactoryOps::loadDataDistribution(const string &distName,
         distKey + 
         ClusterlibStrings::KEYSEPARATOR + 
         ClusterlibStrings::SHARDS;
-    string mos = 
-        distKey + 
-        ClusterlibStrings::KEYSEPARATOR + 
-        ClusterlibStrings::MANUALOVERRIDES;
 
     SAFE_CALL_ZK((exists = m_zk.nodeExists(distKey)),
                  "Could not determine whether key %s exists: %s",
@@ -1983,19 +1983,6 @@ FactoryOps::loadDataDistribution(const string &distName,
                  "(%s missing)",
                  distKey.c_str(),
                  shards.c_str());
-        return NULL;
-    }
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(mos)),
-                 "Could not determine whether key %s exists: %s",
-                 distKey.c_str(),
-                 false,
-                 true);
-    if (!exists) {
-        LOG_WARN(CL_LOG, 
-                 "loadGroup: Group with key %s is not fully constructed "
-                 "(%s missing)",
-                 distKey.c_str(),
-                 mos.c_str());
         return NULL;
     }
 
@@ -2045,17 +2032,18 @@ FactoryOps::loadShards(const string &key, int32_t &version)
 }
 
 PropertiesImpl *
-FactoryOps::loadProperties(const string &propKey,
+FactoryOps::loadProperties(const string &propsName, 
+                           const string &propsKey,
                            Notifyable *parent)
 {
     TRACE(CL_LOG, "Properties");
 
-    PropertiesImpl *prop;
+    PropertiesImpl *props;
     bool exists = false;
     Locker l(getPropertiesLock());
 
     NotifyableImplMap::const_iterator propIt =
-        m_props.find(propKey);
+        m_props.find(propsKey);
     if (propIt != m_props.end()) {
         propIt->second->incrRefCount();
         return dynamic_cast<PropertiesImpl *>(propIt->second);
@@ -2065,28 +2053,29 @@ FactoryOps::loadProperties(const string &propKey,
      * Make sure that all the Zookeeper nodes exists that are part of
      * this object.
      */
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(propKey)),
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(propsKey)),
                  "Could not determine whether key %s exists: %s",
-                 propKey.c_str(),
+                 propsKey.c_str(),
                  false,
                  true);
     if (!exists) {
         return NULL;
     }
 
-    prop = new PropertiesImpl(this,
-                              propKey, 
-                              dynamic_cast<NotifyableImpl *>(parent));
-    prop->initializeCachedRepresentation();
+    props = new PropertiesImpl(this,
+                               propsKey,
+                               propsName,
+                               dynamic_cast<NotifyableImpl *>(parent));
+    props->initializeCachedRepresentation();
     
     /*
      * Set up handler for changes in Notifyable state.
      */
-    establishNotifyableStateChange(prop);
+    establishNotifyableStateChange(props);
 
-    m_props[propKey] = prop;
+    m_props[propsKey] = props;
 
-    return prop;
+    return props;
 }
 
 string
@@ -2372,36 +2361,26 @@ FactoryOps::createApplication(const string &name, const string &key)
 }
 
 DataDistributionImpl *
-FactoryOps::createDataDistribution(const string &name,
-                                   const string &key,
+FactoryOps::createDataDistribution(const string &distName,
+                                   const string &distKey,
                                    const string &marshalledShards,
-                                   const string &marshalledManualOverrides,
                                    GroupImpl *parentGroup)
 {
     TRACE(CL_LOG, "createDataDistribution");
 
     string shards = 
-        key + 
+        distKey + 
         ClusterlibStrings::KEYSEPARATOR + 
         ClusterlibStrings::SHARDS;
-    string mos = 
-        key + 
-        ClusterlibStrings::KEYSEPARATOR + 
-        ClusterlibStrings::MANUALOVERRIDES;
 
-    SAFE_CALL_ZK(m_zk.createNode(key, "", 0),
+    SAFE_CALL_ZK(m_zk.createNode(distKey, "", 0),
                  "Could not create key %s: %s",
-                 key.c_str(),
+                 distKey.c_str(),
                  true,
                  true);
     SAFE_CALL_ZK(m_zk.createNode(shards, "", 0),
                  "Could not create key %s: %s",
                  shards.c_str(),
-                 true,
-                 true);
-    SAFE_CALL_ZK(m_zk.createNode(mos, "", 0),
-                 "Could not create key %s: %s",
-                 mos.c_str(),
                  true,
                  true);
     
@@ -2410,23 +2389,24 @@ FactoryOps::createDataDistribution(const string &name,
      * establish all the event notifications, and add the
      * object to the cache.
      */
-    return loadDataDistribution(name, key, parentGroup);
+    return loadDataDistribution(distName, distKey, parentGroup);
 }
 
 PropertiesImpl *
-FactoryOps::createProperties(const string &key,
+FactoryOps::createProperties(const string &propsName,
+                             const string &propsKey,
                              Notifyable *parent) 
 {
     TRACE(CL_LOG, "createProperties");
 
     string kv = 
-        key + 
+        propsKey + 
         ClusterlibStrings::KEYSEPARATOR +
         ClusterlibStrings::KEYVAL;
 
-    SAFE_CALL_ZK(m_zk.createNode(key, "", 0),
+    SAFE_CALL_ZK(m_zk.createNode(propsKey, "", 0),
                  "Could not create key %s: %s",
-                 key.c_str(),
+                 propsKey.c_str(),
                  true,
                  true);
     SAFE_CALL_ZK(m_zk.createNode(kv, "", 0),
@@ -2440,7 +2420,7 @@ FactoryOps::createProperties(const string &key,
      * establish all the event notifications, and add the
      * object to the cache.
      */
-    return loadProperties(key, parent);
+    return loadProperties(propsName, propsKey, parent);
 }
 
 GroupImpl *
@@ -2566,13 +2546,13 @@ FactoryOps::removeDataDistribution(DataDistributionImpl *dist)
 }
 
 void
-FactoryOps::removeProperties(PropertiesImpl *prop)
+FactoryOps::removeProperties(PropertiesImpl *props)
 {
     TRACE(CL_LOG, "removeProperties");    
 
-    SAFE_CALL_ZK(m_zk.deleteNode(prop->getKey(), true),
+    SAFE_CALL_ZK(m_zk.deleteNode(props->getKey(), true),
                  "Could not delete key %s: %s",
-                 prop->getKey().c_str(),
+                 props->getKey().c_str(),
                  false,
                  true);
 }
@@ -2858,7 +2838,7 @@ Mutex *
 FactoryOps::getPropertiesLock() 
 {
     TRACE(CL_LOG, "getPropertiesLock");
-    return &m_propLock; 
+    return &m_propsLock; 
 }
 
 Mutex *
@@ -3032,7 +3012,7 @@ FactoryOps::getDataDistributionNames(GroupImpl *group)
     }
 
     NameList list;
-    string key=
+    string key =
         group->getKey() +
         ClusterlibStrings::KEYSEPARATOR +
         ClusterlibStrings::DISTRIBUTIONS;
@@ -3109,6 +3089,50 @@ FactoryOps::getNodeNames(GroupImpl *group)
 
     return list;
 }
+NameList
+FactoryOps::getPropertiesNames(NotifyableImpl *ntp)
+{
+    TRACE(CL_LOG, "getPropertiesNames");
+
+    if (ntp == NULL) {
+        throw InvalidArgumentsException(
+            "NULL notifyables in getPropertiesNames");
+    }
+
+    NameList list;
+    string key =
+        ntp->getKey() +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::PROPERTIES;
+
+    list.clear();
+    SAFE_CALLBACK_ZK(
+        m_zk.getNodeChildren(
+            list,
+            key,
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(CachedObjectChangeHandlers::PROPERTIES_CHANGE)),
+        m_zk.getNodeChildren(list, key),
+        CachedObjectChangeHandlers::PROPERTIES_CHANGE,
+        key,
+        "Reading the value of %s failed: %s",
+        key.c_str(),
+        true,
+        true);
+    
+    for (NameList::iterator nlIt = list.begin();
+         nlIt != list.end();
+         ++nlIt) {
+        /*
+         * Remove the key prefix
+         */
+        *nlIt = nlIt->substr(key.length() + 
+                             ClusterlibStrings::KEYSEPARATOR.length());
+    }
+
+    return list;
+}
 
 NotifyableList
 FactoryOps::getChildren(Notifyable *ntp)
@@ -3121,8 +3145,8 @@ FactoryOps::getChildren(Notifyable *ntp)
      */
     NotifyableList ntList;
     
-    Properties *prop = dynamic_cast<Properties *>(ntp);
-    if (prop != NULL) {
+    Properties *props = dynamic_cast<Properties *>(ntp);
+    if (props != NULL) {
         LOG_DEBUG(CL_LOG, 
                   "getChildren: %s is a Properties", 
                   ntp->getKey().c_str());
@@ -3134,13 +3158,13 @@ FactoryOps::getChildren(Notifyable *ntp)
      * Properties child
      */
     try {
-        prop = ntp->getProperties();
-        if (prop != NULL) {
+        props = ntp->getProperties();
+        if (props != NULL) {
             LOG_DEBUG(CL_LOG, 
                       "getChildren: found Properties %s for %s", 
-                      prop->getKey().c_str(),
+                      props->getKey().c_str(),
                       ntp->getKey().c_str());
-            ntList.push_back(prop);
+            ntList.push_back(props);
         }
     } 
     catch (InvalidMethodException &e) {
@@ -3399,8 +3423,9 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
             
             if (notifyablePath.empty()) {
                 throw InconsistentInternalStateException(
-                    "getNotifyableKeyFromKey: Returned an empty key, "
-                    "the path is unrelated to any Notifyable!");
+                    "updateCachedObject: Returned an empty key from the "
+                    "original path (" + ep->getPath() + 
+                    ") and is unrelated to any Notifyable!");
             }
         }
         catch (RepositoryInternalsFailureException &reife) {

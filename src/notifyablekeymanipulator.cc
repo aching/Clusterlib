@@ -117,7 +117,7 @@ NotifyableKeyManipulator::createGroupKey(const string &groupKey,
 }
 
 string
-NotifyableKeyManipulator::createAppKey(const string &appName)
+NotifyableKeyManipulator::createApplicationKey(const string &appName)
 {
     string res;
         res.append(ClusterlibStrings::ROOTNODE);
@@ -149,8 +149,8 @@ NotifyableKeyManipulator::createRootKey()
 }
 
 string
-NotifyableKeyManipulator::createDistKey(const string &groupKey,
-                                        const string &distName)
+NotifyableKeyManipulator::createDataDistributionKey(const string &groupKey,
+                                                    const string &distName)
 {
     string res;
     res.append(groupKey);
@@ -163,12 +163,15 @@ NotifyableKeyManipulator::createDistKey(const string &groupKey,
 }
 
 string
-NotifyableKeyManipulator::createPropertiesKey(const string &notifyableKey)
+NotifyableKeyManipulator::createPropertiesKey(const string &notifyableKey,
+                                              const string &propName)
 {
     string res;
     res.append(notifyableKey);
     res.append(ClusterlibStrings::KEYSEPARATOR);
     res.append(ClusterlibStrings::PROPERTIES);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(propName);
 
     return res;
 }
@@ -568,40 +571,32 @@ NotifyableKeyManipulator::isPropertiesKey(const vector<string> &components,
 
     /*
      * Make sure that we have enough elements to have a properties
-     * and that after the Application key there are an odd number of
+     * and that after the Application key there are an even number of
      * elements left.
      */
     if ((elements < ClusterlibInts::PROP_COMPONENTS_MIN_COUNT) ||
-        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 1))  {
+        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
         return false;
     }
 
     /*
-     * Check that the each of the parent of the properties is a
-     * Notifyable 
-     */ 
-    if (((components.at(elements - 3) != ClusterlibStrings::APPLICATIONS) &&
-         (components.at(elements - 3) != ClusterlibStrings::GROUPS) &&
-         (components.at(elements - 3) != ClusterlibStrings::DISTRIBUTIONS) &&
-         (components.at(elements - 3) != ClusterlibStrings::NODES)) ||
-        (components.at(elements - 1) != ClusterlibStrings::PROPERTIES)) {
-        return false;
+     * Check that the elements of the parent notifyable are valid.
+     */
+    if ((!isGroupKey(components, elements - 2)) &&
+        (!isDataDistributionKey(components, elements - 2)) &&
+        (!isNodeKey(components, elements - 2))) {
+        return false; 
     }
 
-    if (elements >= ClusterlibInts::APP_COMPONENTS_COUNT) {
-        if ((!isGroupKey(components, elements - 1)) &&
-            (!isDataDistributionKey(components, elements - 1)) &&
-            (!isNodeKey(components, elements - 1))) {
-            return false; 
-        }
-    }
-    else {
-        /*
-         * Shouldn't happen.
-         */
+    /*
+     * Check that the second to the last element is PROPERTIES and
+     * that the properites name is not empty.
+     */
+    if ((components.at(elements - 2) != ClusterlibStrings::PROPERTIES) ||
+        (components.at(elements - 1).empty() == true)) {
         return false;
-    }
-            
+    } 
+
     return true;    
 }
 
@@ -787,9 +782,9 @@ NotifyableKeyManipulator::removeObjectFromComponents(
 
         /*
          * If this key represents a valid Notifyable, then it should
-         * be /(APPLICATIONS|GROUPS|NODES|DISTRIBUTIONS)/name or ROOT
-         * or PROPERTIES.  Try to find a clusterlib object in this
-         * component
+         * be
+         * /(APPLICATIONS|GROUPS|NODES|DISTRIBUTIONS|PROPERTIES)/name
+         * or ROOT.  Try to find a clusterlib object in this component
          */
         if ((components.at(clusterlibObjectElements - 1).compare(
                  ClusterlibStrings::ROOT) == 0) ||
@@ -801,7 +796,7 @@ NotifyableKeyManipulator::removeObjectFromComponents(
                 ClusterlibStrings::NODES) == 0) ||
             (components.at(clusterlibObjectElements - 2).compare(
                 ClusterlibStrings::DISTRIBUTIONS) == 0)||
-            (components.at(clusterlibObjectElements - 1).compare(
+            (components.at(clusterlibObjectElements - 2).compare(
                 ClusterlibStrings::PROPERTIES) == 0)) {
             objectFound = true;
         }

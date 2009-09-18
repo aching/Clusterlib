@@ -21,14 +21,24 @@ using namespace std;
 namespace clusterlib
 {
 
+NameList
+NotifyableImpl::getPropertiesNames() 
+{
+    TRACE(CL_LOG, "getPropertiesNames");
+
+    throwIfRemoved();
+
+    return getOps()->getPropertiesNames(this);
+}
+
 Properties *
-NotifyableImpl::getProperties(bool create)
+NotifyableImpl::getProperties(const std::string &propName, bool create)
 {
     TRACE(CL_LOG, "getProperties");
 
     throwIfRemoved();
 
-    return getOps()->getProperties(this, create);
+    return getOps()->getProperties(propName, this, create);
 }
 
 void

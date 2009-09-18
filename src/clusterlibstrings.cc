@@ -50,11 +50,11 @@ const string ClusterlibStrings::ALIVE = "_alive";
 const string ClusterlibStrings::MASTERSETSTATE = "_masterSetState";
 const string ClusterlibStrings::SUPPORTEDVERSIONS = "_supportedVersions";
 
+const string ClusterlibStrings::DEFAULTPROPERTIES = "_defaultProperties";
 const string ClusterlibStrings::KEYVAL = "_keyval";    
 
 const string ClusterlibStrings::SHARDS = "_shards";
 const string ClusterlibStrings::GOLDENSHARDS = "_goldenShards";
-const string ClusterlibStrings::MANUALOVERRIDES = "_manualOverrides";
 
 const string ClusterlibStrings::BID_SPLIT = "=";
 

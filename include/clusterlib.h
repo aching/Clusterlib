@@ -31,6 +31,8 @@
 #include "healthchecker.h"
 #include "timerservice.h"
 
+#include "clusterlibstrings.h"
+#include "clusterlibints.h"
 #include "notifyable.h"
 #include "group.h"
 #include "application.h"
@@ -41,8 +43,6 @@
 #include "properties.h"
 #include "root.h"
 #include "client.h"
-#include "clusterlibstrings.h"
-#include "clusterlibints.h"
 #include "factory.h"
 
 #include "md5key.h"

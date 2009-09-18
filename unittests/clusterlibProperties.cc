@@ -1,5 +1,6 @@
 #include "MPITestFixture.h"
 #include "testparams.h"
+#include <algorithm>
 
 extern TestParams globalTestParams;
 
@@ -13,6 +14,7 @@ class ClusterlibProperties : public MPITestFixture {
     CPPUNIT_TEST(testGetProperties3);
     CPPUNIT_TEST(testGetProperties4);
     CPPUNIT_TEST(testGetProperties5);
+    CPPUNIT_TEST(testGetProperties6);
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -62,7 +64,9 @@ class ClusterlibProperties : public MPITestFixture {
                                     "testGetProperties1");
 
         if (isMyRank(0)) {
-            _properties0 = _node0->getProperties(true);
+            _properties0 = _node0->getProperties(
+                ClusterlibStrings::DEFAULTPROPERTIES,
+                true);
             MPI_CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             _properties0->setProperty("test", "v1");
@@ -111,13 +115,17 @@ class ClusterlibProperties : public MPITestFixture {
                                     "testGetProperties2");
 
         if (isMyRank(0)) { 
-            _properties0 = _group0->getProperties(true);
+            _properties0 = _group0->getProperties(
+                ClusterlibStrings::DEFAULTPROPERTIES,
+                true);
             MPI_CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             _properties0->setProperty("test", "v3");
             _properties0->publish();
             _properties0->releaseLock();
-            _properties0 = _node0->getProperties(true);
+            _properties0 = _node0->getProperties(
+                ClusterlibStrings::DEFAULTPROPERTIES,
+                true);
             MPI_CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             _properties0->setProperty("test", "v4");
@@ -147,7 +155,9 @@ class ClusterlibProperties : public MPITestFixture {
             _properties0->publish();
             _properties0->releaseLock();
             
-            _properties0 = _app0->getProperties(true);
+            _properties0 = _app0->getProperties(
+                ClusterlibStrings::DEFAULTPROPERTIES,
+                true);
             MPI_CPPUNIT_ASSERT(_properties0);
             _properties0->acquireLock();
             val = _properties0->getProperty("test");
@@ -227,7 +237,9 @@ class ClusterlibProperties : public MPITestFixture {
                                     "testGetProperties3");
         string prop = "prop3";
         if (isMyRank(0)) {
-            _properties0 = _node0->getProperties(true);
+            _properties0 = _node0->getProperties(
+                ClusterlibStrings::DEFAULTPROPERTIES,
+                true);
             _properties0->deleteProperty(prop);
         }
 
@@ -272,7 +284,9 @@ class ClusterlibProperties : public MPITestFixture {
         string prop = "prop4";
         /* Clean up the old properties */
         if (isMyRank(0)) {
-            _properties0 = _node0->getProperties(true);
+            _properties0 = _node0->getProperties(
+                ClusterlibStrings::DEFAULTPROPERTIES,
+                true);
             _properties0->acquireLock();
             _properties0->deleteProperty(prop);
             _properties0->publish();
@@ -280,7 +294,9 @@ class ClusterlibProperties : public MPITestFixture {
         }
 
         barrier(_factory, true);
-        _properties0 = _node0->getProperties(true);
+        _properties0 = _node0->getProperties(
+            ClusterlibStrings::DEFAULTPROPERTIES,
+            true);
 
         if (isMyRank(0)) {
             usleep(200000);
@@ -331,7 +347,9 @@ class ClusterlibProperties : public MPITestFixture {
         string prop = "prop5";
         /* Clean up the old properties */
         if (isMyRank(0)) {
-            _properties0 = _node0->getProperties(true);
+            _properties0 = _node0->getProperties(
+                ClusterlibStrings::DEFAULTPROPERTIES,
+                true);
             _properties0->acquireLock();
             _properties0->deleteProperty(prop);
             _properties0->publish();
@@ -339,7 +357,9 @@ class ClusterlibProperties : public MPITestFixture {
         }
 
         barrier(_factory, true);
-        _properties0 = _node0->getProperties(true);
+        _properties0 = _node0->getProperties(
+            ClusterlibStrings::DEFAULTPROPERTIES,
+            true);
 
         if (isMyRank(0)) {
             _properties0->acquireLock();
@@ -369,6 +389,42 @@ class ClusterlibProperties : public MPITestFixture {
             _group0->acquireLock();
             _group0->releaseLock();
             _properties0->releaseLock();
+        }
+    }
+
+    /*
+     * Simple test to create more than one properties object.
+     */
+    void testGetProperties6()
+    {
+        initializeAndBarrierMPITest(1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testGetProperties5");
+
+        if (isMyRank(0)) {
+            Properties *toolkitProp = _app0->getProperties("toolkit", true);
+            Properties *kernelProp = _app0->getProperties("kernel", true);
+
+            toolkitProp->acquireLock();
+            toolkitProp->setProperty("clusterlib", "1.1");
+            toolkitProp->publish();
+            toolkitProp->releaseLock();
+            
+            kernelProp->acquireLock();
+            kernelProp->setProperty("linux", "2.4");
+            kernelProp->publish();
+            kernelProp->releaseLock();
+            
+            kernelProp->acquireLock();
+            NameList propsList = _app0->getPropertiesNames();
+            kernelProp->releaseLock();
+
+            MPI_CPPUNIT_ASSERT(find(propsList.begin(), propsList.end(), 
+                                    "toolkit") != propsList.end());
+            MPI_CPPUNIT_ASSERT(find(propsList.begin(), propsList.end(), 
+                                    "kernel") != propsList.end());
         }
     }
 

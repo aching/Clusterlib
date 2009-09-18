@@ -97,16 +97,28 @@ class Notifyable
     virtual Notifyable::State getState() const = 0;
 
     /**
+     * Get a list of names of all properties objects.
+     * 
+     * @return a copy of the list of all properties objects
+     */
+    virtual NameList getPropertiesNames() = 0;
+
+    /**
      * Get the properties for this object (if it is allowed). If
      * subclasses do not want to allow getProperties(), override it
-     * and throw a clusterlib exception.
+     * and throw a clusterlib exception.  Properties may be named and
+     * will use the name ClusterlibStrings::DEFAULTPROPERTIES if no
+     * name is selected.
      * 
+     * @param propName the name of the properties to create
      * @param create create the properties if doesn't exist?
      * @return properties pointer or NULL if no properties exists for this 
      * notifyable and create == false
      * @throw Exception if Notifyable is the root or application
      */
-    virtual Properties *getProperties(bool create = false) = 0;
+    virtual Properties *getProperties(
+        const std::string &propName = ClusterlibStrings::DEFAULTPROPERTIES, 
+        bool create = false) = 0;
 
     /**
      * Get the reference count of this cachec representation of a

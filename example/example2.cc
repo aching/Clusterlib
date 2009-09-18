@@ -104,56 +104,59 @@ main(int ac, char **av)
                clusterlib::Exception("app->group->app non-equivalence");
         }
 
-	clusterlib::Properties *prop0 = app1->getProperties(true);
-	prop0->acquireLock();
+	clusterlib::Properties *props0 = app1->getProperties(
+            clusterlib::ClusterlibStrings::DEFAULTPROPERTIES, true);
+	props0->acquireLock();
 
-	string test = prop0->getProperty("test", true);
+	string test = props0->getProperty("test", true);
 	cerr << "(app1) test (test) = " << test
 	     << " and should be empty (if this is the first time running) "
 	     << endl;
 
-	prop0->setProperty("test", "passed");
-	prop0->setProperty("weird", "yessir");
-	prop0->publish();
-	prop0->releaseLock();
+	props0->setProperty("test", "passed");
+	props0->setProperty("weird", "yessir");
+	props0->publish();
+	props0->releaseLock();
 
-	string test2 = prop0->getProperty("test", true);
+	string test2 = props0->getProperty("test", true);
 	cerr << "(app1) test2 (test) = " << test2
 	     << " and should be passed " << endl;
 
-	clusterlib::Properties *prop1 = app0->getProperties();
-	string test3 = prop1->getProperty("test", true);
+	clusterlib::Properties *props1 = app0->getProperties();
+	string test3 = props1->getProperty("test", true);
 	cerr << "(app0) test3 (test) = " << test3
 	     << " and should be passed " << endl;
 	
-	prop0->acquireLock();
-	prop0->setProperty("avery", "ching");
-	prop0->setProperty("test", "good");
-	prop0->publish();
-	prop0->releaseLock();
+	props0->acquireLock();
+	props0->setProperty("avery", "ching");
+	props0->setProperty("test", "good");
+	props0->publish();
+	props0->releaseLock();
 
-	test3 = prop1->getProperty("test", true);
+	test3 = props1->getProperty("test", true);
 	cerr << "(app0) test3 (test) = " << test3 
 	     << " and should be good " << endl;
-	test3 = prop1->getProperty("avery", true);
+	test3 = props1->getProperty("avery", true);
 	cerr << "(app0) test3 (avery) = " << test3 
 	     << " and should be ching " << endl;
 
-	clusterlib::Properties *prop2 = node0->getProperties(true);
-	test3 = prop2->getProperty("test", true);
+	clusterlib::Properties *props2 = node0->getProperties(
+            clusterlib::ClusterlibStrings::DEFAULTPROPERTIES,
+            true);
+	test3 = props2->getProperty("test", true);
 	cerr << "(node) test3 (test) = " << test3 
 	     << " and should be good " << endl;
 
-	prop2->acquireLock();
-	prop2->setProperty("test", "node");
-	prop2->publish();
-	prop2->releaseLock();
+	props2->acquireLock();
+	props2->setProperty("test", "node");
+	props2->publish();
+	props2->releaseLock();
 
-	test3 = prop2->getProperty("test", true);
+	test3 = props2->getProperty("test", true);
 	cerr << "(node) test3 (test) = " << test3 
 	     << " and should be node " << endl;
 
-	test3 = prop1->getProperty("test", true);
+	test3 = props1->getProperty("test", true);
 	cerr << "(app) test3 (test) = " << test3 
 	     << " and should be good " << endl;
 

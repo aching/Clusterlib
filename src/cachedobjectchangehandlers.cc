@@ -38,6 +38,8 @@ CachedObjectChangeHandlers::getCachedObjectChangeString(
             return "DATADISTRIBUTIONS_CHANGE";
         case NODES_CHANGE:
             return "NODES_CHANGE";
+        case PROPERTIES_CHANGE:
+            return "PROPERTIES_CHANGE";
         case PROPERTIES_VALUES_CHANGE:
             return "PROPERTIES_VALUES_CHANGE";
         case SHARDS_CHANGE:
@@ -96,11 +98,11 @@ CachedObjectChangeHandlers::handleNotifyableStateChange(NotifyableImpl *ntp,
                  "handleNotifyableStateChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
-        return EN_READY;
+        return EN_STATECHANGE;
     }
 
     getOps()->establishNotifyableStateChange(ntp);
-    return EN_READY;
+    return EN_STATECHANGE;
 }
 
 /*
@@ -302,7 +304,7 @@ CachedObjectChangeHandlers::handleNodesChange(NotifyableImpl *ntp,
                  "handleNodesChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
-        return EN_MEMBERSHIPCHANGE;
+        return EN_NODESCHANGE;
     }
 
     LOG_DEBUG(CL_LOG,
@@ -319,7 +321,7 @@ CachedObjectChangeHandlers::handleNodesChange(NotifyableImpl *ntp,
         LOG_WARN(CL_LOG,
                  "Conversion to Group * failed for %s",
                  key.c_str());
-        return EN_MEMBERSHIPCHANGE;
+        return EN_NODESCHANGE;
     }
 
     /*
@@ -327,7 +329,64 @@ CachedObjectChangeHandlers::handleNodesChange(NotifyableImpl *ntp,
      */
     getOps()->getNodeNames(group);
 
-    return EN_MEMBERSHIPCHANGE;
+    return EN_NODESCHANGE;
+}
+
+/*
+ * Handle a change in the set of properties in a notifyable.
+ */
+Event
+CachedObjectChangeHandlers::handlePropertiesChange(NotifyableImpl *ntp,
+                                                   int32_t etype,
+                                                   const string &key)
+{
+    TRACE(CL_LOG, "handlePropertiesChange");
+
+    unsetHandlerCallbackReady(PROPERTIES_CHANGE, key);
+
+    /*                                                                        
+     * If NotifyableImpl was deleted, do not re-establish watch, pass
+     * event to clients.
+     */
+    if (etype == ZOO_DELETED_EVENT) {
+        LOG_DEBUG(CL_LOG, "handlePropertiesChange: deleted");
+        return EN_DELETED;
+    }
+
+    /*
+     * If there's no notifyable, punt.
+     */
+    if (ntp == NULL) {
+        LOG_WARN(CL_LOG,
+                 "handlePropertiesChange: Punting on event: %s on %s",
+                 zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+                 key.c_str());
+        return EN_PROPSCHANGE;
+    }
+
+    LOG_DEBUG(CL_LOG,
+              "handlePropertiesChange: %s on notifyable \"%s\" for key %s",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              ntp->getKey().c_str(),
+              key.c_str());
+
+    /*
+     * Convert to a group object.
+     */
+    GroupImpl *group = dynamic_cast<GroupImpl *>(ntp);
+    if (group == NULL) {
+        LOG_WARN(CL_LOG,
+                 "Conversion to Group * failed for %s",
+                 key.c_str());
+        return EN_PROPSCHANGE;
+    }
+
+    /*
+     * Data not required, only using this function to set the watch again.
+     */
+    getOps()->getPropertiesNames(ntp);
+
+    return EN_PROPSCHANGE;
 }
 
 /*
@@ -359,7 +418,7 @@ CachedObjectChangeHandlers::handlePropertiesValueChange(NotifyableImpl *ntp,
                  "handlePropertiesValueChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
-        return EN_PROPCHANGE;
+        return EN_PROPSVALCHANGE;
     }
 
     LOG_DEBUG(CL_LOG,
@@ -378,12 +437,12 @@ CachedObjectChangeHandlers::handlePropertiesValueChange(NotifyableImpl *ntp,
         LOG_WARN(CL_LOG, 
                  "Conversion to PropertiesImpl * failed for %s",
                  key.c_str());
-        return EN_PROPCHANGE;
+        return EN_PROPSVALCHANGE;
     }
 
     prop->updatePropertiesMap();
 
-    return EN_PROPCHANGE;
+    return EN_PROPSVALCHANGE;
 }
 
 /*
@@ -842,6 +901,8 @@ CachedObjectChangeHandlers::getChangeHandler(CachedObjectChange change) {
             return &m_dataDistributionsChangeHandler;
         case NODES_CHANGE:
             return &m_nodesChangeHandler;
+        case PROPERTIES_CHANGE:
+            return &m_propertiesChangeHandler;
         case PROPERTIES_VALUES_CHANGE:
             return &m_propertiesValueChangeHandler;
         case SHARDS_CHANGE:

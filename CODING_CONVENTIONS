@@ -107,7 +107,7 @@ no benefit.
   as follows (i.e. m_app;).
     * Application = app
     * DataDistribution = dist
-    * Properties = prop
+    * Properties = props
     * Group = group
     * Notifyable = nt
     * Node = node

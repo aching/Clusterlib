@@ -68,7 +68,10 @@ class NotifyableImpl
 
     virtual Notifyable::State getState() const;
     
-    virtual Properties *getProperties(bool create = false);
+    virtual NameList getPropertiesNames();
+
+    virtual Properties *getProperties(const std::string &propName,
+                                      bool create = false);
 
     virtual int32_t getRefCount()
     {

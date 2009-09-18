@@ -54,11 +54,11 @@ class ClusterlibStrings
     static const std::string MASTERSETSTATE;
     static const std::string SUPPORTEDVERSIONS;
 
+    static const std::string DEFAULTPROPERTIES;
     static const std::string KEYVAL;
 
     static const std::string SHARDS;
     static const std::string GOLDENSHARDS;
-    static const std::string MANUALOVERRIDES;
 
     static const std::string BID_SPLIT;
 

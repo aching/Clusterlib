@@ -44,30 +44,56 @@ class TimerEventHandler
 /*
  * Various event notification constants.
  */
+
+/** No event occured. */
 const int32_t EN_NOEVENT =			0;
 
+/** Notifyable was created */
 const int32_t EN_CREATED =			(1<<0);
-const int32_t EN_DELETED =			(1<<1);
-const int32_t EN_READY =			(1<<2);
 
+/** Notifyable was deleted */
+const int32_t EN_DELETED =			(1<<1);
+
+/** Notifyable state has changed */
+const int32_t EN_STATECHANGE =			(1<<2);
+
+/** Groups in this notifyable changed */
 const int32_t EN_GROUPSCHANGE =			(1<<3);
+
+/** Data distributions in this notifyable changed */
 const int32_t EN_DISTSCHANGE =			(1<<4);
 
-const int32_t EN_MEMBERSHIPCHANGE =		(1<<5);
+/** Nodes in this notifyable changed */
+const int32_t EN_NODESCHANGE =		        (1<<5);
+
+/** Leadership in this group changed */
 const int32_t EN_LEADERSHIPCHANGE =		(1<<6);
 
+/** This node's client state changed */
 const int32_t EN_CLIENTSTATECHANGE =		(1<<7);
+
+/** This node's connectivity changed */
 const int32_t EN_CONNECTEDCHANGE =		(1<<10);
+
+/** This node's master set state changed */
 const int32_t EN_MASTERSTATECHANGE =		(1<<11);
 
+/** Shards in this data distribution changed */
 const int32_t EN_SHARDSCHANGE =			(1<<12);
-const int32_t EN_MANUALOVERRIDESCHANGE =	(1<<13);
 
-const int32_t EN_PROPCHANGE =			(1<<14);
+/** Properties objects in this notifyable changed */
+const int32_t EN_PROPSCHANGE =			(1<<13);
+
+/** This properties has changed. */
+const int32_t EN_PROPSVALCHANGE =		(1<<14);
+
+/** Applications in this root changed */
 const int32_t EN_APPSCHANGE =			(1<<15);
 
+/** The lock on this notifyable changed */
 const int32_t EN_LOCKNODECHANGE =               (1<<16);
 
+/** Clusterlib has been shutdown */
 const int32_t EN_ENDEVENT =                     (1<<17);
 
 /*

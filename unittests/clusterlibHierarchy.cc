@@ -65,7 +65,9 @@ class ClusterlibHierarchy : public MPITestFixture {
 	    MPI_CPPUNIT_ASSERT(dist);
 	    Node *node = group->getNode("hierarchy-node", true);
 	    MPI_CPPUNIT_ASSERT(node);
-	    Properties *prop = node->getProperties(true);
+	    Properties *prop = node->getProperties(
+                ClusterlibStrings::DEFAULTPROPERTIES, 
+                true);
 	    MPI_CPPUNIT_ASSERT(prop);
         }
 	
@@ -147,7 +149,9 @@ class ClusterlibHierarchy : public MPITestFixture {
 	    Node *node3 = group2->getNode("node3", true);
 	    MPI_CPPUNIT_ASSERT(node3);
 
-            Properties *prop = node3->getProperties(true);
+            Properties *prop = node3->getProperties(
+                ClusterlibStrings::DEFAULTPROPERTIES, 
+                true);
 	    MPI_CPPUNIT_ASSERT(prop);
         }
 	

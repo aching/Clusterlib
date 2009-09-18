@@ -88,7 +88,9 @@ class ClusterlibRemove : public MPITestFixture {
                                     "testRemove2");
 
         if (isMyRank(0)) {
-            Properties *prop = _group0->getProperties(true);
+            Properties *prop = _group0->getProperties(
+                ClusterlibStrings::DEFAULTPROPERTIES,
+                true);
             MPI_CPPUNIT_ASSERT(prop);
             prop->remove();
             MPI_CPPUNIT_ASSERT(prop->getState() == Notifyable::REMOVED);
@@ -190,7 +192,9 @@ class ClusterlibRemove : public MPITestFixture {
                                     "testRemove10");
 
         if (isMyRank(0)) {
-            Properties *prop = _node0->getProperties(true);
+            Properties *prop = _node0->getProperties(
+                ClusterlibStrings::DEFAULTPROPERTIES,
+                true);
             MPI_CPPUNIT_ASSERT(prop);
             try {
                 _node0->remove(false);

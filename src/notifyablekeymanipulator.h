@@ -34,11 +34,12 @@ class NotifyableKeyManipulator
                                      const std::string &nodeName);
     static std::string createGroupKey(const std::string &groupKey,
                                       const std::string &groupName);
-    static std::string createAppKey(const std::string &appName);
+    static std::string createApplicationKey(const std::string &appName);
     static std::string createRootKey();
-    static std::string createDistKey(const std::string &groupKey,
-                                     const std::string &distName);
-    static std::string createPropertiesKey(const std::string &notifyableKey);
+    static std::string createDataDistributionKey(const std::string &groupKey,
+                                                 const std::string &distName);
+    static std::string createPropertiesKey(const std::string &notifyableKey,
+                                           const std::string &propName);
 
     /**
      * Create a sync event key that will be used to figure out which

@@ -322,7 +322,7 @@ DataDistributionImpl::isCovered()
     IntervalTree<HashRange, ShardTreeData>::iterator it;
     HashRange end = 0;
     for (it = m_shardTree.begin(); it != m_shardTree.end(); it++) {
-        LOG_ERROR(CL_LOG, "*** %llu %llu %llu", 
+        LOG_DEBUG(CL_LOG, "*** %llu %llu %llu", 
                   end, it->getStartRange(), it->getEndRange());
         if (it->getStartRange() > end) {
             return false;
