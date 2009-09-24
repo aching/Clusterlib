@@ -81,11 +81,11 @@ const int32_t EN_MASTERSTATECHANGE =		(1<<11);
 /** Shards in this data distribution changed */
 const int32_t EN_SHARDSCHANGE =			(1<<12);
 
-/** Properties objects in this notifyable changed */
-const int32_t EN_PROPSCHANGE =			(1<<13);
+/** Property lists in this notifyable changed */
+const int32_t EN_PROPLISTSCHANGE =	       	(1<<13);
 
-/** This properties has changed. */
-const int32_t EN_PROPSVALCHANGE =		(1<<14);
+/** This property list values have changed. */
+const int32_t EN_PROPLISTVALUESCHANGE =		(1<<14);
 
 /** Applications in this root changed */
 const int32_t EN_APPSCHANGE =			(1<<15);

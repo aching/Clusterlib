@@ -163,15 +163,15 @@ NotifyableKeyManipulator::createDataDistributionKey(const string &groupKey,
 }
 
 string
-NotifyableKeyManipulator::createPropertiesKey(const string &notifyableKey,
-                                              const string &propName)
+NotifyableKeyManipulator::createPropertyListKey(const string &notifyableKey,
+                                                const string &propListName)
 {
     string res;
     res.append(notifyableKey);
     res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::PROPERTIES);
+    res.append(ClusterlibStrings::PROPERTYLIST);
     res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(propName);
+    res.append(propListName);
 
     return res;
 }
@@ -294,7 +294,7 @@ NotifyableKeyManipulator::isNotifyableKey(const vector<string> &components,
     if (isGroupKey(components, elements)) {
         return true;
     }
-    if (isPropertiesKey(components, elements)) {
+    if (isPropertyListKey(components, elements)) {
         return true;
     }
     if (isNodeKey(components, elements)) {
@@ -548,17 +548,17 @@ NotifyableKeyManipulator::isGroupKey(const string &key)
 }
 
 bool
-NotifyableKeyManipulator::isPropertiesKey(const vector<string> &components, 
+NotifyableKeyManipulator::isPropertyListKey(const vector<string> &components, 
                                           int32_t elements)
 {
-    TRACE(CL_LOG, "isPropertiesKey");
+    TRACE(CL_LOG, "isPropertyListKey");
 
     if (elements > static_cast<int32_t>(components.size())) {
         LOG_FATAL(CL_LOG,
-                  "isPropertiesKey: elements %d > size of components %u",
+                  "isPropertyListKey: elements %d > size of components %u",
                   elements,
                   components.size());
-        throw InvalidArgumentsException("isPropertiesKey: elements > size of "
+        throw InvalidArgumentsException("isPropertyListKey: elements > size of "
                                         "components");
     }
     
@@ -570,7 +570,7 @@ NotifyableKeyManipulator::isPropertiesKey(const vector<string> &components,
     }
 
     /*
-     * Make sure that we have enough elements to have a properties
+     * Make sure that we have enough elements to have a property list
      * and that after the Application key there are an even number of
      * elements left.
      */
@@ -589,10 +589,10 @@ NotifyableKeyManipulator::isPropertiesKey(const vector<string> &components,
     }
 
     /*
-     * Check that the second to the last element is PROPERTIES and
+     * Check that the second to the last element is PROPERTYLIST and
      * that the properites name is not empty.
      */
-    if ((components.at(elements - 2) != ClusterlibStrings::PROPERTIES) ||
+    if ((components.at(elements - 2) != ClusterlibStrings::PROPERTYLIST) ||
         (components.at(elements - 1).empty() == true)) {
         return false;
     } 
@@ -601,13 +601,13 @@ NotifyableKeyManipulator::isPropertiesKey(const vector<string> &components,
 }
 
 bool
-NotifyableKeyManipulator::isPropertiesKey(const string &key)
+NotifyableKeyManipulator::isPropertyListKey(const string &key)
 {
-    TRACE(CL_LOG, "isPropertiesKey");
+    TRACE(CL_LOG, "isPropertyListKey");
     
     vector<string> components;
     split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
-    return isPropertiesKey(components);    
+    return isPropertyListKey(components);    
 }
 
 bool
@@ -737,7 +737,7 @@ NotifyableKeyManipulator::removeObjectFromKey(const string &key)
             (!clusterlibObject.compare(ClusterlibStrings::GROUPS)) ||
             (!clusterlibObject.compare(ClusterlibStrings::NODES)) ||
             (!clusterlibObject.compare(ClusterlibStrings::DISTRIBUTIONS)) ||
-            (!clusterlibObject.compare(ClusterlibStrings::PROPERTIES))) {
+            (!clusterlibObject.compare(ClusterlibStrings::PROPERTYLIST))) {
             objectFound = true;
         }
     }
@@ -783,7 +783,7 @@ NotifyableKeyManipulator::removeObjectFromComponents(
         /*
          * If this key represents a valid Notifyable, then it should
          * be
-         * /(APPLICATIONS|GROUPS|NODES|DISTRIBUTIONS|PROPERTIES)/name
+         * /(APPLICATIONS|GROUPS|NODES|DISTRIBUTIONS|PROPERTYLIST)/name
          * or ROOT.  Try to find a clusterlib object in this component
          */
         if ((components.at(clusterlibObjectElements - 1).compare(
@@ -797,7 +797,7 @@ NotifyableKeyManipulator::removeObjectFromComponents(
             (components.at(clusterlibObjectElements - 2).compare(
                 ClusterlibStrings::DISTRIBUTIONS) == 0)||
             (components.at(clusterlibObjectElements - 2).compare(
-                ClusterlibStrings::PROPERTIES) == 0)) {
+                ClusterlibStrings::PROPERTYLIST) == 0)) {
             objectFound = true;
         }
     }

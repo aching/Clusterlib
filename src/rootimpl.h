@@ -46,7 +46,8 @@ class RootImpl
         throw InvalidMethodException("RootImpl is not part of a group");
     }
 
-    virtual Properties *getProperties(bool create = false)
+    virtual PropertyList *getPropertyList(std::string name,
+                                          bool create = false)
     {
         throw InvalidMethodException("RootImpl cannot have properties");
     }

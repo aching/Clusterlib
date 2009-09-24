@@ -40,7 +40,7 @@ class ClusterlibStrings
     static const std::string GROUPS;
     static const std::string NODES;
     static const std::string DISTRIBUTIONS;
-    static const std::string PROPERTIES;
+    static const std::string PROPERTYLIST;
 
     static const std::string CLIENTSTATE;
     static const std::string CLIENTSTATEDESC;
@@ -54,7 +54,7 @@ class ClusterlibStrings
     static const std::string MASTERSETSTATE;
     static const std::string SUPPORTEDVERSIONS;
 
-    static const std::string DEFAULTPROPERTIES;
+    static const std::string DEFAULTPROPERTYLIST;
     static const std::string KEYVAL;
 
     static const std::string SHARDS;

@@ -38,8 +38,8 @@ class NotifyableKeyManipulator
     static std::string createRootKey();
     static std::string createDataDistributionKey(const std::string &groupKey,
                                                  const std::string &distName);
-    static std::string createPropertiesKey(const std::string &notifyableKey,
-                                           const std::string &propName);
+    static std::string createPropertyListKey(const std::string &notifyableKey,
+                                             const std::string &propListName);
 
     /**
      * Create a sync event key that will be used to figure out which
@@ -202,7 +202,7 @@ class NotifyableKeyManipulator
 
     /**
      * Checks if the components (assumed from a split) make up a valid
-     * key, not if an actual Properties exists for that key.
+     * key, not if an actual PropertyList exists for that key.
      * 
      * @param components A vector of components in the key parsed by split
      *                   (i.e. first component should be "")
@@ -211,17 +211,17 @@ class NotifyableKeyManipulator
      *                 components.size().
      * @return true if key is valid, false if not valid
      */
-    static bool isPropertiesKey(const std::vector<std::string> &components, 
+    static bool isPropertyListKey(const std::vector<std::string> &components, 
                                 int32_t elements = -1);
 
     /**
-     * Checks if the key is valid, not if an actual Properties exists
+     * Checks if the key is valid, not if an actual PropertyList exists
      * for that key.
      * 
      * @param key A key to test if it is an application
      * @return true if key is valid, false if not valid
      */
-    static bool isPropertiesKey(const std::string &key);
+    static bool isPropertyListKey(const std::string &key);
 
     /**
      * Checks if the components (assumed from a split) make up a valid
@@ -249,8 +249,8 @@ class NotifyableKeyManipulator
     /**
      * Remove the leaf node and returns the closest clusterlib
      * Notifyable object key.  For example, if the initial key is
-     * .../nodes/foo-server/properties, it will return
-     * .../nodes/foo-server.  If the key is
+     * .../_nodes/foo-server/_propertyList/defaultProps, it will return
+     * .../_nodes/foo-server.  If the key is
      * .../group/client/nodes/foo-server, it will return
      * .../group/client.  If the key is .../applications/foo-app, it
      * will return an empty string since they is nothing left. The key
@@ -265,10 +265,12 @@ class NotifyableKeyManipulator
     /**
      * Remove the leaf node and returns the closest clusterlib
      * Notifyable object key.  For example, if the initial components form
-     * .../nodes/foo-server/properties, it will return elements that include
-     * .../nodes/foo-server.  If the components form 
-     * .../group/client/nodes/foo-server, it will return elements that include
-     * .../group/client.  If the components are .../applications/foo-app, it
+     * .../_nodes/foo-server/_propertyList/defaultProps, it will 
+     * return elements that include
+     * .../_nodes/foo-server.  If the components form 
+     * .../_group/client/_nodes/foo-server, it will 
+     * return elements that include
+     * .../_group/client.  If the components are .../applications/foo-app, it
      * will return an empty string since they is nothing left. The key
      * must not end in a KEYSEPARATOR.
      *

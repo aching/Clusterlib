@@ -13,7 +13,7 @@ libcluster_a_SOURCES = \
 	groupimpl.cc \
 	applicationimpl.cc \
 	datadistributionimpl.cc \
-	propertiesimpl.cc \
+	propertylistimpl.cc \
 	rootimpl.cc \
 	internalchangehandlers.cc \
 	cachedobjectchangehandlers.cc \

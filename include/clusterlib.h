@@ -40,7 +40,7 @@
 #include "key.h"
 #include "shard.h"
 #include "datadistribution.h"
-#include "properties.h"
+#include "propertylist.h"
 #include "root.h"
 #include "client.h"
 #include "factory.h"

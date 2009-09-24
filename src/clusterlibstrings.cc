@@ -27,7 +27,7 @@ const string ClusterlibStrings::KEYSEPARATOR = "/";
 const string ClusterlibStrings::CLUSTERLIB = "_clusterlib";
 const string ClusterlibStrings::CLUSTERLIBVERSION = "_1.0";
 
-const string ClusterlibStrings::PROPERTIES = "_properties";
+const string ClusterlibStrings::PROPERTYLIST = "_propertyList";
 const string ClusterlibStrings::CONFIGURATION = "_configuration";
 const string ClusterlibStrings::ALERTS = "_alerts";
 const string ClusterlibStrings::SYNC = "_sync";
@@ -50,7 +50,7 @@ const string ClusterlibStrings::ALIVE = "_alive";
 const string ClusterlibStrings::MASTERSETSTATE = "_masterSetState";
 const string ClusterlibStrings::SUPPORTEDVERSIONS = "_supportedVersions";
 
-const string ClusterlibStrings::DEFAULTPROPERTIES = "_defaultProperties";
+const string ClusterlibStrings::DEFAULTPROPERTYLIST = "_defaultPropertyList";
 const string ClusterlibStrings::KEYVAL = "_keyval";    
 
 const string ClusterlibStrings::SHARDS = "_shards";

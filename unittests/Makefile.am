@@ -23,19 +23,19 @@ CXXFLAGS = @BASE_CXXFLAGS@ -DMPICH_IGNORE_CXX_SEEK
 unittests_SOURCES = \
 	test.cc \
 	testparams.cc \
-	clusterlibIntervalTree.cc \
-	clusterlibDataDistribution.cc \
-	clusterlibEndEvent.cc \
-	clusterlibCache.cc \
-	clusterlibClient.cc \
-	clusterlibProperties.cc \
-	clusterlibRemove.cc \
-	clusterlibHierarchy.cc \
-	clusterlibUserEvents.cc \
-	clusterlibNotifyableKeyManipulator.cc \
-	clusterlibLeader.cc \
-	clusterlibTimer.cc \
-	clusterlibHealthCheck.cc \
-	clusterlibReleaseRef.cc
+	clusterlibintervaltree.cc \
+	clusterlibdatadistribution.cc \
+	clusterlibendevent.cc \
+	clusterlibcache.cc \
+	clusterlibclient.cc \
+	clusterlibpropertylist.cc \
+	clusterlibremove.cc \
+	clusterlibhierarchy.cc \
+	clusterlibuserevents.cc \
+	clusterlibnotifyablekeymanipulator.cc \
+	clusterlibleader.cc \
+	clusterlibtimer.cc \
+	clusterlibhealthcheck.cc \
+	clusterlibreleaseref.cc
 
 @makefile_inc@

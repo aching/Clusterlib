@@ -38,10 +38,10 @@ CachedObjectChangeHandlers::getCachedObjectChangeString(
             return "DATADISTRIBUTIONS_CHANGE";
         case NODES_CHANGE:
             return "NODES_CHANGE";
-        case PROPERTIES_CHANGE:
-            return "PROPERTIES_CHANGE";
-        case PROPERTIES_VALUES_CHANGE:
-            return "PROPERTIES_VALUES_CHANGE";
+        case PROPERTYLISTS_CHANGE:
+            return "PROPERTYLISTS_CHANGE";
+        case PROPERTYLIST_VALUES_CHANGE:
+            return "PROPERTYLIST_VALUES_CHANGE";
         case SHARDS_CHANGE:
             return "SHARDS_CHANGE";
         case NODE_CLIENT_STATE_CHANGE:
@@ -333,23 +333,23 @@ CachedObjectChangeHandlers::handleNodesChange(NotifyableImpl *ntp,
 }
 
 /*
- * Handle a change in the set of properties in a notifyable.
+ * Handle a change in the set of property list in a notifyable.
  */
 Event
-CachedObjectChangeHandlers::handlePropertiesChange(NotifyableImpl *ntp,
-                                                   int32_t etype,
-                                                   const string &key)
+CachedObjectChangeHandlers::handlePropertyListsChange(NotifyableImpl *ntp,
+                                                      int32_t etype,
+                                                      const string &key)
 {
-    TRACE(CL_LOG, "handlePropertiesChange");
+    TRACE(CL_LOG, "handlePropertyListsChange");
 
-    unsetHandlerCallbackReady(PROPERTIES_CHANGE, key);
+    unsetHandlerCallbackReady(PROPERTYLISTS_CHANGE, key);
 
     /*                                                                        
      * If NotifyableImpl was deleted, do not re-establish watch, pass
      * event to clients.
      */
     if (etype == ZOO_DELETED_EVENT) {
-        LOG_DEBUG(CL_LOG, "handlePropertiesChange: deleted");
+        LOG_DEBUG(CL_LOG, "handlePropertyListsChange: deleted");
         return EN_DELETED;
     }
 
@@ -358,55 +358,44 @@ CachedObjectChangeHandlers::handlePropertiesChange(NotifyableImpl *ntp,
      */
     if (ntp == NULL) {
         LOG_WARN(CL_LOG,
-                 "handlePropertiesChange: Punting on event: %s on %s",
+                 "handlePropertyListsChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
-        return EN_PROPSCHANGE;
+        return EN_PROPLISTSCHANGE;
     }
 
     LOG_DEBUG(CL_LOG,
-              "handlePropertiesChange: %s on notifyable \"%s\" for key %s",
+              "handlePropertyListsChange: %s on notifyable \"%s\" for key %s",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
               ntp->getKey().c_str(),
               key.c_str());
 
     /*
-     * Convert to a group object.
-     */
-    GroupImpl *group = dynamic_cast<GroupImpl *>(ntp);
-    if (group == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Conversion to Group * failed for %s",
-                 key.c_str());
-        return EN_PROPSCHANGE;
-    }
-
-    /*
      * Data not required, only using this function to set the watch again.
      */
-    getOps()->getPropertiesNames(ntp);
+    getOps()->getPropertyListNames(ntp);
 
-    return EN_PROPSCHANGE;
+    return EN_PROPLISTSCHANGE;
 }
 
 /*
  * Handle a change in the value of a property list.
  */
 Event
-CachedObjectChangeHandlers::handlePropertiesValueChange(NotifyableImpl *ntp,
+CachedObjectChangeHandlers::handlePropertyListValueChange(NotifyableImpl *ntp,
                                                         int32_t etype,
                                                         const string &key)
 {
-    TRACE(CL_LOG, "handlePropertiesValueChange");
+    TRACE(CL_LOG, "handlePropertyListValueChange");
 
-    unsetHandlerCallbackReady(PROPERTIES_VALUES_CHANGE, key);
+    unsetHandlerCallbackReady(PROPERTYLIST_VALUES_CHANGE, key);
 
     /*                                                                        
      * If NotifyableImpl was deleted, do not re-establish watch, pass
      * event to clients.
      */
     if (etype == ZOO_DELETED_EVENT) {
-        LOG_DEBUG(CL_LOG, "handlePropertiesValueChange: deleted");
+        LOG_DEBUG(CL_LOG, "handlePropertyListValueChange: deleted");
         return EN_DELETED;
     }
 
@@ -415,34 +404,34 @@ CachedObjectChangeHandlers::handlePropertiesValueChange(NotifyableImpl *ntp,
      */
     if (ntp == NULL) {
         LOG_WARN(CL_LOG,
-                 "handlePropertiesValueChange: Punting on event: %s on %s",
+                 "handlePropertyListValueChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
-        return EN_PROPSVALCHANGE;
+        return EN_PROPLISTVALUESCHANGE;
     }
 
     LOG_DEBUG(CL_LOG,
-              "handlePropertiesValueChange: %s on notifyable \"%s\" "
+              "handlePropertyListValueChange: %s on notifyable \"%s\" "
               "for key %s",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
               ntp->getKey().c_str(),
               key.c_str());
 
     /*
-     * Convert the NotifyableImpl into a Properties *.
-     * If there's no PropertiesImpl * then punt.
+     * Convert the NotifyableImpl into a PropertyList *.
+     * If there's no PropertyListImpl * then punt.
      */
-    PropertiesImpl *prop = dynamic_cast<PropertiesImpl *>(ntp);
+    PropertyListImpl *prop = dynamic_cast<PropertyListImpl *>(ntp);
     if (prop == NULL) {
         LOG_WARN(CL_LOG, 
-                 "Conversion to PropertiesImpl * failed for %s",
+                 "Conversion to PropertyListImpl * failed for %s",
                  key.c_str());
-        return EN_PROPSVALCHANGE;
+        return EN_PROPLISTVALUESCHANGE;
     }
 
-    prop->updatePropertiesMap();
+    prop->updatePropertyListMap();
 
-    return EN_PROPSVALCHANGE;
+    return EN_PROPLISTVALUESCHANGE;
 }
 
 /*
@@ -901,10 +890,10 @@ CachedObjectChangeHandlers::getChangeHandler(CachedObjectChange change) {
             return &m_dataDistributionsChangeHandler;
         case NODES_CHANGE:
             return &m_nodesChangeHandler;
-        case PROPERTIES_CHANGE:
-            return &m_propertiesChangeHandler;
-        case PROPERTIES_VALUES_CHANGE:
-            return &m_propertiesValueChangeHandler;
+        case PROPERTYLISTS_CHANGE:
+            return &m_propertyListsChangeHandler;
+        case PROPERTYLIST_VALUES_CHANGE:
+            return &m_propertyListValueChangeHandler;
         case SHARDS_CHANGE:
             return &m_dataDistributionShardsChangeHandler;
         case NODE_CLIENT_STATE_CHANGE:

@@ -45,7 +45,7 @@ class ClusterlibHierarchy : public MPITestFixture {
 
     /** 
      * Simple test to see if basic group, data distribution, and
-     * properties works.  Prefers 2 nodes, but if only one process is
+     * propertyList works.  Prefers 2 nodes, but if only one process is
      * available, runs as a single process test.
      */
     void testHierarchy1()
@@ -65,8 +65,8 @@ class ClusterlibHierarchy : public MPITestFixture {
 	    MPI_CPPUNIT_ASSERT(dist);
 	    Node *node = group->getNode("hierarchy-node", true);
 	    MPI_CPPUNIT_ASSERT(node);
-	    Properties *prop = node->getProperties(
-                ClusterlibStrings::DEFAULTPROPERTIES, 
+	    PropertyList *prop = node->getPropertyList(
+                ClusterlibStrings::DEFAULTPROPERTYLIST, 
                 true);
 	    MPI_CPPUNIT_ASSERT(prop);
         }
@@ -114,7 +114,7 @@ class ClusterlibHierarchy : public MPITestFixture {
 	    MPI_CPPUNIT_ASSERT(node->getMyGroup() == group);
 	    MPI_CPPUNIT_ASSERT(node->getMyApplication() == _app);
 	    
-	    Properties *prop = node->getProperties();
+	    PropertyList *prop = node->getPropertyList();
 	    MPI_CPPUNIT_ASSERT(prop);
 	    MPI_CPPUNIT_ASSERT(prop->getMyParent() == node);
 	    MPI_CPPUNIT_ASSERT(prop->getMyGroup() == group);
@@ -149,8 +149,8 @@ class ClusterlibHierarchy : public MPITestFixture {
 	    Node *node3 = group2->getNode("node3", true);
 	    MPI_CPPUNIT_ASSERT(node3);
 
-            Properties *prop = node3->getProperties(
-                ClusterlibStrings::DEFAULTPROPERTIES, 
+            PropertyList *prop = node3->getPropertyList(
+                ClusterlibStrings::DEFAULTPROPERTYLIST, 
                 true);
 	    MPI_CPPUNIT_ASSERT(prop);
         }
@@ -204,7 +204,7 @@ class ClusterlibHierarchy : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(node3->getMyGroup() == group2);
             MPI_CPPUNIT_ASSERT(node3->getMyApplication() == _app);
 
-	    Properties *prop = node3->getProperties();
+	    PropertyList *prop = node3->getPropertyList();
             MPI_CPPUNIT_ASSERT(prop->getMyParent() == node3);
             MPI_CPPUNIT_ASSERT(prop->getMyGroup() == group2);
             MPI_CPPUNIT_ASSERT(prop->getMyApplication() == _app);

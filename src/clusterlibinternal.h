@@ -28,7 +28,7 @@
 #include "applicationimpl.h"
 #include "nodeimpl.h"
 #include "datadistributionimpl.h"
-#include "propertiesimpl.h"
+#include "propertylistimpl.h"
 #include "rootimpl.h"
 #include "clientimpl.h"
 

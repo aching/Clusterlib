@@ -68,10 +68,10 @@ class NotifyableImpl
 
     virtual Notifyable::State getState() const;
     
-    virtual NameList getPropertiesNames();
+    virtual NameList getPropertyListNames();
 
-    virtual Properties *getProperties(const std::string &propName,
-                                      bool create = false);
+    virtual PropertyList *getPropertyList(const std::string &name,
+                                          bool create = false);
 
     virtual int32_t getRefCount()
     {
@@ -166,7 +166,8 @@ class NotifyableImpl
      * @param lockName the name of the lock
      * @return the reference count after the operation
      */
-    virtual int32_t incrDistributedLockOwnerCount(const std::string &lockName);
+    virtual int32_t incrDistributedLockOwnerCount(
+        const std::string &lockName);
     
     /**
      * Safe reference count changes for distributed locks.
@@ -174,14 +175,16 @@ class NotifyableImpl
      * @param lockName the name of the lock
      * @return the reference count after the operation
      */
-    virtual int32_t decrDistributedLockOwnerCount(const std::string &lockName);
+    virtual int32_t decrDistributedLockOwnerCount(
+        const std::string &lockName);
 
     /**
      * Get the number of references on the current distributed lock key
      *
      * @param lockName the name of the lock
      */
-    virtual int32_t getDistributedLockOwnerCount(const std::string &lockName);
+    virtual int32_t getDistributedLockOwnerCount(
+        const std::string &lockName);
 
     /**
      * Check the state of the Notifyable and throw an exception if it

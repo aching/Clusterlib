@@ -1,7 +1,7 @@
 /*
  * example2.cc -- example program using clusterlib (currently used to
  * ensure that clusterlib can be linked into an application).  Does
- * some simply properties checking and data distribution
+ * some simple property list checking and data distribution
  * instantiation.
  */
 
@@ -12,8 +12,9 @@ using namespace std;
 class MyHealthChecker : public clusterlib::HealthChecker {
   public:
     virtual clusterlib::HealthReport checkHealth() {
-	return clusterlib::HealthReport(clusterlib::HealthReport::HS_HEALTHY, 
-					"No real check");
+	return clusterlib::HealthReport(
+            clusterlib::HealthReport::HS_HEALTHY, 
+            "No real check");
     }
   private:
 };
@@ -104,59 +105,59 @@ main(int ac, char **av)
                clusterlib::Exception("app->group->app non-equivalence");
         }
 
-	clusterlib::Properties *props0 = app1->getProperties(
-            clusterlib::ClusterlibStrings::DEFAULTPROPERTIES, true);
-	props0->acquireLock();
+	clusterlib::PropertyList *propList0 = app1->getPropertyList(
+            clusterlib::ClusterlibStrings::DEFAULTPROPERTYLIST, true);
+	propList0->acquireLock();
 
-	string test = props0->getProperty("test", true);
+	string test = propList0->getProperty("test", true);
 	cerr << "(app1) test (test) = " << test
 	     << " and should be empty (if this is the first time running) "
 	     << endl;
 
-	props0->setProperty("test", "passed");
-	props0->setProperty("weird", "yessir");
-	props0->publish();
-	props0->releaseLock();
+	propList0->setProperty("test", "passed");
+	propList0->setProperty("weird", "yessir");
+	propList0->publish();
+	propList0->releaseLock();
 
-	string test2 = props0->getProperty("test", true);
+	string test2 = propList0->getProperty("test", true);
 	cerr << "(app1) test2 (test) = " << test2
 	     << " and should be passed " << endl;
 
-	clusterlib::Properties *props1 = app0->getProperties();
-	string test3 = props1->getProperty("test", true);
+	clusterlib::PropertyList *propList1 = app0->getPropertyList();
+	string test3 = propList1->getProperty("test", true);
 	cerr << "(app0) test3 (test) = " << test3
 	     << " and should be passed " << endl;
 	
-	props0->acquireLock();
-	props0->setProperty("avery", "ching");
-	props0->setProperty("test", "good");
-	props0->publish();
-	props0->releaseLock();
+	propList0->acquireLock();
+	propList0->setProperty("avery", "ching");
+	propList0->setProperty("test", "good");
+	propList0->publish();
+	propList0->releaseLock();
 
-	test3 = props1->getProperty("test", true);
+	test3 = propList1->getProperty("test", true);
 	cerr << "(app0) test3 (test) = " << test3 
 	     << " and should be good " << endl;
-	test3 = props1->getProperty("avery", true);
+	test3 = propList1->getProperty("avery", true);
 	cerr << "(app0) test3 (avery) = " << test3 
 	     << " and should be ching " << endl;
 
-	clusterlib::Properties *props2 = node0->getProperties(
-            clusterlib::ClusterlibStrings::DEFAULTPROPERTIES,
+	clusterlib::PropertyList *propList2 = node0->getPropertyList(
+            clusterlib::ClusterlibStrings::DEFAULTPROPERTYLIST,
             true);
-	test3 = props2->getProperty("test", true);
+	test3 = propList2->getProperty("test", true);
 	cerr << "(node) test3 (test) = " << test3 
 	     << " and should be good " << endl;
 
-	props2->acquireLock();
-	props2->setProperty("test", "node");
-	props2->publish();
-	props2->releaseLock();
+	propList2->acquireLock();
+	propList2->setProperty("test", "node");
+	propList2->publish();
+	propList2->releaseLock();
 
-	test3 = props2->getProperty("test", true);
+	test3 = propList2->getProperty("test", true);
 	cerr << "(node) test3 (test) = " << test3 
 	     << " and should be node " << endl;
 
-	test3 = props1->getProperty("test", true);
+	test3 = propList1->getProperty("test", true);
 	cerr << "(app) test3 (test) = " << test3 
 	     << " and should be good " << endl;
 

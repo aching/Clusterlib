@@ -206,11 +206,11 @@ class FactoryOps {
     NameList getNodeNames(GroupImpl *group);
 
     /*
-     * Retrieve a list of all (currently known) properties names
+     * Retrieve a list of all (currently known) property list names
      * within the given notifyable. This also establishes a
-     * watch on properties changes.
+     * watch on property list changes.
      */
-    NameList getPropertiesNames(NotifyableImpl *ntp);
+    NameList getPropertyListNames(NotifyableImpl *ntp);
 
     /**
      * Get any immediate children of this NotifyableImpl.  In order to
@@ -231,52 +231,79 @@ class FactoryOps {
     /** 
      * Get the root. 
      *
-     * @return the pointer to the Root
+     * @return the pointer to the root
      */
     RootImpl *getRoot();
 
     /** 
      * Get a application from the root. 
      *
-     * @param appName name of the application under the root
+     * @param name the application name under the root
      * @param create if true try to create it if it doesn't exist
      * @return NULL if not found or creation failed, otherwise the pointer 
-     *         to the Application
+     *         to the application
      */
-    ApplicationImpl *getApplication(const std::string &appName,
+    ApplicationImpl *getApplication(const std::string &name,
                                     bool create = false);
     
     /** 
      * Get a group from a parent group key. 
      *
-     * @param groupName name of the group under the parent
-     * @param groupKey key to this parent group
+     * @param name the group name under the parent
+     * @param parentGroup key to this parent group
      * @param create if true try to create it if it doesn't exist
      * @return NULL if not found or creation failed, otherwise the pointer 
-     *         to the Group
+     *         to the group
      */
-    GroupImpl *getGroup(const std::string &groupName,
+    GroupImpl *getGroup(const std::string &name,
                         GroupImpl *parentGroup,
                         bool create = false);
 
-    NodeImpl *getNode(const std::string &nodeName,
+    /** 
+     * Get a node from a parent group key. 
+     *
+     * @param name the node name under the parent
+     * @param parentGroup key to this parent group
+     * @param create if true try to create it if it doesn't exist
+     * @return NULL if not found or creation failed, otherwise the pointer 
+     *         to the node
+     */
+    NodeImpl *getNode(const std::string &name,
                       GroupImpl *parentGroup,
                       bool create = false);
 
-    DataDistributionImpl *getDataDistribution(const std::string &distName,
+    /** 
+     * Get a data distribution from a parent group key. 
+     *
+     * @param name the data distribution name under the parent
+     * @param parentGroup key to this parent group
+     * @param create if true try to create it if it doesn't exist
+     * @return NULL if not found or creation failed, otherwise the pointer 
+     *         to the data distribution
+     */
+    DataDistributionImpl *getDataDistribution(const std::string &name,
                                               GroupImpl *parentGroup,
                                               bool create = false);
 
-    PropertiesImpl *getProperties(const std::string &propsName,
-                                  Notifyable *parent,
-                                  bool create = false);
+    /** 
+     * Get a property list from a parent group key. 
+     *
+     * @param name the property list name under the parent
+     * @param parentGroup key to this parent group
+     * @param create if true try to create it if it doesn't exist
+     * @return NULL if not found or creation failed, otherwise the pointer 
+     *         to the property list
+     */
+    PropertyListImpl *getPropertyList(const std::string &name,
+                                      Notifyable *parent,
+                                      bool create = false);
 
     void updateDataDistribution(const std::string &distKey,
                                 const std::string &shards,
                                 int32_t version,
                                 int32_t &finalVersion);
-    void updateProperties(const std::string &propsKey,
-			  const std::string &propsValue,
+    void updatePropertyList(const std::string &propListKey,
+			  const std::string &propListValue,
 			  int32_t version,
                           int32_t &finalVersion);
     void updateNodeClientState(const std::string &nodeKey,
@@ -377,25 +404,25 @@ class FactoryOps {
         bool create = false);
 
     /**
-     * Get the exact properties represented by this key
+     * Get the exact property list represented by this key
      *
-     * @param key should represent the PropertiesImpl object
+     * @param key should represent the PropertyListsImpl object
      * @param create try to create this object if it does not exist?
-     * @return NULL if cannot be found, else the PropertiesImpl *
+     * @return NULL if cannot be found, else the PropertyListImpl *
      */
-    PropertiesImpl *getPropertiesFromKey(const std::string &key,
+    PropertyListImpl *getPropertyListFromKey(const std::string &key,
                                          bool create = false);
 
     /**
-     * Get the exact PropertiesImpl represented by these components.
+     * Get the exact PropertyListImpl represented by these components.
      *
-     * @param components Should represent the PropertiesImpl object
+     * @param components Should represent the PropertyListImpl object
      * @param elements The number of elements to use in the components
                        (-1 for all)
      * @param create try to create this object if it does not exist?
-     * @return NULL if cannot be found, else the PropertiesImpl *
+     * @return NULL if cannot be found, else the PropertyListImpl *
      */
-    PropertiesImpl *getPropertiesFromComponents(
+    PropertyListImpl *getPropertyListFromComponents(
         const std::vector<std::string> &components,
         int32_t elements = -1, 
         bool create = false);
@@ -454,8 +481,8 @@ class FactoryOps {
     DataDistributionImpl *loadDataDistribution(const std::string &distName,
                                                const std::string &distKey,
                                                GroupImpl *parentGroup);
-    PropertiesImpl* loadProperties(const std::string &propsName,
-                                   const std::string &propsKey,
+    PropertyListImpl* loadPropertyList(const std::string &propListName,
+                                   const std::string &propListKey,
                                    Notifyable *parent);
     GroupImpl *loadGroup(const std::string &groupName,
                          const std::string &groupKey,
@@ -477,8 +504,8 @@ class FactoryOps {
         const std::string &distKey,
         const std::string &marshalledShards,
         GroupImpl *parentGroup);
-    PropertiesImpl *createProperties(const std::string &propsName,
-                                     const std::string &propsKey,
+    PropertyListImpl *createPropertyList(const std::string &propListName,
+                                     const std::string &propListKey,
                                      Notifyable *parent);
     GroupImpl *createGroup(const std::string &groupName,
                            const std::string &groupKey,
@@ -492,7 +519,7 @@ class FactoryOps {
      */
     void removeApplication(ApplicationImpl *app);
     void removeDataDistribution(DataDistributionImpl *dist);
-    void removeProperties(PropertiesImpl *props);
+    void removePropertyList(PropertyListImpl *propList);
     void removeGroup(GroupImpl *group);
     void removeNode(NodeImpl *ntp);
 
@@ -519,7 +546,7 @@ class FactoryOps {
      * Get various locks and conditionals.
      */
     Mutex *getClientsLock();
-    Mutex *getPropertiesLock();
+    Mutex *getPropertyListLock();
     Mutex *getDataDistributionsLock();
     Mutex *getRootLock();
     Mutex *getApplicationsLock();
@@ -622,9 +649,9 @@ class FactoryOps {
     void discardAllDataDistributions();
 
     /**
-     * Clean up properties maps
+     * Clean up propertyList maps
      */
-    void discardAllProperties();
+    void discardAllPropertyLists();
 
     /**
      * Clean up applications
@@ -678,10 +705,10 @@ class FactoryOps {
     Mutex m_rootLock;
 
     /*
-     * The registry of cached properties maps.
+     * The registry of cached property list maps.
      */
-    NotifyableImplMap m_props;
-    Mutex m_propsLock;
+    NotifyableImplMap m_propList;
+    Mutex m_propListLock;
 
     /*
      * The registry of cached data distributions.

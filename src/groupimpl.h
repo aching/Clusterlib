@@ -31,16 +31,17 @@ class GroupImpl
 
     virtual NameList getNodeNames();
 
-    virtual Node *getNode(const std::string &nodeName, bool create = false);
+    virtual Node *getNode(const std::string &name, bool create = false);
 
     virtual NameList getGroupNames();
 
-    virtual Group *getGroup(const std::string &groupName, bool create = false);
+    virtual Group *getGroup(const std::string &name, bool create = false);
 
     virtual NameList getDataDistributionNames();
 
-    virtual DataDistribution *getDataDistribution(const std::string &distName,
-                                                  bool create = false);
+    virtual DataDistribution *getDataDistribution(
+        const std::string &name,
+        bool create = false);
 
     /*
      * Internal functions not used by outside clients

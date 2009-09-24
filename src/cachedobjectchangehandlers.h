@@ -29,8 +29,8 @@ class CachedObjectChangeHandlers
         GROUPS_CHANGE,
         DATADISTRIBUTIONS_CHANGE,
         NODES_CHANGE,
-        PROPERTIES_CHANGE,
-        PROPERTIES_VALUES_CHANGE,
+        PROPERTYLISTS_CHANGE,
+        PROPERTYLIST_VALUES_CHANGE,
         SHARDS_CHANGE,
         NODE_CLIENT_STATE_CHANGE,
         NODE_MASTER_SET_STATE_CHANGE,
@@ -91,16 +91,16 @@ class CachedObjectChangeHandlers
                             const std::string &key);
 
     /**
-     * Handle changes in the set of properties in a notifyable.
+     * Handle changes in the set of property lists in a notifyable.
      */
-    Event handlePropertiesChange(NotifyableImpl *ntp,
+    Event handlePropertyListsChange(NotifyableImpl *ntp,
                                  int32_t etype,
                                  const std::string &key);
 
     /**
      * Handle changes in a property list value.
      */
-    Event handlePropertiesValueChange(NotifyableImpl *ntp,
+    Event handlePropertyListValueChange(NotifyableImpl *ntp,
                                       int32_t etype,
                                       const std::string &key);
 
@@ -196,12 +196,12 @@ class CachedObjectChangeHandlers
         m_notifyableStateChangeHandler(
             this,
             &CachedObjectChangeHandlers::handleNotifyableStateChange),
-        m_propertiesChangeHandler(
+        m_propertyListsChangeHandler(
             this,
-            &CachedObjectChangeHandlers::handlePropertiesChange),
-        m_propertiesValueChangeHandler(
+            &CachedObjectChangeHandlers::handlePropertyListsChange),
+        m_propertyListValueChangeHandler(
             this,
-            &CachedObjectChangeHandlers::handlePropertiesValueChange),
+            &CachedObjectChangeHandlers::handlePropertyListValueChange),
         m_applicationsChangeHandler(
             this,
             &CachedObjectChangeHandlers::handleApplicationsChange),
@@ -262,8 +262,8 @@ class CachedObjectChangeHandlers
      * Handlers for event delivery.
      */
     CachedObjectEventHandler m_notifyableStateChangeHandler;
-    CachedObjectEventHandler m_propertiesChangeHandler;
-    CachedObjectEventHandler m_propertiesValueChangeHandler;
+    CachedObjectEventHandler m_propertyListsChangeHandler;
+    CachedObjectEventHandler m_propertyListValueChangeHandler;
     CachedObjectEventHandler m_applicationsChangeHandler;
     CachedObjectEventHandler m_groupsChangeHandler;
     CachedObjectEventHandler m_dataDistributionsChangeHandler;

@@ -114,7 +114,7 @@ FactoryOps::~FactoryOps()
 
     discardAllClients();
     discardAllDataDistributions();
-    discardAllProperties();
+    discardAllPropertyLists();
     discardAllApplications();
     discardAllGroups();
     discardAllNodes();
@@ -329,24 +329,24 @@ FactoryOps::discardAllDataDistributions()
     m_dists.clear();
 }
 void
-FactoryOps::discardAllProperties()
+FactoryOps::discardAllPropertyLists()
 {
-    TRACE(CL_LOG, "discardAllProperties");
+    TRACE(CL_LOG, "discardAllPropertyLists");
 
-    Locker l(getPropertiesLock());
-    NotifyableImplMap::iterator propsIt;
+    Locker l(getPropertyListLock());
+    NotifyableImplMap::iterator propListIt;
 
-    for (propsIt = m_props.begin();
-         propsIt != m_props.end();
-         propsIt++) {
+    for (propListIt = m_propList.begin();
+         propListIt != m_propList.end();
+         propListIt++) {
         LOG_DEBUG(CL_LOG, 
-                  "discardAllProperties: Removed key (%s) with %d refs",
-                  propsIt->second->getKey().c_str(),
-                  propsIt->second->getRefCount());
+                  "discardAllPropertyLists: Removed key (%s) with %d refs",
+                  propListIt->second->getKey().c_str(),
+                  propListIt->second->getRefCount());
 
-	delete propsIt->second;
+	delete propListIt->second;
     }
-    m_props.clear();
+    m_propList.clear();
 }
 void
 FactoryOps::discardAllApplications()
@@ -857,21 +857,21 @@ FactoryOps::getRoot()
  * FactoryOps's cache.
  */
 ApplicationImpl *
-FactoryOps::getApplication(const string &appName, bool create)
+FactoryOps::getApplication(const string &name, bool create)
 {
     TRACE(CL_LOG, "getApplication");
     
-    if (!NotifyableKeyManipulator::isValidNotifyableName(appName)) {
+    if (!NotifyableKeyManipulator::isValidNotifyableName(name)) {
         LOG_WARN(CL_LOG,
                  "getApplication: illegal application name %s",
-                 appName.c_str());
+                 name.c_str());
         if (create == true) {
             throw InvalidArgumentsException("getApplication: illegal name");
         }
         return NULL;
     }
 
-    string key = NotifyableKeyManipulator::createApplicationKey(appName);
+    string key = NotifyableKeyManipulator::createApplicationKey(name);
 
     {
         Locker l(getApplicationsLock());
@@ -883,7 +883,7 @@ FactoryOps::getApplication(const string &appName, bool create)
         }
     }
 
-    ApplicationImpl *app = loadApplication(appName, key);
+    ApplicationImpl *app = loadApplication(name, key);
     if (app != NULL) {
         return app;
     }
@@ -896,9 +896,9 @@ FactoryOps::getApplication(const string &appName, bool create)
             getRoot(), 
             ClusterlibStrings::NOTIFYABLELOCK);
 
-        app = loadApplication(appName, key);
+        app = loadApplication(name, key);
         if (app == NULL) {
-            app = createApplication(appName, key);
+            app = createApplication(name, key);
         }
 
         getOps()->getDistributedLocks()->release(
@@ -909,22 +909,22 @@ FactoryOps::getApplication(const string &appName, bool create)
 
     LOG_WARN(CL_LOG,
              "getApplication: application %s not found nor created",
-             appName.c_str());
+             name.c_str());
 
     return NULL;
 }
 
 DataDistributionImpl *
-FactoryOps::getDataDistribution(const string &distName,
+FactoryOps::getDataDistribution(const string &name,
                                 GroupImpl *parentGroup,
                                 bool create)
 {
     TRACE(CL_LOG, "getDataDistribution");
 
-    if (!NotifyableKeyManipulator::isValidNotifyableName(distName)) {
+    if (!NotifyableKeyManipulator::isValidNotifyableName(name)) {
         LOG_WARN(CL_LOG,
                  "getDataDistribution: Illegal data distribution name %s",
-                 distName.c_str());
+                 name.c_str());
 
         if (create == true) {
             throw InvalidArgumentsException(
@@ -940,7 +940,7 @@ FactoryOps::getDataDistribution(const string &distName,
 
     string key = NotifyableKeyManipulator::createDataDistributionKey(
         parentGroup->getKey(),
-        distName);
+        name);
 
     {
         Locker l(getDataDistributionsLock());
@@ -953,7 +953,7 @@ FactoryOps::getDataDistribution(const string &distName,
         }
     }
 
-    DataDistributionImpl *dist = loadDataDistribution(distName, 
+    DataDistributionImpl *dist = loadDataDistribution(name, 
                                                       key, 
                                                       parentGroup);
     if (dist != NULL) {
@@ -968,11 +968,11 @@ FactoryOps::getDataDistribution(const string &distName,
             parentGroup,
             ClusterlibStrings::NOTIFYABLELOCK);
 
-        dist = loadDataDistribution(distName, 
+        dist = loadDataDistribution(name, 
                                     key, 
                                     parentGroup);
         if (dist == NULL) {
-            dist = createDataDistribution(distName, key, "", parentGroup); 
+            dist = createDataDistribution(name, key, "", parentGroup); 
         }
 
         getOps()->getDistributedLocks()->release(
@@ -984,40 +984,40 @@ FactoryOps::getDataDistribution(const string &distName,
     LOG_WARN(CL_LOG,
              "getDataDistribution: data distribution %s not found "
              "nor created",
-             distName.c_str());
+             name.c_str());
 
     return NULL;
 }
 
-PropertiesImpl *
-FactoryOps::getProperties(const string &propsName,
-                          Notifyable *parent,
-                          bool create)
+PropertyListImpl *
+FactoryOps::getPropertyList(const string &name,
+                            Notifyable *parent,
+                            bool create)
 {
-    TRACE(CL_LOG, "getProperties");
+    TRACE(CL_LOG, "getPropertyList");
 
     if (parent == NULL) {
-        LOG_ERROR(CL_LOG, "getProperties: NULL parent");                 
-        throw InvalidArgumentsException("getProperties: NULL parent");
+        LOG_ERROR(CL_LOG, "getPropertyList: NULL parent");                 
+        throw InvalidArgumentsException("getPropertyList: NULL parent");
     }
 
     string key = 
-        NotifyableKeyManipulator::createPropertiesKey(parent->getKey(),
-                                                      propsName);
-
+        NotifyableKeyManipulator::createPropertyListKey(parent->getKey(),
+                                                        name);
+    
     {
-        Locker l(getPropertiesLock());
-        NotifyableImplMap::const_iterator propIt = m_props.find(key);
+        Locker l(getPropertyListLock());
+        NotifyableImplMap::const_iterator propIt = m_propList.find(key);
 
-        if (propIt != m_props.end()) {
+        if (propIt != m_propList.end()) {
             propIt->second->incrRefCount();
-            return dynamic_cast<PropertiesImpl *>(propIt->second);
+            return dynamic_cast<PropertyListImpl *>(propIt->second);
         }
     }
 
-    PropertiesImpl *props = loadProperties(propsName, key, parent);
-    if (props != NULL) {
-        return props;
+    PropertyListImpl *propList = loadPropertyList(name, key, parent);
+    if (propList != NULL) {
+        return propList;
     }
     if (create == true) {
         /*
@@ -1028,20 +1028,20 @@ FactoryOps::getProperties(const string &propsName,
             parent,
             ClusterlibStrings::NOTIFYABLELOCK);
         
-        props = loadProperties(propsName, key, parent);
-        if (props == NULL) {
-            props = createProperties(propsName, key, parent);
+        propList = loadPropertyList(name, key, parent);
+        if (propList == NULL) {
+            propList = createPropertyList(name, key, parent);
         }
 
         getOps()->getDistributedLocks()->release(
             parent,
             ClusterlibStrings::NOTIFYABLELOCK);
-        return props;
+        return propList;
     }
 
     LOG_WARN(CL_LOG,
-             "getProperties: could not find nor create "
-             "properties for %s",
+             "getPropertyList: could not find nor create "
+             "propertyList for %s",
              parent->getKey().c_str());
 
     return NULL;
@@ -1240,18 +1240,18 @@ FactoryOps::updateDataDistribution(const string &distKey,
 }
 
 /*
- * Update the properties of a notifyable object in the clusterlib repository
+ * Update the propertyList of a notifyable object in the clusterlib repository
  */
 void
-FactoryOps::updateProperties(const string &propsKey,
-                             const string &propsValue,
+FactoryOps::updatePropertyList(const string &propListKey,
+                             const string &propListValue,
                              int32_t version,
                              int32_t &finalVersion)
 {
-    TRACE(CL_LOG, "updateProperties");
+    TRACE(CL_LOG, "updatePropertyList");
 
     string kvnode =
-        propsKey +
+        propListKey +
         ClusterlibStrings::KEYSEPARATOR + 
         ClusterlibStrings::KEYVAL;
 
@@ -1264,14 +1264,14 @@ FactoryOps::updateProperties(const string &propsKey,
                  true,
                  true);
     if (!exists) {
-        SAFE_CALL_ZK(m_zk.createNode(kvnode, propsValue, 0),
+        SAFE_CALL_ZK(m_zk.createNode(kvnode, propListValue, 0),
                      "Creation of %s failed: %s",
                      kvnode.c_str(),
                      true,
                      true);
     }
     SAFE_CALL_ZK(m_zk.setNodeData(kvnode,
-                                  propsValue, 
+                                  propListValue, 
                                   version, 
                                   &stat),
                  "Setting of %s failed: %s",
@@ -1284,12 +1284,12 @@ FactoryOps::updateProperties(const string &propsKey,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
             getChangeHandler(
-                CachedObjectChangeHandlers::PROPERTIES_VALUES_CHANGE)),
+                CachedObjectChangeHandlers::PROPERTYLIST_VALUES_CHANGE)),
         ,
-        CachedObjectChangeHandlers::PROPERTIES_VALUES_CHANGE,
+        CachedObjectChangeHandlers::PROPERTYLIST_VALUES_CHANGE,
         kvnode,
         "Reestablishing watch on value of %s failed: %s",
-        propsKey.c_str(),
+        propListKey.c_str(),
         false,
         true);  
     
@@ -1478,12 +1478,12 @@ FactoryOps::getNotifyableFromComponents(const vector<string> &components,
                   "getNotifyableFromComponents: found Application");
         return ntp;
     }
-    ntp = getPropertiesFromComponents(components,
+    ntp = getPropertyListFromComponents(components,
                                       clusterObjectElements, 
                                       create);
     if (ntp) {
         LOG_DEBUG(CL_LOG, 
-                  "getNotifyableFromComponents: found Properties");
+                  "getNotifyableFromComponents: found PropertyList");
         return ntp;
     }
     ntp = getDataDistributionFromComponents(components,
@@ -1646,21 +1646,21 @@ FactoryOps::getDataDistributionFromComponents(
                                create);
 }
 
-PropertiesImpl *
-FactoryOps::getPropertiesFromKey(const string &key, bool create)
+PropertyListImpl *
+FactoryOps::getPropertyListFromKey(const string &key, bool create)
 {
-    TRACE(CL_LOG, "getPropertiesFromKey");
+    TRACE(CL_LOG, "getPropertyListFromKey");
 
     vector<string> components;
     split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
-    return getPropertiesFromComponents(components, -1, create);
+    return getPropertyListFromComponents(components, -1, create);
 }
-PropertiesImpl *
-FactoryOps::getPropertiesFromComponents(const vector<string> &components, 
+PropertyListImpl *
+FactoryOps::getPropertyListFromComponents(const vector<string> &components, 
                                         int32_t elements,
                                         bool create)
 {
-    TRACE(CL_LOG, "getPropertiesFromComponents");
+    TRACE(CL_LOG, "getPropertyListFromComponents");
 
     /* 
      * Set to the full size of the vector.
@@ -1669,9 +1669,9 @@ FactoryOps::getPropertiesFromComponents(const vector<string> &components,
         elements = components.size();
     }
 
-   if (!NotifyableKeyManipulator::isPropertiesKey(components, elements)) {
+   if (!NotifyableKeyManipulator::isPropertyListKey(components, elements)) {
         LOG_DEBUG(CL_LOG, 
-                  "getPropertiesFromComponents: Couldn't find key"
+                  "getPropertyListFromComponents: Couldn't find key"
                   " with %d elements",
                   elements);
         return NULL;
@@ -1687,20 +1687,20 @@ FactoryOps::getPropertiesFromComponents(const vector<string> &components,
                                                      parentGroupCount,
                                                      create);
     if (parent == NULL) {
-        LOG_WARN(CL_LOG, "getPropertiesFromComponents: Tried to get "
+        LOG_WARN(CL_LOG, "getPropertyListFromComponents: Tried to get "
                  "parent with name %s",
                  components.at(parentGroupCount - 1).c_str());
         return NULL;
     }
 
     LOG_DEBUG(CL_LOG, 
-              "getPropertiesFromComponents: parent key = %s, "
-              "properties name = %s", 
+              "getPropertyListFromComponents: parent key = %s, "
+              "propertyList name = %s", 
               parent->getKey().c_str(),
               components.at(elements - 1).c_str());
 
     parent->releaseRef();
-    return getProperties(components.at(elements - 1),
+    return getPropertyList(components.at(elements - 1),
                          parent,
                          create);
 }
@@ -2031,51 +2031,51 @@ FactoryOps::loadShards(const string &key, int32_t &version)
     return res;
 }
 
-PropertiesImpl *
-FactoryOps::loadProperties(const string &propsName, 
-                           const string &propsKey,
-                           Notifyable *parent)
+PropertyListImpl *
+FactoryOps::loadPropertyList(const string &propListName, 
+                             const string &propListKey,
+                             Notifyable *parent)
 {
-    TRACE(CL_LOG, "Properties");
+    TRACE(CL_LOG, "PropertyList");
 
-    PropertiesImpl *props;
+    PropertyListImpl *propList;
     bool exists = false;
-    Locker l(getPropertiesLock());
+    Locker l(getPropertyListLock());
 
     NotifyableImplMap::const_iterator propIt =
-        m_props.find(propsKey);
-    if (propIt != m_props.end()) {
+        m_propList.find(propListKey);
+    if (propIt != m_propList.end()) {
         propIt->second->incrRefCount();
-        return dynamic_cast<PropertiesImpl *>(propIt->second);
+        return dynamic_cast<PropertyListImpl *>(propIt->second);
     }
 
     /* 
      * Make sure that all the Zookeeper nodes exists that are part of
      * this object.
      */
-    SAFE_CALL_ZK((exists = m_zk.nodeExists(propsKey)),
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(propListKey)),
                  "Could not determine whether key %s exists: %s",
-                 propsKey.c_str(),
+                 propListKey.c_str(),
                  false,
                  true);
     if (!exists) {
         return NULL;
     }
 
-    props = new PropertiesImpl(this,
-                               propsKey,
-                               propsName,
+    propList = new PropertyListImpl(this,
+                               propListKey,
+                               propListName,
                                dynamic_cast<NotifyableImpl *>(parent));
-    props->initializeCachedRepresentation();
+    propList->initializeCachedRepresentation();
     
     /*
      * Set up handler for changes in Notifyable state.
      */
-    establishNotifyableStateChange(props);
+    establishNotifyableStateChange(propList);
 
-    m_props[propsKey] = props;
+    m_propList[propListKey] = propList;
 
-    return props;
+    return propList;
 }
 
 string
@@ -2099,10 +2099,10 @@ FactoryOps::loadKeyValMap(const string &key, int32_t &version)
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
             getChangeHandler(
-                CachedObjectChangeHandlers::PROPERTIES_VALUES_CHANGE),
+                CachedObjectChangeHandlers::PROPERTYLIST_VALUES_CHANGE),
             &stat)),
         (kv = m_zk.getNodeData(kvnode, NULL, NULL, &stat)),
-        CachedObjectChangeHandlers::PROPERTIES_VALUES_CHANGE,
+        CachedObjectChangeHandlers::PROPERTYLIST_VALUES_CHANGE,
         kvnode,
         "Reading the value of %s failed: %s",
         key.c_str(),
@@ -2392,21 +2392,21 @@ FactoryOps::createDataDistribution(const string &distName,
     return loadDataDistribution(distName, distKey, parentGroup);
 }
 
-PropertiesImpl *
-FactoryOps::createProperties(const string &propsName,
-                             const string &propsKey,
+PropertyListImpl *
+FactoryOps::createPropertyList(const string &propListName,
+                             const string &propListKey,
                              Notifyable *parent) 
 {
-    TRACE(CL_LOG, "createProperties");
+    TRACE(CL_LOG, "createPropertyList");
 
     string kv = 
-        propsKey + 
+        propListKey + 
         ClusterlibStrings::KEYSEPARATOR +
         ClusterlibStrings::KEYVAL;
 
-    SAFE_CALL_ZK(m_zk.createNode(propsKey, "", 0),
+    SAFE_CALL_ZK(m_zk.createNode(propListKey, "", 0),
                  "Could not create key %s: %s",
-                 propsKey.c_str(),
+                 propListKey.c_str(),
                  true,
                  true);
     SAFE_CALL_ZK(m_zk.createNode(kv, "", 0),
@@ -2416,11 +2416,11 @@ FactoryOps::createProperties(const string &propsName,
                  true);
     
     /*
-     * Load the properties, which will load the data,
+     * Load the propertyList, which will load the data,
      * establish all the event notifications, and add the
      * object to the cache.
      */
-    return loadProperties(propsName, propsKey, parent);
+    return loadPropertyList(propListName, propListKey, parent);
 }
 
 GroupImpl *
@@ -2546,13 +2546,13 @@ FactoryOps::removeDataDistribution(DataDistributionImpl *dist)
 }
 
 void
-FactoryOps::removeProperties(PropertiesImpl *props)
+FactoryOps::removePropertyList(PropertyListImpl *propList)
 {
-    TRACE(CL_LOG, "removeProperties");    
+    TRACE(CL_LOG, "removePropertyList");    
 
-    SAFE_CALL_ZK(m_zk.deleteNode(props->getKey(), true),
+    SAFE_CALL_ZK(m_zk.deleteNode(propList->getKey(), true),
                  "Could not delete key %s: %s",
-                 props->getKey().c_str(),
+                 propList->getKey().c_str(),
                  false,
                  true);
 }
@@ -2608,9 +2608,9 @@ FactoryOps::removeNotifyableFromCacheByKey(const string &key)
         ntpMapLock = getNodesLock();
         ntpMap = &m_nodes;
     }
-    else if (NotifyableKeyManipulator::isPropertiesKey(components)) {
-        ntpMapLock = getPropertiesLock();
-        ntpMap = &m_props;
+    else if (NotifyableKeyManipulator::isPropertyListKey(components)) {
+        ntpMapLock = getPropertyListLock();
+        ntpMap = &m_propList;
     }
     else if (NotifyableKeyManipulator::isDataDistributionKey(components)) {
         ntpMapLock = getDataDistributionsLock();
@@ -2835,10 +2835,10 @@ FactoryOps::getClientsLock()
 }
 
 Mutex *
-FactoryOps::getPropertiesLock() 
+FactoryOps::getPropertyListLock() 
 {
-    TRACE(CL_LOG, "getPropertiesLock");
-    return &m_propsLock; 
+    TRACE(CL_LOG, "getPropertyListLock");
+    return &m_propListLock; 
 }
 
 Mutex *
@@ -3090,20 +3090,20 @@ FactoryOps::getNodeNames(GroupImpl *group)
     return list;
 }
 NameList
-FactoryOps::getPropertiesNames(NotifyableImpl *ntp)
+FactoryOps::getPropertyListNames(NotifyableImpl *ntp)
 {
-    TRACE(CL_LOG, "getPropertiesNames");
+    TRACE(CL_LOG, "getPropertyListNames");
 
     if (ntp == NULL) {
         throw InvalidArgumentsException(
-            "NULL notifyables in getPropertiesNames");
+            "NULL notifyables in getPropertyListNames");
     }
 
     NameList list;
     string key =
         ntp->getKey() +
         ClusterlibStrings::KEYSEPARATOR +
-        ClusterlibStrings::PROPERTIES;
+        ClusterlibStrings::PROPERTYLIST;
 
     list.clear();
     SAFE_CALLBACK_ZK(
@@ -3112,9 +3112,10 @@ FactoryOps::getPropertiesNames(NotifyableImpl *ntp)
             key,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
-            getChangeHandler(CachedObjectChangeHandlers::PROPERTIES_CHANGE)),
+            getChangeHandler(
+                CachedObjectChangeHandlers::PROPERTYLIST_VALUES_CHANGE)),
         m_zk.getNodeChildren(list, key),
-        CachedObjectChangeHandlers::PROPERTIES_CHANGE,
+        CachedObjectChangeHandlers::PROPERTYLIST_VALUES_CHANGE,
         key,
         "Reading the value of %s failed: %s",
         key.c_str(),
@@ -3145,26 +3146,26 @@ FactoryOps::getChildren(Notifyable *ntp)
      */
     NotifyableList ntList;
     
-    Properties *props = dynamic_cast<Properties *>(ntp);
-    if (props != NULL) {
+    PropertyList *propList = dynamic_cast<PropertyList *>(ntp);
+    if (propList != NULL) {
         LOG_DEBUG(CL_LOG, 
-                  "getChildren: %s is a Properties", 
+                  "getChildren: %s is a PropertyList", 
                   ntp->getKey().c_str());
         return ntList;
     }
   
     /*
      * Any other NotifyableImpl subclass (except Root) can have a
-     * Properties child
+     * PropertyList child
      */
     try {
-        props = ntp->getProperties();
-        if (props != NULL) {
+        propList = ntp->getPropertyList();
+        if (propList != NULL) {
             LOG_DEBUG(CL_LOG, 
-                      "getChildren: found Properties %s for %s", 
-                      props->getKey().c_str(),
+                      "getChildren: found PropertyList %s for %s", 
+                      propList->getKey().c_str(),
                       ntp->getKey().c_str());
-            ntList.push_back(props);
+            ntList.push_back(propList);
         }
     } 
     catch (InvalidMethodException &e) {
@@ -3174,9 +3175,9 @@ FactoryOps::getChildren(Notifyable *ntp)
          */
         if (dynamic_cast<Root *>(ntp) == NULL) {
             throw InvalidMethodException(
-                string("getChildren: getProperties failed: ") + e.what());
+                string("getChildren: getPropertyList failed: ") + e.what());
         }
-        LOG_DEBUG(CL_LOG, "getChildren: Root doesn't have Properties");
+        LOG_DEBUG(CL_LOG, "getChildren: Root doesn't have PropertyList");
     }
 
     DataDistribution *dist = dynamic_cast<DataDistribution *>(ntp);

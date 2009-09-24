@@ -1,7 +1,7 @@
 /*
- * propertiesimpl.cc --
+ * propertylistimpl.cc --
  *
- * Implementation of the PropertiesImpl class.
+ * Implementation of the PropertysListImpl class.
  *
  * ============================================================================
  * $Header:$
@@ -23,40 +23,41 @@ namespace clusterlib
 {
 
 /*
- * Do not allow getProperties() on a Properties object
+ * Do not allow getPropertyList() on a Properties object
  */
-Properties *
-PropertiesImpl::getProperties(bool create)
+PropertyList *
+PropertyListImpl::getPropertyList(const string &name,
+                                bool create)
 {
     throw InvalidMethodException(
-        "getProperties() called on a Properties object!");
+        "getPropertyList() called on a PropertyList object!");
 }
 
 void 
-PropertiesImpl::initializeCachedRepresentation()
+PropertyListImpl::initializeCachedRepresentation()
 {
     TRACE(CL_LOG, "initializeCachedRepresentation");
 
-    updatePropertiesMap();
+    updatePropertyListMap();
 }
 
 void
-PropertiesImpl::removeRepositoryEntries()
+PropertyListImpl::removeRepositoryEntries()
 {
-    getOps()->removeProperties(this);
+    getOps()->removePropertyList(this);
 }
 
 /*
- * Update the properties map from the repository.
+ * Update the property list map from the repository.
  */
 void
-PropertiesImpl::updatePropertiesMap()
+PropertyListImpl::updatePropertyListMap()
 {
     int32_t version;
     string keyValMap = getOps()->loadKeyValMap(getKey(), version);
 
     LOG_DEBUG(CL_LOG, 
-              "updatePropertiesMap: Properties key = %s, "
+              "updatePropertiesMap: Property list key = %s, "
               "new version = %d, old version = %d, new keyValMap = %s",
               getKey().c_str(),
               version,
@@ -75,7 +76,7 @@ PropertiesImpl::updatePropertiesMap()
     }
     else {
         LOG_WARN(CL_LOG,
-                 "updatePropertiesMap: Have a newer version (%d) "
+                 "updatePropertyListMap: Have a newer version (%d) "
                  "than the repository (%d)",
                  getKeyValVersion(),
                  version);
@@ -83,7 +84,7 @@ PropertiesImpl::updatePropertiesMap()
 }
 
 void 
-PropertiesImpl::setProperty(const string &name, 
+PropertyListImpl::setProperty(const string &name, 
                             const string &value)
 {
     TRACE(CL_LOG, "setProperty");
@@ -94,7 +95,7 @@ PropertiesImpl::setProperty(const string &name,
 }
 
 void
-PropertiesImpl::deleteProperty(const string &name)
+PropertyListImpl::deleteProperty(const string &name)
 {
     TRACE(CL_LOG, "deleteProperty");
 
@@ -108,7 +109,7 @@ PropertiesImpl::deleteProperty(const string &name)
 }
 
 void
-PropertiesImpl::publish()
+PropertyListImpl::publish()
 {
     TRACE(CL_LOG, "publish");
 
@@ -116,10 +117,10 @@ PropertiesImpl::publish()
     string marshalledKeyValMap = marshall();
     int32_t finalVersion;
 	
-    getOps()->updateProperties(getKey(),
-                               marshalledKeyValMap,
-                               getKeyValVersion(),
-                               finalVersion);
+    getOps()->updatePropertyList(getKey(),
+                                 marshalledKeyValMap,
+                                 getKeyValVersion(),
+                                 finalVersion);
     
     /* 
      * Since we should have the lock, the data should be identical to
@@ -130,9 +131,9 @@ PropertiesImpl::publish()
 }
 
 vector<string>
-PropertiesImpl::getPropertyKeys() const
+PropertyListImpl::getPropertyListKeys() const
 {
-    TRACE(CL_LOG, "getPropertyKeys");
+    TRACE(CL_LOG, "getPropertyListKeys");
 
     throwIfRemoved();
 
@@ -149,7 +150,7 @@ PropertiesImpl::getPropertyKeys() const
 }
         
 string 
-PropertiesImpl::getProperty(const string &name, bool searchParent)
+PropertyListImpl::getProperty(const string &name, bool searchParent)
 {
     TRACE(CL_LOG, "getProperty");
     
@@ -179,11 +180,11 @@ PropertiesImpl::getProperty(const string &name, bool searchParent)
      * Key manipulation should only be done in clusterlib.cc, therefore
      * this should move to clusterlib.cc.
      */
-    Properties *prop = NULL;
+    PropertyList *prop = NULL;
     string parentKey = getKey();
     do {
         /*
-         * Generate the new parentKey by removing this Properties
+         * Generate the new parentKey by removing this PropertyList
          * object and one clusterlib object.
          */
         parentKey = NotifyableKeyManipulator::removeObjectFromKey(parentKey);
@@ -197,7 +198,7 @@ PropertiesImpl::getProperty(const string &name, bool searchParent)
             return string();
         }
         parentKey.append(ClusterlibStrings::KEYSEPARATOR);
-        parentKey.append(ClusterlibStrings::PROPERTIES);
+        parentKey.append(ClusterlibStrings::PROPERTYLIST);
         parentKey.append(ClusterlibStrings::KEYSEPARATOR);
         parentKey.append(getName());
 
@@ -206,14 +207,14 @@ PropertiesImpl::getProperty(const string &name, bool searchParent)
                   parentKey.c_str(),
                   getKey().c_str());
         
-        prop = getOps()->getPropertiesFromKey(parentKey);
+        prop = getOps()->getPropertyListFromKey(parentKey);
     } while (prop == NULL);
     
     return prop->getProperty(name, searchParent);
 }
 
 string 
-PropertiesImpl::marshall() const
+PropertyListImpl::marshall() const
 {
     string res;
     for (KeyValMap::const_iterator kvIt = m_keyValMap.begin();
@@ -226,7 +227,7 @@ PropertiesImpl::marshall() const
 }
 
 bool 
-PropertiesImpl::unmarshall(const string &marshalledKeyValMap) 
+PropertyListImpl::unmarshall(const string &marshalledKeyValMap) 
 {
     vector<string> nameValueList;
     split(nameValueList, marshalledKeyValMap, is_any_of(";"));
@@ -248,7 +249,7 @@ PropertiesImpl::unmarshall(const string &marshalledKeyValMap)
                           pair.size(),
                           (*sIt).c_str());
 		throw InconsistentInternalStateException(
-                    "Malformed property \"" +
+                    "Malformed property list \"" +
                     *sIt +
                     "\", expecting 2 components " +
                     "and instead got " + s.str().c_str());

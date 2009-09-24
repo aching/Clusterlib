@@ -77,7 +77,7 @@ class ClusterlibRemove : public MPITestFixture {
     }
 
     /** 
-     * Simple test to try and delete a Properties
+     * Simple test to try and delete a PropertyList
      */
     void testRemove2()
     {
@@ -88,8 +88,8 @@ class ClusterlibRemove : public MPITestFixture {
                                     "testRemove2");
 
         if (isMyRank(0)) {
-            Properties *prop = _group0->getProperties(
-                ClusterlibStrings::DEFAULTPROPERTIES,
+            PropertyList *prop = _group0->getPropertyList(
+                ClusterlibStrings::DEFAULTPROPERTYLIST,
                 true);
             MPI_CPPUNIT_ASSERT(prop);
             prop->remove();
@@ -181,7 +181,7 @@ class ClusterlibRemove : public MPITestFixture {
     }
 
     /**
-     * Multi-level removal of a Node and its Properties
+     * Multi-level removal of a Node and its PropertyList
      */
     void testRemove10()
     {
@@ -192,8 +192,8 @@ class ClusterlibRemove : public MPITestFixture {
                                     "testRemove10");
 
         if (isMyRank(0)) {
-            Properties *prop = _node0->getProperties(
-                ClusterlibStrings::DEFAULTPROPERTIES,
+            PropertyList *prop = _node0->getPropertyList(
+                ClusterlibStrings::DEFAULTPROPERTYLIST,
                 true);
             MPI_CPPUNIT_ASSERT(prop);
             try {

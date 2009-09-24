@@ -22,23 +22,23 @@ namespace clusterlib
 {
 
 NameList
-NotifyableImpl::getPropertiesNames() 
+NotifyableImpl::getPropertyListNames() 
 {
-    TRACE(CL_LOG, "getPropertiesNames");
+    TRACE(CL_LOG, "getPropertyListNames");
 
     throwIfRemoved();
 
-    return getOps()->getPropertiesNames(this);
+    return getOps()->getPropertyListNames(this);
 }
 
-Properties *
-NotifyableImpl::getProperties(const std::string &propName, bool create)
+PropertyList *
+NotifyableImpl::getPropertyList(const std::string &name, bool create)
 {
-    TRACE(CL_LOG, "getProperties");
+    TRACE(CL_LOG, "getPropertyList");
 
     throwIfRemoved();
 
-    return getOps()->getProperties(propName, this, create);
+    return getOps()->getPropertyList(name, this, create);
 }
 
 void

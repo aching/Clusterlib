@@ -1,8 +1,8 @@
 /*
- * properties.h --
+ * propertylist.h --
  *
- * Interface of class Properties; it represents the properties of a
- * clusterlib object.
+ * Interface of class PropertyList; it represents a property list
+ * child of a clusterlib object.
  *
  * $Header:$
  * $Revision$
@@ -10,29 +10,29 @@
  */
 
 
-#ifndef __PROPERTIES_H__
-#define __PROPERTIES_H__
+#ifndef __PROPERTYLIST_H__
+#define __PROPERTYLIST_H__
 
 namespace clusterlib
 {
 
 /**
- * Definition of class Properties
+ * Definition of class PropertyList
  */
-class Properties 
+class PropertyList
     : public virtual Notifyable
 {
     public:
     /**
-     * \brief Get the keys of all the properties.
+     * \brief Get the keys in the property list..
      * 
      * This function is safe to call without a lock as it acquires the
-     * lock while getting the property keys and returns them as a
+     * lock while getting the property list keys and returns them as a
      * vector.
      *
-     * @return the vector of property keys
+     * @return the vector of property list keys
      */
-    virtual std::vector<std::string> getPropertyKeys() const = 0;
+    virtual std::vector<std::string> getPropertyListKeys() const = 0;
          
     /**
      * \brief Gets a value associated with the given property.
@@ -104,9 +104,11 @@ class Properties
     virtual int64_t getValueChangeTime() = 0;
 
     /**
-     * \brief Do not allow getProperties() on a Properties object (throw)
+     * \brief Do not allow getPropertyList() on a Properties object (throw)
      */
-    virtual Properties *getProperties(bool create = false) = 0;    
+    virtual PropertyList *getPropertyList(
+        const std::string &name,
+        bool create = false) = 0;    
 };
 
 };	/* End of 'namespace clusterlib' */
