@@ -11,10 +11,10 @@
 #ifndef	_CLUSTERLIBINTERNAL_H_
 #define	_CLUSTERLIBINTERNAL_H_
 
-#include "clusterlib.h"
-
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include "clusterlib.h"
+
 #include "log.h"
 #include "intervaltree.h"
 #include "event.h"
@@ -27,6 +27,7 @@
 #include "groupimpl.h"
 #include "applicationimpl.h"
 #include "nodeimpl.h"
+#include "processslotimpl.h"
 #include "datadistributionimpl.h"
 #include "propertylistimpl.h"
 #include "rootimpl.h"

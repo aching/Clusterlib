@@ -117,7 +117,7 @@ class ZooKeeperConfig
     ZooKeeperConfig(const std::string &hosts, 
                     int32_t leaseTimeout, 
                     bool autoReconnect = true, 
-                    int64_t connectTimeout = 10000)
+                    int64_t connectTimeout = 30000)
         : m_hosts(hosts), 
           m_leaseTimeout(leaseTimeout), 
           m_autoReconnect(autoReconnect), 

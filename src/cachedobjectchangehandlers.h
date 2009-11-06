@@ -29,6 +29,15 @@ class CachedObjectChangeHandlers
         GROUPS_CHANGE,
         DATADISTRIBUTIONS_CHANGE,
         NODES_CHANGE,
+        PROCESSSLOTS_CHANGE,
+        PROCESSSLOTS_USAGE_CHANGE,
+        PROCESSSLOT_PORTVEC_CHANGE,
+        PROCESSSLOT_EXECARGS_CHANGE,
+        PROCESSSLOT_RUNNING_EXECARGS_CHANGE,
+        PROCESSSLOT_PID_CHANGE,
+        PROCESSSLOT_DESIRED_STATE_CHANGE,
+        PROCESSSLOT_CURRENT_STATE_CHANGE,
+        PROCESSSLOT_RESERVATION_CHANGE,
         PROPERTYLISTS_CHANGE,
         PROPERTYLIST_VALUES_CHANGE,
         SHARDS_CHANGE,
@@ -89,6 +98,70 @@ class CachedObjectChangeHandlers
     Event handleNodesChange(NotifyableImpl *ntp,
                             int32_t etype,
                             const std::string &key);
+
+    /**
+     * Handle changes in the set of process slots in a node.
+     */
+    Event handleProcessSlotsChange(NotifyableImpl *ntp,
+                                   int32_t etype,
+                                   const std::string &key);
+
+    /**
+     * Handle changes in the usage of process slots in a node.
+     */
+    Event handleProcessSlotsUsageChange(NotifyableImpl *ntp,
+                                        int32_t etype,
+                                        const std::string &key);
+
+    /**
+     * Handle changes in the port vector of a process slot.
+     */
+    Event handleProcessSlotPortVecChange(NotifyableImpl *ntp,
+                                         int32_t etype,
+                                         const std::string &key);
+
+    /**
+     * Handle changes in the executable arguments of a process slot.
+     */
+    Event handleProcessSlotExecArgsChange(NotifyableImpl *ntp,
+                                          int32_t etype,
+                                          const std::string &key);
+
+    /**
+     * Handle changes in the running executable arguments of a process
+     * slot.
+     */
+    Event handleProcessSlotRunningExecArgsChange(NotifyableImpl *ntp,
+                                                 int32_t etype,
+                                                 const std::string &key);
+
+    /**
+     * Handle changes in the PID of a process slot.
+     */
+    Event handleProcessSlotPIDChange(NotifyableImpl *ntp,
+                                     int32_t etype,
+                                     const std::string &key);
+
+    /**
+     * Handle changes in the desired state of a process slot.
+     */
+    Event handleProcessSlotDesiredStateChange(NotifyableImpl *ntp,
+                                              int32_t etype,
+                                              const std::string &key);
+
+    /**
+     * Handle changes in the current state of a process slot.
+     */
+    Event handleProcessSlotCurrentStateChange(NotifyableImpl *ntp,
+                                              int32_t etype,
+                                              const std::string &key);
+
+    /**
+     * Handle changes in the reservation of a process slot.
+     */
+    Event handleProcessSlotReservationChange(NotifyableImpl *ntp,
+                                             int32_t etype,
+                                             const std::string &key);
 
     /**
      * Handle changes in the set of property lists in a notifyable.
@@ -217,6 +290,33 @@ class CachedObjectChangeHandlers
         m_nodesChangeHandler(
             this,
             &CachedObjectChangeHandlers::handleNodesChange),
+        m_processSlotsChangeHandler(
+            this,
+            &CachedObjectChangeHandlers::handleProcessSlotsChange),
+        m_processSlotsUsageChangeHandler(
+            this,
+            &CachedObjectChangeHandlers::handleProcessSlotsUsageChange),
+        m_processSlotPortVecChangeHandler(
+            this,
+            &CachedObjectChangeHandlers::handleProcessSlotPortVecChange),
+        m_processSlotExecArgsChangeHandler(
+            this,
+            &CachedObjectChangeHandlers::handleProcessSlotExecArgsChange),
+        m_processSlotRunningExecArgsChangeHandler(
+            this,
+            &CachedObjectChangeHandlers::handleProcessSlotRunningExecArgsChange),
+        m_processSlotPIDChangeHandler(
+            this,
+            &CachedObjectChangeHandlers::handleProcessSlotPIDChange),
+        m_processSlotDesiredStateChangeHandler(
+            this,
+            &CachedObjectChangeHandlers::handleProcessSlotDesiredStateChange),
+        m_processSlotCurrentStateChangeHandler(
+            this,
+            &CachedObjectChangeHandlers::handleProcessSlotCurrentStateChange),
+        m_processSlotReservationChangeHandler(
+            this,
+            &CachedObjectChangeHandlers::handleProcessSlotReservationChange),
         m_nodeClientStateChangeHandler(
             this,
             &CachedObjectChangeHandlers::handleClientStateChange),
@@ -269,6 +369,17 @@ class CachedObjectChangeHandlers
     CachedObjectEventHandler m_dataDistributionsChangeHandler;
     CachedObjectEventHandler m_dataDistributionShardsChangeHandler;
     CachedObjectEventHandler m_nodesChangeHandler;
+    CachedObjectEventHandler m_processSlotsChangeHandler;
+
+    CachedObjectEventHandler m_processSlotsUsageChangeHandler;
+    CachedObjectEventHandler m_processSlotPortVecChangeHandler;
+    CachedObjectEventHandler m_processSlotExecArgsChangeHandler;
+    CachedObjectEventHandler m_processSlotRunningExecArgsChangeHandler;
+    CachedObjectEventHandler m_processSlotPIDChangeHandler;
+    CachedObjectEventHandler m_processSlotDesiredStateChangeHandler;
+    CachedObjectEventHandler m_processSlotCurrentStateChangeHandler;
+    CachedObjectEventHandler m_processSlotReservationChangeHandler;
+
     CachedObjectEventHandler m_nodeClientStateChangeHandler;
     CachedObjectEventHandler m_nodeMasterSetStateChangeHandler;
     CachedObjectEventHandler m_nodeConnectionChangeHandler;

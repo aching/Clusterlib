@@ -28,6 +28,7 @@
 #include "blockingqueue.h"
 #include "mutex.h"
 #include "thread.h"
+#include "json.h"
 #include "healthchecker.h"
 #include "timerservice.h"
 
@@ -37,6 +38,7 @@
 #include "group.h"
 #include "application.h"
 #include "node.h"
+#include "processslot.h"
 #include "key.h"
 #include "shard.h"
 #include "datadistribution.h"

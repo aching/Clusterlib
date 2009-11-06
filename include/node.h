@@ -85,6 +85,51 @@ class Node
     virtual void unregisterHealthChecker() = 0;
 
     /**
+     * Set whether process slots are to be used (an active
+     * clusterlib node process is running).
+     */
+    virtual void setUseProcessSlots(bool use) = 0;
+    
+    /**
+     * get whether process slots to be used (an active
+     * clusterlib node process is running).
+     */
+    virtual bool getUseProcessSlots() = 0;
+
+    /** 
+     * Get a list of names of all process slots
+     * 
+     * @return a copy of the list of all process slots.
+     */
+    virtual NameList getProcessSlotNames() = 0;
+
+    /**
+     * Get the named process slot (only if enabled).
+     * 
+     * @param name the name of the proccess slot
+     * @param create create the process slot if doesn't exist
+     * @return NULL if the named process slot does not exist and create
+     * == false
+     * @throw Exception only if tried to create and couldn't create
+     */
+    virtual ProcessSlot *getProcessSlot(const std::string &name, 
+                                        bool create = false) = 0;
+
+    /**
+     * Get the maximum number of process slots on this node.
+     *
+     * @return the maximum number of process slots
+     */
+    virtual int32_t getMaxProcessSlots() = 0;
+
+    /**
+     * Set the maximum number of process slots on this node.
+     *
+     * @param the maximum number of process slots
+     */
+    virtual void setMaxProcessSlots(int32_t maxProcessSlots) = 0;
+
+    /**
      * Destructor.
      */
     virtual ~Node() {}

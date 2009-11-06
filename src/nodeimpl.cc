@@ -16,6 +16,7 @@
 #define MODULE_NAME "ClusterLib"
 
 using namespace std;
+using namespace json;
 
 namespace clusterlib
 {
@@ -52,7 +53,7 @@ namespace clusterlib
 void
 NodeImpl::registerHealthChecker(HealthChecker *healthChecker)
 {
-    TRACE( CL_LOG, "registerHealthChecker" );
+    TRACE(CL_LOG, "registerHealthChecker" );
 
     /*
      * Create the "connected" node.
@@ -106,7 +107,7 @@ NodeImpl::registerHealthChecker(HealthChecker *healthChecker)
 void
 NodeImpl::unregisterHealthChecker()
 {
-    TRACE( CL_LOG, "unregisterHealthChecker" );
+    TRACE(CL_LOG, "unregisterHealthChecker" );
 
     getOps()->removeConnected(getKey());
 
@@ -127,6 +128,131 @@ NodeImpl::unregisterHealthChecker()
 
     Locker l1(getHealthMutex());
     mp_healthChecker = NULL;
+}
+
+void
+NodeImpl::setUseProcessSlots(bool use)
+{
+    TRACE(CL_LOG, "setUseProcessSlots");
+
+    acquireLock();
+    string processSlotsUsageKey = 
+        NotifyableKeyManipulator::createProcessSlotsUsageKey(getKey());
+
+    JSONValue::JSONBoolean jsonBool = use;
+    string encodedJsonValue = JSONCodec::encode(jsonBool);
+    SAFE_CALL_ZK(getOps()->getRepository()->setNodeData(
+                     processSlotsUsageKey,
+                     encodedJsonValue),
+                 "Getting of %s failed: %s",
+                 processSlotsUsageKey.c_str(),
+                 true,
+                 false);
+    releaseLock();
+}
+
+bool
+NodeImpl::getUseProcessSlots()
+{
+    TRACE(CL_LOG, "getUseProcessSlots");
+
+    string processSlotsUsageKey = 
+        NotifyableKeyManipulator::createProcessSlotsUsageKey(getKey());
+
+    acquireLock();
+    string encodedJsonValue;
+    SAFE_CALLBACK_ZK(
+        (encodedJsonValue = getOps()->getRepository()->getNodeData(
+            processSlotsUsageKey,
+            getOps()->getZooKeeperEventAdapter(),
+            getOps()->getCachedObjectChangeHandlers()->
+            getChangeHandler(
+                CachedObjectChangeHandlers::PROCESSSLOTS_USAGE_CHANGE))),
+        (encodedJsonValue = getOps()->getRepository()->getNodeData(
+            processSlotsUsageKey)),
+        CachedObjectChangeHandlers::PROCESSSLOTS_USAGE_CHANGE,
+        processSlotsUsageKey,
+        "Reading the value of %s failed: %s",
+        processSlotsUsageKey.c_str(),
+        true,
+        true);
+    releaseLock();
+
+    if (encodedJsonValue.empty()) {
+        return false;
+    }
+    else {        
+        return 
+            JSONCodec::decode(encodedJsonValue).get<JSONValue::JSONBoolean>();
+    }
+}
+
+NameList 
+NodeImpl::getProcessSlotNames()
+{
+    TRACE(CL_LOG, "getProcessSlotNames");
+
+    throwIfRemoved();
+
+    return getOps()->getProcessSlotNames(this);
+}
+
+ProcessSlot *
+NodeImpl::getProcessSlot(const string &name, 
+                         bool create)
+{
+    TRACE(CL_LOG, "getProcessSlot");
+
+    throwIfRemoved();
+
+    return getOps()->getProcessSlot(name, this, create);
+}
+
+int32_t
+NodeImpl::getMaxProcessSlots()
+{
+    TRACE(CL_LOG, "getMaxProcessSlots");
+    string processSlotsMaxKey = 
+        NotifyableKeyManipulator::createProcessSlotsMaxKey(getKey());
+
+    acquireLock();
+    string encodedJsonValue;
+    SAFE_CALL_ZK((encodedJsonValue = getOps()->getRepository()->getNodeData(
+                      processSlotsMaxKey)),
+                 "Getting of %s failed: %s",
+                 processSlotsMaxKey.c_str(),
+                 true,
+                 false);
+    releaseLock();
+
+    if (encodedJsonValue.empty()) {
+        return -1;
+    }
+    else {        
+        return static_cast<int32_t>(JSONCodec::decode(encodedJsonValue).
+                                    get<JSONValue::JSONInteger>());
+    }
+}
+
+void
+NodeImpl::setMaxProcessSlots(int32_t maxProcessSlots)
+{
+    TRACE(CL_LOG, "setMaxProcessSlots");
+
+    acquireLock();
+    string processSlotsMaxKey = 
+        NotifyableKeyManipulator::createProcessSlotsMaxKey(getKey());
+
+    JSONValue::JSONInteger jsonInt = static_cast<int64_t>(maxProcessSlots);
+    string encodedJsonValue = JSONCodec::encode(jsonInt);
+    SAFE_CALL_ZK(getOps()->getRepository()->setNodeData(
+                     processSlotsMaxKey,
+                     encodedJsonValue),
+                 "Getting of %s failed: %s",
+                 processSlotsMaxKey.c_str(),
+                 true,
+                 false);
+    releaseLock();
 }
 
 NodeImpl::~NodeImpl()

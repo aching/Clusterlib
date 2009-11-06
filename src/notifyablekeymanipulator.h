@@ -32,6 +32,9 @@ class NotifyableKeyManipulator
                                          const std::string &lockName);
     static std::string createNodeKey(const std::string &groupKey,
                                      const std::string &nodeName);
+    static std::string createProcessSlotKey(
+        const std::string &nodeKey,
+        const std::string &processSlotName);
     static std::string createGroupKey(const std::string &groupKey,
                                       const std::string &groupName);
     static std::string createApplicationKey(const std::string &appName);
@@ -40,6 +43,24 @@ class NotifyableKeyManipulator
                                                  const std::string &distName);
     static std::string createPropertyListKey(const std::string &notifyableKey,
                                              const std::string &propListName);
+    static std::string createProcessSlotsUsageKey(
+        const std::string &notifyableKey);
+    static std::string createProcessSlotsMaxKey(
+        const std::string &notifyableKey);
+    static std::string createProcessSlotPortVecKey(
+        const std::string &notifyableKey);
+    static std::string createProcessSlotExecArgsKey(
+        const std::string &notifyableKey);
+    static std::string createProcessSlotRunningExecArgsKey(
+        const std::string &notifyableKey);
+    static std::string createProcessSlotPIDKey(
+        const std::string &notifyableKey);
+    static std::string createProcessSlotDesiredStateKey(
+        const std::string &notifyableKey);
+    static std::string createProcessSlotCurrentStateKey(
+        const std::string &notifyableKey);
+    static std::string createProcessSlotReservationKey(
+        const std::string &notifyableKey);
 
     /**
      * Create a sync event key that will be used to figure out which
@@ -245,6 +266,29 @@ class NotifyableKeyManipulator
      * @return true if key is valid, false if not valid
      */
     static bool isNodeKey(const std::string &key);
+
+    /**
+     * Checks if the components (assumed from a split) make up a valid
+     * key, not if an actual ProcessSlot exists for that key.
+     * 
+     * @param components A vector of components in the key parsed by split
+     *                   (i.e. first component should be "")
+     * @param elements The number of elements to check with (should 
+     *                 be <= components.size()).  If it is -1, then use 
+     *                 components.size().
+     * @return true if key is valid, false if not valid
+     */
+    static bool isProcessSlotKey(const std::vector<std::string> &components, 
+                                 int32_t elements = -1);
+
+    /**
+     * Checks if the key is valid, not if an actual ProcessSlot exists
+     * for that key.
+     * 
+     * @param key A key to test if it is an application
+     * @return true if key is valid, false if not valid
+     */
+    static bool isProcessSlotKey(const std::string &key);
 
     /**
      * Remove the leaf node and returns the closest clusterlib

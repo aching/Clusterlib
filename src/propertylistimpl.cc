@@ -85,12 +85,22 @@ PropertyListImpl::updatePropertyListMap()
 
 void 
 PropertyListImpl::setProperty(const string &name, 
-                            const string &value)
+                              const string &value)
 {
     TRACE(CL_LOG, "setProperty");
 
     throwIfRemoved();
 
+    if (name.find(ClusterlibStrings::PROPERTYLISTDELIMITER) != string::npos) {
+        throw InvalidArgumentsException(
+            "setProperty: Cannot use delimiter " + 
+            ClusterlibStrings::PROPERTYLISTDELIMITER + " in the name");
+    }
+    if (value.find(ClusterlibStrings::PROPERTYLISTDELIMITER) != string::npos) {
+        throw InvalidArgumentsException(
+            "setProperty: Cannot use delimiter " + 
+            ClusterlibStrings::PROPERTYLISTDELIMITER + " in the value");
+    }
     m_keyValMap[name] = value;
 }
 
@@ -101,6 +111,7 @@ PropertyListImpl::deleteProperty(const string &name)
 
     throwIfRemoved();
 
+    Locker(getSyncLock());
     if (m_keyValMap.erase(name) != 1) {
         LOG_WARN(CL_LOG, 
                  "deleteProperty: Failed delete with name %s", 
@@ -221,7 +232,7 @@ PropertyListImpl::marshall() const
          kvIt != m_keyValMap.end(); 
          ++kvIt) {
         res.append(kvIt->first).append("=").append(kvIt->second);
-	res.append(";");
+	res.append(ClusterlibStrings::PROPERTYLISTDELIMITER);
     }
     return res;
 }
@@ -230,7 +241,9 @@ bool
 PropertyListImpl::unmarshall(const string &marshalledKeyValMap) 
 {
     vector<string> nameValueList;
-    split(nameValueList, marshalledKeyValMap, is_any_of(";"));
+    split(nameValueList, 
+          marshalledKeyValMap, 
+          is_any_of(ClusterlibStrings::PROPERTYLISTDELIMITER));
     if (nameValueList.empty()) {
         return false;
     }

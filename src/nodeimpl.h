@@ -65,6 +65,19 @@ class NodeImpl
 
     virtual void unregisterHealthChecker();
 
+    virtual void setUseProcessSlots(bool use);
+
+    virtual bool getUseProcessSlots();
+
+    virtual NameList getProcessSlotNames();
+
+    virtual ProcessSlot *getProcessSlot(const std::string &name, 
+                                        bool create = false);
+
+    virtual int32_t getMaxProcessSlots();
+
+    virtual void setMaxProcessSlots(int32_t maxProcessSlots);
+
     /*
      * Internal functions not used by outside clients
      */    
@@ -86,6 +99,7 @@ class NodeImpl
           m_connectionTime(0),
           mp_healthChecker(NULL),
           m_terminateDoHealthChecks(false) {}
+
 
     /*
      * Destructor.

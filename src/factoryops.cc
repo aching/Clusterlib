@@ -160,7 +160,7 @@ FactoryOps::createClient()
         LOG_ERROR(CL_LOG, "Cannot create client when disconnected.");
         return NULL;
     }
-
+    
     /*
      * Create the new client and add it to the registry.
      */
@@ -1182,6 +1182,79 @@ FactoryOps::getNode(const string &nodeName,
     return NULL;
 }
 
+ProcessSlotImpl *
+FactoryOps::getProcessSlot(const string &processSlotName,
+                    NodeImpl *parentNode,
+                    bool create)
+{
+    TRACE(CL_LOG, "getPropertySlot");
+
+    if (!NotifyableKeyManipulator::isValidNotifyableName(processSlotName)) {
+        LOG_WARN(CL_LOG,
+                 "getPropertySlot: Illegal processslot name %s",
+                 processSlotName.c_str());
+        if (create == true) {
+            throw InvalidArgumentsException("getProcessSlot: illegal name");
+        }
+        return NULL;
+    }
+
+    if (parentNode == NULL) {
+        LOG_ERROR(CL_LOG, "getProcessSlot: NULL parent node");
+        throw InvalidArgumentsException("getProcessSlot: NULL parent");
+    }
+    string key = NotifyableKeyManipulator::createProcessSlotKey(
+        parentNode->getKey(),
+        processSlotName);
+
+    {
+        Locker l(getProcessSlotsLock());
+        NotifyableImplMap::const_iterator processSlotIt 
+            = m_processSlots.find(key);
+
+        if (processSlotIt != m_processSlots.end()) {
+            LOG_DEBUG(CL_LOG, 
+                      "getProcessSlot: Found %s/%s in local cache.",
+                      parentNode->getKey().c_str(),
+                      processSlotName.c_str());
+            processSlotIt->second->incrRefCount();
+            return dynamic_cast<ProcessSlotImpl *>(processSlotIt->second);
+        }
+    }
+
+    ProcessSlotImpl *processSlot = loadProcessSlot(processSlotName, 
+                                                   key, 
+                                                   parentNode);
+    if (processSlot != NULL) {
+        return processSlot;
+    }
+    if (create == true) {
+        /*
+         * Use a distributed lock on the parent to prevent another thread
+         * from interfering with creation and removal.
+         */
+        getOps()->getDistributedLocks()->acquire(
+            parentNode,
+            ClusterlibStrings::NOTIFYABLELOCK);
+
+        processSlot = loadProcessSlot(processSlotName, key, parentNode);
+        if (processSlot == NULL) {
+            processSlot = createProcessSlot(processSlotName, key, parentNode);
+        }
+        
+        getOps()->getDistributedLocks()->release(
+            parentNode,
+            ClusterlibStrings::NOTIFYABLELOCK);
+        return processSlot;
+    }
+
+    LOG_WARN(CL_LOG,
+             "getProcessSlot: process slot %s not found nor created",
+             processSlotName.c_str());
+
+    return NULL;
+}
+
 /*
  * Update the fields of a distribution in the clusterlib repository.
  */
@@ -1445,6 +1518,7 @@ FactoryOps::getNotifyableFromKey(const string &key, bool create)
 
     vector<string> components;
     split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
+    LOG_DEBUG(CL_LOG, "getNotifyableFromKey: key %s", key.c_str());
     return getNotifyableFromComponents(components, -1, create);
 }
 NotifyableImpl *
@@ -1508,6 +1582,14 @@ FactoryOps::getNotifyableFromComponents(const vector<string> &components,
     if (ntp) {
         LOG_DEBUG(CL_LOG, 
                   "getNotifyableFromComponents: found Node");
+        return ntp;
+    }
+    ntp = getProcessSlotFromComponents(components, 
+                                       clusterObjectElements, 
+                                       create);
+    if (ntp) {
+        LOG_DEBUG(CL_LOG, 
+                  "getNotifyableFromComponents: found ProcessSlot");
         return ntp;
     }
     
@@ -1695,11 +1777,13 @@ FactoryOps::getPropertyListFromComponents(const vector<string> &components,
 
     LOG_DEBUG(CL_LOG, 
               "getPropertyListFromComponents: parent key = %s, "
-              "propertyList name = %s", 
+              "property list name = %s", 
               parent->getKey().c_str(),
               components.at(elements - 1).c_str());
 
-    parent->releaseRef();
+    if (dynamic_cast<Root *>(parent) == NULL) {
+        parent->releaseRef();
+    }
     return getPropertyList(components.at(elements - 1),
                          parent,
                          create);
@@ -1831,6 +1915,65 @@ FactoryOps::getNodeFromComponents(const vector<string> &components,
                    create);
 }
 
+ProcessSlotImpl *
+FactoryOps::getProcessSlotFromKey(const string &key, bool create)
+{
+    TRACE(CL_LOG, "getProcessSlotFromKey");
+
+    vector<string> components;
+    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
+    return getProcessSlotFromComponents(components, -1, create);
+}
+ProcessSlotImpl *
+FactoryOps::getProcessSlotFromComponents(const vector<string> &components, 
+                                         int32_t elements,
+                                         bool create)
+{
+    TRACE(CL_LOG, "getProcessSlotFromComponents");
+
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+    if (!NotifyableKeyManipulator::isProcessSlotKey(components, elements)) {
+        LOG_DEBUG(CL_LOG, 
+                  "getProcessSlotFromComponents: Couldn't find key"
+                  " with %d elements",
+                  elements);
+        return NULL;
+    }
+    
+    int32_t parentGroupCount = 
+        NotifyableKeyManipulator::removeObjectFromComponents(components, 
+                                                             elements);
+    if (parentGroupCount == -1) {
+        return NULL;
+    }
+    NodeImpl *parent = getNodeFromComponents(components,
+                                             parentGroupCount,
+                                             create);
+    if (parent == NULL) {
+        LOG_WARN(CL_LOG, "getProcessSlotFromComponents: Tried to get "
+                 "parent with name %s",
+                 components.at(parentGroupCount - 1).c_str());
+        return NULL;
+    }
+
+    LOG_DEBUG(CL_LOG, 
+              "getProcessSlotFromComponents: parent key = %s, "
+              "process slot name = %s", 
+              parent->getKey().c_str(),
+              components.at(elements - 1).c_str());
+
+    parent->releaseRef();
+    return getProcessSlot(components.at(elements - 1),
+                          parent,
+                          create);
+}
+
 /*
  * Entity loading from ZooKeeper. Also add it to the global cache.
  */
@@ -1852,7 +1995,7 @@ FactoryOps::loadApplication(const string &name,
     }
 
     /* 
-     * Make sure that all the Zookeeper nodes exists that are part of
+     * Make sure that all the Zookeeper nodes exist that are part of
      * this object.
      */
     string groups = 
@@ -1956,7 +2099,7 @@ FactoryOps::loadDataDistribution(const string &distName,
     }
 
     /* 
-     * Make sure that all the Zookeeper nodes exists that are part of
+     * Make sure that all the Zookeeper nodes exist that are part of
      * this object.
      */
     string shards = 
@@ -2050,7 +2193,7 @@ FactoryOps::loadPropertyList(const string &propListName,
     }
 
     /* 
-     * Make sure that all the Zookeeper nodes exists that are part of
+     * Make sure that all the Zookeeper nodes exist that are part of
      * this object.
      */
     SAFE_CALL_ZK((exists = m_zk.nodeExists(propListKey)),
@@ -2084,7 +2227,7 @@ FactoryOps::loadKeyValMap(const string &key, int32_t &version)
     Stat stat;
 
     /* 
-     * Make sure that all the Zookeeper nodes exists that are part of
+     * Make sure that all the Zookeeper nodes exist that are part of
      * this object.
      */
     string kvnode =
@@ -2132,7 +2275,7 @@ FactoryOps::loadGroup(const string &groupName,
     }
 
     /* 
-     * Make sure that all the Zookeeper nodes exists that are part of
+     * Make sure that all the Zookeeper nodes exist that are part of
      * this object.
      */
     string nodes = 
@@ -2230,7 +2373,7 @@ FactoryOps::loadNode(const string &name,
     }
     
     /* 
-     * Make sure that all the Zookeeper nodes exists that are part of
+     * Make sure that all the Zookeeper nodes exist that are part of
      * this object.
      */
     string cs = 
@@ -2245,6 +2388,14 @@ FactoryOps::loadNode(const string &name,
         key + 
         ClusterlibStrings::KEYSEPARATOR + 
         ClusterlibStrings::CLIENTVERSION;
+    string up =
+        key +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::PROCESSSLOTSUSAGE;
+    string mp =
+        key +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::PROCESSSLOTSMAX;
 
     SAFE_CALL_ZK((exists = m_zk.nodeExists(key)),
                  "Could not determine whether key %s exists: %s",
@@ -2293,6 +2444,32 @@ FactoryOps::loadNode(const string &name,
                  cv.c_str());
         return NULL;
     }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(up)),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadNode: Node with key %s is not fully constructed "
+                 "(%s missing)",
+                 key.c_str(),
+                 up.c_str());
+        return NULL;
+    }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(mp)),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadNode: Node with key %s is not fully constructed "
+                 "(%s missing)",
+                 key.c_str(),
+                 mp.c_str());
+        return NULL;
+    }
 
     node = new NodeImpl(this, key, name, group);
     node->initializeCachedRepresentation();
@@ -2305,6 +2482,169 @@ FactoryOps::loadNode(const string &name,
     m_nodes[key] = node;
 
     return node;
+}
+
+ProcessSlotImpl *
+FactoryOps::loadProcessSlot(const string &name,
+                            const string &key,
+                            NodeImpl *node)
+{
+    TRACE(CL_LOG, "loadProcessSlot");
+
+    ProcessSlotImpl *processSlot;
+    bool exists = false;
+    Locker l(getProcessSlotsLock());
+
+    NotifyableImplMap::const_iterator processSlotIt = m_processSlots.find(key);
+    if (processSlotIt != m_processSlots.end()) {
+        processSlotIt->second->incrRefCount();
+        return dynamic_cast<ProcessSlotImpl *>(processSlotIt->second);
+    }
+    
+    /* 
+     * Make sure that all the Zookeeper nodes exist that are part of
+     * this object.
+     */
+    string pv = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::PROCESSSLOTPORTVEC;
+    string ea = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::PROCESSSLOTEXECARGS;
+    string rea = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::PROCESSSLOTRUNNINGEXECARGS;
+    string pid = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::PROCESSSLOTPID;
+    string ds = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::PROCESSSLOTDESIREDSTATE;
+    string cs = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::PROCESSSLOTCURRENTSTATE;
+    string res = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::PROCESSSLOTRESERVATION;
+
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(key)),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        return NULL;
+    }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(pv)),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadProcessSlot: ProcessSlot with key %s is not fully "
+                 "constructed (%s missing)",
+                 key.c_str(),
+                 pv.c_str());
+        return NULL;
+    }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(ea)),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadProcessSlot: ProcessSlot with key %s is not fully "
+                 "constructed (%s missing)",
+                 key.c_str(),
+                 ea.c_str());
+        return NULL;
+    }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(rea)),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadProcessSlot: ProcessSlot with key %s is not fully "
+                 "constructed (%s missing)",
+                 key.c_str(),
+                 rea.c_str());
+        return NULL;
+    }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(pid)),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadProcessSlot: ProcessSlot with key %s is not fully "
+                 "constructed (%s missing)",
+                 key.c_str(),
+                 pid.c_str());
+        return NULL;
+    }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(ds)),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadProcessSlot: ProcessSlot with key %s is not fully "
+                 "constructed (%s missing)",
+                 key.c_str(),
+                 ds.c_str());
+        return NULL;
+    }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(cs)),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadProcessSlot: ProcessSlot with key %s is not fully "
+                 "constructed (%s missing)",
+                 key.c_str(),
+                 cs.c_str());
+        return NULL;
+    }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(res)),
+                 "Could not determine whether key %s exists: %s",
+                 key.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        LOG_WARN(CL_LOG, 
+                 "loadProcessSlot: ProcessSlot with key %s is not fully "
+                 "constructed (%s missing)",
+                 key.c_str(),
+                 res.c_str());
+        return NULL;
+    }
+
+    processSlot = new ProcessSlotImpl(this, key, name, node);
+    processSlot->initializeCachedRepresentation();
+
+    /*
+     * Set up handler for changes in Notifyable state.
+     */
+    establishNotifyableStateChange(processSlot);
+
+    m_processSlots[key] = processSlot;
+
+    return processSlot;
 }
 
 /*
@@ -2491,6 +2831,14 @@ FactoryOps::createNode(const string &name,
         key + 
         ClusterlibStrings::KEYSEPARATOR + 
         ClusterlibStrings::CLIENTVERSION;
+    string up =
+        key +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::PROCESSSLOTSUSAGE;
+    string mp =
+        key +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::PROCESSSLOTSMAX;
 
     SAFE_CALL_ZK(m_zk.createNode(key, "", 0),
                  "Could not create key %s: %s",
@@ -2512,6 +2860,16 @@ FactoryOps::createNode(const string &name,
                  cv.c_str(),
                  true,
                  true);
+    SAFE_CALL_ZK(m_zk.createNode(up, "1.0", 0),
+                 "Could not create key %s: %s",
+                 up.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(mp, "1.0", 0),
+                 "Could not create key %s: %s",
+                 up.c_str(),
+                 true,
+                 true);
 
     /*
      * Load the node, which will load the data,
@@ -2519,6 +2877,95 @@ FactoryOps::createNode(const string &name,
      * object to the cache.
      */
     return loadNode(name, key, group);
+}
+
+ProcessSlotImpl *
+FactoryOps::createProcessSlot(const string &name,
+                              const string &key, 
+                              NodeImpl *node)
+{
+    TRACE(CL_LOG, "createProcessSlot");
+
+    string pv = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::PROCESSSLOTPORTVEC;
+    string ea = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::PROCESSSLOTEXECARGS;
+    string rea = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::PROCESSSLOTRUNNINGEXECARGS;
+    string pid = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::PROCESSSLOTPID;
+    string ds = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::PROCESSSLOTDESIREDSTATE;
+    string cs = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::PROCESSSLOTCURRENTSTATE;
+    string res = 
+        key + 
+        ClusterlibStrings::KEYSEPARATOR + 
+        ClusterlibStrings::PROCESSSLOTRESERVATION;
+
+    SAFE_CALL_ZK(m_zk.createNode(key, "", 0),
+                 "Could not create key %s: %s",
+                 key.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(pv, "", 0),
+                 "Could not create key %s: %s",
+                 pv.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(ea, 
+                                 ProcessSlotImpl::createDefaultExecArgs(),
+                                 0),
+                 "Could not create key %s: %s",
+                 ea.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(rea, 
+                                 ProcessSlotImpl::createDefaultExecArgs(),
+                                 0),
+                 "Could not create key %s: %s",
+                 rea.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(pid, "", 0),
+                 "Could not create key %s: %s",
+                 pid.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(ds, "", 0),
+                 "Could not create key %s: %s",
+                 ds.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(cs, "", 0),
+                 "Could not create key %s: %s",
+                 cs.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(res, "", 0),
+                 "Could not create key %s: %s",
+                 res.c_str(),
+                 true,
+                 true);
+
+    /*
+     * Load the process slot, which will load the data,
+     * establish all the event notifications, and add the
+     * object to the cache.
+     */
+    return loadProcessSlot(name, key, node);
 }
 
 void
@@ -2581,6 +3028,18 @@ FactoryOps::removeNode(NodeImpl *node)
                  true);
 }
 
+void
+FactoryOps::removeProcessSlot(ProcessSlotImpl *processSlot)
+{
+    TRACE(CL_LOG, "removeProcessSlot");
+
+    SAFE_CALL_ZK(m_zk.deleteNode(processSlot->getKey(), true),
+                 "Could not delete key %s: %s",
+                 processSlot->getKey().c_str(),
+                 false,
+                 true);
+}
+
 void 
 FactoryOps::removeNotifyableFromCacheByKey(const string &key)
 {
@@ -2607,6 +3066,10 @@ FactoryOps::removeNotifyableFromCacheByKey(const string &key)
     else if (NotifyableKeyManipulator::isNodeKey(components)) {
         ntpMapLock = getNodesLock();
         ntpMap = &m_nodes;
+    }
+    else if (NotifyableKeyManipulator::isProcessSlotKey(components)) {
+        ntpMapLock = getProcessSlotsLock();
+        ntpMap = &m_processSlots;
     }
     else if (NotifyableKeyManipulator::isPropertyListKey(components)) {
         ntpMapLock = getPropertyListLock();
@@ -2877,6 +3340,13 @@ FactoryOps::getNodesLock()
 }
 
 Mutex *
+FactoryOps::getProcessSlotsLock() 
+{ 
+    TRACE(CL_LOG, "getProcessSlotsLock");
+    return &m_processSlotLock;
+}
+
+Mutex *
 FactoryOps::getRemovedNotifyablesLock() 
 {
     TRACE(CL_LOG, "getRemovedNotifyablesLock");
@@ -3090,6 +3560,49 @@ FactoryOps::getNodeNames(GroupImpl *group)
     return list;
 }
 NameList
+FactoryOps::getProcessSlotNames(NodeImpl *node)
+{
+    TRACE(CL_LOG, "getNodeNames");
+
+    if (node == NULL) {
+        throw InvalidArgumentsException("NULL node in getProcessSlotNames");
+    }
+
+    NameList list;
+    string key =
+        node->getKey() +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::PROCESSSLOTS;
+
+    list.clear();
+    SAFE_CALLBACK_ZK(
+        m_zk.getNodeChildren(
+            list,
+            key,
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(CachedObjectChangeHandlers::PROCESSSLOTS_CHANGE)),
+        m_zk.getNodeChildren(list, key),
+        CachedObjectChangeHandlers::PROCESSSLOTS_CHANGE,
+        key,
+        "Reading the value of %s failed: %s",
+        key.c_str(),
+        true,
+        true);
+    
+    for (NameList::iterator nlIt = list.begin();
+         nlIt != list.end();
+         ++nlIt) {
+        /*
+         * Remove the key prefix
+         */
+        *nlIt = nlIt->substr(key.length() + 
+                             ClusterlibStrings::KEYSEPARATOR.length());
+    }
+
+    return list;
+}
+NameList
 FactoryOps::getPropertyListNames(NotifyableImpl *ntp)
 {
     TRACE(CL_LOG, "getPropertyListNames");
@@ -3188,14 +3701,41 @@ FactoryOps::getChildren(Notifyable *ntp)
         return ntList;
     }
   
-    Node *node = dynamic_cast<Node *>(ntp);
-    if (node != NULL) {
-        LOG_DEBUG(CL_LOG, "getChildren: %s is a Node", ntp->getKey().c_str());
+    ProcessSlot *processSlot = dynamic_cast<ProcessSlot *>(ntp);
+    if (processSlot != NULL) {
+        LOG_DEBUG(CL_LOG, "getChildren: %s is a ProcessSlot", 
+                  ntp->getKey().c_str());
         return ntList;
     }
 
     NameList::iterator nameListIt;
     Notifyable *tempNtp = NULL;
+    Node *node = dynamic_cast<Node *>(ntp);
+    if (node != NULL) {
+        LOG_DEBUG(CL_LOG, "getChildren: %s is a Node", ntp->getKey().c_str());
+        NameList nameList = node->getProcessSlotNames();
+        for (nameListIt = nameList.begin(); 
+             nameListIt != nameList.end(); 
+             nameListIt++) {
+            tempNtp = node->getProcessSlot(*nameListIt);
+            if (tempNtp == NULL) {
+                LOG_WARN(CL_LOG, 
+                         "getChildren: Shouldn't get NULL process slot for %s"
+                         " if I have the lock",
+                         nameListIt->c_str());
+            }
+            else {
+                LOG_DEBUG(CL_LOG, 
+                          "getChildren: found Process Slot %s for %s", 
+                          tempNtp->getKey().c_str(),
+                          ntp->getKey().c_str());
+                ntList.push_back(tempNtp);
+            }
+        }
+
+        return ntList;
+    }
+
     Group *group = dynamic_cast<Group *>(ntp);
     if (group != NULL) {
         LOG_DEBUG(CL_LOG, "getChildren: %s is a Group", ntp->getKey().c_str());
@@ -3424,9 +3964,16 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
             
             if (notifyablePath.empty()) {
                 throw InconsistentInternalStateException(
-                    "updateCachedObject: Returned an empty key from the "
+                    "updateCachedObject: Returned an empty path from the "
                     "original path (" + ep->getPath() + 
                     ") and is unrelated to any Notifyable!");
+            }
+            if (ntp == NULL) {
+                LOG_DEBUG(CL_LOG, 
+                          "updateCachedObject: Returned no notifyable from "
+                          "the original path (%s) with notifyablePath (%s)" ,
+                          ep->getPath().c_str(), 
+                          notifyablePath.c_str());
             }
         }
         catch (RepositoryInternalsFailureException &reife) {

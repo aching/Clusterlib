@@ -48,6 +48,7 @@ class ClusterlibInts
     static const int32_t PROP_COMPONENTS_MIN_COUNT;
     static const int32_t GROUP_COMPONENTS_MIN_COUNT;
     static const int32_t NODE_COMPONENTS_MIN_COUNT;
+    static const int32_t PROCESSSLOT_COMPONENTS_MIN_COUNT;
 
   private:
     ClusterlibInts()

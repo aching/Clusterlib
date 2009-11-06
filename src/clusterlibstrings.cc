@@ -36,6 +36,7 @@ const string ClusterlibStrings::ROOT = "_root";
 const string ClusterlibStrings::APPLICATIONS = "_applications";
 const string ClusterlibStrings::GROUPS = "_groups";
 const string ClusterlibStrings::NODES = "_nodes";
+const string ClusterlibStrings::PROCESSSLOTS = "_processSlots";
 const string ClusterlibStrings::DISTRIBUTIONS = "_distributions";
 
 const string ClusterlibStrings::CLIENTSTATE = "_clientState";
@@ -49,9 +50,36 @@ const string ClusterlibStrings::READY = "_ready";
 const string ClusterlibStrings::ALIVE = "_alive";
 const string ClusterlibStrings::MASTERSETSTATE = "_masterSetState";
 const string ClusterlibStrings::SUPPORTEDVERSIONS = "_supportedVersions";
+const string ClusterlibStrings::PROCESSSLOTSUSAGE = "_processSlotsUsage";
+const string ClusterlibStrings::PROCESSSLOTSMAX = "_processSlotsMax";
+
+const string ClusterlibStrings::PROCESSSLOTPORTVEC = "_processSlotPortVec";
+const string ClusterlibStrings::PROCESSSLOTEXECARGS = 
+    "_processSlotExecArgs";
+const string ClusterlibStrings::PROCESSSLOTRUNNINGEXECARGS = 
+    "_processSlotRunningExecArgs";
+const string ClusterlibStrings::PROCESSSLOTPID = "_processSlotPID";
+const string ClusterlibStrings::PROCESSSLOTDESIREDSTATE = 
+    "_processSlotDesiredState";
+const string ClusterlibStrings::PROCESSSLOTCURRENTSTATE = 
+    "_processSlotCurrentState";
+const string ClusterlibStrings::PROCESSSLOTRESERVATION = 
+    "_processSlotReservation";
+
+const string ClusterlibStrings::PROCESSSTATE_UNUSED = "_unused";
+const string ClusterlibStrings::PROCESSSTATE_STARTED = "_started";
+const string ClusterlibStrings::PROCESSSTATE_RUNNING = "_running";
+const string ClusterlibStrings::PROCESSSTATE_STOPPED = "_stopped";
+const string ClusterlibStrings::PROCESSSTATE_FINISHED = "_finished";
+const string ClusterlibStrings::PROCESSSTATE_FAILED = "_failed";
+const string ClusterlibStrings::PROCESSSTATE_INVALID = "_invalid";
+
+const string ClusterlibStrings::ENABLED = "_enabled";
+const string ClusterlibStrings::DISABLED = "_disabled";
 
 const string ClusterlibStrings::DEFAULTPROPERTYLIST = "_defaultPropertyList";
-const string ClusterlibStrings::KEYVAL = "_keyval";    
+const string ClusterlibStrings::KEYVAL = "_keyval";
+const string ClusterlibStrings::PROPERTYLISTDELIMITER = ";";
 
 const string ClusterlibStrings::SHARDS = "_shards";
 const string ClusterlibStrings::GOLDENSHARDS = "_goldenShards";

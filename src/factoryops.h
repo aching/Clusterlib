@@ -63,12 +63,12 @@
                          _warning, \
                          _once) \
 { \
-    Locker __l1(getCachedObjectChangeHandlers()->getLock()); \
-    bool __ready = getCachedObjectChangeHandlers()-> \
+    Locker __l1(getOps()->getCachedObjectChangeHandlers()->getLock()); \
+    bool __ready = getOps()->getCachedObjectChangeHandlers()-> \
         isHandlerCallbackReady(_changeHandler, _key); \
     if (__ready == false) { \
         SAFE_CALL_ZK(_action1, _message, _node, _warning, _once); \
-        getCachedObjectChangeHandlers()-> \
+        getOps()->getCachedObjectChangeHandlers()-> \
             setHandlerCallbackReady(_changeHandler, _key); \
     } \
     else { \
@@ -206,6 +206,13 @@ class FactoryOps {
     NameList getNodeNames(GroupImpl *group);
 
     /*
+     * Retrieve a list of all (currently known) process slot names
+     * within the given node. This also establishes a
+     * watch on process slot changes.
+     */
+    NameList getProcessSlotNames(NodeImpl *node);
+
+    /*
      * Retrieve a list of all (currently known) property list names
      * within the given notifyable. This also establishes a
      * watch on property list changes.
@@ -272,6 +279,19 @@ class FactoryOps {
                       GroupImpl *parentGroup,
                       bool create = false);
 
+    /** 
+     * Get a process slot from a parent node key. 
+     *
+     * @param name the process slot name under the parent
+     * @param parentNode key to this parent node
+     * @param create if true try to create it if it doesn't exist
+     * @return NULL if not found or creation failed, otherwise the pointer 
+     *         to the node
+     */
+    ProcessSlotImpl *getProcessSlot(const std::string &name,
+                                    NodeImpl *parentNode,
+                                    bool create = false);
+    
     /** 
      * Get a data distribution from a parent group key. 
      *
@@ -473,6 +493,30 @@ class FactoryOps {
         int32_t elements = -1, 
         bool create = false);
 
+    /**
+     * Get the process slot represented exactly by this key
+     *
+     * @param key should represent the ProcessSlotImpl object
+     * @param create try to create this object if it does not exist?
+     * @return NULL if cannot be found, else the NodeImpl *
+     */
+    ProcessSlotImpl *getProcessSlotFromKey(const std::string &key, 
+                                           bool create = false);
+
+    /**
+     * Get the exact ProcessSlotImpl represented by these components.
+     *
+     * @param components Should represent the ProcessSlotImpl object
+     * @param elements The number of elements to use in the components
+                       (-1 for all)
+     * @param create try to create this object if it does not exist?
+     * @return NULL if cannot be found, else the ProcessSlotImpl *
+     */
+    ProcessSlotImpl *getProcessSlotFromComponents(
+        const std::vector<std::string> &components,
+        int32_t elements = -1, 
+        bool create = false);
+
     /*
      * Load entities from ZooKeeper.
      */
@@ -490,6 +534,9 @@ class FactoryOps {
     NodeImpl *loadNode(const std::string &nodeName,
                        const std::string &nodeKey,
                        GroupImpl *parentGroup);
+    ProcessSlotImpl *loadProcessSlot(const std::string &processSlotName,
+                                     const std::string &processSlotKey,
+                                     NodeImpl *parentNode);
 
     std::string loadShards(const std::string &key, int32_t &version);
     std::string loadKeyValMap(const std::string &key, int32_t &version);
@@ -505,14 +552,17 @@ class FactoryOps {
         const std::string &marshalledShards,
         GroupImpl *parentGroup);
     PropertyListImpl *createPropertyList(const std::string &propListName,
-                                     const std::string &propListKey,
-                                     Notifyable *parent);
+                                         const std::string &propListKey,
+                                         Notifyable *parent);
     GroupImpl *createGroup(const std::string &groupName,
                            const std::string &groupKey,
                            GroupImpl *parentGroup);
     NodeImpl *createNode(const std::string &nodeName,
                          const std::string &nodeKey,
                          GroupImpl *parentGroup);
+    ProcessSlotImpl *createProcessSlot(const std::string &processSlotName,
+                                       const std::string &processSlotKey,
+                                       NodeImpl *parentNode);
     
     /*
      * Remove entities in Zookeeper.
@@ -521,7 +571,8 @@ class FactoryOps {
     void removeDataDistribution(DataDistributionImpl *dist);
     void removePropertyList(PropertyListImpl *propList);
     void removeGroup(GroupImpl *group);
-    void removeNode(NodeImpl *ntp);
+    void removeNode(NodeImpl *node);
+    void removeProcessSlot(ProcessSlotImpl *processSlot);
 
     /*
      * Remove Notifyable from the factory cache and into
@@ -552,6 +603,7 @@ class FactoryOps {
     Mutex *getApplicationsLock();
     Mutex *getGroupsLock();
     Mutex *getNodesLock();
+    Mutex *getProcessSlotsLock();
     Mutex *getRemovedNotifyablesLock();
     Mutex *getTimersLock();
     Mutex *getSyncEventLock();
@@ -669,6 +721,11 @@ class FactoryOps {
     void discardAllNodes();
 
     /**
+     * Clean up process slots
+     */
+    void discardAllProcessSlots();
+
+    /**
      * Clean up all removed notifyables
      */
     void discardAllRemovedNotifyables();
@@ -733,6 +790,12 @@ class FactoryOps {
      */
     NotifyableImplMap m_nodes;
     Mutex m_nodeLock;
+
+    /*
+     * The registry of cached process slots.
+     */
+    NotifyableImplMap m_processSlots;
+    Mutex m_processSlotLock;
 
     /*
      * The registry of timer handlers.

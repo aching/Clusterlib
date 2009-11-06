@@ -23,6 +23,7 @@ CXXFLAGS = @BASE_CXXFLAGS@ -DMPICH_IGNORE_CXX_SEEK
 unittests_SOURCES = \
 	test.cc \
 	testparams.cc \
+	clusterlibprocessslot.cc \
 	clusterlibintervaltree.cc \
 	clusterlibdatadistribution.cc \
 	clusterlibendevent.cc \

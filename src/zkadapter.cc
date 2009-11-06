@@ -1222,14 +1222,6 @@ ZooKeeperAdapter::getNodeData(const string &path,
     int32_t len;
     RetryHandler rh(m_zkConfig);
 
-    LOG_DEBUG(LOG,
-              "getNodeData: path (%s), listener (0x%x), "
-              "context (0x%x), stat (0x%x)\n",
-              path.c_str(),
-              reinterpret_cast<uint32_t>(listener),
-              reinterpret_cast<uint32_t>(context),
-              reinterpret_cast<uint32_t>(stat));
-
     /*
      * Allocate the struct passed in as context for zoo_wget().  It
      * will be deallocated when the event is processed through the
@@ -1273,9 +1265,18 @@ ZooKeeperAdapter::getNodeData(const string &path,
             m_state == AS_CONNECTED);
     } 
     else {
+        LOG_DEBUG(LOG,
+                  "getNodeData: path (%s), listener (0x%x), "
+                  "context (0x%x), stat (0x%x), data (%s)\n",
+                  path.c_str(),
+                  reinterpret_cast<uint32_t>(listener),
+                  reinterpret_cast<uint32_t>(context),
+                  reinterpret_cast<uint32_t>(stat),
+                  buffer);
+
         if (listener == NULL) {
-        getListenerAndContextManager()->deleteCallbackAndContext(
-            callbackAndContext);
+            getListenerAndContextManager()->deleteCallbackAndContext(
+                callbackAndContext);
         }
         string res(buffer, buffer + len);
         delete [] buffer;
@@ -1295,6 +1296,13 @@ ZooKeeperAdapter::setNodeData(const string &path,
 
     int32_t rc;
     RetryHandler rh(m_zkConfig);
+
+    LOG_DEBUG(LOG,
+              "setNodeData: path (%s), value (%s), version (%d)\n",
+              path.c_str(),
+              value.c_str(),
+              version);
+
     do {
         verifyConnection();
         rc = zoo_set2(mp_zkHandle,

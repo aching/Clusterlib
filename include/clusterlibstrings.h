@@ -39,6 +39,7 @@ class ClusterlibStrings
     static const std::string APPLICATIONS;
     static const std::string GROUPS;
     static const std::string NODES;
+    static const std::string PROCESSSLOTS;
     static const std::string DISTRIBUTIONS;
     static const std::string PROPERTYLIST;
 
@@ -53,9 +54,31 @@ class ClusterlibStrings
     static const std::string ALIVE;
     static const std::string MASTERSETSTATE;
     static const std::string SUPPORTEDVERSIONS;
+    static const std::string PROCESSSLOTSUSAGE;
+    static const std::string PROCESSSLOTSMAX;
+
+    static const std::string PROCESSSLOTPORTVEC;
+    static const std::string PROCESSSLOTEXECARGS;
+    static const std::string PROCESSSLOTRUNNINGEXECARGS;
+    static const std::string PROCESSSLOTPID;
+    static const std::string PROCESSSLOTDESIREDSTATE;
+    static const std::string PROCESSSLOTCURRENTSTATE;
+    static const std::string PROCESSSLOTRESERVATION;
+
+    static const std::string PROCESSSTATE_UNUSED;
+    static const std::string PROCESSSTATE_STARTED;
+    static const std::string PROCESSSTATE_RUNNING;
+    static const std::string PROCESSSTATE_STOPPED;
+    static const std::string PROCESSSTATE_FINISHED;
+    static const std::string PROCESSSTATE_FAILED;
+    static const std::string PROCESSSTATE_INVALID;
+
+    static const std::string ENABLED;
+    static const std::string DISABLED;
 
     static const std::string DEFAULTPROPERTYLIST;
     static const std::string KEYVAL;
+    static const std::string PROPERTYLISTDELIMITER;
 
     static const std::string SHARDS;
     static const std::string GOLDENSHARDS;

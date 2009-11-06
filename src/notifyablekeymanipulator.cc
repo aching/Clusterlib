@@ -87,17 +87,31 @@ NotifyableKeyManipulator::createLockNodeKey(const string &notifyableKey,
     return res;
 }
                                             
-
 string
 NotifyableKeyManipulator::createNodeKey(const string &groupKey,
                                         const string &nodeName)
 {
     string res;
     res.append(groupKey);
-    res.append (ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
     res.append(ClusterlibStrings::NODES);
     res.append(ClusterlibStrings::KEYSEPARATOR);
     res.append(nodeName);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createProcessSlotKey(
+    const string &nodeKey,
+    const string &processSlotName)
+{
+    string res;
+    res.append(nodeKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::PROCESSSLOTS);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(processSlotName);
 
     return res;
 }
@@ -172,6 +186,106 @@ NotifyableKeyManipulator::createPropertyListKey(const string &notifyableKey,
     res.append(ClusterlibStrings::PROPERTYLIST);
     res.append(ClusterlibStrings::KEYSEPARATOR);
     res.append(propListName);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createProcessSlotsUsageKey(
+    const string &notifyableKey)
+{
+    string res(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::PROCESSSLOTSUSAGE);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createProcessSlotsMaxKey(
+    const string &notifyableKey)
+{
+    string res(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::PROCESSSLOTSMAX);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createProcessSlotPortVecKey(
+    const string &notifyableKey)
+{
+    string res(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::PROCESSSLOTPORTVEC);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createProcessSlotExecArgsKey(
+    const string &notifyableKey)
+{
+    string res(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::PROCESSSLOTEXECARGS);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createProcessSlotRunningExecArgsKey(
+    const string &notifyableKey)
+{
+    string res(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::PROCESSSLOTRUNNINGEXECARGS);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createProcessSlotPIDKey(
+    const string &notifyableKey)
+{
+    string res(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::PROCESSSLOTPID);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createProcessSlotDesiredStateKey(
+    const string &notifyableKey)
+{
+    string res(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::PROCESSSLOTDESIREDSTATE);
+
+    return res;
+}
+
+
+string
+NotifyableKeyManipulator::createProcessSlotCurrentStateKey(
+    const string &notifyableKey)
+{
+    string res(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::PROCESSSLOTCURRENTSTATE);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createProcessSlotReservationKey(
+    const string &notifyableKey)
+{
+    string res(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::PROCESSSLOTRESERVATION);
 
     return res;
 }
@@ -298,6 +412,9 @@ NotifyableKeyManipulator::isNotifyableKey(const vector<string> &components,
         return true;
     }
     if (isNodeKey(components, elements)) {
+        return true;
+    }
+    if (isProcessSlotKey(components, elements)) {
         return true;
     }
 
@@ -558,8 +675,8 @@ NotifyableKeyManipulator::isPropertyListKey(const vector<string> &components,
                   "isPropertyListKey: elements %d > size of components %u",
                   elements,
                   components.size());
-        throw InvalidArgumentsException("isPropertyListKey: elements > size of "
-                                        "components");
+        throw InvalidArgumentsException(
+            "isPropertyListKey: elements > size of components");
     }
     
     /* 
@@ -582,9 +699,11 @@ NotifyableKeyManipulator::isPropertyListKey(const vector<string> &components,
     /*
      * Check that the elements of the parent notifyable are valid.
      */
-    if ((!isGroupKey(components, elements - 2)) &&
+    if ((!isRootKey(components, elements - 2)) &&
+        (!isGroupKey(components, elements - 2)) &&
         (!isDataDistributionKey(components, elements - 2)) &&
-        (!isNodeKey(components, elements - 2))) {
+        (!isNodeKey(components, elements - 2)) &&
+        (!isProcessSlotKey(components, elements - 2))) {
         return false; 
     }
 
@@ -650,7 +769,7 @@ NotifyableKeyManipulator::isNodeKey(const vector<string> &components,
     }
 
     /*
-     * Check that the second to the last element is DISTRIBUTIONS and
+     * Check that the second to the last element is NODES and
      * that the distribution name is not empty.
      */
     if ((components.at(elements - 2) != ClusterlibStrings::NODES) ||
@@ -669,6 +788,67 @@ NotifyableKeyManipulator::isNodeKey(const string &key)
     vector<string> components;
     split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
     return isNodeKey(components);    
+}
+
+bool
+NotifyableKeyManipulator::isProcessSlotKey(const vector<string> &components, 
+                                           int32_t elements)
+{
+    TRACE(CL_LOG, "isProcessSlotKey");
+
+    if (elements > static_cast<int32_t>(components.size())) {
+        LOG_FATAL(CL_LOG,
+                  "isProcessSlotKey: elements %d > size of components %u",
+                  elements,
+                  components.size());
+        throw InvalidArgumentsException("isProcessSlotKey: elements > size of "
+                                        "components");
+    }
+
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+    /*
+     * Make sure that we have enough elements to have a process slot
+     * and that after the Application key there are an even number of
+     * elements left.
+     */
+    if ((elements < ClusterlibInts::PROCESSSLOT_COMPONENTS_MIN_COUNT) ||
+        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
+        return false;
+    }
+
+    /*
+     * Check that the elements of the parent node are valid.
+     */
+    if (!isNodeKey(components, elements - 2)) {
+        return false;
+    }
+
+    /*
+     * Check that the second to the last element is PROCESSSLOTS
+     * that the distribution name is not empty.
+     */
+    if ((components.at(elements - 2) != ClusterlibStrings::PROCESSSLOTS) ||
+        (components.at(elements - 1).empty() == true)) {
+        return false;
+    } 
+
+    return true;    
+}
+
+bool
+NotifyableKeyManipulator::isProcessSlotKey(const string &key)
+{
+    TRACE(CL_LOG, "isProcessSlotKey");
+
+    vector<string> components;
+    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
+    return isProcessSlotKey(components);    
 }
 
 string 
@@ -703,7 +883,8 @@ NotifyableKeyManipulator::removeObjectFromKey(const string &key)
 
         /*
          * If this key represents a valid Notifyable, then it should
-         * be /APPLICATIONS|GROUPS|NODES|DISTRIBUTIONS/name.
+         * be /APPLICATIONS|GROUPS|NODES|PROCESSSLOTS|
+         *     DISTRIBUTIONS|PROPERTYLIST/name.
          */
         endKeySeparator = res.rfind(ClusterlibStrings::KEYSEPARATOR);
         if ((endKeySeparator == string::npos) ||
@@ -736,6 +917,7 @@ NotifyableKeyManipulator::removeObjectFromKey(const string &key)
             (!clusterlibObject.compare(ClusterlibStrings::APPLICATIONS)) ||
             (!clusterlibObject.compare(ClusterlibStrings::GROUPS)) ||
             (!clusterlibObject.compare(ClusterlibStrings::NODES)) ||
+            (!clusterlibObject.compare(ClusterlibStrings::PROCESSSLOTS)) ||
             (!clusterlibObject.compare(ClusterlibStrings::DISTRIBUTIONS)) ||
             (!clusterlibObject.compare(ClusterlibStrings::PROPERTYLIST))) {
             objectFound = true;
@@ -794,6 +976,8 @@ NotifyableKeyManipulator::removeObjectFromComponents(
                 ClusterlibStrings::GROUPS) == 0) ||
             (components.at(clusterlibObjectElements - 2).compare(
                 ClusterlibStrings::NODES) == 0) ||
+            (components.at(clusterlibObjectElements - 2).compare(
+                ClusterlibStrings::PROCESSSLOTS) == 0) ||
             (components.at(clusterlibObjectElements - 2).compare(
                 ClusterlibStrings::DISTRIBUTIONS) == 0)||
             (components.at(clusterlibObjectElements - 2).compare(

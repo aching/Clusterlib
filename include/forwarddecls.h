@@ -67,6 +67,8 @@ class NodeAddress;
 class Notifyable;
 class NotifyableImpl;
 struct PredMutexCond;
+class ProcessSlot;
+class ProcessSlotImpl;
 class PropertyList;
 class PropertyListImpl;
 class Server;

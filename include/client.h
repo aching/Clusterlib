@@ -46,55 +46,82 @@ class TimerEventHandler
  */
 
 /** No event occured. */
-const int32_t EN_NOEVENT =			0;
+const int32_t EN_NOEVENT =			    0;
 
 /** Notifyable was created */
-const int32_t EN_CREATED =			(1<<0);
+const int32_t EN_CREATED =			    (1<<0);
 
 /** Notifyable was deleted */
-const int32_t EN_DELETED =			(1<<1);
+const int32_t EN_DELETED =			    (1<<1);
 
 /** Notifyable state has changed */
-const int32_t EN_STATECHANGE =			(1<<2);
+const int32_t EN_STATECHANGE =			    (1<<2);
 
 /** Groups in this notifyable changed */
-const int32_t EN_GROUPSCHANGE =			(1<<3);
+const int32_t EN_GROUPSCHANGE =			    (1<<3);
 
 /** Data distributions in this notifyable changed */
-const int32_t EN_DISTSCHANGE =			(1<<4);
+const int32_t EN_DISTSCHANGE =			    (1<<4);
 
 /** Nodes in this notifyable changed */
-const int32_t EN_NODESCHANGE =		        (1<<5);
+const int32_t EN_NODESCHANGE =		            (1<<5);
 
 /** Leadership in this group changed */
-const int32_t EN_LEADERSHIPCHANGE =		(1<<6);
+const int32_t EN_LEADERSHIPCHANGE =		    (1<<6);
 
 /** This node's client state changed */
-const int32_t EN_CLIENTSTATECHANGE =		(1<<7);
+const int32_t EN_CLIENTSTATECHANGE =		    (1<<7);
 
 /** This node's connectivity changed */
-const int32_t EN_CONNECTEDCHANGE =		(1<<10);
+const int32_t EN_CONNECTEDCHANGE =		    (1<<8);
 
 /** This node's master set state changed */
-const int32_t EN_MASTERSTATECHANGE =		(1<<11);
+const int32_t EN_MASTERSTATECHANGE =		    (1<<9);
+
+/** This node's use of process slots has changed */
+const int32_t EN_PROCESSSLOTSUSAGECHANGE =	    (1<<10);
+
+/** Process slots in this notifyable changed */
+const int32_t EN_PROCESSSLOTSCHANGE =		    (1<<11);
+
+/** This process slot's port vector changed */
+const int32_t EN_PROCESSSLOTPORTVECCHANGE =	    (1<<12);
+
+/** This process slot's executable arguments changed */
+const int32_t EN_PROCESSSLOTEXECARGSCHANGE =	    (1<<13);
+
+/** This process slot's running executable arguments changed */
+const int32_t EN_PROCESSSLOTRUNNINGEXECARGSCHANGE = (1<<14);
+
+/** This process slot's PID changed */
+const int32_t EN_PROCESSSLOTPIDCHANGE =             (1<<15);
+
+/** This process slot's desired state changed */
+const int32_t EN_PROCESSSLOTDESIREDSTATECHANGE =    (1<<16);
+
+/** This process slot's current state changed */
+const int32_t EN_PROCESSSLOTCURRENTSTATECHANGE =    (1<<17);
+
+/** This process slot's reservation  changed */
+const int32_t EN_PROCESSSLOTRESERVATIONCHANGE =     (1<<18);
 
 /** Shards in this data distribution changed */
-const int32_t EN_SHARDSCHANGE =			(1<<12);
+const int32_t EN_SHARDSCHANGE =			    (1<<19);
 
 /** Property lists in this notifyable changed */
-const int32_t EN_PROPLISTSCHANGE =	       	(1<<13);
+const int32_t EN_PROPLISTSCHANGE =	       	    (1<<20);
 
 /** This property list values have changed. */
-const int32_t EN_PROPLISTVALUESCHANGE =		(1<<14);
+const int32_t EN_PROPLISTVALUESCHANGE =		    (1<<21);
 
 /** Applications in this root changed */
-const int32_t EN_APPSCHANGE =			(1<<15);
+const int32_t EN_APPSCHANGE =			    (1<<22);
 
 /** The lock on this notifyable changed */
-const int32_t EN_LOCKNODECHANGE =               (1<<16);
+const int32_t EN_LOCKNODECHANGE =                   (1<<23);
 
 /** Clusterlib has been shutdown */
-const int32_t EN_ENDEVENT =                     (1<<17);
+const int32_t EN_ENDEVENT =                         (1<<24);
 
 /*
  * Interface for user event handler. Must be derived

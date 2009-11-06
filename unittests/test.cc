@@ -13,7 +13,8 @@ static const string prefix = "testOutput.";
 /* Global test parameters to be used in all tests */
 TestParams globalTestParams;
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) 
+{
     /* MPI initialization */
     MPI::Init(argc, argv);
 

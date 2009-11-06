@@ -4,8 +4,24 @@ INCLUDES = \
 	-I@ZOOKEEPER_INCLUDES@ \
         -I@top_srcdir@/include
 METASOURCES = AUTO
+bin_PROGRAMS = activenode
+activenode_LDADD = \
+        libcluster.a \
+	$(top_builddir)/src/md5/libmd5.a \
+	@LOG4CXX_LIB@ \
+	@ZOOKEEPER_LIB@ \
+	@CPPUNIT_LIB@ \
+	@APR_LIB@ \
+	@APRUTIL_LIB@ \
+	@EXPAT_LIB@ \
+	@LIB_THREAD_OS@
+activenode_SOURCES = \
+	activenode.cc \
+	activenodeparams.cc
 lib_LIBRARIES = libcluster.a
 libcluster_a_SOURCES = \
+	json.cc \
+	processslotimpl.cc \
 	md5key.cc \
 	callbackandcontext.cc \
 	notifyableimpl.cc \
