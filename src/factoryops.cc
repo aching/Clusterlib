@@ -996,6 +996,21 @@ FactoryOps::getPropertyList(const string &name,
 {
     TRACE(CL_LOG, "getPropertyList");
 
+    /* 
+     * Can accept the DEFAULTPROPERTYLIST (different than other names)
+     */
+    if ((name.compare(ClusterlibStrings::DEFAULTPROPERTYLIST)) &&
+        (!NotifyableKeyManipulator::isValidNotifyableName(name))) {
+        LOG_WARN(CL_LOG,
+                 "getPropertyList: Illegal property list name %s",
+                 name.c_str());
+
+        if (create == true) {
+            throw InvalidArgumentsException("getPropertyList: illegal name");
+        }
+        return NULL;
+    }
+
     if (parent == NULL) {
         LOG_ERROR(CL_LOG, "getPropertyList: NULL parent");                 
         throw InvalidArgumentsException("getPropertyList: NULL parent");
@@ -2855,17 +2870,17 @@ FactoryOps::createNode(const string &name,
                  ms.c_str(),
                  true,
                  true);
-    SAFE_CALL_ZK(m_zk.createNode(cv, "1.0", 0),
+    SAFE_CALL_ZK(m_zk.createNode(cv, ClusterlibStrings::CLUSTERLIBVERSION, 0),
                  "Could not create key %s: %s",
                  cv.c_str(),
                  true,
                  true);
-    SAFE_CALL_ZK(m_zk.createNode(up, "1.0", 0),
+    SAFE_CALL_ZK(m_zk.createNode(up, "", 0),
                  "Could not create key %s: %s",
                  up.c_str(),
                  true,
                  true);
-    SAFE_CALL_ZK(m_zk.createNode(mp, "1.0", 0),
+    SAFE_CALL_ZK(m_zk.createNode(mp, "", 0),
                  "Could not create key %s: %s",
                  up.c_str(),
                  true,

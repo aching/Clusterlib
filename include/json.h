@@ -149,7 +149,7 @@ class JSONValue {
         try {
             return boost::any_cast<T>(value);
         } catch (const std::bad_cast &ex) {
-            throw JSONValueException(std::string(type().name()) + 
+            throw JSONValueException("get: " + std::string(type().name()) + 
                                      " cannot be converted to " + 
                                      typeid(T).name());
         }

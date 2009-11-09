@@ -364,10 +364,21 @@ NotifyableKeyManipulator::isValidNotifyableName(const string &name)
 {
     TRACE(CL_LOG, "isValidNotifyableName");
 
+    /* 
+     * Check for empty string, the key separater, or the first
+     * char as _. 
+     */
     if ((name.empty()) || 
         (name.find(ClusterlibStrings::KEYSEPARATOR) != string::npos) ||
         (name[0] == '_')) {
         return false;
+    }
+
+    /* Must be all printable characters */
+    for (size_t i = 0; i < name.size(); i++) {
+        if ((name[i] < 32) || (name[i] > 126)) {
+            return false;
+        }
     }
         
     return true;
