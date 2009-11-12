@@ -8,7 +8,7 @@
 
 #include "clusterlibinternal.h"
 
-DEFINE_LOGGER( LOG, "Thread" )
+DEFINE_LOGGER(LOG, "Thread")
 
 namespace clusterlib {
 

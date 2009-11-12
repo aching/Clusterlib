@@ -4,7 +4,7 @@ INCLUDES = \
 	-I@ZOOKEEPER_INCLUDES@ \
         -I@top_srcdir@/include
 METASOURCES = AUTO
-bin_PROGRAMS = activenode
+bin_PROGRAMS = activenode cli
 activenode_LDADD = \
         libcluster.a \
 	$(top_builddir)/src/md5/libmd5.a \
@@ -18,6 +18,21 @@ activenode_LDADD = \
 activenode_SOURCES = \
 	activenode.cc \
 	activenodeparams.cc
+cli_LDADD = \
+	$(top_builddir)/src/libcluster.a \
+	@READLINE_LIB@ \
+	@NCURSES_LIB@ \
+	@LOG4CXX_LIB@ \
+	@ZOOKEEPER_LIB@ \
+	@APR_LIB@ \
+	@APRUTIL_LIB@ \
+	@EXPAT_LIB@ \
+	@LIB_THREAD_OS@
+cli_SOURCES = \
+	cliparams.cc \
+	cli.cc
+cli_DEPENDENCIES = \
+	libcluster.a 
 lib_LIBRARIES = libcluster.a
 libcluster_a_SOURCES = \
 	json.cc \

@@ -64,6 +64,16 @@ NotifyableImpl::getMyParent() const
     return dynamic_cast<Notifyable *>(mp_parent);
 }
 
+NotifyableList
+NotifyableImpl::getMyChildren()
+{
+    TRACE(CL_LOG, "getMyChildren");
+
+    throwIfRemoved();
+    
+    return getOps()->getChildren(this);
+}
+
 Application *
 NotifyableImpl::getMyApplication()
 {

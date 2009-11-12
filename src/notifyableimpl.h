@@ -62,6 +62,8 @@ class NotifyableImpl
 
     virtual Notifyable *getMyParent() const;
     
+    virtual NotifyableList getMyChildren();
+
     virtual Application *getMyApplication(); 
 
     virtual Group *getMyGroup(); 

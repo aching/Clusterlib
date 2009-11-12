@@ -1,9 +1,9 @@
 /* 
- * =============================================================================
+ * ============================================================================
  * $Header$
  * $Revision$
  * $Date$
- * =============================================================================
+ * ============================================================================
  */
   
 #include "clusterlibinternal.h"
@@ -21,7 +21,9 @@ class LogConfiguration
         }
 };
 
-//enforces the configuration to be initialized
-static LogConfiguration logConfig( "log4cxx.properties" );
+/**
+ * Enforces the configuration to be initialized.
+ */
+static LogConfiguration logConfig("log4cxx.properties");
 
 }	/* End of 'namespace clusterlib' */

@@ -22,7 +22,10 @@
 extern log4cxx::helpers::LoggerPtr varName;
 
 #define DEFINE_LOGGER(varName, logName) \
-static log4cxx::LoggerPtr varName = log4cxx::Logger::getLogger( logName );
+static log4cxx::LoggerPtr varName = log4cxx::Logger::getLogger(logName);
+
+#define SET_LOG_LEVEL(logger, level) \
+    logger->setLevel(level);
 
 #define MAX_BUFFER_SIZE 20000
 

@@ -71,6 +71,13 @@ class Notifyable
      * @throw Exception if Notifyable is the root
      */
     virtual Notifyable *getMyParent() const = 0;
+
+    /**
+     * Get a list of all the children of this notifyable.
+     *
+     * @return list of child Notifyable pointers
+     */
+    virtual NotifyableList getMyChildren() = 0;
     
     /**
      * Retrieve the application object that this Notifyable is a part of.  

@@ -1,8 +1,8 @@
 /*
  * activenodeparams.h --
  *
- * Definition of class ProcessSlot; it represents a process slot on a
- * node in an application of clusterlib.
+ * Definition of class ActiveNodeParams; it manages the parameters of
+ * the active node process.
  *
  * $Header:$
  * $Revision$

@@ -426,6 +426,70 @@ AC_SUBST(CPPUNIT_LIB_PATH)
 AC_SUBST(CPPUNIT_INCLUDES)
 AC_SUBST(CPPUNIT_LIB)
 
+### Readline ###
+
+AC_MSG_CHECKING(location of readline headers and libraries)
+AC_ARG_WITH(readline_root,
+  [ --with-readline-root   location of readline libraries and headers.],
+  [ case "${withval}" in
+      yes|no)
+        AC_ERROR(Option --with-readline-root requires a path argument.)
+        ;;
+    esac ],
+  [
+        with_readline_root="/usr/"
+  ]
+)
+AC_MSG_RESULT($with_readline_root)
+
+READLINE_PATH="${with_readline_root}"
+READLINE_LIB_PATH="$READLINE_PATH/lib"
+READLINE_INCLUDES="$READLINE_PATH/include"
+READLINE_LIB="$READLINE_LIB_PATH/libreadline.a"
+
+AM_CONDITIONAL(HAVE_READLINE, test -e "$READLINE_LIB")
+if test "$HAVE_READLINE_TRUE" = '#'; then
+  AC_ERROR("... invalid readline library!")
+fi
+
+AC_SUBST(READLINE)
+AC_SUBST(READLINE_PATH)
+AC_SUBST(READLINE_LIB_PATH)
+AC_SUBST(READLINE_INCLUDES)
+AC_SUBST(READLINE_LIB)
+
+### Ncurses ###
+
+AC_MSG_CHECKING(location of ncurses headers and libraries)
+AC_ARG_WITH(ncurses_root,
+  [ --with-ncurses-root   location of ncurses libraries and headers.],
+  [ case "${withval}" in
+      yes|no)
+        AC_ERROR(Option --with-ncurses-root requires a path argument.)
+        ;;
+    esac ],
+  [
+        with_ncurses_root="/usr/"
+  ]
+)
+AC_MSG_RESULT($with_ncurses_root)
+
+NCURSES_PATH="${with_ncurses_root}"
+NCURSES_LIB_PATH="$NCURSES_PATH/lib"
+NCURSES_INCLUDES="$NCURSES_PATH/include"
+NCURSES_LIB="$NCURSES_LIB_PATH/libncurses.a"
+
+AM_CONDITIONAL(HAVE_NCURSES, test -e "$NCURSES_LIB")
+if test "$HAVE_NCURSES_TRUE" = '#'; then
+  AC_ERROR("... invalid ncurses library!")
+fi
+
+AC_SUBST(NCURSES)
+AC_SUBST(NCURSES_PATH)
+AC_SUBST(NCURSES_LIB_PATH)
+AC_SUBST(NCURSES_INCLUDES)
+AC_SUBST(NCURSES_LIB)
+
 ### BUILDSTAMP ###
 
 BUILDSTAMP_SOURCE="OldBuildStamp.cc"
