@@ -616,6 +616,7 @@ src/example/Makefile
 src/gui/Makefile
 src/gui/src/Makefile
 src/gui/unittest/Makefile
+src/gui/conf/config.xml
 unittests/Makefile
 unittests/unittestsHelper.pl
 regressions/Regressions.itc

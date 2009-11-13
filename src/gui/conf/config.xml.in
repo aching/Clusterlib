@@ -9,7 +9,7 @@
   <property>
     <!-- The root directory of the HTTP server, empty means working directory -->
     <name>httpd.rootDirectory</name>
-    <value>@top_srcdir@/webroot</value>
+    <value>@top_srcdir@/src/gui/webroot</value>
   </property>
   <property>
     <!-- The content types 'extension|MIME type,extension|MIME type,...' -->
@@ -24,11 +24,11 @@
   <property>
     <!-- The ZooKeeper server list, comma ',' separated -->
     <name>zookeeper.servers</name>
-    <value>localhost:2181</value>
+    <value>localhost:2221</value>
   </property>
   <property>
     <!-- The log4cxx configuration file -->
     <name>logger.configuration</name>
-    <value>@top_srcdir@/conf/logger.conf</value>
+    <value>@top_srcdir@/src/gui/conf/logger.conf</value>
   </property>
 </configuration>
