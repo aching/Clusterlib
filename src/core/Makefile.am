@@ -2,37 +2,8 @@ INCLUDES = \
 	-I@LOG4CXX_INCLUDES@ \
 	-I@BOOST_INCLUDES@ \
 	-I@ZOOKEEPER_INCLUDES@ \
-        -I@top_srcdir@/include
+        -I@top_srcdir@/src/include
 METASOURCES = AUTO
-bin_PROGRAMS = activenode cli
-activenode_LDADD = \
-        libcluster.a \
-	$(top_builddir)/src/md5/libmd5.a \
-	@LOG4CXX_LIB@ \
-	@ZOOKEEPER_LIB@ \
-	@CPPUNIT_LIB@ \
-	@APR_LIB@ \
-	@APRUTIL_LIB@ \
-	@EXPAT_LIB@ \
-	@LIB_THREAD_OS@
-activenode_SOURCES = \
-	activenode.cc \
-	activenodeparams.cc
-cli_LDADD = \
-	$(top_builddir)/src/libcluster.a \
-	@READLINE_LIB@ \
-	@NCURSES_LIB@ \
-	@LOG4CXX_LIB@ \
-	@ZOOKEEPER_LIB@ \
-	@APR_LIB@ \
-	@APRUTIL_LIB@ \
-	@EXPAT_LIB@ \
-	@LIB_THREAD_OS@
-cli_SOURCES = \
-	cliparams.cc \
-	cli.cc
-cli_DEPENDENCIES = \
-	libcluster.a 
 lib_LIBRARIES = libcluster.a
 libcluster_a_SOURCES = \
 	json.cc \
@@ -59,8 +30,13 @@ libcluster_a_SOURCES = \
         notifyablekeymanipulator.cc \
 	signalmap.cc \
 	thread.cc \
-	zkadapter.cc
+	zkadapter.cc \
+        md5/md5.cc
 SUBDIRS = md5
+
+# Special target for md5 directory cc files to be included in libcluster.a
+%.o: md5/%.cc
+	$(CXXCOMPILE) -c $<
 
 CXXFLAGS = @BASE_CXXFLAGS@
 

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    <title>Clusterlib Manager</title>
+    <link rel="stylesheet" type="text/css" href="css/style.css">
+    <link rel="stylesheet" type="text/css" href="css/jqueryFileTree.css"> 
+    <link rel="stylesheet" type="text/css" href="css/ui-lightness/jquery-ui-1.7.2.custom.css">
+    <link rel="stylesheet" type="text/css" href="css/blue/style.css">
+    <style type="text/css">
+        /*demo page css*/
+      
+	body{ font: 62.5% "Trebuchet MS", sans-serif; margin: 10px;}
+    </style>	
+    <script type="text/javascript" src="js/jquery.js"></script>
+    <script type="text/javascript" src="js/jquery-jtemplates.js"></script>
+    <script type="text/javascript" src="js/autoresize.jquery.js"></script>
+    <script type="text/javascript" src="js/jquery-ui-1.7.2.custom.min.js"></script>
+    <script type="text/javascript" src="js/json2.js"></script>
+    <script type="text/javascript" src="js/jquery-jsonrpc.js"></script>
+    <script type="text/javascript" src="js/parseuri.js"></script>
+    <script type="text/javascript" src="js/jqueryFileTree.js"></script>
+    <script type="text/javascript" src="js/clusterlib.js"></script>
+    <script type="text/javascript" src="js/jquery.tablesorter.js"></script>
+  </head>
+  <body>
+    <div id=dialogObjectInfo title=""></div>
+    <div id="header">
+        <div id="bigtitle">Clusterlib Manager for Server(s) <@ZOOKEEPER_SERVERS@></div>
+        <div style="float: left" id="smalltitle"><@ZKUI_VERSION@></div>
+        <div style="float: right" id="timer"></div>
+    </div>
+    <div id="clusterlibbox">
+      <div>Object Hierarchy</div>
+      <div id="tree"></div>
+    </div>
+    <div id="dialogNewValue">
+    </div>
+    <div id="dialogNotify">
+    </div>
+  </body>
+</html>
+
+

@@ -1,6 +1,6 @@
 INCLUDES = \
-	-I$(top_srcdir)/include \
-	-I$(top_srcdir)/src \
+	-I$(top_srcdir)/src/include \
+	-I$(top_srcdir)/src/core \
 	-I@LOG4CXX_INCLUDES@ \
 	-I@ZOOKEEPER_INCLUDES@ \
 	-I@BOOST_INCLUDES@ \
@@ -9,8 +9,7 @@ INCLUDES = \
 METASOURCES = AUTO
 bin_PROGRAMS = unittests
 unittests_LDADD = \
-	$(top_builddir)/src/libcluster.a \
-	$(top_builddir)/src/md5/libmd5.a \
+	$(top_builddir)/src/core/libcluster.a \
 	@LOG4CXX_LIB@ \
 	@ZOOKEEPER_LIB@ \
 	@CPPUNIT_LIB@ \

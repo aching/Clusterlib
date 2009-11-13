@@ -1,11 +1,14 @@
 AC_INIT(configure.in)
-AC_PREREQ(2.12)
 
-AM_INIT_AUTOMAKE(clusterlib, `cat ${srcdir}/version-number.txt`)
+#AM_CONFIG_HEADER(config.h)
+AC_PREFIX_DEFAULT(`pwd`/install)
+AM_INIT_AUTOMAKE(zkui, 0.0.1)
+AC_CANONICAL_HOST
 
 AC_LANG_CPLUSPLUS
 AC_PROG_CXX
-AC_PROG_RANLIB
+#AC_PROG_LIBTOOL
+#AC_PROG_RANLIB
 
 BUILD_PATH="`pwd`"
 
@@ -34,10 +37,9 @@ if (test $enviroment_use_ccache ) && (test $enviroment_use_ccache = "yes" ); the
    default_with_ccache="yes"
 fi
 
-if test $os_type = "Linux"; then
-    AR="/usr/bin/ar cru"
-    AC_SUBST(AR)
-fi
+#if test $os_type = "Linux"; then
+#    AR="/usr/bin/ar cru"
+#fi
 
 #AC_DEFINE_UNQUOTED($os_type)
 #AC_DEFINE_UNQUOTED(OS_$osver)
@@ -47,7 +49,7 @@ fi
 OS_TYPE=$os_type
 AC_SUBST(OS_TYPE)
 
-if test -z "$enable_release"; then
+if test "$enable_release" = "yes"; then
     build_type="Optimized"
 else
     build_type="Debug"
@@ -156,41 +158,9 @@ AC_SUBST(BOOST_LIB_PATH)
 AC_SUBST(BOOST_INCLUDES)
 AC_SUBST(BOOST_LIB)
 
-### MPICH ###
-
-AC_MSG_CHECKING(location of MPICH headers and libraries)
-AC_ARG_WITH(mpich_root,
-  [ --with-mpich-root   location of MPICH libraries and headers.],
-  [ case "${withval}" in
-      yes|no)
-        AC_ERROR(Option --with-mpich-root requires a path argument.)
-        ;;
-    esac ],
-  [
-      with_mpich_root="/usr/releng/external/mpich2/mpich2-latest"
-  ]
-)
-AC_MSG_RESULT($with_mpich_root)
-
-MPICH_PATH="${with_mpich_root}"
-MPICH_LIB_PATH="$MPICH_PATH/install/lib"
-MPICH_INCLUDES="$MPICH_PATH/install/include"
-MPICH_LIB="$MPICH_LIB_PATH/libmpichcxx.a $MPICH_LIB_PATH/libmpich.a"
-
-AC_CHECK_LIB(mpich, main, [MPICH="-L${MPICH_LIB_PATH} -lmpichcxx -lmpich"],,["-L${MPICH_LIB_PATH}"])
-if test -z "${MPICH}"; then
-  AC_ERROR("... invalid MPICH library!")
-fi
-
-AC_SUBST(MPICH)
-AC_SUBST(MPICH_PATH)
-AC_SUBST(MPICH_LIB_PATH)
-AC_SUBST(MPICH_INCLUDES)
-AC_SUBST(MPICH_LIB)
-
 ### ZooKeeper ###
 
-ZOOKEEPER_VERSION="3.1.1"
+ZOOKEEPER_VERSION="3.1.0"
 
 AC_MSG_CHECKING(location of ZooKeeper headers and libraries)
 AC_ARG_WITH(zookeeper_root,
@@ -223,6 +193,76 @@ AC_SUBST(ZOOKEEPER_PATH)
 AC_SUBST(ZOOKEEPER_LIB_PATH)
 AC_SUBST(ZOOKEEPER_INCLUDES)
 AC_SUBST(ZOOKEEPER_LIB)
+
+### Clusterlib ###
+CLUSTERLIB_VERSION="0.0.2"
+
+AC_MSG_CHECKING(location of clusterlib headers and libraries)
+AC_ARG_WITH(clusterlib_root,
+  [ --with-clusterlib-root   location of clusterlib libraries and headers.],
+  [ case "${withval}" in
+      yes|no)
+        AC_ERROR(Option --with-clusterlib-root requires a path argument.)
+        ;;
+    esac ],
+  [
+        with_clusterlib_root="/usr/releng/internal/libcluster/$CLUSTERLIB_VERSION$compiler_version"
+  ]
+)
+AC_MSG_RESULT($with_clusterlib_root)
+
+CLUSTERLIB_PATH="${with_clusterlib_root}"
+CLUSTERLIB_LIB_PATH="$CLUSTERLIB_PATH/lib"
+CLUSTERLIB_INCLUDES="$CLUSTERLIB_PATH/include"
+CLUSTERLIB_LIB="$CLUSTERLIB_LIB_PATH/libcluster.a"
+
+LD_LIBRARY_PATH="$CLUSTERLIB_LIB_PATH"
+
+AC_CHECK_LIB(cluster, main, [CLUSTERLIB="-L${CLUSTERLIB_LIB_PATH} -lcluster"],,["-L${CLUSTERLIB_LIB_PATH}"])
+if test -z "${CLUSTERLIB}"; then
+  AC_ERROR("... invalid clusterlib library!")
+fi
+
+AC_SUBST(CLUSTERLIB)
+AC_SUBST(CLUSTERLIB_PATH)
+AC_SUBST(CLUSTERLIB_LIB_PATH)
+AC_SUBST(CLUSTERLIB_INCLUDES)
+AC_SUBST(CLUSTERLIB_LIB)
+
+### microhttpd ###
+MICROHTTPD_VERSION="0.4.0"
+
+AC_MSG_CHECKING(location of microhttpd headers and libraries)
+AC_ARG_WITH(microhttpd_root,
+  [ --with-microhttpd-root   location of libmicrohttpd libraries and headers.],
+  [ case "${withval}" in
+      yes|no)
+        AC_ERROR(Option --with-microhttpd-root requires a path argument.)
+        ;;
+    esac ],
+  [
+        with_microhttpd_root="/usr/releng/external/libmicrohttpd/$MICROHTTPD_VERSION$compiler_version"
+  ]
+)
+AC_MSG_RESULT($with_microhttpd_root)
+
+MICROHTTPD_PATH="${with_microhttpd_root}"
+MICROHTTPD_LIB_PATH="$MICROHTTPD_PATH/lib"
+MICROHTTPD_INCLUDES="$MICROHTTPD_PATH/include"
+MICROHTTPD_LIB="$MICROHTTPD_LIB_PATH/libmicrohttpd.a"
+
+LD_LIBRARY_PATH="$MICROHTTPD_LIB_PATH"
+
+AC_CHECK_LIB(microhttpd, main, [MICROHTTPD="-L${MICROHTTPD_LIB_PATH} -lmicrohttpd"],,["-L${MICROHTTPD_LIB_PATH}"])
+if test -z "${MICROHTTPD}"; then
+  AC_ERROR("... invalid libmicrohttpd library!")
+fi
+
+AC_SUBST(MICROHTTPD)
+AC_SUBST(MICROHTTPD_PATH)
+AC_SUBST(MICROHTTPD_LIB_PATH)
+AC_SUBST(MICROHTTPD_INCLUDES)
+AC_SUBST(MICROHTTPD_LIB)
 
 ### APR ###
 
@@ -326,32 +366,69 @@ AC_SUBST(EXPAT_LIB_PATH)
 AC_SUBST(EXPAT_INCLUDES)
 AC_SUBST(EXPAT_LIB)
 
-### Enable release ###
+### YTS ###
 
-#AC_MSG_CHECKING([whether to enable release build])
-#AC_ARG_ENABLE(release,
-#  [  --enable-release      Set for release build.],
-#  [ 
-#    case "$enableval}" in 
-#    no)
-#	ink_enable_release="no"
-#	;;
-#    yes)
-#	ink_enable_release="yes"
-#        ;;
-#    esac ],[
-#  ]
-#)
-#AC_MSG_RESULT($ink_enable_release)
+CDXCORE_VERSION="7.4.10"
 
-### Default CXXFLAGS ###
+CDXCORE_PATH="/usr/releng/internal/catalog_cdxcore/$CDXCORE_VERSION$compiler_version"
+CDXCORE_INCLUDES="$CDXCORE_PATH/include"
+CDXCORE_LIB_PATH="$CDXCORE_PATH/lib"
 
-if test -z "$enable_release"; then
-   BASE_CXXFLAGS="-Wall -Werror -O0 -g -rdynamic"
-else
-   BASE_CXXFLAGS="-Wall -Werror -O3 -g -rdynamic"
+AC_SUBST(CDXCORE_PATH)
+AC_SUBST(CDXCORE_INCLUDES)
+AC_SUBST(CDXCORE_LIB_PATH)
+
+### CPPUTILS ###
+
+CPPUTILS_VERSION="5.0.0"
+
+CPPUTILS_PATH="/usr/releng/internal/c++_utils/$CPPUTILS_VERSION$compiler_version"
+CPPUTILS_INCLUDES="$CPPUTILS_PATH/include"
+CPPUTILS_LIB_PATH="$CPPUTILS_PATH/lib"
+
+AC_SUBST(CPPUTILS_PATH)
+AC_SUBST(CPPUTILS_INCLUDES)
+AC_SUBST(CPPUTILS_LIB_PATH)
+
+CDXCORE="-L$CDXCORE_LIB_PATH -lhtml -lcrawdex -lcrawdexcore -lBasics -linktomi -ldoc -L$CPPUTILS_LIB_PATH -lc++_utils_dbg -pthread -ldl -ltcl8.4 -lrt -lz"
+AC_SUBST(CDXCORE)
+
+CDXCORE_CXXFLAGS="-fPIC -DLinux=1 -DOS_TYPE=Linux -D_PTHREADS=1 -D_FILE_OFFSET_BITS=64 -D_REDHAT_=1 -DBAS_DBG_MSGS=1 -DUSE_EXCEPTIONS=1 -rdynamic -Wno-deprecated -Wno-invalid-offsetof -DNEED_HRTIME"
+AC_SUBST(CDXCORE_CXXFLAGS)
+
+### Simon ###
+
+SIMON_VERSION="1.1.1"
+
+AC_MSG_CHECKING(location of Simon headers and libraries)
+AC_ARG_WITH(simon_root,
+  [ --with-simon-root   location of Simon libraries and headers.],
+  [ case "${withval}" in
+      yes|no)
+        AC_ERROR(Option --with-simon-root requires a path argument.)
+        ;;
+    esac ],
+  [
+      with_simon_root="/usr/releng/internal/simon/$SIMON_VERSION$compiler_version"
+  ]
+)
+AC_MSG_RESULT($with_simon_root)
+
+SIMON_PATH="${with_simon_root}"
+SIMON_LIB_PATH="$SIMON_PATH/client/lib"
+SIMON_INCLUDES="$SIMON_PATH/client/include"
+SIMON_LIB="$SIMON_LIB_PATH/libsimon.a $SIMON_LIB_PATH/libBasicsSubset.a"
+
+AC_CHECK_LIB(simon, main, [SIMON="-L${SIMON_LIB_PATH} -lsimon -lBasicsSubset"],,["-L${SIMON_LIB_PATH}"])
+if test -z "${SIMON}"; then
+  AC_ERROR("... invalid Simon library!")
 fi
-AC_SUBST(BASE_CXXFLAGS)
+
+AC_SUBST(SIMON)
+AC_SUBST(SIMON_PATH)
+AC_SUBST(SIMON_LIB_PATH)
+AC_SUBST(SIMON_INCLUDES)
+AC_SUBST(SIMON_LIB)
 
 ### log4cxx ###
 
@@ -376,9 +453,6 @@ LOG4CXX_LIB_PATH="$LOG4CXX_PATH/lib"
 LOG4CXX_INCLUDES="$LOG4CXX_PATH/include"
 LOG4CXX_LIB="$LOG4CXX_LIB_PATH/liblog4cxx.a"
 
-APR_LIB_PATH="/usr/releng/external/apr-1.2.12/lib"
-APR_UTIL_LIB_PATH="/usr/releng/external/apr-util-1.2.12/lib"
-
 AC_CHECK_LIB(log4cxx, main, [LOG4CXX="-L${LOG4CXX_LIB_PATH} -Wl,--whole-archive,-llog4cxx,--no-whole-archive"],,["-L${LOG4CXX_LIB_PATH}"])
 if test -z "${LOG4CXX}"; then
   AC_ERROR("... invalid log4cxx library!")
@@ -389,142 +463,6 @@ AC_SUBST(LOG4CXX_PATH)
 AC_SUBST(LOG4CXX_LIB_PATH)
 AC_SUBST(LOG4CXX_INCLUDES)
 AC_SUBST(LOG4CXX_LIB)
-AC_SUBST(APR_LIB_PATH)
-AC_SUBST(APR_UTIL_LIB_PATH)
-
-### Cppunit ###
-
-CPPUNIT_VERSION="1.12.0"
-
-AC_MSG_CHECKING(location of cppunit headers and libraries)
-AC_ARG_WITH(cppunit_root,
-  [ --with-cppunit-root   location of cppunit libraries and headers.],
-  [ case "${withval}" in
-      yes|no)
-        AC_ERROR(Option --with-cppunit-root requires a path argument.)
-        ;;
-    esac ],
-  [
-        with_cppunit_root="/usr/releng/external/cppunit/$CPPUNIT_VERSION"
-  ]
-)
-AC_MSG_RESULT($with_cppunit_root)
-
-CPPUNIT_PATH="${with_cppunit_root}"
-CPPUNIT_LIB_PATH="$CPPUNIT_PATH/lib"
-CPPUNIT_INCLUDES="$CPPUNIT_PATH/include"
-CPPUNIT_LIB="$CPPUNIT_LIB_PATH/libcppunit.a"
-
-AM_CONDITIONAL(HAVE_CPPUNIT, test -e "$CPPUNIT_LIB")
-if test "$HAVE_CPPUNIT_TRUE" = '#'; then
-  AC_ERROR("... invalid cppunit library!")
-fi
-
-AC_SUBST(CPPUNIT)
-AC_SUBST(CPPUNIT_PATH)
-AC_SUBST(CPPUNIT_LIB_PATH)
-AC_SUBST(CPPUNIT_INCLUDES)
-AC_SUBST(CPPUNIT_LIB)
-
-### Readline ###
-
-AC_MSG_CHECKING(location of readline headers and libraries)
-AC_ARG_WITH(readline_root,
-  [ --with-readline-root   location of readline libraries and headers.],
-  [ case "${withval}" in
-      yes|no)
-        AC_ERROR(Option --with-readline-root requires a path argument.)
-        ;;
-    esac ],
-  [
-        with_readline_root="/usr/"
-  ]
-)
-AC_MSG_RESULT($with_readline_root)
-
-READLINE_PATH="${with_readline_root}"
-READLINE_LIB_PATH="$READLINE_PATH/lib"
-READLINE_INCLUDES="$READLINE_PATH/include"
-READLINE_LIB="$READLINE_LIB_PATH/libreadline.a"
-
-AM_CONDITIONAL(HAVE_READLINE, test -e "$READLINE_LIB")
-if test "$HAVE_READLINE_TRUE" = '#'; then
-  AC_ERROR("... invalid readline library!")
-fi
-
-AC_SUBST(READLINE)
-AC_SUBST(READLINE_PATH)
-AC_SUBST(READLINE_LIB_PATH)
-AC_SUBST(READLINE_INCLUDES)
-AC_SUBST(READLINE_LIB)
-
-### Ncurses ###
-
-AC_MSG_CHECKING(location of ncurses headers and libraries)
-AC_ARG_WITH(ncurses_root,
-  [ --with-ncurses-root   location of ncurses libraries and headers.],
-  [ case "${withval}" in
-      yes|no)
-        AC_ERROR(Option --with-ncurses-root requires a path argument.)
-        ;;
-    esac ],
-  [
-        with_ncurses_root="/usr/"
-  ]
-)
-AC_MSG_RESULT($with_ncurses_root)
-
-NCURSES_PATH="${with_ncurses_root}"
-NCURSES_LIB_PATH="$NCURSES_PATH/lib"
-NCURSES_INCLUDES="$NCURSES_PATH/include"
-NCURSES_LIB="$NCURSES_LIB_PATH/libncurses.a"
-
-AM_CONDITIONAL(HAVE_NCURSES, test -e "$NCURSES_LIB")
-if test "$HAVE_NCURSES_TRUE" = '#'; then
-  AC_ERROR("... invalid ncurses library!")
-fi
-
-AC_SUBST(NCURSES)
-AC_SUBST(NCURSES_PATH)
-AC_SUBST(NCURSES_LIB_PATH)
-AC_SUBST(NCURSES_INCLUDES)
-AC_SUBST(NCURSES_LIB)
-
-### microhttpd ###
-
-MICROHTTPD_VERSION="0.4.0"
-
-AC_MSG_CHECKING(location of microhttpd headers and libraries)
-AC_ARG_WITH(microhttpd_root,
-  [ --with-microhttpd-root   location of libmicrohttpd libraries and headers.],
-  [ case "${withval}" in
-      yes|no)
-        AC_ERROR(Option --with-microhttpd-root requires a path argument.)
-        ;;
-    esac ],
-  [
-        with_microhttpd_root="/usr/releng/external/libmicrohttpd/$MICROHTTPD_VERSION$compiler_version"
-  ]
-)
-AC_MSG_RESULT($with_microhttpd_root)
-
-MICROHTTPD_PATH="${with_microhttpd_root}"
-MICROHTTPD_LIB_PATH="$MICROHTTPD_PATH/lib"
-MICROHTTPD_INCLUDES="$MICROHTTPD_PATH/include"
-MICROHTTPD_LIB="$MICROHTTPD_LIB_PATH/libmicrohttpd.a"
-
-LD_LIBRARY_PATH="$MICROHTTPD_LIB_PATH"
-
-AC_CHECK_LIB(microhttpd, main, [MICROHTTPD="-L${MICROHTTPD_LIB_PATH} -lmicrohttpd"],,["-L${MICROHTTPD_LIB_PATH}"])
-if test -z "${MICROHTTPD}"; then
-  AC_ERROR("... invalid libmicrohttpd library!")
-fi
-
-AC_SUBST(MICROHTTPD)
-AC_SUBST(MICROHTTPD_PATH)
-AC_SUBST(MICROHTTPD_LIB_PATH)
-AC_SUBST(MICROHTTPD_INCLUDES)
-AC_SUBST(MICROHTTPD_LIB)
 
 ### BUILDSTAMP ###
 
@@ -560,6 +498,25 @@ AC_SUBST(NEW_MAKE_BUILDSTAMP_SOURCE)
 AC_SUBST(NEW_MAKE_BUILDSTAMP_OBJECT)
 #AC_SUBST(NEW_MAKE_BUILDSTAMP_PICOBJECT)
 
+# openssl crypto md5
+LIB_SSL="-lssl"
+
+if test $os_type = "Linux" -a $os_version -ge 26; then
+        LIB_SSL="-lxmlsec1-openssl"
+fi
+AC_SUBST(LIB_SSL)
+
+OPENSSL_VERSION="0.9.7g"
+AC_SUBST(OPENSSL_VERSION)
+
+openssl_crypto_lib_ext=".a"
+openssl_crypto_lib_root="/usr/releng/external/openssl"
+openssl_crypto_inc_root="/usr/releng/external/openssl"
+OPENSSL_INC_DIR="${openssl_crypto_inc_root}/${OPENSSL_VERSION}/include/openssl"
+
+OPENSSLCRYPTO_INC_DIR="$OPENSSL_INC_DIR"
+LIBOPENSSLCRYPTO="${openssl_crypto_lib_root}/${OPENSSL_VERSION}/lib/libcrypto.a"
+
 AC_CHECK_LIB(thread, thr_create, LIBTHREAD="-lthread")
 AC_SUBST(LIBTHREAD)
 
@@ -586,42 +543,32 @@ fi
 AC_MSG_RESULT($LIB_KSTAT_OS)
 AC_SUBST(LIB_KSTAT_OS)
 
+AC_MSG_RESULT(OPENSSL_INC_DIR = ${OPENSSL_INC_DIR})
+AC_MSG_RESULT(OPENSSLCRYPTO_INC_DIR = ${OPENSSLCRYPTO_INC_DIR})
+AC_MSG_RESULT(LIBOPENSSLCRYPTO = ${LIBOPENSSLCRYPTO})
+
+AC_SUBST(OPENSSL_INC_DIR)
+AC_SUBST(OPENSSLCRYPTO_INC_DIR)
+AC_SUBST(LIBOPENSSLCRYPTO)
+
+
 AC_CHECK_LIB(rt, clock_gettime, LIBRT="-lrt")
 AC_CHECK_LIB(posix4, clock_gettime, LIBRT="-lposix4")
 AC_SUBST(LIBRT)
 
+AC_CHECK_LIB(socket, socket, LIBSOCKET="-lsocket")
+AC_SUBST(LIBSOCKET)
+
+AC_CHECK_LIB(nsl, gethostbyname, LIBNSL="-lnsl")
+AC_SUBST(LIBNSL)
+
 makefile_inc="$srcdir/Makefile.inc"
 AC_SUBST_FILE(makefile_inc)
-
-# Create the necessary directories if they don't exist
-if test ! -d docs; then 
-   mkdir docs
-fi
-if test ! -d docs/doxygen-internal; then
-   mkdir docs/doxygen-internal
-fi
-if test ! -d docs/doxygen-user; then
-   mkdir docs/doxgyen-user
-fi
 
 AC_OUTPUT(
 Manifest
 Makefile
 src/Makefile
-src/activenode/Makefile
-src/cli/Makefile
-src/core/Makefile
-src/core/md5/Makefile
-src/example/Makefile
-src/gui/Makefile
-src/gui/src/Makefile
-src/gui/unittest/Makefile
-unittests/Makefile
-unittests/unittestsHelper.pl
-regressions/Regressions.itc
-docs/doxygen-internal/doxygenInternalConfig
-docs/doxygen-user/doxygenUserConfig
+unittest/Makefile
+conf/config.xml
 )
-
-# Make the perl script executable
-chmod +x unittests/unittestsHelper.pl

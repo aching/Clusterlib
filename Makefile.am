@@ -1,8 +1,9 @@
 # not a GNU package. You can remove this line, if
 # have all needed files, that a GNU package needs
-AUTOMAKE_OPTIONS = 1.2 foreign no-installman no-installinfo no-dependencies
+AUTOMAKE_OPTIONS = 1.3 foreign no-installman no-installinfo no-dependencies 
 
-SUBDIRS = src example unittests
+SUBDIRS = src unittests
+LDADD   = $(NEW_BUILDSTAMP_OBJECT)
 
 PKGDIR = @PACKAGE@_@VERSION@.@OS_TYPE@
 
@@ -31,6 +32,6 @@ tarball: package documentation
 	fi;
 	mv $(PKGDIR) install
 
-test_tinderbox: package
+test: package
 	inktest -a -b $(top_builddir) -c $(top_builddir)/regressions/Regressions.itc \
                 --verbose

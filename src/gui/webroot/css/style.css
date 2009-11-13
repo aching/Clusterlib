@@ -1,0 +1,226 @@
+#header {
+margin-left: 0em;
+margin-right: 0em;
+padding-left: 1em;
+padding-right: 1em;
+padding-bottom: 0.5em;
+}
+#bigtitle {
+font-size: x-large;
+font-weight: bold;
+font-family: sans-serif;
+padding-bottom: 0.3em;
+}
+#smalltitle {
+font-variant: small-caps;
+font-size: small;
+}
+#toolbar {
+margin-left: 0em;
+margin-right: 0em;
+padding-top: 0.5em;
+padding-left: 1em;
+padding-right: 1em;
+padding-bottom: 0.5em;
+}
+div.toolbaritem {
+display: inline;
+margin: 0.5em 1em 0.5em 1em;
+}
+#timer {
+position: absolute;
+display: inline;
+margin: 0em 1em 1em 0em;
+float: right;
+right: 0;
+}
+div.toolbaritem a:hover {
+background: #FFB3F0;
+}
+div.toolbaritem a {
+padding: 0.3em;
+}
+#applistbox {
+width: 15em;
+margin: 0.5em 0 0.5em 0;
+padding: 0.3em;
+float: left;
+display: inline;
+}
+#applistbox .header {
+background:#4444CC;
+color:white;
+padding: 0.3em;
+margin:0;
+}
+#applistbox .body {
+background:#CCDDFF;
+}
+#applistbox ul {
+margin-top: 0;
+padding-top: 0;
+margin-bottom: 0;
+padding-bottom: 0;
+}
+#applistbox ul li {
+padding-top: 0.3em;
+padding-bottom: 0.2em;
+}
+#statusbox {
+margin: 0.5em 0.5em 0.5em 15.5em;
+padding: 0.3em;
+}
+#propertybox {
+margin: 0;
+padding: 0;
+}
+#graphbox {
+margin: 0.5em 0em 0.5em 0em;
+padding: 0;
+}
+#propertytable {
+background:#0000CC;
+padding: 0.1em 0.1em 0.05em 0.1em;
+}
+#propertycaption {
+background:#4444CC;
+color: white;
+padding: 0.3em 0.2em 0.2em 0.2em;
+}
+#nodecontent {
+background:#CCDDFF;
+margin-bottom: 0.1em;
+}
+#propertytable div.row {
+padding: 0em;
+margin: 0em 0 0.1em 0;
+}
+#propertytable div.cell {
+padding: 0.2em;
+margin-left:15.5em;
+background:#FFFFFF;
+}
+#propertytable div.key {
+background:#CCDDFF;
+width: 15em;
+display: inline;
+padding: 0.2em;
+float: left;
+}
+#statusbox div.Good {
+background-color:#99FF33;
+color:black;
+}
+#statusbox div.Bad {
+background-color:#FF6666;
+color:black;
+}
+#statusbox div.Warning {
+background-color:#F0E68C;
+color:black;
+}
+#applist a.Good {
+}
+#applist a.Bad {
+font-style:italic;
+font-weight:bold;
+}
+#applist a.Warning {
+font-style:italic;
+}
+#statusbox div.itembox {
+width: 8em;
+height: 1.5em;
+vertical-align: middle;
+text-align:center;
+display: inline;
+float: left;
+border: 0.1em solid #0000CC;
+}
+#statusbox div.fullbox {
+padding: 0.1em;
+clear: both;
+padding: 0.5em 0em 0em 0em;
+}
+#statusbox div.caption {
+background:#4444CC;
+color: white;
+padding: 0.2em;
+}
+div.graph {
+margin-left:auto;
+margin-right:auto;
+width: 400px;
+height: 300px;
+clear:both;
+}
+#graph {
+width: 400px;
+height: 300px;
+}
+a.info span {
+display: none;
+font-size: small;
+}
+a.info:hover {
+position: relative;
+}
+a.info:hover span {
+display: block;
+position: absolute;
+top: 1.5em;
+left: 1.5em;
+background-color: #eeeeee;
+border: thin solid black;
+color: black;
+width: 10em;
+padding: .1em;
+}
+
+#clusterlibbox {
+width: 100%;
+margin: 0.5em 0 0.5em 0;
+padding: 0.3em;
+float: left;
+display: inline;
+}
+#clusterlibbox .header {
+background:#c77405
+color:white;
+padding: 0.3em;
+margin:0;
+}
+#clusterlibbox .body {
+background:#000000;
+}
+
+#treebox {
+width: 30em;
+margin: 0.5em 0 0.5em 0;
+padding: 0.3em;
+float: left;
+display: inline;
+}
+#treebox .header {
+background:#4444CC;
+color:white;
+padding: 0.3em;
+margin:0;
+}
+#treebox .body {
+background:#CCDDFF;
+}
+#contentbox {
+margin: 0.5em 0.5em 0.5em 30.5em;
+padding: 0.3em;
+}
+div.scrollcontainer {
+height: 450px;
+overflow: auto;
+}
+a.changeRefresh { 
+text-decoration: underline
+}
+#refreshContent {
+float:left
+}

@@ -1,0 +1,8 @@
+###
+# Zoo Keeper UI Regression Suite
+###
+
+# Common Library
+# Test("../common/regressions/test.sh");
+
+Test("unittest.sh");

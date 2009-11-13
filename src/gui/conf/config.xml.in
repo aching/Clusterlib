@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<configuration>
+<!-- Each property is enclosed by 'property' element -->
+  <property>
+    <!-- The port of the HTTP server -->
+    <name>httpd.port</name>
+    <value>2188</value>
+  </property>
+  <property>
+    <!-- The root directory of the HTTP server, empty means working directory -->
+    <name>httpd.rootDirectory</name>
+    <value>@top_srcdir@/webroot</value>
+  </property>
+  <property>
+    <!-- The content types 'extension|MIME type,extension|MIME type,...' -->
+    <name>httpd.contenttypes</name>
+    <value>htm|text/html,html|text/html,xml|text/xml,js|text/javascript,css|text/css,jpg|image/jpeg,gif|image/gif,pdf|application/pdf,png|image/png,zip|application/zip,tar|application/x-tar,gz|application/x-gzip,tgz|application/x-gtar,txt|text/plain,tif|image/tif</value>
+  </property>
+  <property>
+    <!-- The allowed clients, Perl-compatible regular expressions -->
+    <name>httpd.allowedhosts</name>
+    <value>localhost|.*\.yahoo\.com|.*\.yahoo\.net|.*\.inktomisearch\.com</value>
+  </property>
+  <property>
+    <!-- The ZooKeeper server list, comma ',' separated -->
+    <name>zookeeper.servers</name>
+    <value>localhost:2181</value>
+  </property>
+  <property>
+    <!-- The log4cxx configuration file -->
+    <name>logger.configuration</name>
+    <value>@top_srcdir@/conf/logger.conf</value>
+  </property>
+</configuration>
