@@ -19,8 +19,13 @@ install: package
 
 # Misc targets
 #
+maintainer-clean-local:
+	-$(RM) -rf Makefile.in
+
+maintainer-clean: maintainer-clean-local
+
 clean-local:
-	-$(RM) -rf $(BUILDSTAMP_SOURCE) $(BUILDSTAMP_OBJECT) gmon.out .deps
+	-$(RM) -rf $(BUILDSTAMP_SOURCE) $(BUILDSTAMP_OBJECT) $(NEW_BUILDSTAMP_SOURCE) $(NEW_BUILDSTAMP_OBJECT) gmon.out .deps *~
 
 clean: clean-local
 
@@ -28,7 +33,6 @@ $(PROGRAMS) : $(NEW_BUILDSTAMP_OBJECT)
 
 $(NEW_BUILDSTAMP_OBJECT) : $(NEW_BUILDSTAMP_SOURCE)
 	$(NEW_MAKE_BUILDSTAMP_OBJECT)
-
 
 $(NEW_BUILDSTAMP_SOURCE) : $(SOURCES) $(LIBRARIES)
 	$(NEW_MAKE_BUILDSTAMP_SOURCE)

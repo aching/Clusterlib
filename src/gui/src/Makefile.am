@@ -8,9 +8,12 @@ INCLUDES = \
 	-I@APR_INCLUDES@ \
 	-I@APRUTIL_INCLUDES@
 METASOURCES = AUTO
+noinst_LIBRARIES = libjsonrpc.a
+libjsonrpc_a_SOURCES = jsonrpc.cc
 bin_PROGRAMS = zkuiserver
 zkuiserver_LDADD = \
         $(top_builddir)/src/core/libcluster.a \
+        $(top_builddir)/src/gui/src/libjsonrpc.a \
 	$(NEW_BUILDSTAMP_OBJECT)\
 	@BOOST_LIB@ \
         @ZOOKEEPER_LIB@ \
@@ -28,8 +31,9 @@ zkuiserver_SOURCES = \
 	mhd_httpd.cc \
 	jsonrpc_httpd_adaptor.cc \
 	clusterlib_jsonrpc_adaptor.cc \
-	zookeeper_jsonrpc_adaptor.cc \
-	jsonrpc.cc
-CXXFLAGS = -Wall -g @CXXFLAGS@
+	zookeeper_jsonrpc_adaptor.cc
+zkuiserver_DEPENDENCIES = libjsonrpc.a
+
+CXXFLAGS = @BASE_CXXFLAGS@
 
 @makefile_inc@

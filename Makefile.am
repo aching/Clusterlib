@@ -32,6 +32,8 @@ tarball: package documentation
 	fi;
 	mv $(PKGDIR) install
 
-test: package
+test_tinderbox: package
 	inktest -a -b $(top_builddir) -c $(top_builddir)/regressions/Regressions.itc \
                 --verbose
+
+@makefile_inc@

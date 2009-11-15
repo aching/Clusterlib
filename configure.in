@@ -178,8 +178,13 @@ MPICH_INCLUDES="$MPICH_PATH/install/include"
 MPICH_LIB="$MPICH_LIB_PATH/libmpichcxx.a $MPICH_LIB_PATH/libmpich.a"
 
 AC_CHECK_LIB(mpich, main, [MPICH="-L${MPICH_LIB_PATH} -lmpichcxx -lmpich"],,["-L${MPICH_LIB_PATH}"])
-if test -z "${MPICH}"; then
-  AC_ERROR("... invalid MPICH library!")
+AM_CONDITIONAL(HAVE_MPICH, test "${MPICH}")
+if test "$HAVE_MPICH_TRUE" = '#'; then
+  echo "********************************************************************************"
+  AC_MSG_WARN([***No MPICH library found, NOT making unittests!***])
+  echo "********************************************************************************"
+  MPICH_INCLUDES=""
+  MPICH_LIB=""
 fi
 
 AC_SUBST(MPICH)
@@ -417,7 +422,11 @@ CPPUNIT_LIB="$CPPUNIT_LIB_PATH/libcppunit.a"
 
 AM_CONDITIONAL(HAVE_CPPUNIT, test -e "$CPPUNIT_LIB")
 if test "$HAVE_CPPUNIT_TRUE" = '#'; then
-  AC_ERROR("... invalid cppunit library!")
+  echo "********************************************************************************"
+  AC_MSG_WARN([***No cppunit library found, NOT making unittests!***])
+  echo "********************************************************************************"
+  CPPUNIT_INCLUDES=""
+  CPPUNIT_LIB=""
 fi
 
 AC_SUBST(CPPUNIT)
@@ -449,7 +458,12 @@ READLINE_LIB="$READLINE_LIB_PATH/libreadline.a"
 
 AM_CONDITIONAL(HAVE_READLINE, test -e "$READLINE_LIB")
 if test "$HAVE_READLINE_TRUE" = '#'; then
-  AC_ERROR("... invalid readline library!")
+  AC_DEFINE(NO_TAB_COMPLETION)
+  echo "********************************************************************************"
+  AC_MSG_WARN([***No readline library found, NO tab-completion for CLI!***])
+  echo "********************************************************************************"
+  READLINE_INCLUDES=""
+  READLINE_LIB=""
 fi
 
 AC_SUBST(READLINE)
@@ -481,7 +495,12 @@ NCURSES_LIB="$NCURSES_LIB_PATH/libncurses.a"
 
 AM_CONDITIONAL(HAVE_NCURSES, test -e "$NCURSES_LIB")
 if test "$HAVE_NCURSES_TRUE" = '#'; then
-  AC_ERROR("... invalid ncurses library!")
+  AC_DEFINE(NO_TAB_COMPLETION)
+  echo "********************************************************************************"
+  AC_MSG_WARN([***No ncurses library found, NO tab-completion for CLI!***])
+  echo "********************************************************************************"
+  NCURSES_INCLUDES=""
+  NCURSES_LIB=""
 fi
 
 AC_SUBST(NCURSES)
@@ -516,8 +535,13 @@ MICROHTTPD_LIB="$MICROHTTPD_LIB_PATH/libmicrohttpd.a"
 LD_LIBRARY_PATH="$MICROHTTPD_LIB_PATH"
 
 AC_CHECK_LIB(microhttpd, main, [MICROHTTPD="-L${MICROHTTPD_LIB_PATH} -lmicrohttpd"],,["-L${MICROHTTPD_LIB_PATH}"])
-if test -z "${MICROHTTPD}"; then
-  AC_ERROR("... invalid libmicrohttpd library!")
+AM_CONDITIONAL(HAVE_MICROHTTPD, test "${MICROHTTPD}")
+if test "$HAVE_MICROHTTPD_TRUE" = '#'; then
+  echo "********************************************************************************"
+  AC_MSG_WARN([***No libmicrohttpd library found, NO gui will be built!***])
+  echo "********************************************************************************"
+  MICROHTTPD_INCLUDES=""
+  MICROHTTPD_LIB=""
 fi
 
 AC_SUBST(MICROHTTPD)

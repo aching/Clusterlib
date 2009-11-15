@@ -19,7 +19,6 @@ cli_LDADD = \
 cli_SOURCES = \
 	cliparams.cc \
 	cli.cc
-#cli_DEPENDENCIES =
 
 CXXFLAGS = @BASE_CXXFLAGS@
 

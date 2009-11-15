@@ -10,7 +10,6 @@ activenode_LDADD = \
         $(top_builddir)/src/core/libcluster.a \
 	@LOG4CXX_LIB@ \
 	@ZOOKEEPER_LIB@ \
-	@CPPUNIT_LIB@ \
 	@APR_LIB@ \
 	@APRUTIL_LIB@ \
 	@EXPAT_LIB@ \

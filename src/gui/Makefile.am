@@ -1,4 +1,9 @@
+# Only build if the microhttpd library is available
+if HAVE_MICROHTTPD
 SUBDIRS = src unittest
+endif
+
+@makefile_inc@
 
 ###
 # Packaging targets

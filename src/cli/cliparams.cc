@@ -1,15 +1,19 @@
 #include "clusterlibinternal.h"
 #include "cliparams.h"
 #include <stdlib.h> 
+#include "cliformat.h"
+
+#ifndef NO_TAB_COMPLETION
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <curses.h>
-#include "cliformat.h"
+#endif
 
 using namespace std;
 using namespace boost;
 using namespace clusterlib;
 
+#ifndef NO_TAB_COMPLETION
 /** 
  * Used by readline.  Try to complete based on previously seen keys or
  * all the different command names.
@@ -96,6 +100,7 @@ commandCompletion(const char *text, int iteration)
 
     return NULL;
 }
+#endif
 
 CliParams::CliParams() 
     : m_factory(NULL),
@@ -105,11 +110,14 @@ CliParams::CliParams()
       m_keySetMaxSize(1024*1024)
 
 {
+
+#ifndef NO_TAB_COMPLETION
     /* 
      * Set readline to use commandCompletion instead of the
      * default. 
      */
     rl_completion_entry_function = commandCompletion;
+#endif
 }
 
 void 
@@ -188,7 +196,9 @@ CliParams::parseAndRunLine()
 {        
     cout << endl;
     vector<string> components;
+
     if (m_command.empty()) {
+#ifndef NO_TAB_COMPLETION
         m_line = readline("Enter command (Use '?' if help is required):\n");
         /* If the line has text, save it to history. */
         if (m_line && *m_line) {
@@ -200,6 +210,12 @@ CliParams::parseAndRunLine()
             free(m_line);
             m_line = NULL;
         }        
+#else
+        char lineString[4096];
+        cout << "Enter command (Use '?' if help is required):" << endl;
+        cin.getline(lineString, 4096);
+        split(components, lineString, is_any_of(keySeparator));
+#endif
     }
     else {
         split(components, m_command, is_any_of(keySeparator));

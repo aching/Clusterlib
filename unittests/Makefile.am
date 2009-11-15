@@ -7,7 +7,13 @@ INCLUDES = \
 	-I@MPICH_INCLUDES@ \
         -I@CPPUNIT_INCLUDES@
 METASOURCES = AUTO
+
+# Only build the unittests if MPICH and cppunit are present
+if HAVE_MPICH
+if HAVE_CPPUNIT
 bin_PROGRAMS = unittests
+endif
+endif
 unittests_LDADD = \
 	$(top_builddir)/src/core/libcluster.a \
 	@LOG4CXX_LIB@ \
@@ -18,7 +24,6 @@ unittests_LDADD = \
 	@EXPAT_LIB@ \
 	@LIB_THREAD_OS@ \
 	@MPICH_LIB@
-CXXFLAGS = @BASE_CXXFLAGS@ -DMPICH_IGNORE_CXX_SEEK 
 unittests_SOURCES = \
 	test.cc \
 	testparams.cc \
@@ -37,5 +42,7 @@ unittests_SOURCES = \
 	clusterlibtimer.cc \
 	clusterlibhealthcheck.cc \
 	clusterlibreleaseref.cc
+
+CXXFLAGS = @BASE_CXXFLAGS@ -DMPICH_IGNORE_CXX_SEEK 
 
 @makefile_inc@
