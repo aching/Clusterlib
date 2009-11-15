@@ -31,14 +31,18 @@ class JSONException : public virtual std::exception {
   public:
     /**
      * Creates an instance of JSONException with error message.
+     *
      * @param message the error message.
      */
     explicit JSONException(const std::string &message);
+
     /**
      * Gets the error message of this exception.
+     *
      * @return the error message.
      */
     virtual const char *what() const throw();
+
     /**
      * Destroys the instance of JSONException.
      */
@@ -57,6 +61,7 @@ class JSONException : public virtual std::exception {
    public:
      /**
       * Creates an instance of JSONParseException with error message.
+      *
       * @param message the error message.
       */
      explicit JSONParseException(const std::string &message);
@@ -70,6 +75,7 @@ class JSONException : public virtual std::exception {
     public:
         /**
          * Creates an instance of JSONParseException with error message.
+         *
          * @param message the error message.
          */
      explicit JSONValueException(const std::string &message);
@@ -93,12 +99,16 @@ class JSONValue {
      */
     class JSONNull {
       public:
+
         /**
          * Compares if the two instance equal. For Null values in
-         * JSONValue, they always equal.  @param other the other
-         * Null value to be compared.  @return true
+         * JSONValue, they always equal.  
+
+         * @param other the other Null value to be compared.  
+         * @return true
          */
         bool operator==(const JSONNull &other) const;
+
         /**
          * Assigns the Null value to another. Since Null values in 
          * JSONValue are the same, it does nothing.
@@ -107,40 +117,49 @@ class JSONValue {
          * @return the instance represented by other parameter.
          */
         const JSONNull &operator=(const JSONNull &other);
+
         /**
          * Creates a copy of the Null value.
          * @param other the Null value to be copied.
          */
         JSONNull(const JSONNull &other);
+
       private:
         /**
          * Creates a new instance of NullType. This constructor is
          * private so that
          */
         JSONNull();
+
         friend class JSONValue;
     };
+
     /**
-         * Creates a new instance of JSONValue. The value is empty.
-         */
+     * Creates a new instance of JSONValue. The value is empty.
+     */
     JSONValue();
+
     /**
      * Creates a new instance of JSONValue. The new instance is a copy
      * of the given instance.
      * @param other the JSONValue instance to be copied.
      */
     JSONValue(const JSONValue &other);
+
     /**
-     * Creates a new instance of JSONValue with value set.
-     * @param T the type of the value.
+     * Creates a new instance of JSONValue with value set.  T is the
+     * type of the value.
+     *
      * @param value the value.
      */
     template<class T> JSONValue(const T &value) {
         set(value);
     }
+
     /**
      * Gets the value. A copy of the value is returned.
-     * @param T the type of the value.
+     * T is the type of the value.
+     *
      * @return the value.
      * @throws JSONValueException 
      *         if the value is not compatible with the return type.
@@ -154,9 +173,11 @@ class JSONValue {
                                      typeid(T).name());
         }
     }
+
     /**
-     * Gets the value. A copy of the value is returned.
-     * @param T the type of the value.
+     * Gets the value. A copy of the value is returned.  T is the type
+     * of the value.
+     *
      * @param value the pointer where the copy of the value is stored.
      * @return the value.
      * @throws JSONValueException if the value is not compatible with the 
@@ -166,37 +187,46 @@ class JSONValue {
         *value = get<T>();
         return *value;
     }
+
     /**
-     * Sets the value. Only integer, float, double, bool, vector of 
-     * JSONValue, and map of string and JSONValue can be set.
-     * @param T the type of the value.
+     * Sets the value. Only integer, float, double, bool, vector of
+     * JSONValue, and map of string and JSONValue can be set.  T the
+     * type of the value.
+     * 
      * @param value the value to be set.
      */
     template<class T> void set(const T &value);
+
     /**
      * Sets the value as string.
      * @param value the string to be set.
      */
     void set(const char *value);
+
     /**
      * Sets the value. Only integer, float, double, bool, vector of
-     * JSONValue, and map of string to JSONValue can be set.
-     * @param T the type of the value.
+     * JSONValue, and map of string to JSONValue can be set.  T the
+     * type of the value.
+     *
      * @param value the value to be set.
      */
     template<class T> const T &operator=(const T &value) {
         set(value);
         return value;
     }
+
     /**
      * Represents the Null value in JSON.
      */
     static JSONNull Null;
+
     /**
      * Gets the type of the value.
+     *
      * @return the type of the value.
      */
     const std::type_info &type() const;
+
   private:
     /**
      * Represents the value stored in JSONValue.
@@ -212,13 +242,16 @@ class JSONCodec {
   public:
     /**
      * Encodes the JSONValue to a JSON message.
+     *
      * @param object the value to be encoded.
      * @return the JSON message representing the map.
      * @throws JSONValueException if the value type cannot be supported.
      */
     static std::string encode(const JSONValue &object);
+
     /**
      * Decodes the JSON message into a map.
+     *
      * @param message the JSON message to be decoded.
      * @param pos the start parsing position and the end position of the
      *        JSON message. If it is NULL, the start position is 0.
@@ -226,6 +259,7 @@ class JSONCodec {
      * @throws JSONParseException if the JSON message is malformed.
      */
     static JSONValue decode(const std::string &message, size_t *pos = NULL);
+
   private:
     /**
      * Creates a new instance of JSONUtil. This private

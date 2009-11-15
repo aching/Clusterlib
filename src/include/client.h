@@ -162,13 +162,15 @@ class UserEventHandler
     /**
      * Call the user defined handler, and then deal with conditions
      * & waiting. Intended for use by clusterlib internals.
+     *
+     * @param e the event to be processed.
      */
     void handleUserEventDelivery(Event e);
 
     /**
      * \brief Handle the event -- this must be implemented by subclasses.
      *
-     * @param Event the event to be processed.
+     * @param e the event to be processed.
      */
     virtual void handleUserEvent(Event e) = 0;
 
@@ -186,7 +188,7 @@ class UserEventHandler
      * @param maxMs how many milliseconds to wait. default 0 means forever.
      * @param interruptible is this wait interruptible? default is false.
      */
-    bool waitUntilCondition(uint64_t maxMs = 0, bool interuptible = false);
+    bool waitUntilCondition(uint64_t maxMs = 0, bool interruptible = false);
 
     /**
      * \brief Determines if a condition is met (and waits should end).
@@ -195,7 +197,7 @@ class UserEventHandler
      * always returns true. Intended to be overridden by user programs to
      * implement more complex waits and conditions.
      *
-     * @param Event the event to check for meeting the condition.
+     * @param e the event to check for meeting the condition.
      */
     virtual bool meetsCondition(Event e) { return true; }
 
@@ -273,6 +275,8 @@ class Client
      * 
      * @param tehp pointer to the handler class that is managed by the user
      * @param afterTime milliseconds to wait for the event to be triggered
+     * @param data the pointer to user-defined data that is given back when 
+     *        handling the event.
      */
     virtual TimerId registerTimer(TimerEventHandler *tehp,
                                   uint64_t afterTime,

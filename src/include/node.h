@@ -45,11 +45,19 @@ class Node
      */
     virtual bool isConnected() = 0;
 
-    /*
-     * Return the time at which various events happened.
+    /**
+     * Return the time at the client state was set.
      */
     virtual int64_t getClientStateTime() = 0;
+ 
+    /**
+     * Return the time at the master state was set.
+     */
     virtual int64_t getMasterSetStateTime() = 0;
+
+    /**
+     * Return the time at the connection happened.
+     */
     virtual int64_t getConnectionTime() = 0;
 
     /**
@@ -72,8 +80,8 @@ class Node
      * @param healthChecker the callback to be used when checking for
      *                      health; if <code>NULL</code> the health
      *                      monitoring is disabled
-     * @param checkFrequency how often to execute the given callback,
-     *                       in seconds
+     * TODO: Add --> checkFrequency how often to execute the given 
+     *               callback in milliseconds
      */
     virtual void registerHealthChecker(HealthChecker *healthChecker) = 0;
 
@@ -125,7 +133,7 @@ class Node
     /**
      * Set the maximum number of process slots on this node.
      *
-     * @param the maximum number of process slots
+     * @param maxProcessSlots the maximum number of process slots
      */
     virtual void setMaxProcessSlots(int32_t maxProcessSlots) = 0;
 

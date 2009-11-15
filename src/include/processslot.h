@@ -129,7 +129,7 @@ class ProcessSlot
     /**
      * Set a vector of ports (user-defined).
      *
-     * @param portVec the vector of ports to set
+     * @param jsonValue the vector of ports to set as a JSONValue
      */
     virtual void setJsonPortVec(json::JSONValue jsonValue) = 0;
 

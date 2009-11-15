@@ -18,44 +18,16 @@ class ClientImpl
     : public virtual Client
 {
   public:
-    /**
-     * Get the root node that contains all applications and can be
-     * used for registering event handlers on.
-     * 
-     * @return the root node
-     */
     virtual Root *getRoot();
 
-    /**
-     * Register a timer handler to be called after
-     * a specified delay.
-     * 
-     * @param tehp pointer to the handler class that is managed by the user
-     * @param afterTime milliseconds to wait for the event to be triggered
-     */
     virtual TimerId registerTimer(TimerEventHandler *tehp,
                                   uint64_t afterTime,
                                   ClientData data);
 
-    /**
-     * Cancel a previously registered timer.
-     *
-     * @return true if successful, false otherwise
-     */
     virtual bool cancelTimer(TimerId id);
 
-    /**
-     * \brief Register a user event handler. 
-     *
-     * @param uehp an instance of a handler class, managed by caller
-     */
     virtual void registerHandler(UserEventHandler *uehp);
 
-    /**
-     * \brief Cancel a handler for userevents.
-     *
-     * @return true if successful, false otherwise
-     */
     virtual bool cancelHandler(UserEventHandler *cehp);
 
     /*

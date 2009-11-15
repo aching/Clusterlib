@@ -20,9 +20,12 @@ namespace clusterlib
 class Factory 
 {
   public:
-    /*
+    /**
      * Create a factory instance, connect it to
      * the specified cluster registry.
+     *
+     * @param registry the Zookeeper comma separated list of
+     *        server:port (i.e. localhost:2221,localhost2:2222).
      */
     Factory(const std::string &registry);
 

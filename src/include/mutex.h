@@ -36,7 +36,15 @@ class Mutex
         pthread_mutex_destroy(&mutex);
         pthread_mutexattr_destroy(&m_mutexAttr);
     }
+
+    /**
+     * Acquire the mutex.
+     */
     void acquire();
+
+    /**
+     * Release the mutex.
+     */
     void release();
     void lock()
     {
@@ -209,8 +217,10 @@ class Lock
 class Locker
 {
   public:
-    /*
+    /**
      * Constructor locks the passed mutex.
+     * 
+     * @param mp pointer to the underlying Mutex
      */
     Locker(Mutex *mp);
 

@@ -28,8 +28,11 @@ class Notifyable
         REMOVED
     };
 
-    /*
+    /**
      * Compare two Notifyable instances.
+     *
+     * @param other the Notifyable instance to compare against
+     * @return true if the Notifyables are the same
      */
     virtual bool operator==(const Notifyable &other) = 0;
 

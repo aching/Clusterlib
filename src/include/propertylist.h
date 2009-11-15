@@ -24,7 +24,7 @@ class PropertyList
 {
     public:
     /**
-     * \brief Get the keys in the property list..
+     * \brief Get the keys in the property list.
      * 
      * This function is safe to call without a lock as it acquires the
      * lock while getting the property list keys and returns them as a

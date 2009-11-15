@@ -46,8 +46,7 @@ class CallbackAndContextManager {
      * Free the memory associated with the ContextAndCallback.  Stop
      * tracking it in this object.
      *
-     * @param callback the callback to store
-     * @param context the context to store
+     * @param callbackAndContext pointer to the callback to free
      */
     void deleteCallbackAndContext(CallbackAndContext *callbackAndContext);
 

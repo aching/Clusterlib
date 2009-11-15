@@ -28,7 +28,17 @@ class Thread
     }
     ~Thread() { }
 
+    /** 
+     * Create the thread with the appropriate function.
+     *
+     * @param ctx the context passed into pthread_create
+     * @param func the function for the thread to run
+     */
     void Create(void* ctx, ThreadFunc func);
+
+    /**
+     * Wait for this thread to end.
+     */ 
     void Join();
   private:
     pthread_t mThread;  

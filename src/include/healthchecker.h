@@ -86,8 +86,10 @@ class HealthChecker
      */
     virtual ~HealthChecker() {}
 
-    /*
+    /**
      * Must be supplied by sub-classes.
+     * 
+     * @return the HealthReport after checking the health.
      */
     virtual HealthReport checkHealth() = 0;
 

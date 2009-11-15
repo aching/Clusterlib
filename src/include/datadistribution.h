@@ -67,7 +67,7 @@ class DataDistribution
      * create a simple data distribution.  It is meant as a
      * convenience function (shards do not have to be the same size).
      *
-     * @numShards the number of shards to split the HashRange range into
+     * @param numShards the number of shards to split the HashRange range into
      * @return the vector of lower bound HashRange.  The upper bound
      *         is the next lower bound HashRange in the vector minus 1.
      */
@@ -80,8 +80,8 @@ class DataDistribution
      *
      * @param start the start of the range (inclusive)
      * @param end the end of the range (inclusive)
-     * @node the node that will handle this range
-     * @priority the priority of this shard (-1 is reserved, do not use)
+     * @param node the node that will handle this range
+     * @param priority the priority of this shard (-1 is reserved, do not use)
      */
     virtual void insertShard(HashRange start,
                              HashRange end,

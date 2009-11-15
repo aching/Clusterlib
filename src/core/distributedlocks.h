@@ -51,6 +51,7 @@ class DistributedLocks
      *
      * @param ntp the Notifyable that is being checked
      * @param lockName the name of the lock
+     * @return true if the thread has the lock
      */
     bool hasLock(Notifyable *ntp, const std::string &lockName);
 

@@ -32,9 +32,10 @@ class Root
     /**
      * Get the named application.
      * 
+     * @param appName the name of the application to get
      * @param create create the application if doesn't exist
      * @return NULL if the named application does not exist and create
-     * == false
+     *         == false
      * @throw Exception only if tried to create and couldn't create
      */
     virtual Application *getApplication(const std::string &appName,

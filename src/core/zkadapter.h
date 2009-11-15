@@ -26,6 +26,7 @@ class ZooKeeperException :
      * \brief Constructor.
      * 
      * @param msg the detailed message associated with this exception
+     * @param connected is it connected?
      */
     ZooKeeperException(const std::string &msg,
                        bool connected = true)
@@ -39,6 +40,7 @@ class ZooKeeperException :
      * 
      * @param msg the detailed message associated with this exception
      * @param errorCode the ZK error code associated with this exception
+     * @param connected is it connected?
      */
     ZooKeeperException(const std::string &msg,
                        int32_t errorCode,
@@ -553,6 +555,7 @@ class ZooKeeperAdapter
      * @param version the expected version of the node. The function will 
      *                fail if the actual version of the node does not match 
      *                the expected version
+     * @param stat the Stat pointer to get back if successful
      * 
      * @throw ZooKeeperException if the operation has failed
      */
@@ -564,7 +567,7 @@ class ZooKeeperAdapter
     /**
      * \brief Validates the given path to a node in ZK.
      * 
-     * @param the path to be validated
+     * @param path the path to be validated
      * 
      * @throw ZooKeeperException if the given path is not valid
      *        (for instance it doesn't start with "/")
