@@ -1,5 +1,17 @@
-@SOURCE_PATH@/include				/include
+@SOURCE_PATH@/src/include			/include
 - *.h
 
-@BUILD_PATH@/src				/lib
+@BUILD_PATH@/src/core				/lib
 - libcluster.a
+
+@BUILD_PATH@/src/cli				/bin
+- cli
+
+@BUILD_PATH@/src/gui/src			/bin
+- zkuiserver
+
+@BUILD_PATH@/src/gui/conf			/conf
+- config.xml
+
+@SOURCE_PATH@/misc				/conf
+- log4cxx.cfg
