@@ -85,10 +85,8 @@ class PropertyListImpl
      * properties unless there is a parse error.
      * 
      * @param marshalledPropertyListString the marshalled up property list
-     * @return whether the method successfully unmarshalled the property 
-     *         list or not
      */
-    bool unmarshall(const std::string &marshalledPropertyListString);
+    void unmarshall(const std::string &marshalledPropertyListString);
 
     /*
      * Retrieve the current version # of the property list.
@@ -119,9 +117,9 @@ class PropertyListImpl
 
   private:
     /**             
-     * The maps of properties.   
+     * The maps of properties as a JSONObject.   
      */
-    KeyValMap m_keyValMap;
+    json::JSONValue::JSONObject m_keyValMap;
     int32_t m_keyValMapVersion;
 
     /*

@@ -78,7 +78,6 @@ class ClusterlibStrings
 
     static const std::string DEFAULTPROPERTYLIST;
     static const std::string KEYVAL;
-    static const std::string PROPERTYLISTDELIMITER;
 
     static const std::string SHARDS;
     static const std::string GOLDENSHARDS;

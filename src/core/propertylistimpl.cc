@@ -18,6 +18,7 @@
 
 using namespace std;
 using namespace boost;
+using namespace json;
 
 namespace clusterlib
 {
@@ -91,16 +92,6 @@ PropertyListImpl::setProperty(const string &name,
 
     throwIfRemoved();
 
-    if (name.find(ClusterlibStrings::PROPERTYLISTDELIMITER) != string::npos) {
-        throw InvalidArgumentsException(
-            "setProperty: Cannot use delimiter " + 
-            ClusterlibStrings::PROPERTYLISTDELIMITER + " in the name");
-    }
-    if (value.find(ClusterlibStrings::PROPERTYLISTDELIMITER) != string::npos) {
-        throw InvalidArgumentsException(
-            "setProperty: Cannot use delimiter " + 
-            ClusterlibStrings::PROPERTYLISTDELIMITER + " in the value");
-    }
     m_keyValMap[name] = value;
 }
 
@@ -151,7 +142,7 @@ PropertyListImpl::getPropertyListKeys() const
     vector<string> keys;
 
     Locker(getSyncLock());
-    for (KeyValMap::const_iterator kvIt = m_keyValMap.begin();
+    for (JSONValue::JSONObject::const_iterator kvIt = m_keyValMap.begin();
          kvIt != m_keyValMap.end(); 
          ++kvIt) {
         keys.push_back(kvIt->first);
@@ -169,22 +160,22 @@ PropertyListImpl::getProperty(const string &name, bool searchParent)
 
     Locker(getSyncLock());
 
-    KeyValMap::const_iterator ssIt = m_keyValMap.find(name);
+    JSONValue::JSONObject::const_iterator ssIt = m_keyValMap.find(name);
 
     if (ssIt != m_keyValMap.end()) {
         LOG_DEBUG(CL_LOG,
                   "getProperty: Found name = %s with val %s "
                   "in Properties key %s",
                   name.c_str(),
-                  ssIt->second.c_str(),
+                  ssIt->second.get<JSONValue::JSONString>().c_str(),
                   getKey().c_str());
-	return ssIt->second;
+	return ssIt->second.get<JSONValue::JSONString>();
     }
     else if (searchParent == false) {
         /*
          * Don't try the parent if not explicit
          */
-        return "";
+        return string();
     }
 
     /*
@@ -227,52 +218,26 @@ PropertyListImpl::getProperty(const string &name, bool searchParent)
 string 
 PropertyListImpl::marshall() const
 {
-    string res;
-    for (KeyValMap::const_iterator kvIt = m_keyValMap.begin();
-         kvIt != m_keyValMap.end(); 
-         ++kvIt) {
-        res.append(kvIt->first).append("=").append(kvIt->second);
-	res.append(ClusterlibStrings::PROPERTYLISTDELIMITER);
-    }
-    return res;
+    TRACE(CL_LOG, "marshall");
+
+    return JSONCodec::encode(m_keyValMap);
 }
 
-bool 
+void
 PropertyListImpl::unmarshall(const string &marshalledKeyValMap) 
 {
-    vector<string> nameValueList;
-    split(nameValueList, 
-          marshalledKeyValMap, 
-          is_any_of(ClusterlibStrings::PROPERTYLISTDELIMITER));
-    if (nameValueList.empty()) {
-        return false;
-    }
-    KeyValMap keyValMap;
-    for (vector<string>::iterator sIt = nameValueList.begin();
-         sIt != nameValueList.end() - 1; 
-         ++sIt) {
-        if (*sIt != "") {
-            vector<string> pair;
-            split(pair, *sIt, is_any_of("="));
-            if (pair.size() != 2) {
-		stringstream s;
-		s << pair.size();
-		LOG_FATAL(CL_LOG,
-                          "unmarshall: key-val pair (%d component(s)) = %s", 
-                          pair.size(),
-                          (*sIt).c_str());
-		throw InconsistentInternalStateException(
-                    "Malformed property list \"" +
-                    *sIt +
-                    "\", expecting 2 components " +
-                    "and instead got " + s.str().c_str());
-            }
-            keyValMap[pair[0]] = pair[1];
-        }
-    }
-    m_keyValMap = keyValMap;
+    TRACE(CL_LOG, "unmarshall");
 
-    return true;
+    if (marshalledKeyValMap.empty()) {
+        return;
+    }
+
+    JSONValue jsonValue = JSONCodec::decode(marshalledKeyValMap);
+    if (jsonValue.type() == typeid(JSONValue::JSONNull)) {
+        return;
+    }
+    
+    m_keyValMap = jsonValue.get<JSONValue::JSONObject>();
 }
 
 };	/* End of 'namespace clusterlib' */

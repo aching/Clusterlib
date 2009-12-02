@@ -79,7 +79,6 @@ const string ClusterlibStrings::DISABLED = "_disabled";
 
 const string ClusterlibStrings::DEFAULTPROPERTYLIST = "_defaultPropertyList";
 const string ClusterlibStrings::KEYVAL = "_keyval";
-const string ClusterlibStrings::PROPERTYLISTDELIMITER = ";";
 
 const string ClusterlibStrings::SHARDS = "_shards";
 const string ClusterlibStrings::GOLDENSHARDS = "_goldenShards";
