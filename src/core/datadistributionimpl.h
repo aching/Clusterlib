@@ -2,7 +2,7 @@
  * datadistributionimpl.h --
  *
  * Definition of class DataDistribution; it represents a data
- * distribution (mapping from a key to a node) in clusterlib.
+ * distribution (mapping from a key to a notifyable) in clusterlib.
  *
  * $Header:$
  * $Revision$
@@ -16,27 +16,27 @@ namespace clusterlib
 {
 
 /**
- * The object stored in the interval tree with each node.
+ * The object stored in the interval tree with each notifyable.
  */
 class ShardTreeData 
 {
   public:
     ShardTreeData()
         : m_priority(-1),
-          m_node(NULL) {}
+          m_notifyable(NULL) {}
 
-    ShardTreeData(int32_t priority, const Node *node) 
+    ShardTreeData(int32_t priority, Notifyable *ntp) 
         : m_priority(priority),
-          m_node(node) {}
+          m_notifyable(ntp) {}
 
     int32_t getPriority() const { return m_priority; }
 
-    const Node *getNode() const { return m_node; }
+    Notifyable *getNotifyable() { return m_notifyable; }
 
-    bool operator==(const ShardTreeData &rhs) const
+    bool operator==(ShardTreeData &rhs)
     {
         if ((getPriority() == rhs.getPriority()) &&
-            (getNode() == rhs.getNode())) {
+            (getNotifyable() == rhs.getNotifyable())) {
             return true;
         }
         else {
@@ -47,8 +47,8 @@ class ShardTreeData
     /** The priority of this shard */
     int32_t m_priority;
 
-    /** The pointer to the Node */
-    const Node *m_node;
+    /** The pointer to the Notifyable */
+    Notifyable *m_notifyable;
 };
 
 
@@ -60,33 +60,37 @@ class DataDistributionImpl
       public virtual NotifyableImpl
 {
   public:
-    virtual std::vector<const Node *> getNodes(const Key &key);
+    virtual std::vector<const Notifyable *> getNotifyables(const Key &key);
 
-    virtual std::vector<const Node *> getNodes(HashRange hashedKey);
+    virtual std::vector<const Notifyable *> getNotifyables(HashRange hashedKey);
 
     virtual uint32_t getShardCount();
 
     virtual bool isCovered();
 
-
-    virtual std::vector<HashRange> splitHashRange(int32_t numShards) 
-    {
-        return std::vector<HashRange>();
-    }
+    virtual std::vector<HashRange> splitHashRange(int32_t numShards);
 
     virtual void insertShard(HashRange start,
                              HashRange end,
-                             const Node *node,
+                             Notifyable *ntp,
                              int32_t priority = 0);
 
     virtual void publish();
 
-    virtual std::vector<Shard> getAllShards(const Node *node = NULL,
-                                            int32_t priority = -1);
+    virtual std::vector<Shard> getAllShards(
+        const Notifyable *ntp = NULL,
+        int32_t priority = -1);
 
-    virtual bool removeShard(const Shard &shard);
+    virtual bool removeShard(Shard &shard);
 
     virtual void clear();
+
+    virtual int32_t getVersion() 
+    {
+        throwIfRemoved();
+
+	return m_version; 
+    }
 
   public:
     /**
@@ -106,16 +110,6 @@ class DataDistributionImpl
 
     virtual void removeRepositoryEntries();
 
-    /**
-     * Retrieve the current version number of the
-     * shards in this data distribution.
-     */
-    int32_t getVersion() 
-    {
-        throwIfRemoved();
-
-	return m_version; 
-    }
 
     /**
      * Set the version of this object

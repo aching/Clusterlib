@@ -74,16 +74,20 @@ namespace json {
         this->value = (JSONInteger) value;
     }
 
+    template<> void JSONValue::set(const uint64_t &value) {
+        this->value = (JSONUInteger) value;
+    }
+
     template<> void JSONValue::set(const uint32_t &value) {
-        this->value = (JSONInteger) value;
+        this->value = (JSONUInteger) value;
     }
 
     template<> void JSONValue::set(const uint16_t &value) {
-        this->value = (JSONInteger) value;
+        this->value = (JSONUInteger) value;
     }
 
     template<> void JSONValue::set(const uint8_t &value) {
-        this->value = (JSONInteger) value;
+        this->value = (JSONUInteger) value;
     }
 
     template<> void JSONValue::set(const long double &value) {
@@ -126,6 +130,33 @@ namespace json {
         return value.type();
     }
 
+    template<> JSONValue::JSONUInteger JSONValue::get() const {
+        /*
+         * Special case to allow conversion of JSONUInteger to
+         * JSONInteger if the value if positive or 0. 
+         */
+        try {
+            if (type() == typeid(JSONValue::JSONInteger)) {
+                if (boost::any_cast<JSONValue::JSONInteger>(value) >= 0) {
+                    return static_cast<JSONValue::JSONUInteger>(
+                        boost::any_cast<JSONValue::JSONInteger>(value));
+                }
+            }
+            return boost::any_cast<JSONValue::JSONUInteger>(value);
+        } catch (const std::bad_cast &ex) {
+            bool success;
+            std::string currentDemangledTypeName = 
+                clusterlib::Exception::demangleName(type().name(), success);
+            std::string newDemangledTypeName = 
+                clusterlib::Exception::demangleName(
+                    typeid(JSONValue::JSONUInteger).name(), success);
+            throw JSONValueException(
+                "get: Current type name (" + currentDemangledTypeName +
+                ") cannot be converted to desired type name (" + 
+                newDemangledTypeName + ")");
+        }
+    }
+
 /*JSONCodec--------------------------------------------------------------------------------------*/
     class JSONCodecHelper {
     public:
@@ -138,11 +169,13 @@ namespace json {
         static void encode(const JSONValue &object, ostringstream *out) {
             ostringstream &ss = *out;
             const type_info &type = object.type();
+            // For integer and floating point numbers, output to
+            // the stringstream directly.
             if (type == typeid(JSONValue::JSONInteger)) {
-                // For integer and floating point numbers, output to the stringstream directly.
                 ss << object.get<JSONValue::JSONInteger>();
+            } else if (type == typeid(JSONValue::JSONUInteger)) {
+                ss << object.get<JSONValue::JSONUInteger>();
             } else if (type == typeid(JSONValue::JSONFloat)) {
-                // For integer and floating point numbers, output to the stringstream directly.
                 ss << object.get<JSONValue::JSONFloat>();
             } else if (type == typeid(JSONValue::JSONBoolean)) {
                 JSONValue::JSONBoolean value = object.get<JSONValue::JSONBoolean>();
@@ -365,10 +398,12 @@ namespace json {
                 // Number
                 ostringstream oss;
                 bool floating = false;
+                bool negative = false;
                 char ch = nextCh;
 
                 if (ch == '-') {
                     // It is negative
+                    negative = true;
                     oss << (char) ch;
                     ch = ss.get();
                     if (ch < '0' || ch > '9') {
@@ -437,9 +472,29 @@ namespace json {
                     iss >> value;
                     out->set(value);
                 } else {
-                    JSONValue::JSONInteger value;
-                    iss >> value;
-                    out->set(value);
+                    if (!negative) {
+                        // Only use JSONUInteger when required, or
+                        // else there will be problems with casting to
+                        // types with less resolution
+                        JSONValue::JSONUInteger value;
+                        if (value > 
+                            static_cast<JSONValue::JSONUInteger>(
+                                numeric_limits<JSONValue::JSONInteger>::
+                                max())) {
+                            iss >> value;
+                            out->set(value);
+                        }
+                        else {
+                            JSONValue::JSONInteger integerValue;
+                            iss >> integerValue;
+                            out->set(integerValue);
+                        }
+                    }
+                    else {
+                        JSONValue::JSONInteger value;
+                        iss >> value;
+                        out->set(value);
+                    }
                 }
                 break;
             }

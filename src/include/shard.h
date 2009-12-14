@@ -41,13 +41,13 @@ class Shard {
     }
 
     /**
-     * Get the node pointer
+     * Get the notifyable pointer
      *
-     * @return the Node * asssociated with this Shard (NULL if none)
+     * @return the Notifyable * asssociated with this Shard (NULL if none)
      */
-    const Node *getNode() const
+    Notifyable *getNotifyable()
     {
-        return m_node;
+        return m_notifyable;
     }
 
     /**
@@ -65,11 +65,11 @@ class Shard {
      */
     Shard(HashRange startRange, 
           HashRange endRange, 
-          const Node *node, 
+          Notifyable *ntp, 
           int32_t priority)
         : m_startRange(startRange),
           m_endRange(endRange),
-          m_node(node),
+          m_notifyable(ntp),
           m_priority(priority) {}
     
   private:
@@ -79,8 +79,8 @@ class Shard {
     /** End of the range */
     HashRange m_endRange;
 
-    /** Node associated with this shard */
-    const Node *m_node;
+    /** Notifyable associated with this shard */
+    Notifyable *m_notifyable;
 
     /** Priority of this shard */
     int32_t m_priority;

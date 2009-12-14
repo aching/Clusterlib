@@ -2,7 +2,7 @@
  * datadistribution.h --
  *
  * Interface of class DataDistribution; it represents a data
- * distribution (mapping from a key or a HashRange to a node) in
+ * distribution (mapping from a key or a HashRange to a notifyable) in
  * clusterlib.
  *
  * $Header:$
@@ -24,22 +24,23 @@ class DataDistribution
 {
   public:
     /**
-     * Find the Nodes that the key maps to.  Sorted by priority (high
+     * Find the Notifyables that the key maps to.  Sorted by priority (high
      * to low)
      *
      * @param key the key to find.
-     * @return the vector of node pointer that have this key
+     * @return the vector of notifyable pointer that have this key
      */
-    virtual std::vector<const Node *> getNodes(const Key &key) = 0;
+    virtual std::vector<const Notifyable *> getNotifyables(const Key &key) = 0;
 
     /**
-     * Find the Nodes that the hashedKey maps to.  Sorted by priority
+     * Find the Notifyables that the hashedKey maps to.  Sorted by priority
      * (high to low)
      *
      * @param hashedKey the hashed key to find
-     * @return the vector of node pointer that have this hashed key
+     * @return the vector of notifyable pointer that have this hashed key
      */
-    virtual std::vector<const Node *> getNodes(HashRange hashedKey) = 0;
+    virtual std::vector<const Notifyable *> getNotifyables(
+        HashRange hashedKey) = 0;
     
     /**
      * Return the number of shards in this cached data distribution.
@@ -80,30 +81,30 @@ class DataDistribution
      *
      * @param start the start of the range (inclusive)
      * @param end the end of the range (inclusive)
-     * @param node the node that will handle this range
+     * @param notifyable the notifyable that will handle this range
      * @param priority the priority of this shard (-1 is reserved, do not use)
      */
     virtual void insertShard(HashRange start,
                              HashRange end,
-                             const Node *node,
+                             Notifyable *ntp,
                              int32_t priority = 0) = 0;
     
     /**
      *  Publish any changes to the clusterlib repository.  An
-     *  exception will be thrown if any of the Shards have NULL nodes.
+     *  exception will be thrown if any of the Shards have NULL notifyables.
      */
     virtual void publish() = 0;
 
     /**
      * Get all the shards in this data distribution ordered by the
-     * start range that match the correct node and/or priority if
+     * start range that match the correct notifyable and/or priority if
      * specified.
      *
-     * @param node the node to filter on (NULL turns off filter)
+     * @param notifyable the notifyable to filter on (NULL turns off filter)
      * @param priority the priority filter (-1 turns off filter)
      * @return a vector of shards in the distribution
      */
-    virtual std::vector<Shard> getAllShards(const Node *node = NULL,
+    virtual std::vector<Shard> getAllShards(const Notifyable *ntp = NULL,
                                             int32_t priority = -1) = 0;
 
     /**
@@ -113,13 +114,21 @@ class DataDistribution
      * @param shard the shard to be removed from the data distribution
      * @return true if the shard was removed (false if not found)
      */
-    virtual bool removeShard(const Shard &shard) = 0;
+    virtual bool removeShard(Shard &shard) = 0;
 
     /**
      * Remove all shard from the local cached object (need to
      * publish()) afterward to push this change to the repository.
      */
     virtual void clear() = 0;
+
+    /**
+     * Get the current version of the shards (useful for out-of-band
+     * communication with other clients)
+     *
+     * @return the version of the shards
+     */
+    virtual int32_t getVersion() = 0;
 
     /**
      * Destructor to clean up shards and manual overrides

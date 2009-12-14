@@ -36,7 +36,7 @@ FactoryOps::FactoryOps(const string &registry)
       m_syncEventId(0),
       m_syncEventIdCompleted(0),
       m_endEventDispatched(false),
-      m_config(registry, 3000),
+      m_config(registry, 5000), /* 5 second timeout */
       m_zk(m_config, NULL, false),
       m_timerEventAdapter(m_timerEventSrc),
       m_zkEventAdapter(m_zk),

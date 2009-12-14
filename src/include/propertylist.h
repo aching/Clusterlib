@@ -9,7 +9,6 @@
  * $Date$
  */
 
-
 #ifndef __PROPERTYLIST_H__
 #define __PROPERTYLIST_H__
 
@@ -95,6 +94,14 @@ class PropertyList
      *
      */
     virtual void reset() = 0;
+
+    /**
+     * Get the current version of the property list (useful for out-of-band
+     * communication with other clients)
+     *
+     * @return the version of the property list
+     */
+    virtual int32_t getVersion() = 0;
 
     /**
      * \brief Return the time at which the last value change happened.

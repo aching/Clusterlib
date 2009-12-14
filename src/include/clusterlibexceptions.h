@@ -27,20 +27,15 @@ class Exception
         : m_message(msg) 
     {
         const int32_t maxDepth = 50;
-        const int32_t maxFuncNameSize = 256;
 
-        char *funcName = 
-            static_cast<char *>(malloc(sizeof(char)*maxFuncNameSize));
         void **mangledArr = 
             static_cast<void **>(malloc(sizeof(void *)*maxDepth));
         int actualDepth = backtrace(mangledArr, maxDepth);
         char **symbols = backtrace_symbols(mangledArr, actualDepth);
 
         m_message.append("\nbacktrace:\n");
-        int32_t status = -1;
-        size_t actualFuncNameSize = 0;
-        char *start = NULL;
         std::string tempMangledFuncName;
+        bool success = false;
         for (int32_t i = 0; i < actualDepth; i++) {
             tempMangledFuncName = symbols[i];
             size_t startNameIndex = tempMangledFuncName.find('(');
@@ -56,18 +51,8 @@ class Exception
             if (endOffsetIndex != std::string::npos) {
                 tempMangledFuncName[endOffsetIndex] = '\0';
             }
-            actualFuncNameSize = maxFuncNameSize;
-            start = abi::__cxa_demangle(&tempMangledFuncName[0],
-                                        funcName,
-                                        &actualFuncNameSize,
-                                        &status);
-            if (status == 0) {
-                funcName = start;
-                m_message.append(funcName, 0, actualFuncNameSize);
-            }
-            else {
-                m_message.append(tempMangledFuncName);
-            }
+            m_message.append(
+                demangleName(&tempMangledFuncName[0], success));
 
             m_message.append(" offset: ");
             m_message.append(&tempMangledFuncName[endNameIndex]);
@@ -75,10 +60,43 @@ class Exception
         }
         
         free(symbols);
-        free(funcName);
         free(mangledArr);
     }
-    
+
+    /**
+     * Demangle any name if possible to a string.
+     * 
+     * @param mangledName pointer to the mangled name
+     * @param success true on success, false on failure
+     * @return a string with the demangled name if successful, 
+     *         original string on failure
+     */ 
+    static std::string demangleName(const char *mangledName, bool &success) 
+    {
+        std::string demangledString;
+        const size_t maxMangledNameSize = 512;
+        size_t actualMangledNameSize = maxMangledNameSize;
+        int status = -1;
+        char *demangledName = 
+            static_cast<char *>(malloc(sizeof(char)*maxMangledNameSize));
+
+        abi::__cxa_demangle(mangledName,
+                            demangledName,
+                            &actualMangledNameSize,
+                            &status);
+        if (status == 0) {
+            demangledString = demangledName;
+            success = true;
+        }
+        else {
+            demangledString = mangledName;
+            success = false;
+        }
+        free(demangledName);
+
+        return demangledString;
+    }
+
     /**
      * Destructor.
      */

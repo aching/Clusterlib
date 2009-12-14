@@ -77,6 +77,11 @@ class ClusterlibDataDistribution : public MPITestFixture {
 
         if (isMyRank(0)) {
             DataDistribution *dist = _app0->getDataDistribution(
+                "dd0");
+            if (dist != NULL) {
+                dist->remove();
+            }
+            dist = _app0->getDataDistribution(
                 "dd0", true);
             MPI_CPPUNIT_ASSERT(dist);
             
@@ -89,7 +94,6 @@ class ClusterlibDataDistribution : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(dist->getShardCount() == 1);
             dist->publish();
             dist->releaseLock();
-            dist->remove();
         }
     }
     
@@ -105,6 +109,11 @@ class ClusterlibDataDistribution : public MPITestFixture {
                                     "testDataDistribution3");
         if (isMyRank(0)) {
             DataDistribution *dist = _app0->getDataDistribution(
+                "dd0");
+            if (dist != NULL) {
+                dist->remove();
+            }
+            dist = _app0->getDataDistribution(
                 "dd0", true);
             MPI_CPPUNIT_ASSERT(dist);
             
@@ -119,7 +128,6 @@ class ClusterlibDataDistribution : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(dist->getShardCount() == 4);
             MPI_CPPUNIT_ASSERT(dist->isCovered() == true);
             dist->releaseLock();
-            dist->remove();
         }
     }
 
@@ -135,6 +143,11 @@ class ClusterlibDataDistribution : public MPITestFixture {
                                     "testDataDistribution4");
         if (isMyRank(0)) {
             DataDistribution *dist = _app0->getDataDistribution(
+                "dd0");
+            if (dist != NULL) {
+                dist->remove();
+            }
+            dist = _app0->getDataDistribution(
                 "dd0", true);
             MPI_CPPUNIT_ASSERT(dist);
             
@@ -152,33 +165,32 @@ class ClusterlibDataDistribution : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(dist->removeShard(shardVec[2]) == true);
             MPI_CPPUNIT_ASSERT(shardVec[2].getStartRange() == 2000);
             MPI_CPPUNIT_ASSERT(shardVec[2].getEndRange() == 2999);
-            MPI_CPPUNIT_ASSERT(shardVec[2].getNode() == NULL);
+            MPI_CPPUNIT_ASSERT(shardVec[2].getNotifyable() == NULL);
             MPI_CPPUNIT_ASSERT(dist->getShardCount() == 4);
 
             MPI_CPPUNIT_ASSERT(dist->removeShard(shardVec[1]) == true);
             MPI_CPPUNIT_ASSERT(shardVec[1].getStartRange() == 1000);
             MPI_CPPUNIT_ASSERT(shardVec[1].getEndRange() == 1999);
-            MPI_CPPUNIT_ASSERT(shardVec[1].getNode() == NULL);
+            MPI_CPPUNIT_ASSERT(shardVec[1].getNotifyable() == NULL);
             MPI_CPPUNIT_ASSERT(dist->getShardCount() == 3);
 
             MPI_CPPUNIT_ASSERT(dist->removeShard(shardVec[4]) == true);
             MPI_CPPUNIT_ASSERT(shardVec[4].getStartRange() == 4000);
             MPI_CPPUNIT_ASSERT(shardVec[4].getEndRange() == 4999);
-            MPI_CPPUNIT_ASSERT(shardVec[4].getNode() == NULL);
+            MPI_CPPUNIT_ASSERT(shardVec[4].getNotifyable() == NULL);
             MPI_CPPUNIT_ASSERT(dist->getShardCount() == 2);
 
             MPI_CPPUNIT_ASSERT(dist->removeShard(shardVec[3]) == true);
             MPI_CPPUNIT_ASSERT(shardVec[3].getStartRange() == 3000);
             MPI_CPPUNIT_ASSERT(shardVec[3].getEndRange() == 3999);
-            MPI_CPPUNIT_ASSERT(shardVec[3].getNode() == NULL);
+            MPI_CPPUNIT_ASSERT(shardVec[3].getNotifyable() == NULL);
             MPI_CPPUNIT_ASSERT(dist->getShardCount() == 1);
 
             MPI_CPPUNIT_ASSERT(dist->removeShard(shardVec[0]) == true);
             MPI_CPPUNIT_ASSERT(shardVec[0].getStartRange() == 0);
             MPI_CPPUNIT_ASSERT(shardVec[0].getEndRange() == 999);
-            MPI_CPPUNIT_ASSERT(shardVec[0].getNode() == NULL);
+            MPI_CPPUNIT_ASSERT(shardVec[0].getNotifyable() == NULL);
             MPI_CPPUNIT_ASSERT(dist->getShardCount() == 0);
-            dist->remove();
             dist->releaseLock();
         }        
     }
@@ -197,6 +209,11 @@ class ClusterlibDataDistribution : public MPITestFixture {
         
         if (isMyRank(0)) {
             DataDistribution *dist = _app0->getDataDistribution(
+                "dd0");
+            if (dist != NULL) {
+                dist->remove();
+            }
+            dist = _app0->getDataDistribution(
                 "dd0", true);
             dist->acquireLock();
 
@@ -211,42 +228,41 @@ class ClusterlibDataDistribution : public MPITestFixture {
             Md5Key key("hello");
             cerr << "hashrange of hello is " << key.hashKey() << endl;
             MPI_CPPUNIT_ASSERT(key.hashKey() == 6719722671305337462LL);
-            vector<const Node *> nodeVec = dist->getNodes(key);
-            MPI_CPPUNIT_ASSERT(nodeVec.size() == 0);
+            vector<const Notifyable *> ntpVec = dist->getNotifyables(key);
+            MPI_CPPUNIT_ASSERT(ntpVec.size() == 0);
 
             dist->insertShard(0, 6719722671305337462LL, n0);
-            nodeVec = dist->getNodes(key);
-            MPI_CPPUNIT_ASSERT(nodeVec.size() == 1);
-            MPI_CPPUNIT_ASSERT(nodeVec[0]->getName().compare("n0") == 0);
+            ntpVec = dist->getNotifyables(key);
+            MPI_CPPUNIT_ASSERT(ntpVec.size() == 1);
+            MPI_CPPUNIT_ASSERT(ntpVec[0]->getName().compare("n0") == 0);
 
             dist->insertShard(6719722671305337462LL, 6719722671305399999LL, 
                               n1);
-            nodeVec = dist->getNodes(key);
-            MPI_CPPUNIT_ASSERT(nodeVec.size() == 2);
-            MPI_CPPUNIT_ASSERT(nodeVec[0]->getName().compare("n0") == 0);
-            MPI_CPPUNIT_ASSERT(nodeVec[1]->getName().compare("n1") == 0);
-            nodeVec = dist->getNodes(key.hashKey());
-            MPI_CPPUNIT_ASSERT(nodeVec.size() == 2);
-            MPI_CPPUNIT_ASSERT(nodeVec[0]->getName().compare("n0") == 0);
-            MPI_CPPUNIT_ASSERT(nodeVec[1]->getName().compare("n1") == 0);
+            ntpVec = dist->getNotifyables(key);
+            MPI_CPPUNIT_ASSERT(ntpVec.size() == 2);
+            MPI_CPPUNIT_ASSERT(ntpVec[0]->getName().compare("n0") == 0);
+            MPI_CPPUNIT_ASSERT(ntpVec[1]->getName().compare("n1") == 0);
+            ntpVec = dist->getNotifyables(key.hashKey());
+            MPI_CPPUNIT_ASSERT(ntpVec.size() == 2);
+            MPI_CPPUNIT_ASSERT(ntpVec[0]->getName().compare("n0") == 0);
+            MPI_CPPUNIT_ASSERT(ntpVec[1]->getName().compare("n1") == 0);
 
             dist->insertShard(6719722671305337450LL, 6719722671305399999LL,
                               n2);
-            nodeVec = dist->getNodes(key.hashKey());
-            MPI_CPPUNIT_ASSERT(nodeVec.size() == 3);
-            MPI_CPPUNIT_ASSERT(nodeVec[0]->getName().compare("n0") == 0);
-            MPI_CPPUNIT_ASSERT(nodeVec[1]->getName().compare("n2") == 0);
-            MPI_CPPUNIT_ASSERT(nodeVec[2]->getName().compare("n1") == 0);
+            ntpVec = dist->getNotifyables(key.hashKey());
+            MPI_CPPUNIT_ASSERT(ntpVec.size() == 3);
+            MPI_CPPUNIT_ASSERT(ntpVec[0]->getName().compare("n0") == 0);
+            MPI_CPPUNIT_ASSERT(ntpVec[1]->getName().compare("n2") == 0);
+            MPI_CPPUNIT_ASSERT(ntpVec[2]->getName().compare("n1") == 0);
             vector<Shard> shardVec = dist->getAllShards();
             
             dist->removeShard(shardVec[0]);
-            nodeVec = dist->getNodes(key);
-            MPI_CPPUNIT_ASSERT(nodeVec.size() == 2);
-            MPI_CPPUNIT_ASSERT(nodeVec[0]->getName().compare("n2") == 0);
-            MPI_CPPUNIT_ASSERT(nodeVec[1]->getName().compare("n1") == 0);
+            ntpVec = dist->getNotifyables(key);
+            MPI_CPPUNIT_ASSERT(ntpVec.size() == 2);
+            MPI_CPPUNIT_ASSERT(ntpVec[0]->getName().compare("n2") == 0);
+            MPI_CPPUNIT_ASSERT(ntpVec[1]->getName().compare("n1") == 0);
 
             dist->publish();
-            dist->remove();
             dist->releaseLock();
         }
     }

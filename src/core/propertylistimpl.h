@@ -42,6 +42,11 @@ class PropertyListImpl
 	m_keyValMap.clear();
     }
 
+    virtual int32_t getVersion()
+    {
+        return getKeyValVersion();
+    }
+
     virtual int64_t getValueChangeTime() { return m_valueChangeTime; }
 
     virtual PropertyList *getPropertyList(

@@ -16,6 +16,7 @@ namespace clusterlib { namespace rpc { namespace json {
 
     const ::json::JSONValue::JSONString idNodesHealthy = "nodesHealthy";
     const ::json::JSONValue::JSONString idNodesUnhealthy = "nodesUnhealthy";
+    const ::json::JSONValue::JSONString idDataDistributionCovered = "covered";
     const ::json::JSONValue::JSONString idNodeState = "clientstate";
     const ::json::JSONValue::JSONString idNodeStateSetTime = 
         "client state set time";
@@ -36,6 +37,9 @@ namespace clusterlib { namespace rpc { namespace json {
     "currentProcessState";
     const ::json::JSONValue::JSONString idPropertyListProperty = 
         "property";
+    const ::json::JSONValue::JSONString idShardCount = "shardCount";
+    const ::json::JSONValue::JSONString idShardStartRange = "shardStart";
+    const ::json::JSONValue::JSONString idShardEndRange = "shardEnd";
 
     // Used in the keys passed to the browser to determine if an
     // attribute can be modified
@@ -52,6 +56,7 @@ namespace clusterlib { namespace rpc { namespace json {
     const std::string idNodeSummary = "nodeSummary";
     const std::string idProcessSlotSummary = "processSlotSummary";
     const std::string idPropertyListSummary = "propertyListSummary";
+    const std::string idShardSummary = "shardSummary";
 
     // Type that is returned from the getNotifyableAttributesFromKey function
     const std::string idTypeRoot = "Root";
@@ -142,7 +147,11 @@ namespace clusterlib { namespace rpc { namespace json {
             const ::json::JSONValue::JSONArray &ids);
         ::json::JSONValue::JSONArray getPropertyListStatus(
             const ::json::JSONValue::JSONArray &ids);
+        ::json::JSONValue::JSONArray getShardStatus(
+            std::vector<clusterlib::Shard> &shardVec);
 
+        ::json::JSONValue::JSONObject getOneNotifyableStatus(
+            clusterlib::Notifyable *notifyable);
         ::json::JSONValue::JSONObject getOneApplicationStatus(
             clusterlib::Application *application);
         ::json::JSONValue::JSONObject getOneNodeStatus(
@@ -155,6 +164,8 @@ namespace clusterlib { namespace rpc { namespace json {
             clusterlib::DataDistribution *distribution);
         ::json::JSONValue::JSONObject getOnePropertyListStatus(
             clusterlib::PropertyList *propertyList);
+        ::json::JSONValue::JSONObject getOneShardStatus(
+            clusterlib::Shard &shard);
     };
 }}}
 #endif

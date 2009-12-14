@@ -374,15 +374,17 @@ namespace clusterlib { namespace rpc { namespace json {
                                           get<JSONValue::JSONArray>()); 
             }
             else if (dynamic_cast<DataDistribution *>(notifyable)) {
-                /*
-                 * TODO: Add attributes for dataDistribution.
-                 * DataDistribution *dataDistribution = 
-                 *     dynamic_cast<DataDistribution *>(notifyable);
-                 */
+                DataDistribution *dataDistribution = 
+                    dynamic_cast<DataDistribution *>(notifyable);
+                attributes[idDataDistributionCovered] = 
+                    dataDistribution->isCovered();
+                attributes[idShardCount] = dataDistribution->getShardCount();
+                vector<Shard> shardVec = dataDistribution->getAllShards();
+                attributes[idShardSummary] =
+                    getShardStatus(shardVec);
                 attributes[idPropertyListSummary] = 
                     getPropertyListStatus(childObj["propertyLists"].
                                           get<JSONValue::JSONArray>()); 
-
             }
             else if (dynamic_cast<Node *>(notifyable)) {
                 Node *node = dynamic_cast<Node *>(notifyable);
@@ -768,13 +770,12 @@ namespace clusterlib { namespace rpc { namespace json {
                     "Cannot get Notifyable from key " + key);
             }
 
-            Notifyable *ntp = NULL;
             if (dynamic_cast<Root *>(notifyable)) {
                 if (!op.compare(optionAddApplication)) {
-                    ntp = m_root->getApplication(name, true);
+                    notifyable = m_root->getApplication(name, true);
                 }
                 else if (!op.compare(optionAddPropertyList)) {
-                    ntp = m_root->getPropertyList(name, true);
+                    notifyable = m_root->getPropertyList(name, true);
                 }
                 else {
                     throw JSONRPCInvocationException(
@@ -785,16 +786,16 @@ namespace clusterlib { namespace rpc { namespace json {
                 Application *application = 
                     dynamic_cast<Application *>(notifyable);
                 if (!op.compare(optionAddGroup)) {
-                    ntp = application->getGroup(name, true);
+                    notifyable = application->getGroup(name, true);
                 }
                 else if (!op.compare(optionAddDataDistribution)) {
-                    ntp = application->getDataDistribution(name, true);
+                    notifyable = application->getDataDistribution(name, true);
                 }
                 else if (!op.compare(optionAddNode)) {
-                    ntp = application->getNode(name, true);
+                    notifyable = application->getNode(name, true);
                 }
                 else if (!op.compare(optionAddPropertyList)) {
-                    ntp =  application->getPropertyList(name, true);
+                    notifyable =  application->getPropertyList(name, true);
                 }
                 else {
                     throw JSONRPCInvocationException(
@@ -804,16 +805,16 @@ namespace clusterlib { namespace rpc { namespace json {
             else if (dynamic_cast<Group *>(notifyable)) {
                 Group *group = dynamic_cast<Group *>(notifyable);
                 if (!op.compare(optionAddGroup)) {
-                    ntp = group->getGroup(name, true);
+                    notifyable = group->getGroup(name, true);
                 }
                 else if (!op.compare(optionAddDataDistribution)) {
-                    ntp = group->getDataDistribution(name, true);
+                    notifyable = group->getDataDistribution(name, true);
                 }
                 else if (!op.compare(optionAddNode)) {
-                    ntp = group->getNode(name, true);
+                    notifyable = group->getNode(name, true);
                 }
                 else if (!op.compare(optionAddPropertyList)) {
-                    ntp = group->getPropertyList(name, true);
+                    notifyable = group->getPropertyList(name, true);
                 }
                 else {
                     throw JSONRPCInvocationException(
@@ -824,7 +825,7 @@ namespace clusterlib { namespace rpc { namespace json {
                 DataDistribution *dataDistributions = 
                     dynamic_cast<DataDistribution *>(notifyable);
                 if (!op.compare(optionAddPropertyList)) {
-                    ntp = dataDistributions->getPropertyList(name, true);
+                    notifyable = dataDistributions->getPropertyList(name, true);
                 }
                 else {
                     throw JSONRPCInvocationException(
@@ -834,7 +835,7 @@ namespace clusterlib { namespace rpc { namespace json {
             else if (dynamic_cast<Node *>(notifyable)) {
                 Node *node = dynamic_cast<Node *>(notifyable);
                 if (!op.compare(optionAddPropertyList)) {
-                    ntp = node->getPropertyList(name, true);
+                    notifyable = node->getPropertyList(name, true);
                 }                
                 else {
                     throw JSONRPCInvocationException(
@@ -845,7 +846,7 @@ namespace clusterlib { namespace rpc { namespace json {
                 ProcessSlot *processSlot = 
                     dynamic_cast<ProcessSlot *>(notifyable);
                 if (!op.compare(optionAddPropertyList)) {
-                    ntp = processSlot->getPropertyList(name, true);
+                    notifyable = processSlot->getPropertyList(name, true);
                 }                
                 else {
                     throw JSONRPCInvocationException(
@@ -856,7 +857,7 @@ namespace clusterlib { namespace rpc { namespace json {
                 throw JSONRPCInvocationException(
                     "No such op for property list key " + key);
             }
-            else if (ntp == NULL) {
+            else if (notifyable == NULL) {
                 throw JSONRPCInvocationException(
                     "Creating the notifyable failed or removed right "
                     "away for key " + key);
@@ -865,7 +866,7 @@ namespace clusterlib { namespace rpc { namespace json {
                 throw JSONRPCInvocationException(
                     "Cannot get Notifyable from key " + key);
             }
-            return ntp->getKey();
+            return notifyable->getKey();
         } catch (const ::clusterlib::Exception &ex) {
             LOG4CXX_WARN(m_logger, 
                          "addNotifyableFromKey: Getting notifyable failed (" 
@@ -1040,10 +1041,10 @@ namespace clusterlib { namespace rpc { namespace json {
                 oss.str("");
                 oss << shardVec[i].getPriority();
                 shard["priority"] = oss.str();
-                if (shardVec[i].getNode() != NULL) {
+                if (shardVec[i].getNotifyable() != NULL) {
                     shard["id"] = getNotifyableId(
                         m_root->getNotifyableFromKey(
-                            shardVec[i].getNode()->getKey()));
+                            shardVec[i].getNotifyable()->getKey()));
                 } else {
                     shard["id"] = JSONValue::Null;
                 }
@@ -1112,6 +1113,45 @@ namespace clusterlib { namespace rpc { namespace json {
         }
     }
 
+    JSONValue::JSONObject MethodAdaptor::getOneNotifyableStatus(
+        Notifyable *notifyable) {
+        try {
+            if (dynamic_cast<Application *>(notifyable)) {
+                return getOneApplicationStatus(
+                    dynamic_cast<Application *>(notifyable));
+            }
+            else if (dynamic_cast<Group *>(notifyable)) {
+                return getOneGroupStatus(
+                    dynamic_cast<Group *>(notifyable));
+            }
+            else if (dynamic_cast<DataDistribution *>(notifyable)) {
+                return getOneDataDistributionStatus(
+                    dynamic_cast<DataDistribution *>(notifyable));
+            }
+            else if (dynamic_cast<Node *>(notifyable)) {
+                return getOneNodeStatus(
+                    dynamic_cast<Node *>(notifyable));
+            }
+            else if (dynamic_cast<ProcessSlot *>(notifyable)) {
+                return getOneProcessSlotStatus(
+                    dynamic_cast<ProcessSlot *>(notifyable));
+            }
+            else if (dynamic_cast<PropertyList *>(notifyable)) {
+                return getOnePropertyListStatus(
+                    dynamic_cast<PropertyList *>(notifyable));
+            }
+            else {
+                throw JSONRPCInvocationException("Invalid notifyable type");
+            }
+        } catch (const ::clusterlib::Exception &ex) {
+            LOG4CXX_WARN(
+                m_logger,
+                "getOneNotifyableStatus: Failed (" << ex.what() << ")");
+            throw JSONRPCInvocationException(ex.what());
+        }
+        
+    }
+
     JSONValue::JSONObject MethodAdaptor::getOneApplicationStatus(
         Application *application) {
         // In clusterlib, application is a special group
@@ -1178,7 +1218,8 @@ namespace clusterlib { namespace rpc { namespace json {
         return jsonObj;
     }
 
-    JSONValue::JSONObject MethodAdaptor::getOneGroupStatus(Group *group) {
+    JSONValue::JSONObject MethodAdaptor::getOneGroupStatus(
+        Group *group) {
         JSONValue::JSONObject jsonObj;
         jsonObj[idProperty] = group->getKey();
         jsonObj[idNameProperty] = group->getName();
@@ -1186,7 +1227,7 @@ namespace clusterlib { namespace rpc { namespace json {
         jsonObj[idNotifyableState] = "No problems";
         string notifyableStatus;
 
-        // Check for all nodes
+        // Check for all groups
         NameList names = group->getGroupNames();
         for (NameList::const_iterator iter = names.begin(); 
              iter != names.end(); 
@@ -1294,6 +1335,31 @@ namespace clusterlib { namespace rpc { namespace json {
         return jsonObj;
     }
 
+    JSONValue::JSONObject MethodAdaptor::getOneShardStatus(
+        Shard &shard) {
+        JSONValue::JSONObject jsonObj;
+        stringstream ss;
+        ss << "start=" << shard.getStartRange() << ", end="
+           << shard.getEndRange();
+        Notifyable *notifyable = shard.getNotifyable();
+        if (notifyable == NULL) {
+            jsonObj[idProperty] = "N/A";
+            jsonObj[idNameProperty] = "N/A";
+            jsonObj[idNotifyableStatus] = "N/A";
+            jsonObj[idNotifyableState] = "N/A";
+        }
+        else {
+            jsonObj[idProperty] = notifyable->getKey();
+            jsonObj[idNameProperty] = notifyable->getName();
+            JSONValue::JSONObject jsonNotifyableObject = 
+                getOneNotifyableStatus(notifyable);
+            jsonObj[idNotifyableStatus] = 
+                jsonNotifyableObject[idNotifyableStatus];
+            jsonObj[idNotifyableState] = ss.str();
+        }
+        return jsonObj;
+    }
+
     JSONValue::JSONArray MethodAdaptor::getApplicationStatus(
         const JSONValue::JSONArray &ids) {
         JSONValue::JSONArray status;
@@ -1389,7 +1455,7 @@ namespace clusterlib { namespace rpc { namespace json {
     }
 
     JSONValue::JSONArray MethodAdaptor::getDataDistributionStatus(
-        const JSONValue::JSONArray &ids) {
+       const JSONValue::JSONArray &ids) {
         JSONValue::JSONArray status;
         for (JSONValue::JSONArray::const_iterator iter = ids.begin(); 
              iter != ids.end(); 
@@ -1433,6 +1499,25 @@ namespace clusterlib { namespace rpc { namespace json {
             }
         }
         
+        return status;
+    }
+
+    JSONValue::JSONArray MethodAdaptor::getShardStatus(
+        vector<Shard> &shardVec) {
+        JSONValue::JSONArray status;        
+        for (vector<Shard>::iterator it = shardVec.begin();
+             it != shardVec.end();
+             it++) {
+            try {
+                status.push_back(getOneShardStatus(*it));
+            } catch (const JSONValueException &ex) {
+                LOG4CXX_WARN(m_logger, "Invalid shard (" << ex.what() << ")");
+            } catch (const ::clusterlib::Exception &ex) {
+                LOG4CXX_WARN(m_logger, "Invalid shard (" << ex.what() << ")");
+            } catch (const JSONRPCInvocationException &ex) {
+                LOG4CXX_WARN(m_logger, "Invalid shard (" << ex.what() << ")");
+            }
+        }
         return status;
     }
 }}}

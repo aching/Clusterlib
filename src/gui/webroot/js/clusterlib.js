@@ -365,6 +365,20 @@ function showPropertyListSlots(propertyListStatusArr) {
     $("#propertyLists").setTemplateURL("js/status.tpl");
     $("#propertyLists").processTemplate(templateObj);
 }
+function showShards(shardStatusArr) {
+    if (shardStatusArr === null ||
+	shardStatusArr === undefined ||
+	shardStatusArr.length === 0) {
+	return;
+    }
+
+    var templateObj = {};
+    templateObj.table = shardStatusArr;
+    templateObj["name"] = 'Shard(s)';
+    $("#shards").setTemplateURL("js/status.tpl");
+    $("#shards").processTemplate(templateObj);
+}
+
 
 // Main display
 function showContent() {
@@ -395,7 +409,8 @@ function showContent() {
 	if (key == "id" || key == "name" || key == "type" ||
 	    key == "applicationSummary" || key == "groupSummary" || 
 	    key == "dataDistributionSummary" || key == "nodeSummary" ||
-            key == "processSlotSummary" || key == "propertyListSummary") {
+            key == "processSlotSummary" || key == "propertyListSummary" ||
+            key == "shardSummary") {
 	    continue;
 	}
 	else if (key == "options") {
@@ -546,7 +561,7 @@ function showContent() {
     html += '</tbody></table>';
     html += addAttributeHtml;
 
-    html += '<span id="statusDiv" class="text ui-corner-all" style="float : left; width: 100%;"><div id="applications"></div><div id="groups"></div><div id="dataDistributions"></div><div id="nodes\"></div><div id="propertyLists"></div><div id="processSlots"</div></div></span>';
+    html += '<span id="statusDiv" class="text ui-corner-all" style="float : left; width: 100%;"><div id="applications"></div><div id="groups"></div><div id="dataDistributions"></div><div id="nodes\"></div><div id="propertyLists"></div><div id="processSlots"</div><div id="shards\"></div></span>';
 
     // Navigation buttons
     html += '<span id="navDiv" class="text ui-corner-all" style="float : left; width: 100%;"><div id="navButtons "style="float:left"> Navigation: ' + 
@@ -579,6 +594,7 @@ function showContent() {
 	showPropertyListSlots(content["propertyListSummary"]);
     } 
     else if (type == "DataDistribution") {
+        showShards(content["shardSummary"]);
 	showPropertyListSlots(content["propertyListSummary"]);
     } 
     else if (type == "PropertyList") {

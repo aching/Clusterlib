@@ -20,6 +20,7 @@
 
 using namespace std;
 using namespace boost;
+using namespace json;
 
 namespace clusterlib
 {
@@ -43,8 +44,8 @@ DataDistributionImpl::DataDistributionImpl(FactoryOps *fp,
 }
 
 /*
- * Unmarshall a stringified sequence of shards. Each shard
- * is stringified to "begin,end,nodekey,priority;"
+ * Unmarshall a stringified sequence of shards. The shards are stored
+ * as a JSONArray of JSONArrays (begin, end,n otifyablekey, priority)
  */
 void
 DataDistributionImpl::unmarshall(const string &marshalledData)
@@ -61,38 +62,48 @@ DataDistributionImpl::unmarshall(const string &marshalledData)
 
     clear();
     m_shardTreeCount = 0;
-    split(components, marshalledData, is_any_of(";"));
-    for (sIt = components.begin(); sIt != components.end() - 1; sIt++) {
-        split(shardComponents, *sIt, is_any_of(","));
-        if (shardComponents.size() != 4) {
-	    stringstream s;
-	    s << shardComponents.size();
-	    LOG_WARN(CL_LOG,
-                     "shardComponents (%d component(s)) = %s", 
-                     shardComponents.size(), (*sIt).c_str());
+
+    if (marshalledData.empty()) {
+        return;
+    }
+
+    JSONValue jsonValue = JSONCodec::decode(marshalledData);
+    if (jsonValue.type() == typeid(JSONValue::JSONNull)) {
+        return;
+    }
+    
+    JSONValue::JSONArray shardArr = jsonValue.get<JSONValue::JSONArray>();
+    JSONValue::JSONArray shardMetadataArr;    
+    JSONValue::JSONArray::const_iterator shardArrIt;
+    Notifyable *ntp = NULL;
+    for (shardArrIt = shardArr.begin(); 
+         shardArrIt != shardArr.end(); 
+         shardArrIt++) {
+        shardMetadataArr.clear();
+        shardMetadataArr = shardArrIt->get<JSONValue::JSONArray>();
+        if (shardMetadataArr.size() != 4) {
             throw InconsistentInternalStateException(
-                "Malformed shard \"" +
-                *sIt +
-                "\", expecting 4 components " +
-                "and instead got " + s.str().c_str());
+                "unmarshall: Impossible that the size of the shardMetadataArr"
+                " != 4 ");
         }
-
-        Node *node = NULL;
-        if (shardComponents[2].empty() == false) {
-            node = dynamic_cast<Node *>(
-                getOps()->getNotifyableFromKey(shardComponents[2]));
+        
+        JSONValue::JSONString ntpString = 
+            shardMetadataArr[2].get<JSONValue::JSONString>();
+        ntp = NULL;
+        if (!ntpString.empty()) {
+            ntp = getOps()->getNotifyableFromKey(ntpString);
         }
-
         m_shardTree.insertNode(
-            ::atoll(shardComponents[0].c_str()), 
-            ::atoll(shardComponents[1].c_str()),
-            ShardTreeData(::atoll(shardComponents[3].c_str()), node));
+            shardMetadataArr[0].get<JSONValue::JSONUInteger>(),
+            shardMetadataArr[1].get<JSONValue::JSONUInteger>(),
+            ShardTreeData(shardMetadataArr[3].get<JSONValue::JSONInteger>(),
+                          ntp));
         m_shardTreeCount++;
     }
 }
 
 /*
- * Marshall a data distribution to string form.
+ * Marshall a data distribution to string form with JSON.
  */
 string
 DataDistributionImpl::marshall()
@@ -103,17 +114,29 @@ DataDistributionImpl::marshall()
 
     Locker l(getSyncLock());
 
-    stringstream res;
     IntervalTree<HashRange, ShardTreeData>::iterator it;
+    JSONValue::JSONArray shardArr;
+    JSONValue::JSONArray shardMetadataArr;
     for (it = m_shardTree.begin(); it != m_shardTree.end(); it++) {
-        res << it->getStartRange() << "," << it->getEndRange() << ",";
-        if (it->getData().getNode() != NULL) {
-            res << it->getData().getNode()->getKey();
+        shardMetadataArr.clear();
+        shardMetadataArr.push_back(it->getStartRange());
+        shardMetadataArr.push_back(it->getEndRange());
+        if (it->getData().getNotifyable() == NULL) {
+            shardMetadataArr.push_back(string());
         }
-        res << "," << it->getData().getPriority() << ";";
+        else {
+            shardMetadataArr.push_back(
+                it->getData().getNotifyable()->getKey());
+        }
+        shardMetadataArr.push_back(it->getData().getPriority());
+        shardArr.push_back(shardMetadataArr);
     }
 
-    return res.str();
+    LOG_DEBUG(CL_LOG, 
+              "marshall: Generated string (%s)", 
+              JSONCodec::encode(shardArr).c_str());
+
+    return JSONCodec::encode(shardArr);
 }
 
 
@@ -192,62 +215,66 @@ static bool shardPriorityCompare(Shard a, Shard b)
     }
 }
 
-vector<const Node *> 
-DataDistributionImpl::getNodes(const Key &key)
+vector<const Notifyable *> 
+DataDistributionImpl::getNotifyables(const Key &key)
 {
-    TRACE(CL_LOG, "getNodes");
+    TRACE(CL_LOG, "getNotifyables");
+
+    throwIfRemoved();
 
     /* This is a slow implementation, will be optimized later. */
     vector<Shard> shardVec = getAllShards(NULL, -1);
     /* Sort the shard by priority */
     sort(shardVec.begin(), shardVec.end(), shardPriorityCompare);
 
-    vector<Shard>::const_iterator shardVecIt;
-    vector<const Node *> nodeVec;
+    vector<Shard>::iterator shardVecIt;
+    vector<const Notifyable *> ntpVec;
     for (shardVecIt = shardVec.begin(); 
          shardVecIt != shardVec.end(); 
          shardVecIt++) {
         if ((shardVecIt->getStartRange() <= key.hashKey()) &&
             (shardVecIt->getEndRange() >= key.hashKey())) {
-            nodeVec.push_back(shardVecIt->getNode());
+            ntpVec.push_back(shardVecIt->getNotifyable());
         }
     }
 
-    return nodeVec;
+    return ntpVec;
 }
 
-vector<const Node *> 
-DataDistributionImpl::getNodes(HashRange hashedKey)
+vector<const Notifyable *> 
+DataDistributionImpl::getNotifyables(HashRange hashedKey)
 {
-    TRACE(CL_LOG, "getNodes");
+    TRACE(CL_LOG, "getNotifyables");
+
+    throwIfRemoved();
 
     /* This is a slow implementation, will be optimized later. */
     vector<Shard> shardVec = getAllShards(NULL, -1);
     /* Sort the shard by priority */
     sort(shardVec.begin(), shardVec.end(), shardPriorityCompare);
 
-    vector<Shard>::const_iterator shardVecIt;
-    vector<const Node *> nodeVec;
+    vector<Shard>::iterator shardVecIt;
+    vector<const Notifyable *> ntpVec;
     for (shardVecIt = shardVec.begin(); shardVecIt != shardVec.end(); 
          shardVecIt++) {
         if ((shardVecIt->getStartRange() <= hashedKey) &&
             (shardVecIt->getEndRange() >= hashedKey)) {
-            nodeVec.push_back(shardVecIt->getNode());
+            ntpVec.push_back(shardVecIt->getNotifyable());
         }
     }
 
-    return nodeVec;
+    return ntpVec;
 }
 
 vector<Shard> 
-DataDistributionImpl::getAllShards(const Node *node, int32_t priority)
+DataDistributionImpl::getAllShards(const Notifyable *ntp, int32_t priority)
 {
     TRACE(CL_LOG, "getAllShards");
 
     throwIfRemoved();
 
     /* 
-     * Get all the shards and then filter based on the node and/or
+     * Get all the shards and then filter based on the notifyable and/or
      * priority.
      */
     vector<Shard> res;
@@ -256,14 +283,14 @@ DataDistributionImpl::getAllShards(const Node *node, int32_t priority)
     for (treeIt = m_shardTree.begin(); treeIt != m_shardTree.end(); treeIt++) {
         res.push_back(Shard(treeIt->getStartRange(),
                             treeIt->getEndRange(),
-                            treeIt->getData().getNode(),
+                            treeIt->getData().getNotifyable(),
                             treeIt->getData().getPriority()));
     }
-    vector<Shard>::const_iterator resIt;
+    vector<Shard>::iterator resIt;
     vector<Shard> finalRes;
     for (resIt = res.begin(); resIt != res.end(); resIt++) {
-        /* Filter by node if not NULL */
-        if ((node == NULL) || (node == resIt->getNode())) {
+        /* Filter by notifyable if not NULL */
+        if ((ntp == NULL) || (ntp == resIt->getNotifyable())) {
             finalRes.push_back(*resIt);
         }
 
@@ -277,18 +304,20 @@ DataDistributionImpl::getAllShards(const Node *node, int32_t priority)
 }
 
 bool
-DataDistributionImpl::removeShard(const Shard &shard)
+DataDistributionImpl::removeShard(Shard &shard)
 {
     TRACE(CL_LOG, "removeShard");
 
-    IntervalTreeNode<HashRange, ShardTreeData> *treeNode = 
+    throwIfRemoved();
+
+    IntervalTreeNode<HashRange, ShardTreeData> *treeNtp = 
         m_shardTree.nodeSearch(shard.getStartRange(),
                                shard.getEndRange(),
                                ShardTreeData(shard.getPriority(),
-                                             shard.getNode()));
-    if (treeNode != NULL) {
+                                             shard.getNotifyable()));
+    if (treeNtp != NULL) {
         
-        m_shardTree.deleteNode(treeNode);
+        m_shardTree.deleteNode(treeNtp);
         m_shardTreeCount--;
         return true;
     }
@@ -308,7 +337,7 @@ DataDistributionImpl::getShardCount()
 
 /*
  * Is the distribution covered? Note that this method is
- * very expensive as it has to look through every node in the tree
+ * very expensive as it has to look through every notifyable in the tree
  */
 bool
 DataDistributionImpl::isCovered()
@@ -340,7 +369,8 @@ DataDistributionImpl::isCovered()
     return false;
 }
 
-vector<HashRange> splitHashRange(int32_t numShards)
+vector<HashRange> 
+DataDistributionImpl::splitHashRange(int32_t numShards)
 {
     TRACE(CL_LOG, "splitHashRange");
 
@@ -357,7 +387,7 @@ vector<HashRange> splitHashRange(int32_t numShards)
 void 
 DataDistributionImpl::insertShard(HashRange start,
                                   HashRange end,
-                                  const Node *node,
+                                  Notifyable *ntp,
                                   int32_t priority) 
 {
     TRACE(CL_LOG, "insertShard");
@@ -366,7 +396,7 @@ DataDistributionImpl::insertShard(HashRange start,
     
     Locker l(getSyncLock());
 
-    m_shardTree.insertNode(start, end, ShardTreeData(priority, node));
+    m_shardTree.insertNode(start, end, ShardTreeData(priority, ntp));
     m_shardTreeCount++;
 }
 
@@ -413,7 +443,7 @@ DataDistributionImpl::publish()
     int32_t finalVersion;
 
     LOG_INFO(CL_LOG,
-             "Tried to set data distribution for node %s to %s "
+             "Tried to set data distribution for notifyable %s to %s "
              "with version %d\n",
              getKey().c_str(), 
              marshalledShards.c_str(),

@@ -342,6 +342,11 @@ class MPITestFixture : public CppUnit::TestFixture {
 
   private:
 
+    /**
+     * Get the minimum test size
+     * 
+     * @return the minimum test size
+     */
     int getTestMinSize() const { return m_testMinSize; }
 
     /**

@@ -27,17 +27,17 @@ unittests_LDADD = \
 unittests_SOURCES = \
 	test.cc \
 	testparams.cc \
+	clusterlibhierarchy.cc \
 	clusterlibprocessslot.cc \
 	clusterlibintervaltree.cc \
-	clusterlibdatadistribution.cc \
 	clusterlibendevent.cc \
 	clusterlibcache.cc \
 	clusterlibclient.cc \
 	clusterlibpropertylist.cc \
 	clusterlibremove.cc \
-	clusterlibhierarchy.cc \
 	clusterlibuserevents.cc \
 	clusterlibnotifyablekeymanipulator.cc \
+	clusterlibdatadistribution.cc \
 	clusterlibleader.cc \
 	clusterlibtimer.cc \
 	clusterlibhealthcheck.cc \

@@ -69,7 +69,7 @@ class IntervalTreeNode {
      * 
      * @return the data from the constructor
      */
-    virtual const D &getData() const = 0;
+    virtual D &getData() = 0;
 
     /**
      * Get the color of this node
@@ -124,7 +124,7 @@ class IntervalTreeNodeImpl : public IntervalTreeNode<R, D> {
 
     virtual R getEndRangeMax() const;
 
-    virtual const D &getData() const;
+    virtual D &getData();
 
     virtual typename IntervalTreeNode<R, D>::Color getColor() const;
 
@@ -406,8 +406,8 @@ IntervalTreeNodeImpl<R, D>::setEndRangeMax(R endRangeMax)
 }
 
 template<typename R, typename D>
-const D &
-IntervalTreeNodeImpl<R, D>::getData() const
+D &
+IntervalTreeNodeImpl<R, D>::getData()
 {
     if (isSentinel()) {
         throw Exception("getData: Called on sentinel!");
@@ -566,18 +566,18 @@ class IntervalTree {
      * @param startRange the start of the range (inclusive)
      * @param endRange the end of the range (inclusive)
      * @param data the data contained
-     * @return a const reference to that node or NULL if not found
+     * @return a pointer to that node or NULL if not found
      */
     IntervalTreeNode<R, D> *nodeSearch(R startRange,
                                        R endRange,
-                                       const D data);
+                                       D data);
 
     /** 
      * Find a node that overlaps this inclusive range
      *
      * @param startRange the start of the range (inclusive)
      * @param endRange the end of the range (inclusive)
-     * @return a const reference to that node or NULL if not found
+     * @return a pointer to that node or NULL if not found
      */
     IntervalTreeNode<R, D> *intervalSearch(R startRange,
                                            R endRange);
@@ -878,7 +878,7 @@ template<typename R, typename D>
 IntervalTreeNode<R, D> *
 IntervalTree<R, D>::nodeSearch(R startRange,
                                R endRange,
-                               const D data)
+                               D data)
 {
     IntervalTreeNodeImpl<R, D> *xP = getHeadNode();
 

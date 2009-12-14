@@ -15,6 +15,8 @@
 #include <map>
 #include <iostream>
 #include <boost/any.hpp>
+#include "clusterlibexceptions.h"
+#include <typeinfo>
 
 /**
  * Defines the namespace of JSON encoder and decoder. The utility
@@ -91,6 +93,7 @@ class JSONValue {
     typedef std::deque<JSONValue> JSONArray;
     typedef std::map<JSONString, JSONValue> JSONObject;
     typedef int64_t JSONInteger;
+    typedef uint64_t JSONUInteger;
     typedef long double JSONFloat;
     typedef bool JSONBoolean;
     
@@ -112,6 +115,7 @@ class JSONValue {
         /**
          * Assigns the Null value to another. Since Null values in 
          * JSONValue are the same, it does nothing.
+         *
          * @param other the other Null value whose value assigns to 
          *        this instance.
          * @return the instance represented by other parameter.
@@ -142,6 +146,7 @@ class JSONValue {
     /**
      * Creates a new instance of JSONValue. The new instance is a copy
      * of the given instance.
+     *
      * @param other the JSONValue instance to be copied.
      */
     JSONValue(const JSONValue &other);
@@ -168,9 +173,15 @@ class JSONValue {
         try {
             return boost::any_cast<T>(value);
         } catch (const std::bad_cast &ex) {
-            throw JSONValueException("get: " + std::string(type().name()) + 
-                                     " cannot be converted to " + 
-                                     typeid(T).name());
+            bool success;
+            std::string currentDemangledTypeName = 
+                clusterlib::Exception::demangleName(type().name(), success);
+            std::string newDemangledTypeName = 
+                clusterlib::Exception::demangleName(typeid(T).name(), success);
+            throw JSONValueException(
+                "get: Current type name (" + currentDemangledTypeName +
+                ") cannot be converted to desired type name (" + 
+                newDemangledTypeName + ")");
         }
     }
 
@@ -199,6 +210,7 @@ class JSONValue {
 
     /**
      * Sets the value as string.
+     *
      * @param value the string to be set.
      */
     void set(const char *value);
