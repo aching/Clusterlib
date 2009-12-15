@@ -63,7 +63,8 @@ PredMutexCond::predWait(const uint64_t timeout)
 {
     TRACE(CL_LOG, "predWait");
 
-    int64_t microSecs, maxMicroSecs;
+    int64_t microSecs = 0;
+    int64_t maxMicroSecs = 0;
     mutex.acquire();
     if (timeout != 0) {
         maxMicroSecs = 
