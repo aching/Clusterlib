@@ -41,6 +41,26 @@ NotifyableImpl::getPropertyList(const std::string &name, bool create)
     return getOps()->getPropertyList(name, this, create);
 }
 
+NameList
+NotifyableImpl::getQueueNames() 
+{
+    TRACE(CL_LOG, "getQueueNames");
+
+    throwIfRemoved();
+
+    return getOps()->getQueueNames(this);
+}
+
+Queue *
+NotifyableImpl::getQueue(const std::string &name, bool create)
+{
+    TRACE(CL_LOG, "getQueue");
+
+    throwIfRemoved();
+
+    return getOps()->getQueue(name, this, create);
+}
+
 void
 NotifyableImpl::releaseRef()
 {

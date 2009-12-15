@@ -72,6 +72,8 @@ CachedObjectChangeHandlers::getCachedObjectChangeString(
             return "SYNCHRONIZE_CHANGE";
         case PREC_LOCK_NODE_EXISTS_CHANGE:
             return "PREC_LOCK_NODE_EXISTS_CHANGE";
+        case QUEUE_CHILD_CHANGE:
+            return "QUEUE_CHILD_CHANGE";
         default:
             return "unknown change";
     }
@@ -1079,7 +1081,7 @@ CachedObjectChangeHandlers::handleClientStateChange(NotifyableImpl *ntp,
         return EN_NOEVENT;
     }
 
-    np->setClientStateAndTime(ns, TimerService::getCurrentTimeMillis());
+    np->setClientStateAndTime(ns, TimerService::getCurrentTimeMsecs());
 
     return EN_CLIENTSTATECHANGE;
 }
@@ -1144,7 +1146,7 @@ CachedObjectChangeHandlers::handleMasterSetStateChange(NotifyableImpl *ntp,
         return EN_NOEVENT;
     }
 
-    np->setMasterSetStateAndTime(nv, TimerService::getCurrentTimeMillis());
+    np->setMasterSetStateAndTime(nv, TimerService::getCurrentTimeMsecs());
 
     return EN_MASTERSTATECHANGE;
 }
@@ -1200,7 +1202,7 @@ CachedObjectChangeHandlers::handleNodeConnectionChange(NotifyableImpl *ntp,
         return EN_NOEVENT;
     }
 
-    np->setConnectedAndTime(curconn, TimerService::getCurrentTimeMillis());
+    np->setConnectedAndTime(curconn, TimerService::getCurrentTimeMsecs());
 
     return EN_CONNECTEDCHANGE;
 }
@@ -1263,8 +1265,7 @@ CachedObjectChangeHandlers::handlePrecLockNodeExistsChange(NotifyableImpl *ntp,
          * PredMutexCond cannot be deleted, the thread calling this
          * function should be safe.
          */
-        getOps()->getDistributedLocks()->getSignalMap()->
-            signalPredMutexCond(key);
+        getOps()->getLockEventSignalMap()->signalPredMutexCond(key);
 
         return EN_LOCKNODECHANGE;
     }
@@ -1275,6 +1276,51 @@ CachedObjectChangeHandlers::handlePrecLockNodeExistsChange(NotifyableImpl *ntp,
         throw InconsistentInternalStateException(
             "handlePrecLockNodeExistsChange: "
             "non-ZOO_DELETED_EVENT called");
+    }
+    
+    return EN_NOEVENT;
+}
+
+Event
+CachedObjectChangeHandlers::handleQueueChildChange(NotifyableImpl *ntp,
+                                                   int32_t etype,
+                                                   const string &key)
+{
+    TRACE(CL_LOG, "handleQueueChildChange");
+
+    LOG_DEBUG(CL_LOG,
+              "handleQueueChildChange: %s on key %s",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              key.c_str());
+
+    /*
+     * Try to check the queue again if a child event.
+     */
+    if (etype == ZOO_CHILD_EVENT) {
+        /*
+         * Notify the thread waiting to get the first element since
+         * the number of children has changed.  Since the
+         * PredMutexCond cannot be deleted, the thread calling this
+         * function should be safe.
+         */
+        LOG_DEBUG(CL_LOG, 
+                  "handleQueueChildChange: Got child event for key %s",
+                  key.c_str());
+        getOps()->getQueueEventSignalMap()->signalPredMutexCond(key);
+        return EN_QUEUECHILDCHANGE;
+    }
+    else if (etype == ZOO_DELETED_EVENT) {
+        LOG_DEBUG(CL_LOG, "handleQueueChildChange: deleted");
+        return EN_DELETED;
+    }
+    else {
+        LOG_ERROR(CL_LOG, 
+                  "handleQueueChildChange: non-ZOO_CHILD_EVENT "
+                  "event %s called", 
+                  zk::ZooKeeperAdapter::getEventString(etype).c_str());
+        throw InconsistentInternalStateException(
+            "handleQueueChildChange: "
+            "non-ZOO_CHILD_EVENT called");
     }
     
     return EN_NOEVENT;
@@ -1431,6 +1477,8 @@ CachedObjectChangeHandlers::getChangeHandler(CachedObjectChange change) {
             return &m_synchronizeChangeHandler;
         case PREC_LOCK_NODE_EXISTS_CHANGE:
             return &m_precLockNodeExistsChangeHandler;
+        case QUEUE_CHILD_CHANGE:
+            return &m_queueChildChangeHandler;
         default:
             LOG_FATAL(CL_LOG, 
                       "getChangeHandler: Change %d is not defined\n",

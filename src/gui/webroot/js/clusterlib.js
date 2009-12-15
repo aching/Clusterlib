@@ -380,6 +380,20 @@ function showShards(shardStatusArr) {
 }
 
 
+function showQueueSlots(queueStatusArr) {
+    if (queueStatusArr === null ||
+	queueStatusArr === undefined ||
+	queueStatusArr.length === 0) {
+	return;
+    }
+
+    var templateObj = {};
+    templateObj.table = queueStatusArr;
+    templateObj["name"] = 'Queue(s)';
+    $("#queues").setTemplateURL("js/status.tpl");
+    $("#queues").processTemplate(templateObj);
+}
+
 // Main display
 function showContent() {
     // Refresh the timer
@@ -410,7 +424,7 @@ function showContent() {
 	    key == "applicationSummary" || key == "groupSummary" || 
 	    key == "dataDistributionSummary" || key == "nodeSummary" ||
             key == "processSlotSummary" || key == "propertyListSummary" ||
-            key == "shardSummary") {
+            key == "shardSummary" || key == "queueSummary") {
 	    continue;
 	}
 	else if (key == "options") {
@@ -561,7 +575,7 @@ function showContent() {
     html += '</tbody></table>';
     html += addAttributeHtml;
 
-    html += '<span id="statusDiv" class="text ui-corner-all" style="float : left; width: 100%;"><div id="applications"></div><div id="groups"></div><div id="dataDistributions"></div><div id="nodes\"></div><div id="propertyLists"></div><div id="processSlots"</div><div id="shards\"></div></span>';
+    html += '<span id="statusDiv" class="text ui-corner-all" style="float : left; width: 100%;"><div id="applications"></div><div id="groups"></div><div id="dataDistributions"></div><div id="nodes\"></div><div id="processSlots"</div><div id="shards\"></div><div id="queues"</div><div id="propertyLists"></div></span>';
 
     // Navigation buttons
     html += '<span id="navDiv" class="text ui-corner-all" style="float : left; width: 100%;"><div id="navButtons "style="float:left"> Navigation: ' + 
@@ -587,21 +601,28 @@ function showContent() {
 	showGroups(content["groupSummary"]);
 	showDataDistributions(content["dataDistributionSummary"]);
 	showNodes(content["nodeSummary"]);
+        showQueueSlots(content["queueSummary"]);
 	showPropertyListSlots(content["propertyListSummary"]);
     } 
     else if (type == "Node") {
 	showProcessSlots(content["processSlotSummary"]);
+	showQueueSlots(content["queueSummary"]);
 	showPropertyListSlots(content["propertyListSummary"]);
     } 
     else if (type == "DataDistribution") {
         showShards(content["shardSummary"]);
+	showQueueSlots(content["queueSummary"]);
 	showPropertyListSlots(content["propertyListSummary"]);
     } 
     else if (type == "PropertyList") {
     } 
     else if (type == "ProcessSlot") {
+	showQueueSlots(content["queueSummary"]);
 	showPropertyListSlots(content["propertyListSummary"]);
     } 
+    else if (type == "Queue") {
+	showPropertyListSlots(content["propertyListSummary"]);
+    }
     else {
         // Should never happen
         alert("Unknown type in showContent: " + type);
@@ -658,38 +679,50 @@ function showContent() {
     $(".addAttribute").click(function() {
 	$("#dialogNewValue").dialog('option', 'title', 
 				    unescape($(this).text()));
-	var inputBoxsHtml = '<form><fieldset style="border:0;"><label for="name">Name</label><textarea style="width: 100%;" name="name" id="inputName" class="text ui-widget-content ui-corner-all" ></textarea><label for="value">Value</label><textarea style="width: 100%;" type="text" name="value" id="inputValue" class="text ui-widget-content ui-corner-all" ></textarea></fieldset></form>';
+
+        // Based on the text show different choices (value only) or
+        // (name & value)
+        var inputBoxsHtml;
+        if ($(this).text() == "Add queue element") {
+            inputBoxsHtml = '<form><fieldset style="border:0;"><label for="value">Value</label><textarea style="width: 100%;" type="text" name="value" id="inputValue" class="text ui-widget-content ui-corner-all" ></textarea></fieldset></form>';
+        }
+	else {
+            inputBoxsHtml = '<form><fieldset style="border:0;"><label for="name">Name</label><textarea style="width: 100%;" name="name" id="inputName" class="text ui-widget-content ui-corner-all" ></textarea><label for="value">Value</label><textarea style="width: 100%;" type="text" name="value" id="inputValue" class="text ui-widget-content ui-corner-all" ></textarea></fieldset></form>';
+        }
 
         $("#dialogNewValue").html(inputBoxsHtml);
+        if ($('textarea#inputName').length) {
+            $('textarea#inputName').autoResize({
+                // On resize:
+                onResize : function() {
+   	            $(this).css({opacity:0.8});
+	        },
+                 // After resize
+                animateCallback : function() {
+     	            $(this).css({opacity:1});
+	        },
+	        // Quite slow animation
+                animateDuration : 300,
+                extraSpace : 20
+            });
+        }
+        if ($('textarea#inputValue').length) {
+            $('textarea#inputValue').autoResize({
+                // On resize:
+                onResize : function() {
+   	            $(this).css({opacity:0.8});
+    	        },
+                // After resize
+                animateCallback : function() {
+     	            $(this).css({opacity:1});
+	        },
+	        // Quite slow animation
+                animateDuration : 300,
+                extraSpace : 20
+            });
+        }
+
 	$("#dialogNewValue").dialog('open');
-
-        $('textarea#inputName').autoResize({
-            // On resize:
-            onResize : function() {
-   	        $(this).css({opacity:0.8});
-	    },
-            // After resize
-            animateCallback : function() {
-     	        $(this).css({opacity:1});
-	    },
-	    // Quite slow animation
-            animateDuration : 300,
-            extraSpace : 20
-        });
-        $('textarea#inputValue').autoResize({
-            // On resize:
-            onResize : function() {
-   	        $(this).css({opacity:0.8});
-	    },
-            // After resize
-            animateCallback : function() {
-     	        $(this).css({opacity:1});
-	    },
-	    // Quite slow animation
-            animateDuration : 300,
-            extraSpace : 20
-        });
-
 				  
         // Set the buttons
 	var editButtons = {};

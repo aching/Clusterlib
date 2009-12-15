@@ -28,6 +28,7 @@ unittests_SOURCES = \
 	test.cc \
 	testparams.cc \
 	clusterlibhierarchy.cc \
+	clusterlibqueue.cc \
 	clusterlibprocessslot.cc \
 	clusterlibintervaltree.cc \
 	clusterlibendevent.cc \

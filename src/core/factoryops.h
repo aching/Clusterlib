@@ -219,6 +219,13 @@ class FactoryOps {
      */
     NameList getPropertyListNames(NotifyableImpl *ntp);
 
+    /*
+     * Retrieve a list of all (currently known) queue names
+     * within the given notifyable. This also establishes a
+     * watch on queue changes.
+     */
+    NameList getQueueNames(NotifyableImpl *ntp);
+
     /**
      * Get any immediate children of this NotifyableImpl.  In order to
      * guarantee that this is atomic, hold the lock of this
@@ -306,10 +313,10 @@ class FactoryOps {
                                               bool create = false);
 
     /** 
-     * Get a property list from a parent group key. 
+     * Get a property list from a parent notifyable key. 
      *
      * @param name the property list name under the parent
-     * @param parentGroup key to this parent group
+     * @param parent key to this parent
      * @param create if true try to create it if it doesn't exist
      * @return NULL if not found or creation failed, otherwise the pointer 
      *         to the property list
@@ -317,6 +324,19 @@ class FactoryOps {
     PropertyListImpl *getPropertyList(const std::string &name,
                                       Notifyable *parent,
                                       bool create = false);
+
+    /** 
+     * Get a queue from a parent notifyable key. 
+     *
+     * @param name the queue under the parent
+     * @param parent key to this parent
+     * @param create if true try to create it if it doesn't exist
+     * @return NULL if not found or creation failed, otherwise the pointer 
+     *         to the queue
+     */
+    QueueImpl *getQueue(const std::string &name,
+                        Notifyable *parent,
+                        bool create = false);
 
     void updateDataDistribution(const std::string &distKey,
                                 const std::string &shards,
@@ -426,7 +446,7 @@ class FactoryOps {
     /**
      * Get the exact property list represented by this key
      *
-     * @param key should represent the PropertyListsImpl object
+     * @param key should represent the PropertyListImpl object
      * @param create try to create this object if it does not exist?
      * @return NULL if cannot be found, else the PropertyListImpl *
      */
@@ -443,6 +463,30 @@ class FactoryOps {
      * @return NULL if cannot be found, else the PropertyListImpl *
      */
     PropertyListImpl *getPropertyListFromComponents(
+        const std::vector<std::string> &components,
+        int32_t elements = -1, 
+        bool create = false);
+
+    /**
+     * Get the exact queue represented by this key
+     *
+     * @param key should represent the QueueImpl object
+     * @param create try to create this object if it does not exist?
+     * @return NULL if cannot be found, else the QueueImpl *
+     */
+    QueueImpl *getQueueFromKey(const std::string &key,
+                                         bool create = false);
+
+    /**
+     * Get the exact QueueImpl represented by these components.
+     *
+     * @param components Should represent the QueueImpl object
+     * @param elements The number of elements to use in the components
+                       (-1 for all)
+     * @param create try to create this object if it does not exist?
+     * @return NULL if cannot be found, else the QueueImpl *
+     */
+    QueueImpl *getQueueFromComponents(
         const std::vector<std::string> &components,
         int32_t elements = -1, 
         bool create = false);
@@ -528,6 +572,9 @@ class FactoryOps {
     PropertyListImpl* loadPropertyList(const std::string &propListName,
                                    const std::string &propListKey,
                                    Notifyable *parent);
+    QueueImpl* loadQueue(const std::string &queueName,
+                         const std::string &queueKey,
+                         Notifyable *parent);
     GroupImpl *loadGroup(const std::string &groupName,
                          const std::string &groupKey,
                          GroupImpl *parentGroup);
@@ -554,6 +601,9 @@ class FactoryOps {
     PropertyListImpl *createPropertyList(const std::string &propListName,
                                          const std::string &propListKey,
                                          Notifyable *parent);
+    QueueImpl *createQueue(const std::string &queueName,
+                           const std::string &queueKey,
+                           Notifyable *parent);
     GroupImpl *createGroup(const std::string &groupName,
                            const std::string &groupKey,
                            GroupImpl *parentGroup);
@@ -570,6 +620,7 @@ class FactoryOps {
     void removeApplication(ApplicationImpl *app);
     void removeDataDistribution(DataDistributionImpl *dist);
     void removePropertyList(PropertyListImpl *propList);
+    void removeQueue(QueueImpl *queueList);
     void removeGroup(GroupImpl *group);
     void removeNode(NodeImpl *node);
     void removeProcessSlot(ProcessSlotImpl *processSlot);
@@ -598,6 +649,7 @@ class FactoryOps {
      */
     Mutex *getClientsLock();
     Mutex *getPropertyListLock();
+    Mutex *getQueueLock();
     Mutex *getDataDistributionsLock();
     Mutex *getRootLock();
     Mutex *getApplicationsLock();
@@ -671,7 +723,7 @@ class FactoryOps {
     /**
      * Has shut down?
      */
-    bool isShutdown() 
+    bool isShutdown() const
     {
         return m_shutdown;
     }
@@ -686,8 +738,24 @@ class FactoryOps {
 
     /**
      * Get the sync event signal map
+     *
+     * @return pointer to the synchronization event signal map
      */
     SignalMap *getSyncEventSignalMap() { return &m_syncEventSignalMap; }
+
+    /**
+     * Get the lock signal map
+     *
+     * @return pointer to the lock signal map.
+     */
+    SignalMap *getLockEventSignalMap() { return &m_lockEventSignalMap; }
+
+    /**
+     * Get the queue signal map
+     *
+     * @return pointer to the queue signal map.
+     */
+    SignalMap *getQueueEventSignalMap() { return &m_queueEventSignalMap; }
     
   private:
     /**
@@ -701,9 +769,14 @@ class FactoryOps {
     void discardAllDataDistributions();
 
     /**
-     * Clean up propertyList maps
+     * Clean up propertyLists
      */
     void discardAllPropertyLists();
+
+    /**
+     * Clean up queues
+     */
+    void discardAllQueues();
 
     /**
      * Clean up applications
@@ -762,40 +835,46 @@ class FactoryOps {
     Mutex m_rootLock;
 
     /*
-     * The registry of cached property list maps.
+     * The registry of cached property lists.
      */
-    NotifyableImplMap m_propList;
-    Mutex m_propListLock;
+    NotifyableImplMap m_propLists;
+    Mutex m_propListsLock;
+
+    /*
+     * The registry of cached queues.
+     */
+    NotifyableImplMap m_queues;
+    Mutex m_queuesLock;
 
     /*
      * The registry of cached data distributions.
      */
     NotifyableImplMap m_dists;
-    Mutex m_distLock;
+    Mutex m_distsLock;
 
     /*
      * The registry of cached applications.
      */
     NotifyableImplMap m_apps;
-    Mutex m_appLock;
+    Mutex m_appsLock;
 
     /*
      * The registry of cached groups.
      */
     NotifyableImplMap m_groups;
-    Mutex m_groupLock;
+    Mutex m_groupsLock;
 
     /*
      * The registry of cached nodes.
      */
     NotifyableImplMap m_nodes;
-    Mutex m_nodeLock;
+    Mutex m_nodesLock;
 
     /*
      * The registry of cached process slots.
      */
     NotifyableImplMap m_processSlots;
-    Mutex m_processSlotLock;
+    Mutex m_processSlotsLock;
 
     /*
      * The registry of timer handlers.
@@ -901,6 +980,16 @@ class FactoryOps {
      * up the queues.
      */
     SignalMap m_syncEventSignalMap;
+
+    /**
+     * Keeps track of the notification of (distributed) lock events
+     */
+    SignalMap m_lockEventSignalMap;
+
+    /**
+     * Keeps track of notification of (distributed) queue events
+     */
+    SignalMap m_queueEventSignalMap;
 
     /**
      * Handles all the locks for clusterlib objects

@@ -27,7 +27,6 @@ const string ClusterlibStrings::KEYSEPARATOR = "/";
 const string ClusterlibStrings::CLUSTERLIB = "_clusterlib";
 const string ClusterlibStrings::CLUSTERLIBVERSION = "_1.0";
 
-const string ClusterlibStrings::PROPERTYLIST = "_propertyList";
 const string ClusterlibStrings::CONFIGURATION = "_configuration";
 const string ClusterlibStrings::ALERTS = "_alerts";
 const string ClusterlibStrings::SYNC = "_sync";
@@ -38,6 +37,8 @@ const string ClusterlibStrings::GROUPS = "_groups";
 const string ClusterlibStrings::NODES = "_nodes";
 const string ClusterlibStrings::PROCESSSLOTS = "_processSlots";
 const string ClusterlibStrings::DISTRIBUTIONS = "_distributions";
+const string ClusterlibStrings::PROPERTYLISTS = "_propertyLists";
+const string ClusterlibStrings::QUEUES = "_queues";
 
 const string ClusterlibStrings::CLIENTSTATE = "_clientState";
 const string ClusterlibStrings::CLIENTSTATEDESC = "_clientStateDesc";
@@ -80,16 +81,17 @@ const string ClusterlibStrings::DISABLED = "_disabled";
 const string ClusterlibStrings::DEFAULTPROPERTYLIST = "_defaultPropertyList";
 const string ClusterlibStrings::KEYVAL = "_keyval";
 
+const string ClusterlibStrings::QUEUEELEMENTPREFIX = "_queueElementPrefix";
+
 const string ClusterlibStrings::SHARDS = "_shards";
 const string ClusterlibStrings::GOLDENSHARDS = "_goldenShards";
 
-const string ClusterlibStrings::BID_SPLIT = "=";
+const string ClusterlibStrings::SEQUENCE_SPLIT = "=";
 
 const string ClusterlibStrings::NOTIFYABLELOCK = "_notifyableLock";
 const string ClusterlibStrings::LEADERLOCK = "_leaderLock";
 
 const string ClusterlibStrings::LOCKS = "_locks";
-const string ClusterlibStrings::QUEUES = "_queues";
 const string ClusterlibStrings::BARRIERS = "_barriers";
 const string ClusterlibStrings::TRANSACTIONS = "_transactions";
 

@@ -7,6 +7,8 @@ extern TestParams globalTestParams;
 using namespace clusterlib;
 using namespace std;
 
+const string appName = "processSlot-app";
+
 class ClusterlibProcessSlot : public MPITestFixture {
     CPPUNIT_TEST_SUITE(ClusterlibProcessSlot);
     CPPUNIT_TEST(testProcessSlot1);
@@ -29,7 +31,7 @@ class ClusterlibProcessSlot : public MPITestFixture {
 	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
 	MPI_CPPUNIT_ASSERT(_client0 != NULL);
-	_app0 = _client0->getRoot()->getApplication("processSlot-app", true);
+	_app0 = _client0->getRoot()->getApplication(appName, true);
 	MPI_CPPUNIT_ASSERT(_app0 != NULL);
 	_group0 = _app0->getGroup("processSlot-group-servers", true);
 	MPI_CPPUNIT_ASSERT(_group0 != NULL);

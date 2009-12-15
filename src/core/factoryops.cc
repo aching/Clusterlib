@@ -24,6 +24,9 @@ using namespace boost;
 namespace clusterlib
 {
 
+/** 5 seconds */
+static const uint32_t ZkTimeoutMsecs = 5000;
+
 /*
  * Constructor of FactoryOps.
  *
@@ -36,7 +39,7 @@ FactoryOps::FactoryOps(const string &registry)
       m_syncEventId(0),
       m_syncEventIdCompleted(0),
       m_endEventDispatched(false),
-      m_config(registry, 5000), /* 5 second timeout */
+      m_config(registry, ZkTimeoutMsecs), 
       m_zk(m_config, NULL, false),
       m_timerEventAdapter(m_timerEventSrc),
       m_zkEventAdapter(m_zk),
@@ -73,7 +76,7 @@ FactoryOps::FactoryOps(const string &registry)
         m_zk.reconnect();
         LOG_INFO(CL_LOG, 
                  "Waiting for connect event from ZooKeeper");
-        if (m_eventSyncLock.lockedWait(3000) == false) {
+        if (m_eventSyncLock.lockedWait(ZkTimeoutMsecs) == false) {
 	    throw RepositoryConnectionFailureException(
 		"Did not receive connect event in time, aborting");
         }
@@ -115,6 +118,7 @@ FactoryOps::~FactoryOps()
     discardAllClients();
     discardAllDataDistributions();
     discardAllPropertyLists();
+    discardAllQueues();
     discardAllApplications();
     discardAllGroups();
     discardAllNodes();
@@ -209,6 +213,9 @@ FactoryOps::synchronize()
          */
         if ((m_syncEventId == m_syncEventIdCompleted) && 
             (m_syncEventId != 0)) {
+            LOG_DEBUG(CL_LOG,
+                      "synchronize: Resetting the sync event id and "
+                      "sync event id completed");
             m_syncEventId = 0;
             m_syncEventIdCompleted = 0;
         }
@@ -236,6 +243,9 @@ FactoryOps::synchronize()
             getChangeHandler(CachedObjectChangeHandlers::SYNCHRONIZE_CHANGE),
             &syncEventId);
 
+    LOG_DEBUG(CL_LOG, 
+              "synchronize: Starting sync with event id (%lld)", 
+              syncEventId);
     SAFE_CALL_ZK(m_zk.sync(
                      key, 
                      &m_zkEventAdapter, 
@@ -252,7 +262,7 @@ FactoryOps::synchronize()
     getSyncEventSignalMap()->waitPredMutexCond(syncEventKey);
     getSyncEventSignalMap()->removeRefPredMutexCond(syncEventKey);
 
-    LOG_DEBUG(CL_LOG, "synchronize: Complete");
+    LOG_DEBUG(CL_LOG, "synchronize: event id (%lld) Complete", syncEventId);
 }
 
 
@@ -336,8 +346,8 @@ FactoryOps::discardAllPropertyLists()
     Locker l(getPropertyListLock());
     NotifyableImplMap::iterator propListIt;
 
-    for (propListIt = m_propList.begin();
-         propListIt != m_propList.end();
+    for (propListIt = m_propLists.begin();
+         propListIt != m_propLists.end();
          propListIt++) {
         LOG_DEBUG(CL_LOG, 
                   "discardAllPropertyLists: Removed key (%s) with %d refs",
@@ -346,7 +356,27 @@ FactoryOps::discardAllPropertyLists()
 
 	delete propListIt->second;
     }
-    m_propList.clear();
+    m_propLists.clear();
+}
+void
+FactoryOps::discardAllQueues()
+{
+    TRACE(CL_LOG, "discardAllQueues");
+
+    Locker l(getQueueLock());
+    NotifyableImplMap::iterator queueIt;
+
+    for (queueIt = m_queues.begin();
+         queueIt != m_queues.end();
+         queueIt++) {
+        LOG_DEBUG(CL_LOG, 
+                  "discardAllQueues: Removed key (%s) with %d refs",
+                  queueIt->second->getKey().c_str(),
+                  queueIt->second->getRefCount());
+
+	delete queueIt->second;
+    }
+    m_queues.clear();
 }
 void
 FactoryOps::discardAllApplications()
@@ -1022,9 +1052,9 @@ FactoryOps::getPropertyList(const string &name,
     
     {
         Locker l(getPropertyListLock());
-        NotifyableImplMap::const_iterator propIt = m_propList.find(key);
+        NotifyableImplMap::const_iterator propIt = m_propLists.find(key);
 
-        if (propIt != m_propList.end()) {
+        if (propIt != m_propLists.end()) {
             propIt->second->incrRefCount();
             return dynamic_cast<PropertyListImpl *>(propIt->second);
         }
@@ -1057,6 +1087,75 @@ FactoryOps::getPropertyList(const string &name,
     LOG_WARN(CL_LOG,
              "getPropertyList: could not find nor create "
              "propertyList for %s",
+             parent->getKey().c_str());
+
+    return NULL;
+}
+
+QueueImpl *
+FactoryOps::getQueue(const string &name,
+                     Notifyable *parent,
+                     bool create)
+{
+    TRACE(CL_LOG, "getQueue");
+
+    if (!NotifyableKeyManipulator::isValidNotifyableName(name)) {
+        LOG_WARN(CL_LOG,
+                 "getQueue: Illegal queue name %s",
+                 name.c_str());
+
+        if (create == true) {
+            throw InvalidArgumentsException("getQueue: illegal name");
+        }
+        return NULL;
+    }
+
+    if (parent == NULL) {
+        LOG_ERROR(CL_LOG, "getQueue: NULL parent");                 
+        throw InvalidArgumentsException("getQueue: NULL parent");
+    }
+
+    string key = 
+        NotifyableKeyManipulator::createQueueKey(parent->getKey(),
+                                                 name);
+    
+    {
+        Locker l(getQueueLock());
+        NotifyableImplMap::const_iterator propIt = m_queues.find(key);
+
+        if (propIt != m_queues.end()) {
+            propIt->second->incrRefCount();
+            return dynamic_cast<QueueImpl *>(propIt->second);
+        }
+    }
+
+    QueueImpl *queue = loadQueue(name, key, parent);
+    if (queue != NULL) {
+        return queue;
+    }
+    if (create == true) {
+        /*
+         * Use a distributed lock on the parent to prevent another thread
+         * from interfering with creation or removal.
+         */
+        getOps()->getDistributedLocks()->acquire(
+            parent,
+            ClusterlibStrings::NOTIFYABLELOCK);
+        
+        queue = loadQueue(name, key, parent);
+        if (queue == NULL) {
+            queue = createQueue(name, key, parent);
+        }
+
+        getOps()->getDistributedLocks()->release(
+            parent,
+            ClusterlibStrings::NOTIFYABLELOCK);
+        return queue;
+    }
+
+    LOG_WARN(CL_LOG,
+             "getQueue: could not find nor create "
+             "queue for %s",
              parent->getKey().c_str());
 
     return NULL;
@@ -1311,7 +1410,7 @@ FactoryOps::updateDataDistribution(const string &distKey,
                  true);
 
     SAFE_CALLBACK_ZK(
-        m_zk.getNodeData(
+        m_zk.nodeExists(
             snode,
             &m_zkEventAdapter, 
             getCachedObjectChangeHandlers()->
@@ -1367,7 +1466,7 @@ FactoryOps::updatePropertyList(const string &propListKey,
                  false,
                  true);
     SAFE_CALLBACK_ZK(
-        m_zk.getNodeData(
+        m_zk.nodeExists(
             kvnode,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
@@ -1419,7 +1518,7 @@ FactoryOps::updateNodeClientState(const string &nodeKey,
                  true);
 
     SAFE_CALLBACK_ZK(
-        m_zk.getNodeData(
+        m_zk.nodeExists(
             csKey,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
@@ -1507,7 +1606,7 @@ FactoryOps::updateNodeMasterSetState(const string &nodeKey,
                  true,
                  true);
     SAFE_CALLBACK_ZK(
-        m_zk.getNodeData(
+        m_zk.nodeExists(
             msKey,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
@@ -1568,11 +1667,19 @@ FactoryOps::getNotifyableFromComponents(const vector<string> &components,
         return ntp;
     }
     ntp = getPropertyListFromComponents(components,
-                                      clusterObjectElements, 
-                                      create);
+                                        clusterObjectElements, 
+                                        create);
     if (ntp) {
         LOG_DEBUG(CL_LOG, 
                   "getNotifyableFromComponents: found PropertyList");
+        return ntp;
+    }
+    ntp = getQueueFromComponents(components,
+                                 clusterObjectElements, 
+                                 create);
+    if (ntp) {
+        LOG_DEBUG(CL_LOG, 
+                  "getNotifyableFromComponents: found Queue");
         return ntp;
     }
     ntp = getDataDistributionFromComponents(components,
@@ -1754,8 +1861,8 @@ FactoryOps::getPropertyListFromKey(const string &key, bool create)
 }
 PropertyListImpl *
 FactoryOps::getPropertyListFromComponents(const vector<string> &components, 
-                                        int32_t elements,
-                                        bool create)
+                                          int32_t elements,
+                                          bool create)
 {
     TRACE(CL_LOG, "getPropertyListFromComponents");
 
@@ -1800,6 +1907,67 @@ FactoryOps::getPropertyListFromComponents(const vector<string> &components,
         parent->releaseRef();
     }
     return getPropertyList(components.at(elements - 1),
+                         parent,
+                         create);
+}
+
+QueueImpl *
+FactoryOps::getQueueFromKey(const string &key, bool create)
+{
+    TRACE(CL_LOG, "getQueueFromKey");
+
+    vector<string> components;
+    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
+    return getQueueFromComponents(components, -1, create);
+}
+QueueImpl *
+FactoryOps::getQueueFromComponents(const vector<string> &components, 
+                                   int32_t elements,
+                                   bool create)
+{
+    TRACE(CL_LOG, "getQueueFromComponents");
+
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+   if (!NotifyableKeyManipulator::isQueueKey(components, elements)) {
+        LOG_DEBUG(CL_LOG, 
+                  "getQueueFromComponents: Couldn't find key"
+                  " with %d elements",
+                  elements);
+        return NULL;
+    }
+    
+    int32_t parentGroupCount = 
+        NotifyableKeyManipulator::removeObjectFromComponents(components, 
+                                                             elements);
+    if (parentGroupCount == -1) {
+        return NULL;
+    }
+    Notifyable *parent = getNotifyableFromComponents(components,
+                                                     parentGroupCount,
+                                                     create);
+    if (parent == NULL) {
+        LOG_WARN(CL_LOG, "getQueueFromComponents: Tried to get "
+                 "parent with name %s",
+                 components.at(parentGroupCount - 1).c_str());
+        return NULL;
+    }
+
+    LOG_DEBUG(CL_LOG, 
+              "getQueueFromComponents: parent key = %s, "
+              "property list name = %s", 
+              parent->getKey().c_str(),
+              components.at(elements - 1).c_str());
+
+    if (dynamic_cast<Root *>(parent) == NULL) {
+        parent->releaseRef();
+    }
+    return getQueue(components.at(elements - 1),
                          parent,
                          create);
 }
@@ -2172,13 +2340,14 @@ FactoryOps::loadShards(const string &key, int32_t &version)
 
     version = 0;
     SAFE_CALLBACK_ZK(
-        (res = m_zk.getNodeData(
+        m_zk.getNodeData(
             snode,
+            res,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
             getChangeHandler(CachedObjectChangeHandlers::SHARDS_CHANGE),
-            &stat)),
-        (res = m_zk.getNodeData(snode, NULL, NULL, &stat)),
+            &stat),
+        m_zk.getNodeData(snode, res, NULL, NULL, &stat),
         CachedObjectChangeHandlers::SHARDS_CHANGE,
         snode,
         "Loading shards from %s failed: %s",
@@ -2201,8 +2370,8 @@ FactoryOps::loadPropertyList(const string &propListName,
     Locker l(getPropertyListLock());
 
     NotifyableImplMap::const_iterator propIt =
-        m_propList.find(propListKey);
-    if (propIt != m_propList.end()) {
+        m_propLists.find(propListKey);
+    if (propIt != m_propLists.end()) {
         propIt->second->incrRefCount();
         return dynamic_cast<PropertyListImpl *>(propIt->second);
     }
@@ -2231,9 +2400,56 @@ FactoryOps::loadPropertyList(const string &propListName,
      */
     establishNotifyableStateChange(propList);
 
-    m_propList[propListKey] = propList;
+    m_propLists[propListKey] = propList;
 
     return propList;
+}
+
+QueueImpl *
+FactoryOps::loadQueue(const string &queueName, 
+                      const string &queueKey,
+                      Notifyable *parent)
+{
+    TRACE(CL_LOG, "Queue");
+
+    QueueImpl *queue;
+    bool exists = false;
+    Locker l(getQueueLock());
+
+    NotifyableImplMap::const_iterator queueIt =
+        m_queues.find(queueKey);
+    if (queueIt != m_queues.end()) {
+        queueIt->second->incrRefCount();
+        return dynamic_cast<QueueImpl *>(queueIt->second);
+    }
+
+    /* 
+     * Make sure that all the Zookeeper nodes exist that are part of
+     * this object.
+     */
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(queueKey)),
+                 "Could not determine whether key %s exists: %s",
+                 queueKey.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        return NULL;
+    }
+
+    queue = new QueueImpl(this,
+                          queueKey,
+                          queueName,
+                          dynamic_cast<NotifyableImpl *>(parent));
+    queue->initializeCachedRepresentation();
+    
+    /*
+     * Set up handler for changes in Notifyable state.
+     */
+    establishNotifyableStateChange(queue);
+
+    m_queues[queueKey] = queue;
+
+    return queue;
 }
 
 string
@@ -2252,14 +2468,15 @@ FactoryOps::loadKeyValMap(const string &key, int32_t &version)
 
     string kv;
     SAFE_CALLBACK_ZK(
-        (kv = m_zk.getNodeData(
+        m_zk.getNodeData(
             kvnode,
+            kv,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
             getChangeHandler(
                 CachedObjectChangeHandlers::PROPERTYLIST_VALUES_CHANGE),
-            &stat)),
-        (kv = m_zk.getNodeData(kvnode, NULL, NULL, &stat)),
+            &stat),
+        m_zk.getNodeData(kvnode, kv, NULL, NULL, &stat),
         CachedObjectChangeHandlers::PROPERTYLIST_VALUES_CHANGE,
         kvnode,
         "Reading the value of %s failed: %s",
@@ -2749,8 +2966,8 @@ FactoryOps::createDataDistribution(const string &distName,
 
 PropertyListImpl *
 FactoryOps::createPropertyList(const string &propListName,
-                             const string &propListKey,
-                             Notifyable *parent) 
+                               const string &propListKey,
+                               Notifyable *parent) 
 {
     TRACE(CL_LOG, "createPropertyList");
 
@@ -2776,6 +2993,27 @@ FactoryOps::createPropertyList(const string &propListName,
      * object to the cache.
      */
     return loadPropertyList(propListName, propListKey, parent);
+}
+
+QueueImpl *
+FactoryOps::createQueue(const string &queueName,
+                        const string &queueKey,
+                        Notifyable *parent) 
+{
+    TRACE(CL_LOG, "createQueue");
+
+    SAFE_CALL_ZK(m_zk.createNode(queueKey, "", 0),
+                 "Could not create key %s: %s",
+                 queueKey.c_str(),
+                 true,
+                 true);
+    
+    /*
+     * Load the queue, which will load the data,
+     * establish all the event notifications, and add the
+     * object to the cache.
+     */
+    return loadQueue(queueName, queueKey, parent);
 }
 
 GroupImpl *
@@ -3020,6 +3258,18 @@ FactoryOps::removePropertyList(PropertyListImpl *propList)
 }
 
 void
+FactoryOps::removeQueue(QueueImpl *queue)
+{
+    TRACE(CL_LOG, "removeQueue");    
+
+    SAFE_CALL_ZK(m_zk.deleteNode(queue->getKey(), true),
+                 "Could not delete key %s: %s",
+                 queue->getKey().c_str(),
+                 false,
+                 true);
+}
+
+void
 FactoryOps::removeGroup(GroupImpl *group)
 {
     TRACE(CL_LOG, "removeGroup");    
@@ -3088,7 +3338,11 @@ FactoryOps::removeNotifyableFromCacheByKey(const string &key)
     }
     else if (NotifyableKeyManipulator::isPropertyListKey(components)) {
         ntpMapLock = getPropertyListLock();
-        ntpMap = &m_propList;
+        ntpMap = &m_propLists;
+    }
+    else if (NotifyableKeyManipulator::isQueueKey(components)) {
+        ntpMapLock = getQueueLock();
+        ntpMap = &m_queues;
     }
     else if (NotifyableKeyManipulator::isDataDistributionKey(components)) {
         ntpMapLock = getDataDistributionsLock();
@@ -3182,13 +3436,14 @@ FactoryOps::getNodeClientState(const string &nodeKey)
     string res;
 
     SAFE_CALLBACK_ZK(
-        (res = m_zk.getNodeData(
+        m_zk.getNodeData(
             ckey,
+            res,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
             getChangeHandler(
-                CachedObjectChangeHandlers::NODE_CLIENT_STATE_CHANGE))),
-        (res = m_zk.getNodeData(ckey)),
+                CachedObjectChangeHandlers::NODE_CLIENT_STATE_CHANGE)),
+        m_zk.getNodeData(ckey, res),
         CachedObjectChangeHandlers::NODE_CLIENT_STATE_CHANGE,
         ckey,
         "Could not read node %s client state: %s",
@@ -3210,13 +3465,14 @@ FactoryOps::getNodeMasterSetState(const string &nodeKey)
     string res;
 
     SAFE_CALLBACK_ZK(
-        (res = m_zk.getNodeData(
+        m_zk.getNodeData(
             ckey,
+            res,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
             getChangeHandler(
-                CachedObjectChangeHandlers::NODE_MASTER_SET_STATE_CHANGE))),
-        (res = m_zk.getNodeData(ckey)),
+                CachedObjectChangeHandlers::NODE_MASTER_SET_STATE_CHANGE)),
+        m_zk.getNodeData(ckey, res),
         CachedObjectChangeHandlers::NODE_MASTER_SET_STATE_CHANGE,
         ckey,
         "Could not read node %s master set state: %s",
@@ -3246,7 +3502,7 @@ FactoryOps::createConnected(const string &key)
              "%d;%d;%lld",
              (int32_t) getpid(),
              (int32_t) pthread_self(),
-             (uint64_t) TimerService::getCurrentTimeMillis());
+             (uint64_t) TimerService::getCurrentTimeMsecs());
 
     try {
         /*
@@ -3316,14 +3572,21 @@ Mutex *
 FactoryOps::getPropertyListLock() 
 {
     TRACE(CL_LOG, "getPropertyListLock");
-    return &m_propListLock; 
+    return &m_propListsLock; 
+}
+
+Mutex *
+FactoryOps::getQueueLock() 
+{
+    TRACE(CL_LOG, "getQueueLock");
+    return &m_queuesLock; 
 }
 
 Mutex *
 FactoryOps::getDataDistributionsLock() 
 { 
     TRACE(CL_LOG, "getDataDistributionsLock");
-    return &m_distLock; 
+    return &m_distsLock; 
 }
    
 Mutex *
@@ -3337,28 +3600,28 @@ Mutex *
 FactoryOps::getApplicationsLock() 
 { 
     TRACE(CL_LOG, "getApplicationsLock");
-    return &m_appLock; 
+    return &m_appsLock; 
 }
 
 Mutex *
 FactoryOps::getGroupsLock() 
 { 
     TRACE(CL_LOG, "getGroupsLock");
-    return &m_groupLock; 
+    return &m_groupsLock; 
 }
 
 Mutex *
 FactoryOps::getNodesLock() 
 { 
     TRACE(CL_LOG, "getNodesLock");
-    return &m_nodeLock; 
+    return &m_nodesLock; 
 }
 
 Mutex *
 FactoryOps::getProcessSlotsLock() 
 { 
     TRACE(CL_LOG, "getProcessSlotsLock");
-    return &m_processSlotLock;
+    return &m_processSlotsLock;
 }
 
 Mutex *
@@ -3420,12 +3683,12 @@ FactoryOps::getApplicationNames()
     list.clear();
     SAFE_CALLBACK_ZK(
         m_zk.getNodeChildren(
-            list,
             key, 
+            list,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
             getChangeHandler(CachedObjectChangeHandlers::APPLICATIONS_CHANGE)),
-        m_zk.getNodeChildren(list, key),
+        m_zk.getNodeChildren(key, list),
         CachedObjectChangeHandlers::APPLICATIONS_CHANGE,
         key,
         "Reading the value of %s failed: %s",
@@ -3461,12 +3724,12 @@ FactoryOps::getGroupNames(GroupImpl *group)
     list.clear();
     SAFE_CALLBACK_ZK(
         m_zk.getNodeChildren(
-            list,
             key,
+            list,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
             getChangeHandler(CachedObjectChangeHandlers::GROUPS_CHANGE)),
-        m_zk.getNodeChildren(list, key),
+        m_zk.getNodeChildren(key, list),
         CachedObjectChangeHandlers::GROUPS_CHANGE,
         key,
         "Reading the value of %s failed: %s",
@@ -3505,13 +3768,13 @@ FactoryOps::getDataDistributionNames(GroupImpl *group)
     list.clear();
     SAFE_CALLBACK_ZK(
         m_zk.getNodeChildren(
-            list,
             key,
+            list,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
             getChangeHandler(
                 CachedObjectChangeHandlers::DATADISTRIBUTIONS_CHANGE)),
-        m_zk.getNodeChildren(list, key),
+        m_zk.getNodeChildren(key, list),
         CachedObjectChangeHandlers::DATADISTRIBUTIONS_CHANGE,
         key,
         "Reading the value of %s failed: %s",
@@ -3549,12 +3812,12 @@ FactoryOps::getNodeNames(GroupImpl *group)
     list.clear();
     SAFE_CALLBACK_ZK(
         m_zk.getNodeChildren(
-            list,
             key,
+            list,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
             getChangeHandler(CachedObjectChangeHandlers::NODES_CHANGE)),
-        m_zk.getNodeChildren(list, key),
+        m_zk.getNodeChildren(key, list),
         CachedObjectChangeHandlers::NODES_CHANGE,
         key,
         "Reading the value of %s failed: %s",
@@ -3592,12 +3855,12 @@ FactoryOps::getProcessSlotNames(NodeImpl *node)
     list.clear();
     SAFE_CALLBACK_ZK(
         m_zk.getNodeChildren(
-            list,
             key,
+            list,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
             getChangeHandler(CachedObjectChangeHandlers::PROCESSSLOTS_CHANGE)),
-        m_zk.getNodeChildren(list, key),
+        m_zk.getNodeChildren(key, list),
         CachedObjectChangeHandlers::PROCESSSLOTS_CHANGE,
         key,
         "Reading the value of %s failed: %s",
@@ -3631,19 +3894,64 @@ FactoryOps::getPropertyListNames(NotifyableImpl *ntp)
     string key =
         ntp->getKey() +
         ClusterlibStrings::KEYSEPARATOR +
-        ClusterlibStrings::PROPERTYLIST;
+        ClusterlibStrings::PROPERTYLISTS;
 
     list.clear();
     SAFE_CALLBACK_ZK(
         m_zk.getNodeChildren(
-            list,
             key,
+            list,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
             getChangeHandler(
                 CachedObjectChangeHandlers::PROPERTYLIST_VALUES_CHANGE)),
-        m_zk.getNodeChildren(list, key),
+        m_zk.getNodeChildren(key, list),
         CachedObjectChangeHandlers::PROPERTYLIST_VALUES_CHANGE,
+        key,
+        "Reading the value of %s failed: %s",
+        key.c_str(),
+        true,
+        true);
+    
+    for (NameList::iterator nlIt = list.begin();
+         nlIt != list.end();
+         ++nlIt) {
+        /*
+         * Remove the key prefix
+         */
+        *nlIt = nlIt->substr(key.length() + 
+                             ClusterlibStrings::KEYSEPARATOR.length());
+    }
+
+    return list;
+}
+NameList
+FactoryOps::getQueueNames(NotifyableImpl *ntp)
+{
+    TRACE(CL_LOG, "getQueueNames");
+
+    if (ntp == NULL) {
+        throw InvalidArgumentsException(
+            "NULL notifyables in getQueueNames");
+    }
+
+    NameList list;
+    string key =
+        ntp->getKey() +
+        ClusterlibStrings::KEYSEPARATOR +
+        ClusterlibStrings::QUEUES;
+
+    list.clear();
+    SAFE_CALLBACK_ZK(
+        m_zk.getNodeChildren(
+            key,
+            list,
+            &m_zkEventAdapter,
+            getCachedObjectChangeHandlers()->
+            getChangeHandler(
+                CachedObjectChangeHandlers::QUEUE_CHILD_CHANGE)),
+        m_zk.getNodeChildren(key, list),
+        CachedObjectChangeHandlers::QUEUE_CHILD_CHANGE,
         key,
         "Reading the value of %s failed: %s",
         key.c_str(),
@@ -3712,6 +4020,14 @@ FactoryOps::getChildren(Notifyable *ntp)
     if (dist != NULL) {
         LOG_DEBUG(CL_LOG, 
                   "getChildren: %s is a DataDistribution", 
+                  ntp->getKey().c_str());
+        return ntList;
+    }
+  
+    Queue *queue = dynamic_cast<Queue *>(ntp);
+    if (queue != NULL) {
+        LOG_DEBUG(CL_LOG, 
+                  "getChildren: %s is a Queue", 
                   ntp->getKey().c_str());
         return ntList;
     }
@@ -4035,12 +4351,13 @@ FactoryOps::establishNotifyableStateChange(NotifyableImpl *ntp)
     }
 
     SAFE_CALLBACK_ZK(
-        (ready = m_zk.getNodeData(
+        m_zk.getNodeData(
             ntp->getKey(),
+            ready,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
             getChangeHandler(
-                CachedObjectChangeHandlers::NOTIFYABLE_STATE_CHANGE))),
+                CachedObjectChangeHandlers::NOTIFYABLE_STATE_CHANGE)),
         ,
         CachedObjectChangeHandlers::NOTIFYABLE_STATE_CHANGE,
         ntp->getKey(),

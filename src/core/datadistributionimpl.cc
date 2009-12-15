@@ -26,7 +26,7 @@ namespace clusterlib
 {
 
 /**********************************************************************/
-/* Implementation of class DataDistribution                           */
+/* Implementation of class DataDistributionImpl                       */
 /**********************************************************************/
 
 /*
@@ -182,10 +182,7 @@ DataDistributionImpl::update()
      * Only update if this is a newer version.
      */
     if (version > getVersion()) {
-        while (m_shardTree.empty() == false) {
-            m_shardTree.deleteNode(m_shardTree.getTreeHead());
-        }
-
+        clear();
         unmarshall(dataDistribution);
         setVersion(version);
         return true;
@@ -280,6 +277,7 @@ DataDistributionImpl::getAllShards(const Notifyable *ntp, int32_t priority)
     vector<Shard> res;
     IntervalTree<HashRange, ShardTreeData>::iterator treeIt;
 
+    Locker l(getSyncLock());
     for (treeIt = m_shardTree.begin(); treeIt != m_shardTree.end(); treeIt++) {
         res.push_back(Shard(treeIt->getStartRange(),
                             treeIt->getEndRange(),
@@ -310,6 +308,8 @@ DataDistributionImpl::removeShard(Shard &shard)
 
     throwIfRemoved();
 
+    Locker l(getSyncLock());
+
     IntervalTreeNode<HashRange, ShardTreeData> *treeNtp = 
         m_shardTree.nodeSearch(shard.getStartRange(),
                                shard.getEndRange(),
@@ -332,6 +332,7 @@ DataDistributionImpl::getShardCount()
 
     throwIfRemoved();
 
+    Locker l(getSyncLock());
     return m_shardTreeCount;
 }
 
@@ -419,12 +420,15 @@ DataDistributionImpl::clear()
 DataDistributionImpl::~DataDistributionImpl()
 {
     Locker l(getSyncLock());
-    
+
+    /*
+     * Cannot simply call "clear()" since the repository object may have
+     * been removed.
+     */
     while (m_shardTree.empty() == false) {
         m_shardTree.deleteNode(m_shardTree.getTreeHead());
     }
-
-    m_shardTreeCount = 0;    
+    m_shardTreeCount = 0;
 }
 
 /*

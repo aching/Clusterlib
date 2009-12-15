@@ -10,6 +10,7 @@
 #define __MUTEX_H__
 
 #include "clusterlibexceptions.h"
+#include "timerservice.h"
 
 namespace clusterlib {
 
@@ -105,11 +106,23 @@ class Cond
         pthread_cond_destroy(&m_cond);
     }
 
+    /**
+     * Wait unconditionally for the conditional to be signaled.
+     *
+     * @param mutex the mutex to wait on
+     */
     void wait(Mutex& mutex)
     {
         pthread_cond_wait(&m_cond, &mutex.mutex);
     }
 
+    /**
+     * Wait for the conditional to be signaled.
+     * 
+     * @param mutex the mutex to wait on
+     * @param timeout the amount of milliseconds to wait until giving up
+     * return true if the conditional was signaled, false if timed out
+     */
     bool wait(Mutex& mutex, uint64_t timeout)
     {
         struct timeval now;
@@ -366,11 +379,13 @@ class RdWrLocker
 /**
  * Grouping of a predicate, mutex, and a conditional.
  */
-struct PredMutexCond
+class PredMutexCond
 {
-    PredMutexCond() 
-        : pred(false),
-          refCount(0) {}
+  public:
+    /**
+     * Constructor.
+     */
+    PredMutexCond();
 
     /**
      * Signal another thread that is waiting on a predicate.  This is
@@ -378,27 +393,21 @@ struct PredMutexCond
      * false before calling either the predWait and predSignal
      * functions on either thread.
      */
-    void predSignal()
-    {
-        Locker l1(&(mutex));
-        pred = true;
-        cond.signal();
-    }
+    void predSignal();
 
     /**
      * Wait on a predicate to be changed by another thread.  This is a
      * one time wait.  Make sure that the predicate is set to false
      * before calling either the predWait and predSignal functions on
      * either thread.
+     *
+     * @param timeout how long to wait until an signal becomes available, 
+     *        in milliseconds; if <code>0</code> then wait forever;
+     *        if <code>< 0</code> then do not wait at all. 
+     * @return false if the function timed out, true if predicate changed
+     *         (always true if it returns and the timeout == 0)
      */
-    void predWait()
-    {
-        mutex.acquire();
-        while (pred == false) {
-            cond.wait(mutex);
-        }
-        mutex.release();
-    }
+    bool predWait(const uint64_t timeout = 0);
 
     /**
      * Has the predicate been satified?

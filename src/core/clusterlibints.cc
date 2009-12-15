@@ -39,8 +39,11 @@ const int32_t ClusterlibInts::APP_COMPONENTS_COUNT = 6;
  */
 const int32_t ClusterlibInts::DIST_COMPONENTS_MIN_COUNT = 6;
 const int32_t ClusterlibInts::PROP_COMPONENTS_MIN_COUNT = 6;
+const int32_t ClusterlibInts::QUEUE_COMPONENTS_MIN_COUNT = 6;
 const int32_t ClusterlibInts::GROUP_COMPONENTS_MIN_COUNT = 6;
 const int32_t ClusterlibInts::NODE_COMPONENTS_MIN_COUNT = 6;
 const int32_t ClusterlibInts::PROCESSSLOT_COMPONENTS_MIN_COUNT = 8;
+
+const size_t ClusterlibInts::SEQUENCE_NUMBER_SIZE = 10;
 
 };	/* End of 'namespace clusterlib' */

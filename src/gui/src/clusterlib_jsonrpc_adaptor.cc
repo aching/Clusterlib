@@ -174,6 +174,7 @@ namespace clusterlib { namespace rpc { namespace json {
                 optionAddGroup + optionDelim +
                 optionAddDataDistribution + optionDelim +
                 optionAddNode + optionDelim +
+                optionAddQueue + optionDelim +
                 optionAddPropertyList;
         } else if (dynamic_cast<Group*>(notifyable) != NULL) {
             type = idTypeGroup;
@@ -182,16 +183,19 @@ namespace clusterlib { namespace rpc { namespace json {
                 optionAddGroup + optionDelim +
                 optionAddDataDistribution + optionDelim +
                 optionAddNode + optionDelim +
+                optionAddQueue + optionDelim +
                 optionAddPropertyList;
         } else if (dynamic_cast<Node*>(notifyable) != NULL) {
             type = idTypeNode;
             id[idOptions] =
                 optionRemove + optionDelim +
+                optionAddQueue + optionDelim +
                 optionAddPropertyList;
         } else if (dynamic_cast<ProcessSlot*>(notifyable) != NULL) {
             type = idTypeProcessSlot;
             id[idOptions] =
                 optionRemove + optionDelim +
+                optionAddQueue + optionDelim +
                 optionAddPropertyList + optionDelim +
                 optionStartProcess + optionDelim +
                 optionStopProcess;
@@ -199,9 +203,14 @@ namespace clusterlib { namespace rpc { namespace json {
             type = idTypeDataDistribution;
             id[idOptions] =
                 optionRemove + optionDelim +
+                optionAddQueue + optionDelim +
                 optionAddPropertyList;
         } else if (dynamic_cast<PropertyList *>(notifyable) != NULL) {
             type = idTypePropertyList;
+            id[idOptions] =
+                optionRemove;
+        } else if (dynamic_cast<Queue *>(notifyable) != NULL) {
+            type = idTypeQueue;
             id[idOptions] =
                 optionRemove;
         } else {
@@ -341,6 +350,9 @@ namespace clusterlib { namespace rpc { namespace json {
                 attributes[idPropertyListSummary] = 
                     getPropertyListStatus(childObj["propertyLists"].
                                           get<JSONValue::JSONArray>()); 
+                attributes[idQueueSummary] = 
+                    getQueueStatus(childObj["queues"].
+                                   get<JSONValue::JSONArray>()); 
             }
             else if (dynamic_cast<Group *>(notifyable)) {
                 Group *group = 
@@ -372,6 +384,9 @@ namespace clusterlib { namespace rpc { namespace json {
                 attributes[idPropertyListSummary] = 
                     getPropertyListStatus(childObj["propertyLists"].
                                           get<JSONValue::JSONArray>()); 
+                attributes[idQueueSummary] = 
+                    getQueueStatus(childObj["queues"].
+                                   get<JSONValue::JSONArray>()); 
             }
             else if (dynamic_cast<DataDistribution *>(notifyable)) {
                 DataDistribution *dataDistribution = 
@@ -385,6 +400,9 @@ namespace clusterlib { namespace rpc { namespace json {
                 attributes[idPropertyListSummary] = 
                     getPropertyListStatus(childObj["propertyLists"].
                                           get<JSONValue::JSONArray>()); 
+                attributes[idQueueSummary] = 
+                    getQueueStatus(childObj["queues"].
+                                   get<JSONValue::JSONArray>()); 
             }
             else if (dynamic_cast<Node *>(notifyable)) {
                 Node *node = dynamic_cast<Node *>(notifyable);
@@ -404,6 +422,10 @@ namespace clusterlib { namespace rpc { namespace json {
                 attributes[idPropertyListSummary] = 
                     getPropertyListStatus(childObj["propertyLists"].
                                           get<JSONValue::JSONArray>()); 
+                attributes[idQueueSummary] = 
+                    getQueueStatus(childObj["queues"].
+                                   get<JSONValue::JSONArray>()); 
+
             }
             else if (dynamic_cast<ProcessSlot *>(notifyable)) {
                 ProcessSlot *processSlot = 
@@ -429,6 +451,9 @@ namespace clusterlib { namespace rpc { namespace json {
                 attributes[idPropertyListSummary] = 
                     getPropertyListStatus(childObj["propertyLists"].
                                           get<JSONValue::JSONArray>()); 
+                attributes[idQueueSummary] = 
+                    getQueueStatus(childObj["queues"].
+                                   get<JSONValue::JSONArray>()); 
             }
             else if (dynamic_cast<PropertyList *>(notifyable)) {
                 PropertyList *propertyList = 
@@ -448,6 +473,25 @@ namespace clusterlib { namespace rpc { namespace json {
                         = propertyList->getProperty(*it);
                 }
             }
+            else if (dynamic_cast<Queue *>(notifyable)) {
+                attributes[idAddAttribute] = addQueueElement;
+                Queue *queue = 
+                    dynamic_cast<Queue *>(notifyable);
+                map<int64_t, string> idElementMap = 
+                    queue->getAllElements();
+                stringstream ss;
+                map<int64_t, string>::const_iterator idElementMapIt;
+                for (idElementMapIt = idElementMap.begin();
+                     idElementMapIt != idElementMap.end();
+                     idElementMapIt++) {
+                    ss.str("");
+                    ss << idQueueElementPrefix << " " << idElementMapIt->first;
+                    attributes[idPrefixDeletable + idPrefixDelim +
+                               ss.str()] = idElementMapIt->second;
+                }
+                attributes[idQueueCount] = queue->size();
+            }
+
             return attributes;
         } catch (const ::clusterlib::Exception &ex) {
             LOG4CXX_WARN(m_logger, 
@@ -571,6 +615,20 @@ namespace clusterlib { namespace rpc { namespace json {
                          key);
                 }
             }
+            else if (dynamic_cast<Queue *>(notifyable)) {
+                if (arr.size() != 4) {
+                    throw JSONRPCInvocationException(
+                        "Needs 4 elements in array");
+                }
+
+                string op = 
+                    arr[setAttributeKeyIdx + 1].get<JSONValue::JSONString>();
+                Queue *queue = dynamic_cast<Queue *>(notifyable);
+                if (!op.compare("Add queue element")) {
+                    queue->put(arr[setAttributeKeyIdx + 3].
+                               get<JSONValue::JSONString>());
+                }
+            }
             return string("0");
         } catch (const ::clusterlib::Exception &ex) {
             LOG4CXX_WARN(m_logger, 
@@ -628,6 +686,20 @@ namespace clusterlib { namespace rpc { namespace json {
                         "No such op for property list key " + key);
                 }
             }
+            else if (dynamic_cast<Queue *>(notifyable)) {
+                Queue *queue = dynamic_cast<Queue *>(notifyable);
+                if (!op.compare(idQueueElementPrefix)) {
+                    stringstream ss;
+                    ss << attribute;
+                    int64_t id;
+                    ss >> id;
+                    queue->removeElement(id);
+                }
+                else {
+                    throw JSONRPCInvocationException(
+                        "No such op for queue key " + key);
+                }
+            }
             return string("0");
         } catch (const ::clusterlib::Exception &ex) {
             LOG4CXX_WARN(m_logger, 
@@ -642,7 +714,7 @@ namespace clusterlib { namespace rpc { namespace json {
             Notifyable *notifyable = NULL;
             JSONValue::JSONObject children;
             JSONValue::JSONArray root, applications, groups, 
-                dataDistributions, nodes, processSlots, propertyLists;
+                dataDistributions, nodes, processSlots, propertyLists, queues;
 
             /* Special case of getting the root */
             if (name == "/") {
@@ -732,7 +804,7 @@ namespace clusterlib { namespace rpc { namespace json {
                 }
             }
 
-            /* If not a propertyList, object can search for propertyList */
+            /* If not a PropertyList, object can search for PropertyLists */
             if (!dynamic_cast<PropertyList *>(notifyable)) {
                 names = notifyable->getPropertyListNames();
                 for (NameList::const_iterator iter = names.begin(); 
@@ -741,7 +813,21 @@ namespace clusterlib { namespace rpc { namespace json {
                     PropertyList *child = notifyable->getPropertyList(*iter);
                     propertyLists.push_back(getNotifyableId(child));
                 }
-                
+            }
+
+            /* 
+             * If not a PropertyList or a Queue, object can search for
+             * Queues
+             */
+            if ((!dynamic_cast<PropertyList *>(notifyable) &&
+                 !dynamic_cast<Queue *>(notifyable))) {
+                names = notifyable->getQueueNames();
+                for (NameList::const_iterator iter = names.begin(); 
+                     iter != names.end(); 
+                     ++iter) {
+                    Queue *child = notifyable->getQueue(*iter);
+                    queues.push_back(getNotifyableId(child));
+                }
             }
 
             children["applications"] = applications;
@@ -750,6 +836,7 @@ namespace clusterlib { namespace rpc { namespace json {
             children["nodes"] = nodes;
             children["processSlots"] = processSlots;
             children["propertyLists"] = propertyLists;
+            children["queues"] = queues;
 
             return children;
         } catch (const ::clusterlib::Exception &ex) {
@@ -794,6 +881,9 @@ namespace clusterlib { namespace rpc { namespace json {
                 else if (!op.compare(optionAddNode)) {
                     notifyable = application->getNode(name, true);
                 }
+                else if (!op.compare(optionAddQueue)) {
+                    notifyable = application->getQueue(name, true);
+                }
                 else if (!op.compare(optionAddPropertyList)) {
                     notifyable =  application->getPropertyList(name, true);
                 }
@@ -813,6 +903,9 @@ namespace clusterlib { namespace rpc { namespace json {
                 else if (!op.compare(optionAddNode)) {
                     notifyable = group->getNode(name, true);
                 }
+                else if (!op.compare(optionAddQueue)) {
+                    notifyable = group->getQueue(name, true);
+                }
                 else if (!op.compare(optionAddPropertyList)) {
                     notifyable = group->getPropertyList(name, true);
                 }
@@ -824,7 +917,10 @@ namespace clusterlib { namespace rpc { namespace json {
             else if (dynamic_cast<DataDistribution *>(notifyable)) {
                 DataDistribution *dataDistributions = 
                     dynamic_cast<DataDistribution *>(notifyable);
-                if (!op.compare(optionAddPropertyList)) {
+                if (!op.compare(optionAddQueue)) {
+                    notifyable = dataDistributions->getQueue(name, true);
+                }
+                else if (!op.compare(optionAddPropertyList)) {
                     notifyable = dataDistributions->getPropertyList(name, true);
                 }
                 else {
@@ -834,7 +930,10 @@ namespace clusterlib { namespace rpc { namespace json {
             }
             else if (dynamic_cast<Node *>(notifyable)) {
                 Node *node = dynamic_cast<Node *>(notifyable);
-                if (!op.compare(optionAddPropertyList)) {
+                if (!op.compare(optionAddQueue)) {
+                    notifyable = node->getQueue(name, true);
+                }
+                else if (!op.compare(optionAddPropertyList)) {
                     notifyable = node->getPropertyList(name, true);
                 }                
                 else {
@@ -845,7 +944,10 @@ namespace clusterlib { namespace rpc { namespace json {
             else if (dynamic_cast<ProcessSlot *>(notifyable)) {
                 ProcessSlot *processSlot = 
                     dynamic_cast<ProcessSlot *>(notifyable);
-                if (!op.compare(optionAddPropertyList)) {
+                if (!op.compare(optionAddQueue)) {
+                    notifyable = processSlot->getQueue(name, true);
+                }
+                else if (!op.compare(optionAddPropertyList)) {
                     notifyable = processSlot->getPropertyList(name, true);
                 }                
                 else {
@@ -856,6 +958,10 @@ namespace clusterlib { namespace rpc { namespace json {
             else if (dynamic_cast<PropertyList *>(notifyable)) {
                 throw JSONRPCInvocationException(
                     "No such op for property list key " + key);
+            }
+            else if (dynamic_cast<Queue *>(notifyable)) {
+                throw JSONRPCInvocationException(
+                    "No such op for queue key " + key);
             }
             else if (notifyable == NULL) {
                 throw JSONRPCInvocationException(
@@ -1335,6 +1441,22 @@ namespace clusterlib { namespace rpc { namespace json {
         return jsonObj;
     }
 
+    JSONValue::JSONObject MethodAdaptor::getOneQueueStatus(
+        Queue *queue) {
+        JSONValue::JSONObject jsonObj;
+        jsonObj[idProperty] = queue->getKey();
+        jsonObj[idNameProperty] = queue->getName();
+        if (queue->size() == 0) {
+            jsonObj[idNotifyableStatus] = statusInactive;
+            jsonObj[idNotifyableState] = "Empty queue";
+        }
+        else {
+            jsonObj[idNotifyableStatus] = statusReady;
+            jsonObj[idNotifyableState] = "Queue is being used";
+        }
+        return jsonObj;
+    }
+
     JSONValue::JSONObject MethodAdaptor::getOneShardStatus(
         Shard &shard) {
         JSONValue::JSONObject jsonObj;
@@ -1490,6 +1612,30 @@ namespace clusterlib { namespace rpc { namespace json {
                     getOnePropertyListStatus(
                         dynamic_cast<PropertyList*>(
                             getNotifyable(id, idTypePropertyList))));
+            } catch (const JSONValueException &ex) {
+                LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
+            } catch (const ::clusterlib::Exception &ex) {
+                LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
+            } catch (const JSONRPCInvocationException &ex) {
+                LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
+            }
+        }
+        
+        return status;
+    }
+
+    JSONValue::JSONArray MethodAdaptor::getQueueStatus(
+        const JSONValue::JSONArray &ids) {
+        JSONValue::JSONArray status;
+        for (JSONValue::JSONArray::const_iterator iter = ids.begin(); 
+             iter != ids.end(); 
+             ++iter) {
+            try {
+                JSONValue::JSONObject id = iter->get<JSONValue::JSONObject>();
+                status.push_back(
+                    getOneQueueStatus(
+                        dynamic_cast<Queue*>(
+                            getNotifyable(id, idTypeQueue))));
             } catch (const JSONValueException &ex) {
                 LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
             } catch (const ::clusterlib::Exception &ex) {

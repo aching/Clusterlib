@@ -120,8 +120,11 @@ const int32_t EN_APPSCHANGE =			    (1<<22);
 /** The lock on this notifyable changed */
 const int32_t EN_LOCKNODECHANGE =                   (1<<23);
 
+/** The children of this queue changed */
+const int32_t EN_QUEUECHILDCHANGE =                 (1<<24);
+
 /** Clusterlib has been shutdown */
-const int32_t EN_ENDEVENT =                         (1<<24);
+const int32_t EN_ENDEVENT =                         (1<<25);
 
 /*
  * Interface for user event handler. Must be derived

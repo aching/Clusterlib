@@ -325,6 +325,7 @@ class SynchronousEventAdapter
         
     void eventReceived(const EventSource<E> &source, const E &e)
     {
+        TRACE(EV_LOG, "eventReceived");
         LOG_DEBUG(EV_LOG, 
                   "eventReceived: event 0x%x, instance 0x%x, thread 0x%x",
                   (uint32_t) &e, 
@@ -348,6 +349,15 @@ class SynchronousEventAdapter
     E getNextEvent(int32_t timeout = 0, bool *timedOut = NULL)
     {
         TRACE(EV_LOG, "getNextEvent");
+
+        LOG_DEBUG(EV_LOG, 
+                  "getNextEvent: timeout %d, bool address 0x%x, "
+                  "instance 0x%x, thread 0x%x",
+                  timeout,
+                  (uint32_t) timedOut,
+                  (uint32_t) this, 
+                  (uint32_t) pthread_self());
+
         return m_queue.take(timeout, timedOut);
     }
         
@@ -693,7 +703,8 @@ class Timer
      */
     TimerId scheduleAfter(int64_t timeFromNow, const T &userData)
     {
-        return scheduleAt(getCurrentTimeMillis() + timeFromNow, userData);
+        return scheduleAt(TimerService::getCurrentTimeMsecs() + timeFromNow, 
+                          userData);
     }
 
     /**
@@ -719,16 +730,6 @@ class Timer
         return id;
     }
         
-    /**
-     * \brief Returns the current time since Jan 1, 1970, in milliseconds.
-     * 
-     * @return the current time in milliseconds
-     */
-    int64_t getCurrentTimeMillis() const
-    {
-        return TimerService::getCurrentTimeMillis();
-    }
-
     /**
      * \brief Cancels the given timer event.
      * 
@@ -777,7 +778,7 @@ class Timer
                 TimerEvent<T> event = m_queue.front();      
                 //check whether we can send it right away
                 int64_t timeToWait = 
-                    event.getAlarmTime() - getCurrentTimeMillis();
+                    event.getAlarmTime() - TimerService::getCurrentTimeMsecs();
                 if (timeToWait <= 0) {
                     m_queue.pop_front();
                     //we fire only if it's still in the queue and alarm

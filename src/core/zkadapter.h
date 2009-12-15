@@ -331,6 +331,14 @@ class ZooKeeperAdapter
     static std::string getStateString(int32_t state);
  
     /**
+     * Split a sequence node into a name and a sequence number.  This
+     * will not be needed when JIRA issues ZOOKEEPER-616 is resolved.
+     */
+    static void splitSequenceNode(const std::string &sequenceNode,
+                                  std::string *sequenceName = NULL,
+                                  int64_t *sequenceNumber = NULL);
+
+    /**
      * \brief The global function that handles all ZK asynchronous
      * notifications.
      */
@@ -510,6 +518,7 @@ class ZooKeeperAdapter
      * 
      * @param path the absolute path name of the node for which to 
      *             get children
+     * @param children the children for this node if exists 
      * @param listener the listener for ZK watcher events; 
      *                 passing non <code>NULL</code> effectively 
      *                 establishes
@@ -519,11 +528,11 @@ class ZooKeeperAdapter
      *                time; not used if <code>listener</code> is
      *                <code>NULL</code>
      * 
-     * @return the list of absolute paths of child nodes, possibly empty
+     * @return if exists (children will not be set)
      * @throw ZooKeeperException if the operation has failed
      */
-    void getNodeChildren(std::vector<std::string> &children,
-                         const std::string &path, 
+    bool getNodeChildren(const std::string &path, 
+                         std::vector<std::string> &children,
                          ZKEventListener *listener = NULL, 
                          void *context = NULL);
                 
@@ -531,6 +540,7 @@ class ZooKeeperAdapter
      * \brief Gets the given node's data.
      * 
      * @param path the absolute path name of the node to get data from
+     * @param data the data from this path returned
      * @param listener the listener for ZK watcher events; 
      *                 passing non <code>NULL</code> effectively 
      *                 establishes a ZK watch on the given node
@@ -538,14 +548,16 @@ class ZooKeeperAdapter
      *                in a corresponding {@link ZKWatcherEvent} at later time; 
      *                not used if <code>listener</code> is <code>NULL</code>
      * @param stat the optional node statistics to be filled in by ZK
+     * @param exists true if the node exists, false otherwise
      * 
-     * @return the node's data
+     * @return if exists (data will not be set)
      * @throw ZooKeeperException if the operation has failed
      */
-    std::string getNodeData(const std::string &path, 
-                            ZKEventListener *listener = NULL, 
-                            void *context = NULL,
-                            Stat *stat = NULL);
+    bool getNodeData(const std::string &path, 
+                     std::string &data,
+                     ZKEventListener *listener = NULL, 
+                     void *context = NULL,
+                     Stat *stat = NULL);
         
     /**
      * \brief Sets the given node's data.

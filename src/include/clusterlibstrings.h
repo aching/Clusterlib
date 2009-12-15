@@ -41,7 +41,8 @@ class ClusterlibStrings
     static const std::string NODES;
     static const std::string PROCESSSLOTS;
     static const std::string DISTRIBUTIONS;
-    static const std::string PROPERTYLIST;
+    static const std::string PROPERTYLISTS;
+    static const std::string QUEUES;
 
     static const std::string CLIENTSTATE;
     static const std::string CLIENTSTATEDESC;
@@ -79,16 +80,17 @@ class ClusterlibStrings
     static const std::string DEFAULTPROPERTYLIST;
     static const std::string KEYVAL;
 
+    static const std::string QUEUEELEMENTPREFIX;
+
     static const std::string SHARDS;
     static const std::string GOLDENSHARDS;
 
-    static const std::string BID_SPLIT;
+    static const std::string SEQUENCE_SPLIT;
 
     static const std::string NOTIFYABLELOCK;
     static const std::string LEADERLOCK;
 
     static const std::string LOCKS;
-    static const std::string QUEUES;
     static const std::string BARRIERS;
     static const std::string TRANSACTIONS;
 

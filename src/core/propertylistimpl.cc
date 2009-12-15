@@ -69,15 +69,15 @@ PropertyListImpl::updatePropertyListMap()
      * Only update if this is a newer version.
      */
     if (version > getKeyValVersion()) {
-        Locker l1(getSyncLock());
+        Locker l(getSyncLock());
         m_keyValMap.clear();
         unmarshall(keyValMap);
         setKeyValVersion(version);
-        setValueChangeTime(TimerService::getCurrentTimeMillis());
+        setValueChangeTime(TimerService::getCurrentTimeMsecs());
     }
     else {
         LOG_WARN(CL_LOG,
-                 "updatePropertyListMap: Have a newer version (%d) "
+                 "updatePropertyListMap: Have a newer (or same) version (%d) "
                  "than the repository (%d)",
                  getKeyValVersion(),
                  version);
@@ -92,6 +92,7 @@ PropertyListImpl::setProperty(const string &name,
 
     throwIfRemoved();
 
+    Locker l(getSyncLock());
     m_keyValMap[name] = value;
 }
 
@@ -102,7 +103,7 @@ PropertyListImpl::deleteProperty(const string &name)
 
     throwIfRemoved();
 
-    Locker(getSyncLock());
+    Locker l(getSyncLock());
     if (m_keyValMap.erase(name) != 1) {
         LOG_WARN(CL_LOG, 
                  "deleteProperty: Failed delete with name %s", 
@@ -115,7 +116,7 @@ PropertyListImpl::publish()
 {
     TRACE(CL_LOG, "publish");
 
-    Locker k(getSyncLock());
+    Locker l(getSyncLock());
     string marshalledKeyValMap = marshall();
     int32_t finalVersion;
 	
@@ -141,7 +142,7 @@ PropertyListImpl::getPropertyListKeys() const
 
     vector<string> keys;
 
-    Locker(getSyncLock());
+    Locker l(getSyncLock());
     for (JSONValue::JSONObject::const_iterator kvIt = m_keyValMap.begin();
          kvIt != m_keyValMap.end(); 
          ++kvIt) {
@@ -158,17 +159,16 @@ PropertyListImpl::getProperty(const string &name, bool searchParent)
     
     throwIfRemoved();
 
-    Locker(getSyncLock());
-
+    Locker l(getSyncLock());
     JSONValue::JSONObject::const_iterator ssIt = m_keyValMap.find(name);
-
     if (ssIt != m_keyValMap.end()) {
         LOG_DEBUG(CL_LOG,
-                  "getProperty: Found name = %s with val %s "
-                  "in Properties key %s",
+                  "getProperty: Found name (%s) with val (%s) "
+                  "in Properties key (%s), version (%d)",
                   name.c_str(),
                   ssIt->second.get<JSONValue::JSONString>().c_str(),
-                  getKey().c_str());
+                  getKey().c_str(),
+                  getKeyValVersion());
 	return ssIt->second.get<JSONValue::JSONString>();
     }
     else if (searchParent == false) {
@@ -200,7 +200,7 @@ PropertyListImpl::getProperty(const string &name, bool searchParent)
             return string();
         }
         parentKey.append(ClusterlibStrings::KEYSEPARATOR);
-        parentKey.append(ClusterlibStrings::PROPERTYLIST);
+        parentKey.append(ClusterlibStrings::PROPERTYLISTS);
         parentKey.append(ClusterlibStrings::KEYSEPARATOR);
         parentKey.append(getName());
 
@@ -220,6 +220,7 @@ PropertyListImpl::marshall() const
 {
     TRACE(CL_LOG, "marshall");
 
+    Locker l(getSyncLock());
     return JSONCodec::encode(m_keyValMap);
 }
 
@@ -228,6 +229,7 @@ PropertyListImpl::unmarshall(const string &marshalledKeyValMap)
 {
     TRACE(CL_LOG, "unmarshall");
 
+    Locker l(getSyncLock());
     if (marshalledKeyValMap.empty()) {
         return;
     }

@@ -39,6 +39,7 @@
 #include "application.h"
 #include "node.h"
 #include "processslot.h"
+#include "queue.h"
 #include "key.h"
 #include "shard.h"
 #include "datadistribution.h"

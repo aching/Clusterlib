@@ -162,14 +162,16 @@ NodeImpl::getUseProcessSlots()
     acquireLock();
     string encodedJsonValue;
     SAFE_CALLBACK_ZK(
-        (encodedJsonValue = getOps()->getRepository()->getNodeData(
+        getOps()->getRepository()->getNodeData(
             processSlotsUsageKey,
+            encodedJsonValue,
             getOps()->getZooKeeperEventAdapter(),
             getOps()->getCachedObjectChangeHandlers()->
             getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOTS_USAGE_CHANGE))),
-        (encodedJsonValue = getOps()->getRepository()->getNodeData(
-            processSlotsUsageKey)),
+                CachedObjectChangeHandlers::PROCESSSLOTS_USAGE_CHANGE)),
+        getOps()->getRepository()->getNodeData(
+            processSlotsUsageKey,
+            encodedJsonValue),
         CachedObjectChangeHandlers::PROCESSSLOTS_USAGE_CHANGE,
         processSlotsUsageKey,
         "Reading the value of %s failed: %s",
@@ -217,8 +219,9 @@ NodeImpl::getMaxProcessSlots()
 
     acquireLock();
     string encodedJsonValue;
-    SAFE_CALL_ZK((encodedJsonValue = getOps()->getRepository()->getNodeData(
-                      processSlotsMaxKey)),
+    SAFE_CALL_ZK(getOps()->getRepository()->getNodeData(
+                      processSlotsMaxKey,
+                      encodedJsonValue),
                  "Getting of %s failed: %s",
                  processSlotsMaxKey.c_str(),
                  true,

@@ -108,7 +108,13 @@ class ClusterlibHealthCheck : public MPITestFixture {
              * Since the time to check is 10 ms, 1 second should be
              * enough time to get the health updated in the cache.
              */
-            MPI_CPPUNIT_ASSERT(_node0->isHealthy() == true);
+            
+            bool health = _node0->isHealthy();
+            string healthdesc = _node0->getClientState();
+            cerr << "testHealthCheck1: health = "
+                 << ((health == true) ? "good" : "bad")
+                 << " and description (" << healthdesc << ")" << endl;
+            MPI_CPPUNIT_ASSERT(health == true);
             _node0->unregisterHealthChecker();
         }
     }

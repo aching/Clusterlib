@@ -46,9 +46,16 @@ class ClusterlibInts
      */
     static const int32_t DIST_COMPONENTS_MIN_COUNT;
     static const int32_t PROP_COMPONENTS_MIN_COUNT;
+    static const int32_t QUEUE_COMPONENTS_MIN_COUNT;
     static const int32_t GROUP_COMPONENTS_MIN_COUNT;
     static const int32_t NODE_COMPONENTS_MIN_COUNT;
     static const int32_t PROCESSSLOT_COMPONENTS_MIN_COUNT;
+
+    /**
+     * This is known to be 10 in Zookeeper 3.1.1.  After JIRA issue
+     * ZOOKEEPER-616 is fixed, it will no longer be needed.
+     */
+    static const size_t SEQUENCE_NUMBER_SIZE;
 
   private:
     ClusterlibInts()

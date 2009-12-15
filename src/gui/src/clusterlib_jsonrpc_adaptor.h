@@ -32,11 +32,14 @@ namespace clusterlib { namespace rpc { namespace json {
         "runningExecArgs";
     const ::json::JSONValue::JSONString idProcessSlotPID = "PID";
     const ::json::JSONValue::JSONString idProcessSlotDesiredProcessState = 
-    "desiredProcessState";
+        "desiredProcessState";
     const ::json::JSONValue::JSONString idProcessSlotCurrentProcessState = 
-    "currentProcessState";
+        "currentProcessState";
     const ::json::JSONValue::JSONString idPropertyListProperty = 
         "property";
+    const ::json::JSONValue::JSONString idQueueCount = "count";
+    const ::json::JSONValue::JSONString idQueueElementPrefix = 
+        "queueElementId";
     const ::json::JSONValue::JSONString idShardCount = "shardCount";
     const ::json::JSONValue::JSONString idShardStartRange = "shardStart";
     const ::json::JSONValue::JSONString idShardEndRange = "shardEnd";
@@ -56,6 +59,7 @@ namespace clusterlib { namespace rpc { namespace json {
     const std::string idNodeSummary = "nodeSummary";
     const std::string idProcessSlotSummary = "processSlotSummary";
     const std::string idPropertyListSummary = "propertyListSummary";
+    const std::string idQueueSummary = "queueSummary";
     const std::string idShardSummary = "shardSummary";
 
     // Type that is returned from the getNotifyableAttributesFromKey function
@@ -66,6 +70,7 @@ namespace clusterlib { namespace rpc { namespace json {
     const std::string idTypeProcessSlot = "ProcessSlot";
     const std::string idTypeDataDistribution = "DataDistribution";
     const std::string idTypePropertyList = "PropertyList";
+    const std::string idTypeQueue = "Queue";
 
     // Status report
     const std::string statusInactive = "Inactive";
@@ -83,12 +88,14 @@ namespace clusterlib { namespace rpc { namespace json {
     const std::string optionAddNode = "Add Node";
     const std::string optionAddProcessSlot = "Add ProcessSlot";
     const std::string optionAddPropertyList = "Add PropertyList";
+    const std::string optionAddQueue = "Add Queue";
     const std::string optionStartProcess = "Start Process";
     const std::string optionStopProcess = "Stop Process";
     /* Separates the options (backspace should not be used) */
     const std::string optionDelim = "\b";
 
     const std::string addProperty = "Add property";
+    const std::string addQueueElement = "Add queue element";
 
     class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod {
     public:
@@ -147,6 +154,8 @@ namespace clusterlib { namespace rpc { namespace json {
             const ::json::JSONValue::JSONArray &ids);
         ::json::JSONValue::JSONArray getPropertyListStatus(
             const ::json::JSONValue::JSONArray &ids);
+        ::json::JSONValue::JSONArray getQueueStatus(
+            const ::json::JSONValue::JSONArray &ids);
         ::json::JSONValue::JSONArray getShardStatus(
             std::vector<clusterlib::Shard> &shardVec);
 
@@ -164,6 +173,8 @@ namespace clusterlib { namespace rpc { namespace json {
             clusterlib::DataDistribution *distribution);
         ::json::JSONValue::JSONObject getOnePropertyListStatus(
             clusterlib::PropertyList *propertyList);
+        ::json::JSONValue::JSONObject getOneQueueStatus(
+            clusterlib::Queue *queue);
         ::json::JSONValue::JSONObject getOneShardStatus(
             clusterlib::Shard &shard);
     };

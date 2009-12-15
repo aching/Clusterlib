@@ -31,6 +31,7 @@
 #include "datadistributionimpl.h"
 #include "propertylistimpl.h"
 #include "rootimpl.h"
+#include "queueimpl.h"
 #include "clientimpl.h"
 
 #include "notifyablekeymanipulator.h"

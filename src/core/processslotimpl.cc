@@ -43,14 +43,16 @@ ProcessSlotImpl::getJsonPortVec()
 
     string encodedJsonValue;
     SAFE_CALLBACK_ZK(
-        (encodedJsonValue = getOps()->getRepository()->getNodeData(
+        getOps()->getRepository()->getNodeData(
             processSlotPortVecKey,
+            encodedJsonValue,
             getOps()->getZooKeeperEventAdapter(),
             getOps()->getCachedObjectChangeHandlers()->
             getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_PORTVEC_CHANGE))),
-        (encodedJsonValue = getOps()->getRepository()->getNodeData(
-            processSlotPortVecKey)),
+                CachedObjectChangeHandlers::PROCESSSLOT_PORTVEC_CHANGE)),
+        getOps()->getRepository()->getNodeData(
+            processSlotPortVecKey,
+            encodedJsonValue),
         CachedObjectChangeHandlers::PROCESSSLOT_PORTVEC_CHANGE,
         processSlotPortVecKey,
         "Reading the value of %s failed: %s",
@@ -170,14 +172,16 @@ ProcessSlotImpl::getJsonExecArgs()
 
     string encodedJsonValue;
     SAFE_CALLBACK_ZK(
-        (encodedJsonValue = getOps()->getRepository()->getNodeData(
+        getOps()->getRepository()->getNodeData(
             processSlotExecArgsKey,
+            encodedJsonValue,
             getOps()->getZooKeeperEventAdapter(),
             getOps()->getCachedObjectChangeHandlers()->
             getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_EXECARGS_CHANGE))),
-        (encodedJsonValue = getOps()->getRepository()->getNodeData(
-            processSlotExecArgsKey)),
+                CachedObjectChangeHandlers::PROCESSSLOT_EXECARGS_CHANGE)),
+        getOps()->getRepository()->getNodeData(
+            processSlotExecArgsKey,
+            encodedJsonValue),
         CachedObjectChangeHandlers::PROCESSSLOT_EXECARGS_CHANGE,
         processSlotExecArgsKey,
         "Read the value of %s failed: %s",
@@ -288,14 +292,16 @@ ProcessSlotImpl::getJsonRunningExecArgs()
 
     string encodedJsonValue;
     SAFE_CALLBACK_ZK(
-        (encodedJsonValue = getOps()->getRepository()->getNodeData(
+        getOps()->getRepository()->getNodeData(
             processSlotRunningExecArgsKey,
+            encodedJsonValue,
             getOps()->getZooKeeperEventAdapter(),
             getOps()->getCachedObjectChangeHandlers()->
             getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_RUNNING_EXECARGS_CHANGE))),
-        (encodedJsonValue = getOps()->getRepository()->getNodeData(
-            processSlotRunningExecArgsKey)),
+                CachedObjectChangeHandlers::PROCESSSLOT_RUNNING_EXECARGS_CHANGE)),
+        getOps()->getRepository()->getNodeData(
+            processSlotRunningExecArgsKey,
+            encodedJsonValue),
         CachedObjectChangeHandlers::PROCESSSLOT_RUNNING_EXECARGS_CHANGE,
         processSlotRunningExecArgsKey,
         "Reading the value of %s failed: %s",
@@ -358,14 +364,16 @@ ProcessSlotImpl::getJsonPID()
 
     string encodedJsonValue;
     SAFE_CALLBACK_ZK(
-        (encodedJsonValue = getOps()->getRepository()->getNodeData(
+        getOps()->getRepository()->getNodeData(
             processSlotPIDKey,
+            encodedJsonValue,
             getOps()->getZooKeeperEventAdapter(),
             getOps()->getCachedObjectChangeHandlers()->
             getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_PID_CHANGE))),
-        (encodedJsonValue = getOps()->getRepository()->getNodeData(
-            processSlotPIDKey)),
+                CachedObjectChangeHandlers::PROCESSSLOT_PID_CHANGE)),
+        getOps()->getRepository()->getNodeData(
+            processSlotPIDKey,
+            encodedJsonValue),
         CachedObjectChangeHandlers::PROCESSSLOT_PID_CHANGE,
         processSlotPIDKey,
         "Reading thevalue of %s failed: %s",
@@ -526,14 +534,16 @@ ProcessSlotImpl::getDesiredProcessState()
 
     string encodedJsonValue;
     SAFE_CALLBACK_ZK(
-        (encodedJsonValue = getOps()->getRepository()->getNodeData(
+        getOps()->getRepository()->getNodeData(
             processSlotDesiredStateKey,
+            encodedJsonValue,
             getOps()->getZooKeeperEventAdapter(),
             getOps()->getCachedObjectChangeHandlers()->
             getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_DESIRED_STATE_CHANGE))),
-        (encodedJsonValue = getOps()->getRepository()->getNodeData(
-            processSlotDesiredStateKey)),
+                CachedObjectChangeHandlers::PROCESSSLOT_DESIRED_STATE_CHANGE)),
+        getOps()->getRepository()->getNodeData(
+            processSlotDesiredStateKey,
+            encodedJsonValue),
         CachedObjectChangeHandlers::PROCESSSLOT_DESIRED_STATE_CHANGE,
         processSlotDesiredStateKey,
         "Reading the value of %s failed: %s",
@@ -562,14 +572,16 @@ ProcessSlotImpl::getCurrentProcessState()
 
     string encodedJsonValue;
     SAFE_CALLBACK_ZK(
-        (encodedJsonValue = getOps()->getRepository()->getNodeData(
+        getOps()->getRepository()->getNodeData(
             processSlotCurrentStateKey,
+            encodedJsonValue,
             getOps()->getZooKeeperEventAdapter(),
             getOps()->getCachedObjectChangeHandlers()->
             getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_CURRENT_STATE_CHANGE))),
-        (encodedJsonValue = getOps()->getRepository()->getNodeData(
-            processSlotCurrentStateKey)),
+                CachedObjectChangeHandlers::PROCESSSLOT_CURRENT_STATE_CHANGE)),
+        getOps()->getRepository()->getNodeData(
+            processSlotCurrentStateKey,
+            encodedJsonValue),
         CachedObjectChangeHandlers::PROCESSSLOT_CURRENT_STATE_CHANGE,
         processSlotCurrentStateKey,
         "Reading the value of %s failed: %s",
@@ -617,14 +629,16 @@ ProcessSlotImpl::getReservationName()
     string currentReservationName;
     acquireLock();
     SAFE_CALLBACK_ZK(
-        (currentReservationName = getOps()->getRepository()->getNodeData(
+        getOps()->getRepository()->getNodeData(
             processSlotReservationKey,
+            currentReservationName,
             getOps()->getZooKeeperEventAdapter(),
             getOps()->getCachedObjectChangeHandlers()->
             getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_RESERVATION_CHANGE))),
-         (currentReservationName = getOps()->getRepository()->getNodeData(
-            processSlotReservationKey)),
+                CachedObjectChangeHandlers::PROCESSSLOT_RESERVATION_CHANGE)),
+        getOps()->getRepository()->getNodeData(
+            processSlotReservationKey,
+            currentReservationName),
         CachedObjectChangeHandlers::PROCESSSLOT_RESERVATION_CHANGE,
         processSlotReservationKey,
         "Reading the value of %s failed: %s",
@@ -649,14 +663,16 @@ ProcessSlotImpl::setReservationIfEmpty(string reservationName)
     bool ret = false;
     acquireLock();
     SAFE_CALLBACK_ZK(
-        (currentReservationName = getOps()->getRepository()->getNodeData(
+        getOps()->getRepository()->getNodeData(
             processSlotReservationKey,
+            currentReservationName,
             getOps()->getZooKeeperEventAdapter(),
             getOps()->getCachedObjectChangeHandlers()->
             getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_RESERVATION_CHANGE))),
-         (currentReservationName = getOps()->getRepository()->getNodeData(
-            processSlotReservationKey)),
+                CachedObjectChangeHandlers::PROCESSSLOT_RESERVATION_CHANGE)),
+        getOps()->getRepository()->getNodeData(
+            processSlotReservationKey,
+            currentReservationName),
         CachedObjectChangeHandlers::PROCESSSLOT_RESERVATION_CHANGE,
         processSlotReservationKey,
         "Reading the value of %s failed: %s",
@@ -690,14 +706,16 @@ ProcessSlotImpl::releaseReservationIfMatches(string reservationName)
     bool ret = false;
     acquireLock();
     SAFE_CALLBACK_ZK(
-        (currentReservationName = getOps()->getRepository()->getNodeData(
+        getOps()->getRepository()->getNodeData(
             processSlotReservationKey,
+            currentReservationName,
             getOps()->getZooKeeperEventAdapter(),
             getOps()->getCachedObjectChangeHandlers()->
             getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_RESERVATION_CHANGE))),
-         (currentReservationName = getOps()->getRepository()->getNodeData(
-            processSlotReservationKey)),
+                CachedObjectChangeHandlers::PROCESSSLOT_RESERVATION_CHANGE)),
+        getOps()->getRepository()->getNodeData(
+            processSlotReservationKey,
+            currentReservationName),
         CachedObjectChangeHandlers::PROCESSSLOT_RESERVATION_CHANGE,
         processSlotReservationKey,
         "Reading the value of %s failed: %s",

@@ -1,9 +1,12 @@
 #include <json.h>
 #include <sstream>
 #include <cstring>
+#include "log.h"
 
 using namespace std;
 using namespace boost;
+
+DEFINE_LOGGER(J_LOG, "json");
 
 namespace json {
 
@@ -614,6 +617,8 @@ namespace json {
     }
 
     string JSONCodec::encode(const JSONValue &object) {
+        TRACE(J_LOG, "encode");
+
         ostringstream ss;
         // 35 is enough even for 128-bit floating point number
         ss.precision(35);
@@ -622,6 +627,12 @@ namespace json {
     }
 
     JSONValue JSONCodec::decode(const string &message, size_t *pos) {
+        TRACE(J_LOG, "decode");
+
+        LOG_DEBUG(J_LOG, 
+                  "decode: message (%s), pos (%d)", 
+                  message.c_str(), 
+                  (pos != NULL) ? *pos : 0);
         istringstream ss(message);
 
         if (pos != NULL) {

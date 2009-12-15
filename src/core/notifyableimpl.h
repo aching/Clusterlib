@@ -75,6 +75,11 @@ class NotifyableImpl
     virtual PropertyList *getPropertyList(const std::string &name,
                                           bool create = false);
 
+    virtual NameList getQueueNames();
+
+    virtual Queue *getQueue(const std::string &name,
+                            bool create = false);
+
     virtual int32_t getRefCount()
     {
         Locker l(getRefCountLock());

@@ -203,6 +203,56 @@ ZooKeeperAdapter::getStateString(int32_t state)
     return res;
 }
 
+void
+ZooKeeperAdapter::splitSequenceNode(const string &sequenceNode,
+                                    string *sequenceName,
+                                    int64_t *sequenceNumber)
+{
+    TRACE(LOG, "splitSequentialNode");
+
+    if (sequenceNode.size() < 
+        clusterlib::ClusterlibInts::SEQUENCE_NUMBER_SIZE) {
+        throw ZooKeeperException("splitSequentialNode: Node " +
+                                 sequenceNode + " is too small to split");
+    }
+
+    /*
+     * Set the name properly
+     */
+    if (sequenceName != NULL) {
+        *sequenceName = sequenceNode.substr(
+            0, 
+            sequenceNode.size() - 
+            clusterlib::ClusterlibInts::SEQUENCE_NUMBER_SIZE);
+    }
+
+    /*
+     * Set and ensure that this is a legal sequence number.
+     */
+    if (sequenceNumber != NULL) {
+        *sequenceNumber = ::strtol(
+            &(sequenceNode.c_str()[
+                  sequenceNode.size() - 
+                  clusterlib::ClusterlibInts::SEQUENCE_NUMBER_SIZE]), 
+            NULL, 
+            10);
+        if (*sequenceNumber < 0) {
+            LOG_WARN(LOG, 
+                     "splitSequentialNode: Expecting a valid number "
+                     "but got %s", 
+                     &(sequenceNode.c_str()[
+                           sequenceNode.size() -    
+                           clusterlib::ClusterlibInts::SEQUENCE_NUMBER_SIZE]));
+            throw InconsistentInternalStateException(
+                string("splitSequentialNode: Expecting a valid number "
+                       "but got ") +
+                &(sequenceNode.c_str()[
+                      sequenceNode.size() -
+                      clusterlib::ClusterlibInts::SEQUENCE_NUMBER_SIZE]));
+        }
+    }
+}
+
 ZooKeeperAdapter::ZooKeeperAdapter(ZooKeeperConfig config, 
                                    ZKEventListener *lp,
                                    bool establishConnection) 
@@ -959,7 +1009,9 @@ ZooKeeperAdapter::createSequence(const string &path,
     if (!result) {
         return -1;
     } else {
-        //extract sequence number from the returned path
+        /* 
+         * Extract sequence number from the returned path.
+         */
         if (createdPath.find(path) != 0) {
             throw ZooKeeperException(string("Expecting returned path '") +
                                      createdPath + 
@@ -1012,7 +1064,7 @@ ZooKeeperAdapter::deleteNode(const string &path,
                      path.c_str());
             //get all children and delete them recursively...
             vector<string> nodeList;
-            getNodeChildren(nodeList, path, false);
+            getNodeChildren(path, nodeList, false);
             for (vector<string>::const_iterator i = nodeList.begin();
                  i != nodeList.end();
                  ++i) {
@@ -1086,7 +1138,7 @@ ZooKeeperAdapter::nodeExists(const string &path,
                              callbackAndContext,
                              stat);
         }
-    } while ((rc != ZOK) && (rh.handleRC(rc)));
+    } while (((rc != ZOK) && (rc != ZNONODE)) && (rh.handleRC(rc)));
     if (rc != ZOK) {
         if (rc == ZNONODE) {
             LOG_DEBUG(LOG, 
@@ -1110,9 +1162,9 @@ ZooKeeperAdapter::nodeExists(const string &path,
     }
 }
 
-void
-ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
-                                  const string &path, 
+bool
+ZooKeeperAdapter::getNodeChildren(const string &path, 
+                                  vector<string> &nodeList,
                                   ZKEventListener *listener,
                                   void *context)
 {
@@ -1156,8 +1208,9 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
                                    callbackAndContext,
                                    &children);
         }
-    } while ((rc != ZOK) && (rh.handleRC(rc)));
-    if (rc != ZOK) {
+    } while (((rc != ZOK) && (rc != ZNONODE)) && (rh.handleRC(rc)));
+    nodeList.clear();
+    if ((rc != ZOK) && (rc != ZNONODE)) {
         LOG_ERROR(LOG, 
                   "getNodeChildren: Error %d for %s", 
                   rc, 
@@ -1173,6 +1226,10 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
         if (listener == NULL) {
             getListenerAndContextManager()->deleteCallbackAndContext(
                 callbackAndContext);
+        }
+
+        if (rc == ZNONODE) {
+            return false;
         }
 
         for (int32_t i = 0; i < children.count; ++i) {
@@ -1191,6 +1248,7 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
          * necessary?
          */
         sort(nodeList.begin(), nodeList.end());
+        return true;
     }
 }
 
@@ -1199,8 +1257,9 @@ ZooKeeperAdapter::getNodeChildren(vector<string> &nodeList,
   will not only go to this listener, not any default listeners.
  */
 
-string
+bool
 ZooKeeperAdapter::getNodeData(const string &path,
+                              string &data,
                               ZKEventListener *listener,
                               void *context, 
                               Stat *stat)
@@ -1250,8 +1309,9 @@ ZooKeeperAdapter::getNodeData(const string &path,
                           &len, 
                           stat);
         }
-    } while ((rc != ZOK) && (rh.handleRC(rc)));
-    if (rc != ZOK) {
+    } while (((rc != ZOK) && (rc != ZNONODE)) && (rh.handleRC(rc)));
+    data.clear();
+    if ((rc != ZOK) && (rc != ZNONODE)) {
         LOG_ERROR(LOG, 
                   "getNodeData: Error %d for %s", 
                   rc, 
@@ -1278,9 +1338,16 @@ ZooKeeperAdapter::getNodeData(const string &path,
             getListenerAndContextManager()->deleteCallbackAndContext(
                 callbackAndContext);
         }
-        string res(buffer, buffer + len);
-        delete [] buffer;
-        return res;
+
+        if (rc == ZOK) {
+            data.assign(buffer, len);
+            delete [] buffer;
+            return true;
+        }
+        else {
+            delete [] buffer;
+            return false;
+        }
     }
 }
 

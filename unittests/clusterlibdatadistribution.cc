@@ -88,7 +88,10 @@ class ClusterlibDataDistribution : public MPITestFixture {
             dist->acquireLock();
             dist->insertShard(0, 999, NULL);
             dist->insertShard(1000, 1999, NULL);
-            MPI_CPPUNIT_ASSERT(dist->getShardCount() == 2);
+            int32_t shardCount = dist->getShardCount();
+            cerr << "testDataDistribution2: shardCount = " << shardCount
+                 << endl;
+            MPI_CPPUNIT_ASSERT(shardCount == 2);
             dist->clear();
             dist->insertShard(2000, 2999, NULL);
             MPI_CPPUNIT_ASSERT(dist->getShardCount() == 1);

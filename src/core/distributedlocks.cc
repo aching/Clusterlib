@@ -102,8 +102,8 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
     int64_t tmpBid = -1, lowerBid = -1;
     do {
         NameList childList;
-        SAFE_CALL_ZK((getOps()->getRepository()->getNodeChildren(childList,
-                                                                 lockKey)),
+        SAFE_CALL_ZK(getOps()->getRepository()->getNodeChildren(lockKey,
+                                                                childList),
                      "Getting bids for group %s failed: %s",
                      lockKey.c_str(),
                      false,
@@ -114,30 +114,12 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
         for (childListIt = childList.begin(); 
              childListIt != childList.end(); 
              childListIt++) {
-            /*
-             * Get only the bid number;
+            /* 
+             * Get the bid number from the path.
              */
-            uint32_t bidSplitIndex = 
-                childListIt->rfind(ClusterlibStrings::BID_SPLIT);
-            if ((bidSplitIndex == string::npos) || 
-                (bidSplitIndex == childListIt->size() - 1)) {
-                throw InconsistentInternalStateException(
-                    "acquire: Expecting a valid bid split");
-            }
-
-            /*
-             * Ensure that this is a legal sequence number.
-             */
-            tmpBid = ::strtol(
-                &(childListIt->c_str()[bidSplitIndex + 1]), NULL, 10);
-            if (tmpBid < 0) {
-                LOG_WARN(CL_LOG, 
-                         "Expecting a valid number but got %s", 
-                         &(childListIt->c_str()[bidSplitIndex + 1]));
-                throw InconsistentInternalStateException(
-                    "Expecting a valid number but got " +
-                                       childListIt->substr(bidSplitIndex + 1));
-            }
+            zk::ZooKeeperAdapter::splitSequenceNode(*childListIt, 
+                                                    NULL,
+                                                    &tmpBid);
 
             LOG_DEBUG(CL_LOG, 
                       "acquire: thread 0x%x, this 0x%x "
@@ -205,7 +187,8 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
              * Set up the waiting for the handler function on the lower child.
              */
             PredMutexCond predMutexCond;
-            getSignalMap()->addRefPredMutexCond(*lowerChildIt, &predMutexCond);
+            getOps()->getLockEventSignalMap()->addRefPredMutexCond(
+                *lowerChildIt, &predMutexCond);
 
             CachedObjectEventHandler *handler = 
                 getOps()->getCachedObjectChangeHandlers()->
@@ -226,15 +209,21 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
              */
             LOG_DEBUG(CL_LOG, "acquire: Wait for handler? = %d", exists);
             if (exists) {
-                getSignalMap()->waitPredMutexCond(*lowerChildIt);
+                getOps()->getLockEventSignalMap()->waitPredMutexCond(
+                    *lowerChildIt);
             }
             
             /*
              * Only clean up if we are the last thread to wait on this
              * conditional (otherwise, just decrease the reference
              * count).  Then try again if lowerBid != myBid.
+             *
+             * The lowerChild was deleted and can NEVER be recreated,
+             * so it is safe to possibly remove the PredMutexCond if
+             * it is the last thread waiting.
              */
-            getSignalMap()->removeRefPredMutexCond(*lowerChildIt);
+            getOps()->getLockEventSignalMap()->removeRefPredMutexCond(
+                *lowerChildIt);
         }
         else if (lowerBid > myBid) {
             throw InconsistentInternalStateException(

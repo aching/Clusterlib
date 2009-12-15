@@ -120,9 +120,9 @@ class Notifyable
      * will use the name ClusterlibStrings::DEFAULTPROPERTYLIST if no
      * name is selected.
      * 
-     * @param name the name of the properties to create
-     * @param create create the propertyList if doesn't exist?
-     * @return properties pointer or NULL if no properties exists for this 
+     * @param name the name of the PropertyList to create
+     * @param create create the PropertyList if doesn't exist?
+     * @return PropertyList pointer or NULL if no PropertyList exists for this 
      * notifyable and create == false
      * @throw Exception if Notifyable is the root or application
      */
@@ -130,6 +130,26 @@ class Notifyable
         const std::string &name = 
         ClusterlibStrings::DEFAULTPROPERTYLIST, 
         bool create = false) = 0;
+
+    /**
+     * Get a list of names of all queues.
+     * 
+     * @return a copy of the list of all queues.
+     */
+    virtual NameList getQueueNames() = 0;
+
+    /**
+     * Get the queues for this object (if it is allowed). If
+     * subclasses do not want to allow getQueue(), override it
+     * and throw a clusterlib exception.  
+     * 
+     * @param name the name of the queue to create
+     * @param create create the queue if doesn't exist?
+     * @return queue pointer or NULL if no queue exists for this 
+     * notifyable and create == false
+     */
+    virtual Queue *getQueue(const std::string &name,
+                            bool create = false) = 0;
 
     /**
      * Get the reference count of this cachec representation of a

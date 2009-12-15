@@ -81,8 +81,11 @@ NotifyableKeyManipulator::createLockNodeKey(const string &notifyableKey,
     res.append("-");
     snprintf(tmp, bufLen, "0x%x", (uint32_t) pthread_self());
     res.append(tmp);
-    
-    res.append(ClusterlibStrings::BID_SPLIT);
+
+    /* 
+     * Our unique sequence number splitter to make readability easier.
+     */
+    res.append(ClusterlibStrings::SEQUENCE_SPLIT);
 
     return res;
 }
@@ -183,9 +186,23 @@ NotifyableKeyManipulator::createPropertyListKey(const string &notifyableKey,
     string res;
     res.append(notifyableKey);
     res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::PROPERTYLIST);
+    res.append(ClusterlibStrings::PROPERTYLISTS);
     res.append(ClusterlibStrings::KEYSEPARATOR);
     res.append(propListName);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createQueueKey(const string &notifyableKey,
+                                         const string &queueName)
+{
+    string res;
+    res.append(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::QUEUES);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(queueName);
 
     return res;
 }
@@ -286,6 +303,17 @@ NotifyableKeyManipulator::createProcessSlotReservationKey(
     string res(notifyableKey);
     res.append(ClusterlibStrings::KEYSEPARATOR);
     res.append(ClusterlibStrings::PROCESSSLOTRESERVATION);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createQueuePrefixKey(
+    const string &notifyableKey)
+{
+    string res(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::QUEUEELEMENTPREFIX);
 
     return res;
 }
@@ -420,6 +448,9 @@ NotifyableKeyManipulator::isNotifyableKey(const vector<string> &components,
         return true;
     }
     if (isPropertyListKey(components, elements)) {
+        return true;
+    }
+    if (isQueueKey(components, elements)) {
         return true;
     }
     if (isNodeKey(components, elements)) {
@@ -677,7 +708,7 @@ NotifyableKeyManipulator::isGroupKey(const string &key)
 
 bool
 NotifyableKeyManipulator::isPropertyListKey(const vector<string> &components, 
-                                          int32_t elements)
+                                            int32_t elements)
 {
     TRACE(CL_LOG, "isPropertyListKey");
 
@@ -719,10 +750,10 @@ NotifyableKeyManipulator::isPropertyListKey(const vector<string> &components,
     }
 
     /*
-     * Check that the second to the last element is PROPERTYLIST and
-     * that the properites name is not empty.
+     * Check that the second to the last element is PROPERTYLISTS and
+     * that the property list name is not empty.
      */
-    if ((components.at(elements - 2) != ClusterlibStrings::PROPERTYLIST) ||
+    if ((components.at(elements - 2) != ClusterlibStrings::PROPERTYLISTS) ||
         (components.at(elements - 1).empty() == true)) {
         return false;
     } 
@@ -738,6 +769,71 @@ NotifyableKeyManipulator::isPropertyListKey(const string &key)
     vector<string> components;
     split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
     return isPropertyListKey(components);    
+}
+
+bool
+NotifyableKeyManipulator::isQueueKey(const vector<string> &components, 
+                                            int32_t elements)
+{
+    TRACE(CL_LOG, "isQueueKey");
+
+    if (elements > static_cast<int32_t>(components.size())) {
+        LOG_FATAL(CL_LOG,
+                  "isQueueKey: elements %d > size of components %u",
+                  elements,
+                  components.size());
+        throw InvalidArgumentsException(
+            "isQueueKey: elements > size of components");
+    }
+    
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+    /*
+     * Make sure that we have enough elements to have a property list
+     * and that after the Application key there are an even number of
+     * elements left.
+     */
+    if ((elements < ClusterlibInts::QUEUE_COMPONENTS_MIN_COUNT) ||
+        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
+        return false;
+    }
+
+    /*
+     * Check that the elements of the parent notifyable are valid.
+     */
+    if ((!isRootKey(components, elements - 2)) &&
+        (!isGroupKey(components, elements - 2)) &&
+        (!isDataDistributionKey(components, elements - 2)) &&
+        (!isNodeKey(components, elements - 2)) &&
+        (!isProcessSlotKey(components, elements - 2))) {
+        return false; 
+    }
+
+    /*
+     * Check that the second to the last element is QUEUES and
+     * that the queue name is not empty.
+     */
+    if ((components.at(elements - 2) != ClusterlibStrings::QUEUES) ||
+        (components.at(elements - 1).empty() == true)) {
+        return false;
+    } 
+
+    return true;    
+}
+
+bool
+NotifyableKeyManipulator::isQueueKey(const string &key)
+{
+    TRACE(CL_LOG, "isQueueKey");
+    
+    vector<string> components;
+    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
+    return isQueueKey(components);    
 }
 
 bool
@@ -895,7 +991,7 @@ NotifyableKeyManipulator::removeObjectFromKey(const string &key)
         /*
          * If this key represents a valid Notifyable, then it should
          * be /APPLICATIONS|GROUPS|NODES|PROCESSSLOTS|
-         *     DISTRIBUTIONS|PROPERTYLIST/name.
+         *     DISTRIBUTIONS|PROPERTYLISTS|QUEUE/name.
          */
         endKeySeparator = res.rfind(ClusterlibStrings::KEYSEPARATOR);
         if ((endKeySeparator == string::npos) ||
@@ -928,9 +1024,10 @@ NotifyableKeyManipulator::removeObjectFromKey(const string &key)
             (!clusterlibObject.compare(ClusterlibStrings::APPLICATIONS)) ||
             (!clusterlibObject.compare(ClusterlibStrings::GROUPS)) ||
             (!clusterlibObject.compare(ClusterlibStrings::NODES)) ||
-            (!clusterlibObject.compare(ClusterlibStrings::PROCESSSLOTS)) ||
+            (!clusterlibObject.compare(ClusterlibStrings::PROPERTYLISTS)) ||
             (!clusterlibObject.compare(ClusterlibStrings::DISTRIBUTIONS)) ||
-            (!clusterlibObject.compare(ClusterlibStrings::PROPERTYLIST))) {
+            (!clusterlibObject.compare(ClusterlibStrings::PROCESSSLOTS)) ||
+            (!clusterlibObject.compare(ClusterlibStrings::QUEUES))) {
             objectFound = true;
         }
     }
@@ -976,7 +1073,8 @@ NotifyableKeyManipulator::removeObjectFromComponents(
         /*
          * If this key represents a valid Notifyable, then it should
          * be
-         * /(APPLICATIONS|GROUPS|NODES|DISTRIBUTIONS|PROPERTYLIST)/name
+         * /(APPLICATIONS|GROUPS|NODES|DISTRIBUTIONS|
+         *   PROPERTYLISTSS|QUEUES)/name
          * or ROOT.  Try to find a clusterlib object in this component
          */
         if ((components.at(clusterlibObjectElements - 1).compare(
@@ -992,7 +1090,9 @@ NotifyableKeyManipulator::removeObjectFromComponents(
             (components.at(clusterlibObjectElements - 2).compare(
                 ClusterlibStrings::DISTRIBUTIONS) == 0)||
             (components.at(clusterlibObjectElements - 2).compare(
-                ClusterlibStrings::PROPERTYLIST) == 0)) {
+                ClusterlibStrings::PROPERTYLISTS) == 0)||
+            (components.at(clusterlibObjectElements - 2).compare(
+                ClusterlibStrings::QUEUES) == 0)) {
             objectFound = true;
         }
     }
@@ -1005,6 +1105,16 @@ NotifyableKeyManipulator::removeObjectFromComponents(
               components.at(clusterlibObjectElements - 1).c_str());
 
     return clusterlibObjectElements;
+}
+
+string
+NotifyableKeyManipulator::removeComponentFromKey(const string &key)
+{
+    uint32_t keySeparator = key.rfind(ClusterlibStrings::KEYSEPARATOR);
+    if (keySeparator == string::npos) {
+        return string();
+    }
+    return key.substr(0, keySeparator - 1); 
 }
 
 };	/* End of 'namespace clusterlib' */

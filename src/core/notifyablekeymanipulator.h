@@ -43,6 +43,8 @@ class NotifyableKeyManipulator
                                                  const std::string &distName);
     static std::string createPropertyListKey(const std::string &notifyableKey,
                                              const std::string &propListName);
+    static std::string createQueueKey(const std::string &notifyableKey,
+                                      const std::string &queueName);
     static std::string createProcessSlotsUsageKey(
         const std::string &notifyableKey);
     static std::string createProcessSlotsMaxKey(
@@ -60,6 +62,8 @@ class NotifyableKeyManipulator
     static std::string createProcessSlotCurrentStateKey(
         const std::string &notifyableKey);
     static std::string createProcessSlotReservationKey(
+        const std::string &notifyableKey);
+    static std::string createQueuePrefixKey(
         const std::string &notifyableKey);
 
     /**
@@ -246,6 +250,29 @@ class NotifyableKeyManipulator
 
     /**
      * Checks if the components (assumed from a split) make up a valid
+     * key, not if an actual Queue exists for that key.
+     * 
+     * @param components A vector of components in the key parsed by split
+     *                   (i.e. first component should be "")
+     * @param elements The number of elements to check with (should 
+     *                 be <= components.size()).  If it is -1, then use 
+     *                 components.size().
+     * @return true if key is valid, false if not valid
+     */
+    static bool isQueueKey(const std::vector<std::string> &components, 
+                           int32_t elements = -1);
+
+    /**
+     * Checks if the key is valid, not if an actual Queue exists
+     * for that key.
+     * 
+     * @param key A key to test if it is an application
+     * @return true if key is valid, false if not valid
+     */
+    static bool isQueueKey(const std::string &key);
+
+    /**
+     * Checks if the components (assumed from a split) make up a valid
      * key, not if an actual Node exists for that key.
      * 
      * @param components A vector of components in the key parsed by split
@@ -328,6 +355,16 @@ class NotifyableKeyManipulator
     static int32_t removeObjectFromComponents(
         const std::vector<std::string> &components,
         int32_t elements);
+
+    /**
+     * Remove one of the components from the path.  For example, if
+     * /A/B/C, this will return /A/B.  If /A/B/C/, this will return
+     * /A/B/C.  If no key separators are found, then empty string.
+     *
+     * @param key the original key that will have a component removed
+     * @return the stripped key (or empty if no key separator)
+     */
+    static std::string removeComponentFromKey(const std::string &key);
 
 };
 

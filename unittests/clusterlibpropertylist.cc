@@ -249,11 +249,14 @@ class ClusterlibPropertyList : public MPITestFixture {
         if (isMyRank(0)) {
             _propertyList0->acquireLock();
             _propertyList0->setProperty(prop, "new value");
-            MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop) == "new value");
+            MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop)
+                               == "new value");
             _propertyList0->publish();
-            MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop) == "new value");
+            MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop) 
+                               == "new value");
             _propertyList0->releaseLock();
-            MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop) == "new value");
+            MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop)
+                               == "new value");
         }
         else {
             _propertyList0->acquireLock();
@@ -261,6 +264,8 @@ class ClusterlibPropertyList : public MPITestFixture {
             usleep(500000);
             string value2 = _propertyList0->getProperty(prop);
             _propertyList0->releaseLock();
+            cerr << "testGetPropertyList3: value (" << value << "), value2 ("
+                 << value2 << ")" << endl;
             MPI_CPPUNIT_ASSERT(value.compare(value2) == 0);
         }
 
