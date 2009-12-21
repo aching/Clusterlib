@@ -15,15 +15,19 @@
 #include <sys/wait.h>
 #include "clusterlibinternal.h"
 #include "activenodeparams.h"
+#include "activenodejsonrpcadaptor.h"
 
 #define LOG_LEVEL LOG_WARN
 #define MODULE_NAME "ClusterLib"
 
 using namespace std;
 using namespace clusterlib;
+using namespace json;
+using namespace json::rpc;
 
 static const size_t hostnameSize = 255;
-
+/* Wait 2 seconds for a queue element */
+static const uint64_t commandQueueTimeOut = 2000;
 volatile bool shutdown = false;
 
 /**
@@ -91,20 +95,98 @@ class ProcessHandler : public UserEventHandler
 };
 
 
+/**
+ * Handle commands in the receiving queue.
+ */
+class CommandQueueHandler : public UserEventHandler
+{
+  public:
+    CommandQueueHandler(Queue *commandQueue,
+                        Queue *defaultCompletedQueue,
+                        Root *root,
+                        Event mask,
+                        ClientData cd,
+                        Mutex *globalMutex)
+        : UserEventHandler(commandQueue, mask, cd),
+          m_globalMutex(globalMutex),
+          m_root(root),
+          m_commandQueue(commandQueue),
+          m_defaultCompletedQueue(defaultCompletedQueue) {}
+    virtual void handleUserEvent(Event e)
+    {
+        TRACE(CL_LOG, "handleUserEvent");
+
+        if (m_commandQueue == NULL) {
+            throw InconsistentInternalStateException(
+                "handleUserEvent: No command queue exists!!!");
+            return;
+        }
+
+        if (m_commandQueue->empty()) {
+            LOG_DEBUG(CL_LOG, 
+                      "handleUserEvent: Empty command queue on event %u",
+                      e);
+            return;
+        }
+
+        bool timedOut = true;
+        string command = m_commandQueue->take(commandQueueTimeOut, &timedOut);
+        if (timedOut) {
+            LOG_DEBUG(CL_LOG, 
+                      "handleUserEvent: Waited %llu msecs and "
+                      "couldn't find any elements",
+                      commandQueueTimeOut);
+            return;
+        }
+
+        /*
+         * Do the commands commands registered in the RPC Manager
+         *
+         * Handling return value:
+         *
+         * If DEFAULT_RESP_QUEUE exists and is valid, write result to
+         * that queue.  Otherwise write result to DEFAULT_COMPLETED_QUEUE.
+         *
+         */
+        LOG_DEBUG(CL_LOG,
+                  "handleUserEvent: Got command (%s)", 
+                  command.c_str());
+        JSONRPCManager *rpcManager = JSONRPCManager::getInstance();
+        rpcManager->invokeAndResp(command,
+                                  m_root,
+                                  m_defaultCompletedQueue);
+    }
+
+  private:
+    Mutex *m_globalMutex;
+    Root *m_root;
+    Queue *m_commandQueue;
+    Queue *m_defaultCompletedQueue;
+};
+
 int main(int argc, char* argv[]) 
 {
     ActiveNodeParams params;
     params.parseArgs(argc, argv);
-    
-    Factory factory(params.getZkServerPortList());
 
-    Client *client = factory.createClient();
+    JSONRPCManager *rpcManager = JSONRPCManager::getInstance();
+    
+    auto_ptr<Factory> factory(new Factory(params.getZkServerPortList()));
+    Client *client = factory->createClient();
     Root *root = client->getRoot();
+
+    /* Create the RPC adaptor and register available methods. */
+    auto_ptr<ActiveNodeJSONRPCAdaptor> jsonRpcAdaptor(
+        new ActiveNodeJSONRPCAdaptor(client));
+    rpcManager->registerMethod(ClusterlibStrings::RPC_START_PROCESS,
+                               jsonRpcAdaptor.get());
+    rpcManager->registerMethod(ClusterlibStrings::RPC_STOP_PROCESS,
+                               jsonRpcAdaptor.get());
 
     vector<string> groupVec = params.getGroupsVec();
     if (groupVec.size() <= 0) {
         LOG_FATAL(CL_LOG, "No groups found in the group vector");
-        exit(-1);
+        return -1;
     }
 
     /* Go to the group to add the node */
@@ -140,9 +222,10 @@ int main(int argc, char* argv[])
     activeNode->setMaxProcessSlots(params.getNumProcs());
 
     vector<UserEventHandler *> handlerVec;
+    stringstream ss;
     for (int32_t i = 0; i < params.getNumProcs(); i++) {
-        stringstream ss; 
-        ss << i;
+        ss.str("");
+        ss << "slot_" << i;
         processSlot = activeNode->getProcessSlot(ss.str(), true);
         UserEventHandler *handler = new ProcessHandler(
             processSlot, 
@@ -154,6 +237,23 @@ int main(int argc, char* argv[])
         processSlot->getDesiredProcessState();
         client->registerHandler(handler);
     }
+
+    /* Setup the command queue and associated handlers */
+    Queue *commandQueue =
+        activeNode->getQueue(ClusterlibStrings::DEFAULT_RECV_QUEUE, 
+                             true);
+    Queue *defaultCompletedQueue =
+        activeNode->getQueue(ClusterlibStrings::DEFAULT_COMPLETED_QUEUE, 
+                             true);
+    UserEventHandler *handler = new CommandQueueHandler(
+        commandQueue,
+        defaultCompletedQueue,
+        root,
+        EN_QUEUECHILDCHANGE,
+        NULL,
+        &activeNodeMutex);
+    handlerVec.push_back(handler);
+    client->registerHandler(handler);
     activeNode->releaseLock();
     activeNode->setUseProcessSlots(true);
 
@@ -182,7 +282,14 @@ int main(int argc, char* argv[])
         LOG_DEBUG(CL_LOG, "waited 2 seconds...");
     }
 
-    /* TODO: Clean up */
+    /* Clean up */
+    vector<UserEventHandler *>::iterator handlerVecIt;
+    for (handlerVecIt = handlerVec.begin(); 
+         handlerVecIt != handlerVec.end();
+         handlerVecIt++) {
+        client->cancelHandler(*handlerVecIt);
+        delete *handlerVecIt;
+    }
 
     return 0;
 }

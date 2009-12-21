@@ -71,6 +71,8 @@ class ProcessSlot;
 class ProcessSlotImpl;
 class PropertyList;
 class PropertyListImpl;
+class Root;
+class RootImpl;
 class Queue;
 class QueueImpl;
 class Server;

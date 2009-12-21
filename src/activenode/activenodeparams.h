@@ -21,6 +21,9 @@
  */
 class ActiveNodeParams {
   public:
+    /**
+     * Output to console or file
+     */
     enum OutputType {
         CONSOLE,
         FILE

@@ -1,6 +1,7 @@
 #include "MPITestFixture.h"
 #include "testparams.h"
 #include <algorithm>
+#include <sstream>
 
 extern TestParams globalTestParams;
 
@@ -15,6 +16,7 @@ class ClusterlibPropertyList : public MPITestFixture {
     CPPUNIT_TEST(testGetPropertyList4);
     CPPUNIT_TEST(testGetPropertyList5);
     CPPUNIT_TEST(testGetPropertyList6);
+    CPPUNIT_TEST(testGetPropertyList7);
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -406,7 +408,7 @@ class ClusterlibPropertyList : public MPITestFixture {
                                     true, 
                                     _factory, 
                                     true, 
-                                    "testGetPropertyList5");
+                                    "testGetPropertyList6");
 
         if (isMyRank(0)) {
             PropertyList *toolkitProp = _app0->getPropertyList("toolkit", true);
@@ -432,6 +434,52 @@ class ClusterlibPropertyList : public MPITestFixture {
                                     "kernel") != propList.end());
         }
     }
+
+    /* 
+     * Free for all set and get.  No one should see their value
+     * change.
+     */
+    void testGetPropertyList7()
+    {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testGetPropertyList7");
+        string prop = "prop7";
+        if (isMyRank(0)) {
+            _propertyList0 = _node0->getPropertyList(
+                ClusterlibStrings::DEFAULTPROPERTYLIST,
+                true);
+            _propertyList0->deleteProperty(prop);
+        }
+
+        barrier(_factory, true);
+
+        _propertyList0 = _node0->getPropertyList();
+
+        stringstream ss;
+        ss << getRank();
+        _propertyList0->acquireLock();
+        _propertyList0->setProperty(prop, ss.str());
+        usleep(100000);
+        MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop)
+                           == ss.str());
+        _propertyList0->publish();
+        MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop)
+                           == ss.str());
+        _propertyList0->releaseLock();
+
+        _propertyList0->acquireLock();
+        string value = _propertyList0->getProperty(prop);
+        usleep(300000);
+        string value2 = _propertyList0->getProperty(prop);
+        _propertyList0->releaseLock();
+        cerr << "testGetPropertyList7: value (" << value << "), value2 ("
+             << value2 << ")" << endl;
+        MPI_CPPUNIT_ASSERT(value.compare(value2) == 0);
+    }
+
 
   private:
     Factory *_factory;

@@ -186,10 +186,8 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
             /*
              * Set up the waiting for the handler function on the lower child.
              */
-            PredMutexCond predMutexCond;
             getOps()->getLockEventSignalMap()->addRefPredMutexCond(
-                *lowerChildIt, &predMutexCond);
-
+                *lowerChildIt);
             CachedObjectEventHandler *handler = 
                 getOps()->getCachedObjectChangeHandlers()->
                 getChangeHandler(

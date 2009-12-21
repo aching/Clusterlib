@@ -234,9 +234,7 @@ FactoryOps::synchronize()
      * comes back up to clusterlib, it will find the id and then try
      * to match it to this one to ensure that this sync finished.
      */
-    PredMutexCond predMutexCond;
-    getSyncEventSignalMap()->addRefPredMutexCond(syncEventKey,
-                                                 &predMutexCond);
+    getSyncEventSignalMap()->addRefPredMutexCond(syncEventKey);
     CallbackAndContext *callbackAndContext = 
         getHandlerAndContextManager()->createCallbackAndContext(
             getCachedObjectChangeHandlers()->
@@ -1099,7 +1097,10 @@ FactoryOps::getQueue(const string &name,
 {
     TRACE(CL_LOG, "getQueue");
 
-    if (!NotifyableKeyManipulator::isValidNotifyableName(name)) {
+    if ((name.compare(ClusterlibStrings::DEFAULT_RECV_QUEUE) != 0) &&
+        (name.compare(ClusterlibStrings::DEFAULT_RESP_QUEUE) != 0) &&
+        (name.compare(ClusterlibStrings::DEFAULT_COMPLETED_QUEUE) != 0) &&
+        !NotifyableKeyManipulator::isValidNotifyableName(name)) {
         LOG_WARN(CL_LOG,
                  "getQueue: Illegal queue name %s",
                  name.c_str());

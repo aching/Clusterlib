@@ -29,6 +29,7 @@
 #include "mutex.h"
 #include "thread.h"
 #include "json.h"
+#include "jsonrpc.h"
 #include "healthchecker.h"
 #include "timerservice.h"
 

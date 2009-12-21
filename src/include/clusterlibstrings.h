@@ -80,6 +80,20 @@ class ClusterlibStrings
     static const std::string DEFAULTPROPERTYLIST;
     static const std::string KEYVAL;
 
+    /** 
+     * Default recv queue a notifyable 
+     */
+    static const std::string DEFAULT_RECV_QUEUE;
+    /** 
+     * Default response queue 
+     */
+    static const std::string DEFAULT_RESP_QUEUE;
+    /** 
+     * Default completed message queue (no response queue set),
+     * unparseable, or debugging enabled.
+     */
+    static const std::string DEFAULT_COMPLETED_QUEUE;
+
     static const std::string QUEUEELEMENTPREFIX;
 
     static const std::string SHARDS;
@@ -130,6 +144,23 @@ class ClusterlibStrings
      * application.
      */
     static const std::string MASTER;
+
+    /*
+     * Strings associated with clusterlib rpc methods
+     */
+    static const std::string RPC_START_PROCESS;
+    static const std::string RPC_STOP_PROCESS;
+
+    /*
+     * Known json object keys
+     */
+    static const std::string JSONOBJECTKEY_METHOD;
+    static const std::string JSONOBJECTKEY_ADDENV;
+    static const std::string JSONOBJECTKEY_PATH;
+    static const std::string JSONOBJECTKEY_COMMAND;
+    static const std::string JSONOBJECTKEY_RESPQUEUEKEY;
+    static const std::string JSONOBJECTKEY_NOTIFYABLEKEY;
+    static const std::string JSONOBJECTKEY_SIGNAL;
 
   private:
     ClusterlibStrings()

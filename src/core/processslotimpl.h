@@ -154,15 +154,6 @@ class ProcessSlotImpl
         throw InvalidMethodException("Someone called the ProcessSlotImpl "
                                      "default constructor!");
     }
-
-    /*
-     * Keys for the json object.
-     */
-    static const std::string ADDENVKEY;
-    static const std::string PATHKEY;
-    static const std::string CMDKEY;
-
-  private:
 };
 
 };	/* End of 'namespace clusterlib' */

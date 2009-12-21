@@ -153,9 +153,8 @@ QueueImpl::take(const uint64_t timeout, bool *timedOut)
         /*
          * Set up the waiting for the handler function on the parent.
          */
-        PredMutexCond predMutexCond;
         getOps()->getQueueEventSignalMap()->addRefPredMutexCond(
-            queueParent, &predMutexCond);
+            queueParent);
         CachedObjectEventHandler *handler = 
             getOps()->getCachedObjectChangeHandlers()->
             getChangeHandler(
@@ -175,7 +174,6 @@ QueueImpl::take(const uint64_t timeout, bool *timedOut)
          * Wait until it a signal from the from event handler (or
          * until remaining timeout)
          */
-        
         LOG_DEBUG(CL_LOG, 
                   "take: num chidren=%d, wait if 0, timeout = %Ld", 
                   childList.size(), timeout);
@@ -415,10 +413,8 @@ QueueImpl::initializeCachedRepresentation()
     /*
      * Ensure that the cache contains all the information about this
      * object, and that all watches are established.
-     *
-     * This object's members operate completely in zookeeeper, so no
-     * initialization is required.
      */
+    establishQueueWatch();
 }
 
 void
@@ -429,6 +425,27 @@ QueueImpl::removeRepositoryEntries()
 
 QueueImpl::~QueueImpl()
 {
+}
+
+void 
+QueueImpl::establishQueueWatch()
+{
+    const string &queueParent = getKey();
+    NameList childList;
+    SAFE_CALLBACK_ZK(
+        getOps()->getRepository()->getNodeChildren(
+            queueParent,
+            childList,
+            getOps()->getZooKeeperEventAdapter(), 
+            getOps()->getCachedObjectChangeHandlers()->
+            getChangeHandler(CachedObjectChangeHandlers::QUEUE_CHILD_CHANGE)),
+        ,
+        CachedObjectChangeHandlers::QUEUE_CHILD_CHANGE,
+        queueParent,
+        "Reestablishing watch on value of %s failed: %s",
+        queueParent.c_str(),
+        true,
+        true);
 }
 
 };       /* End of 'namespace clusterlib' */

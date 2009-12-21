@@ -81,6 +81,11 @@ const string ClusterlibStrings::DISABLED = "_disabled";
 const string ClusterlibStrings::DEFAULTPROPERTYLIST = "_defaultPropertyList";
 const string ClusterlibStrings::KEYVAL = "_keyval";
 
+const string ClusterlibStrings::DEFAULT_RECV_QUEUE = "_defaultRecvQueue";
+const string ClusterlibStrings::DEFAULT_RESP_QUEUE = "_defaultRespQueue";
+const string ClusterlibStrings::DEFAULT_COMPLETED_QUEUE = 
+    "_defaultCompletedQueue";
+
 const string ClusterlibStrings::QUEUEELEMENTPREFIX = "_queueElementPrefix";
 
 const string ClusterlibStrings::SHARDS = "_shards";
@@ -141,5 +146,17 @@ const string ClusterlibStrings::SERVERBIN = "_server.bin";
  * Names associated with the special clusterlib master application.
  */
 const string ClusterlibStrings::MASTER = "_master";
+
+const string ClusterlibStrings::RPC_START_PROCESS = "_startProcess";
+const string ClusterlibStrings::RPC_STOP_PROCESS = "_stopProcess";
+
+const string ClusterlibStrings::JSONOBJECTKEY_METHOD = "_method";
+const string ClusterlibStrings::JSONOBJECTKEY_ADDENV = "_env";
+const string ClusterlibStrings::JSONOBJECTKEY_PATH = "_path";
+const string ClusterlibStrings::JSONOBJECTKEY_COMMAND = "_command";
+const string ClusterlibStrings::JSONOBJECTKEY_RESPQUEUEKEY = "_respQueueKey";
+const string ClusterlibStrings::JSONOBJECTKEY_NOTIFYABLEKEY = "_notifyableKey";
+const string ClusterlibStrings::JSONOBJECTKEY_SIGNAL = "_signal";
+
 
 };	/* End of 'namespace clusterlib' */

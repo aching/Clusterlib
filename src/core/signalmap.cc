@@ -17,9 +17,8 @@ using namespace std;
 namespace clusterlib
 {
     
-bool
-SignalMap::addRefPredMutexCond(const string &key,
-                               PredMutexCond *predMutexCond)
+void
+SignalMap::addRefPredMutexCond(const string &key)
 {
     TRACE(CL_LOG, "addRefPredMutexCond");
 
@@ -28,7 +27,7 @@ SignalMap::addRefPredMutexCond(const string &key,
     map<string, PredMutexCond *>::iterator it = m_signalMap.find(key);
     bool found = false;
     if (it == m_signalMap.end()) {
-        m_signalMap.insert(make_pair(key, predMutexCond));
+        m_signalMap.insert(make_pair(key, new PredMutexCond()));
         it = m_signalMap.find(key);
         if (it == m_signalMap.end()) {
             throw InconsistentInternalStateException(
@@ -44,7 +43,6 @@ SignalMap::addRefPredMutexCond(const string &key,
                  it->second->refCount);
     }
     it->second->refCount++;
-    return found;
 }
 
 void SignalMap::removeRefPredMutexCond(const string &key)
@@ -53,7 +51,7 @@ void SignalMap::removeRefPredMutexCond(const string &key)
 
     Locker l1(getSignalMapLock());
     LOG_DEBUG(CL_LOG, 
-              "removeRefPredMutexCond: removing ref (%s)", 
+              "removeRefPredMutexCond: removing ref on key (%s)", 
               key.c_str());
     map<string, PredMutexCond *>::iterator it = m_signalMap.find(key);
     if (it == m_signalMap.end()) {
@@ -62,6 +60,7 @@ void SignalMap::removeRefPredMutexCond(const string &key)
     }
     it->second->refCount--;
     if (it->second->refCount == 0) {
+        delete it->second;
         m_signalMap.erase(it);
     } 
 }

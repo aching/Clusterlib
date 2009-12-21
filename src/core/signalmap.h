@@ -12,28 +12,25 @@
 namespace clusterlib {
 
 /**
- * Manages multiple PredMutexCond pointers that are keyed by a string.
+ * Manages multiple PredMutexCond objects that are keyed by a string.
  */
 class SignalMap {
   public:
     /** 
-     * Add a new pointer to the map if it does not exist.  The memory
-     * allocated by the pointer is owned by the user.  Reference
-     * counts are added to the same PredMutexCond if this function is
-     * called more than once on the same key.
+     * Add a new PredMutexCond to the map if it does not exist.  The
+     * new PredMutexCond memory is owned by the signal map and not the
+     * user.  Reference counts are added to the same PredMutexCond if
+     * this function is called more than once on the same key.
      *
      * @param key the key in the signal map
-     * @param predMutexCond the pointer to the PredMutexCond that will be 
-     *        stored in the map
-     * @return true if actually added, false if just incremented
      */
-    bool addRefPredMutexCond(const std::string &key, 
-                             PredMutexCond *predMutexCond);
+    void addRefPredMutexCond(const std::string &key);
 
     /**
-     * Removes a reference for this key.  If the number of references
-     * falls to zero, the PredMutexCond pointer is removed (object
-     * allocated memory (original predMutexCond) is not cleaned up).
+     * Removes a reference for this key.  The client that calls this
+     * agrees to not use the PredMutexCond * associated with this key
+     * anymore.  If the number of references falls to zero, the
+     * PredMutexCond for the key is freed.
      */
     void removeRefPredMutexCond(const std::string &key);
   
@@ -56,7 +53,8 @@ class SignalMap {
      * @return false if the function timed out, true if predicate changed
      *         (always true if it returns and the timeout == 0)
      */
-    bool waitPredMutexCond(const std::string &key, const uint64_t timeout = 0);
+    bool waitPredMutexCond(const std::string &key, 
+                           const uint64_t timeout = 0);
 
   private:
     /**

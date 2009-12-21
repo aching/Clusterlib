@@ -562,7 +562,7 @@ function showContent() {
 	}
 	else {
             html += '<tr><td><strong>' + 
-		htmlEscape(editDeleteKeyArr[editDeleteKeyArr.length - 1], true) + '</strong></td><td>' + htmlEscape(JSON.stringify(content[key], true));
+		htmlEscape(editDeleteKeyArr[editDeleteKeyArr.length - 1], true) + '</strong></td><td>' + htmlEscape(JSON.stringify(content[key]), true);
 	    for (var i = 0; i < editDeleteKeyArr.length - 1; i++) {
 		html += '<a class="' + htmlEscape(editDeleteKeyArr[i], true) +
 		    'Attribute"><img src="../images/' + 

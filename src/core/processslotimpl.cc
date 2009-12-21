@@ -29,10 +29,6 @@ using namespace json;
 namespace clusterlib
 {
 
-const string ProcessSlotImpl::ADDENVKEY = "_addEnv";
-const string ProcessSlotImpl::PATHKEY = "_path";
-const string ProcessSlotImpl::CMDKEY = "_cmd";
-
 JSONValue
 ProcessSlotImpl::getJsonPortVec()
 {
@@ -215,16 +211,22 @@ ProcessSlotImpl::getExecArgs(vector<string> &addEnv,
     }
     else {
         JSONValue::JSONObject jsonObj = jsonValue.get<JSONValue::JSONObject>();
-        if (jsonObj[CMDKEY].type() !=  typeid(JSONValue::JSONNull)) {
-            cmd = jsonObj[CMDKEY].get<JSONValue::JSONString>();
+        if (jsonObj[ClusterlibStrings::JSONOBJECTKEY_COMMAND].type() !=  
+            typeid(JSONValue::JSONNull)) {
+            cmd = jsonObj[ClusterlibStrings::JSONOBJECTKEY_COMMAND].
+                get<JSONValue::JSONString>();
         }
-        if (jsonObj[PATHKEY].type() !=  typeid(JSONValue::JSONNull)) {
-            path = jsonObj[PATHKEY].get<JSONValue::JSONString>();
+        if (jsonObj[ClusterlibStrings::JSONOBJECTKEY_PATH].type() !=  
+            typeid(JSONValue::JSONNull)) {
+            path = jsonObj[ClusterlibStrings::JSONOBJECTKEY_PATH].
+                get<JSONValue::JSONString>();
         }
         
-        if (jsonObj[ADDENVKEY].type() != typeid(JSONValue::JSONNull)) {
+        if (jsonObj[ClusterlibStrings::JSONOBJECTKEY_ADDENV].type() != 
+            typeid(JSONValue::JSONNull)) {
             JSONValue::JSONArray jsonArrAddEnv = 
-                jsonObj[ADDENVKEY].get<JSONValue::JSONArray>();
+                jsonObj[ClusterlibStrings::JSONOBJECTKEY_ADDENV].
+                get<JSONValue::JSONArray>();
             addEnv.reserve(jsonArrAddEnv.size());
             for (size_t i = 0; i < jsonArrAddEnv.size(); i++) {
                 addEnv.push_back(
@@ -274,9 +276,9 @@ void ProcessSlotImpl::setExecArgs(const vector<string> &addEnv,
     for (size_t i = 0; i < addEnv.size(); i++) {
         jsonArrAddEnv.push_back(addEnv[i]);
     }
-    jsonObj[ADDENVKEY] = jsonArrAddEnv;
-    jsonObj[PATHKEY] = path;
-    jsonObj[CMDKEY] = cmd;
+    jsonObj[ClusterlibStrings::JSONOBJECTKEY_ADDENV] = jsonArrAddEnv;
+    jsonObj[ClusterlibStrings::JSONOBJECTKEY_PATH] = path;
+    jsonObj[ClusterlibStrings::JSONOBJECTKEY_COMMAND] = cmd;
 
     setJsonExecArgs(jsonObj);
 }
@@ -333,16 +335,22 @@ ProcessSlotImpl::getRunningExecArgs(vector<string> &addEnv,
     }
     else {
         JSONValue::JSONObject jsonObj = jsonValue.get<JSONValue::JSONObject>();
-        if (jsonObj[CMDKEY].type() !=  typeid(JSONValue::JSONNull)) {
-            cmd = jsonObj[CMDKEY].get<JSONValue::JSONString>();
+        if (jsonObj[ClusterlibStrings::JSONOBJECTKEY_COMMAND].type() !=  
+            typeid(JSONValue::JSONNull)) {
+            cmd = jsonObj[ClusterlibStrings::JSONOBJECTKEY_COMMAND].
+                get<JSONValue::JSONString>();
         }
-        if (jsonObj[PATHKEY].type() !=  typeid(JSONValue::JSONNull)) {
-            path = jsonObj[PATHKEY].get<JSONValue::JSONString>();
+        if (jsonObj[ClusterlibStrings::JSONOBJECTKEY_PATH].type() !=  
+            typeid(JSONValue::JSONNull)) {
+            path = jsonObj[ClusterlibStrings::JSONOBJECTKEY_PATH].
+                get<JSONValue::JSONString>();
         }
         
-        if (jsonObj[ADDENVKEY].type() != typeid(JSONValue::JSONNull)) {
+        if (jsonObj[ClusterlibStrings::JSONOBJECTKEY_ADDENV].type() != 
+            typeid(JSONValue::JSONNull)) {
             JSONValue::JSONArray jsonArrAddEnv = 
-                jsonObj[ADDENVKEY].get<JSONValue::JSONArray>();
+                jsonObj[ClusterlibStrings::JSONOBJECTKEY_ADDENV].
+                get<JSONValue::JSONArray>();
             addEnv.reserve(jsonArrAddEnv.size());
             for (size_t i = 0; i < jsonArrAddEnv.size(); i++) {
                 addEnv.push_back(
@@ -504,9 +512,9 @@ void ProcessSlotImpl::setRunningExecArgs(const vector<string> &addEnv,
     for (size_t i = 0; i < addEnv.size(); i++) {
         jsonArrAddEnv.push_back(addEnv[i]);
     }
-    jsonObj[ADDENVKEY] = jsonArrAddEnv;
-    jsonObj[PATHKEY] = path;
-    jsonObj[CMDKEY] = cmd;
+    jsonObj[ClusterlibStrings::JSONOBJECTKEY_ADDENV] = jsonArrAddEnv;
+    jsonObj[ClusterlibStrings::JSONOBJECTKEY_PATH] = path;
+    jsonObj[ClusterlibStrings::JSONOBJECTKEY_COMMAND] = cmd;
 
     setRunningJsonExecArgs(jsonObj);
 }
@@ -517,9 +525,9 @@ ProcessSlotImpl::createDefaultExecArgs()
     TRACE(CL_LOG, "createDefaultExecArgs");
 
     JSONValue::JSONObject jsonObj;
-    jsonObj[ADDENVKEY] = JSONValue();
-    jsonObj[PATHKEY] = JSONValue();
-    jsonObj[CMDKEY] = JSONValue();
+    jsonObj[ClusterlibStrings::JSONOBJECTKEY_ADDENV] = JSONValue();
+    jsonObj[ClusterlibStrings::JSONOBJECTKEY_PATH] = JSONValue();
+    jsonObj[ClusterlibStrings::JSONOBJECTKEY_COMMAND] = JSONValue();
 
     return JSONCodec::encode(jsonObj);
 }

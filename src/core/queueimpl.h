@@ -1,7 +1,7 @@
 /*
  * queueimpl.h --
  *
- * Definition of class Queue; it represents a queue of string in
+ * Definition of class QueueImpl; it represents a queue of strings in
  * clusterlib.  The strings can use JSON encoding to represent more
  * complex datatypes.
  *
@@ -59,6 +59,11 @@ class QueueImpl
 
     virtual void removeRepositoryEntries();
 
+    /**
+     * Establish the watch and handler for queue changes.
+     */
+    void establishQueueWatch();
+
   private:
     /**
      * Make the default constructor private so it cannot be called.
@@ -70,7 +75,6 @@ class QueueImpl
             "Someone called the QueueImpl "
             "default constructor!");
     }
-
 };
 
 };	/* End of 'namespace clusterlib' */

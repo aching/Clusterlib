@@ -1288,6 +1288,16 @@ CachedObjectChangeHandlers::handleQueueChildChange(NotifyableImpl *ntp,
 {
     TRACE(CL_LOG, "handleQueueChildChange");
 
+    unsetHandlerCallbackReady(QUEUE_CHILD_CHANGE, key);
+
+    /*
+     * If there's no Notifyable, punt.
+     */
+    if (ntp == NULL) {
+        LOG_WARN(CL_LOG, "No NotifyableImpl provided -- punting");
+        return EN_QUEUECHILDCHANGE;
+    }
+
     LOG_DEBUG(CL_LOG,
               "handleQueueChildChange: %s on key %s",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
@@ -1307,6 +1317,13 @@ CachedObjectChangeHandlers::handleQueueChildChange(NotifyableImpl *ntp,
                   "handleQueueChildChange: Got child event for key %s",
                   key.c_str());
         getOps()->getQueueEventSignalMap()->signalPredMutexCond(key);
+        QueueImpl *queue = dynamic_cast<QueueImpl *>(ntp);
+        /*
+         * Reestablish the watch if the queue still exists
+         */
+        if (queue != NULL) {
+            queue->establishQueueWatch();
+        }
         return EN_QUEUECHILDCHANGE;
     }
     else if (etype == ZOO_DELETED_EVENT) {
@@ -1322,8 +1339,6 @@ CachedObjectChangeHandlers::handleQueueChildChange(NotifyableImpl *ntp,
             "handleQueueChildChange: "
             "non-ZOO_CHILD_EVENT called");
     }
-    
-    return EN_NOEVENT;
 }
 
 bool

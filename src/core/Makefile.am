@@ -7,6 +7,7 @@ METASOURCES = AUTO
 lib_LIBRARIES = libcluster.a
 libcluster_a_SOURCES = \
 	json.cc \
+	jsonrpc.cc \
 	queueimpl.cc \
 	processslotimpl.cc \
 	md5key.cc \

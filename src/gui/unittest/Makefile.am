@@ -9,7 +9,6 @@ METASOURCES = AUTO
 bin_PROGRAMS = zkuitest
 zkuitest_LDADD = \
 	$(top_builddir)/src/core/libcluster.a \
-	$(top_builddir)/src/gui/src/libjsonrpc.a \
 	@BOOST_LIB@ \
 	@ZOOKEEPER_LIB@ \
 	@LOG4CXX_LIB@ \

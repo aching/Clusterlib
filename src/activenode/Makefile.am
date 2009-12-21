@@ -15,9 +15,9 @@ activenode_LDADD = \
 	@EXPAT_LIB@ \
 	@LIB_THREAD_OS@
 activenode_SOURCES = \
+        activenodejsonrpcadaptor.cc \
 	activenode.cc \
-	activenodeparams.cc
-#activenode_DEPENDENCIES =
+	activenodeparams.cc 
 
 CXXFLAGS = @BASE_CXXFLAGS@
 
