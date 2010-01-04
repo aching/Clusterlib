@@ -1,21 +1,79 @@
 README for clusterlib
 =====================
 
-Source directory structure:
+Large-scale distributed applications are difficult and time-consuming
+to develop since a great deal of effort is spent solving the same
+challenges (consistency, fault-tolerance, naming problems, etc.).
+Additionally, coordinating these applications is typically ad-hoc and
+hard to maintain.  Clusterlib fills the gap by providing distributed
+application developers with an object-oriented data model,
+asynchronous event handling system, well-defined consistency
+semantics, and methods for making coordination easy across
+cooperating applications.
+
+
+Package Contents:
+
+Clusterlib library
+- Infrastructure for building and managing distributed applications
+
+ActiveNode
+- A process that is designed to be run on a physical node and manages processes
+  started through clusterlib's process management system.  It will create a 
+  clusterlib Node in the clusterlib object hierarchy and register a health 
+  checker for reporting health.
+
+Zookeeper user interface (ZKUI)
+- An http server that can display and manipulate Zookeeper znodes or 
+  clusterlib objects 
+
+Command line interface (CLI)
+- Can make changes to clusterlib objects from the command line with this tool. 
+  It also can be used as an interactive shell for manipulating clusterlib 
+  objects
+
+
+Source Directory Structure:
 
 docs                Doxygen generated content and notes
-example             Several example programs and linking
+src/activenode      ActiveNode implmentation
+src/cli             CLI implementation
+src/core	    Internal clusterlib objects implementation
+src/core/md5        MD5 implementation from RSA Data Security, Inc.
+src/example         Several example programs that use clusterlib object 
+src/gui             Base directory for ZKUI
+src/gui/conf	    Configuration files for ZKUI process
+src/gui/regressions ZKUI regression tests
+src/gui/src	    ZKUI imlplementation
+src/gui/unittest    ZKUI unittests
+src/gui/webroot     Directory that is served by the ZKUI server
+src/include         Include files for application developer consumption
 misc                Miscellaneous scripts or configuration files
-src                 All Common files that are used both on client and server
-unittests           Unittests are stored here
+regressions         Clusterlib regression tests
+unittests           Clusterlib unittests
 
 
 Generated directory structure:
 
 Regressions_output  Regression output is stored here by 'make test_tinderbox'
 zookeeperServerDir  Directory for storing Zookeeper data for testing
-install             Generated from 'make package': the essential headers and 
-                    library for using clusterlib
+install             Generated from 'make package': the essential headers, 
+		    library, configuration files, and executables
+
+
+Required Dependencies:
+
+boost     (http://www.boost.org)
+zookeeper (http://hadoop.apache.org/zookeeper/)
+logcxx    (http://logging.apache.org/log4cxx/)
+
+
+Optional Dependencies:
+
+cppunit           - core library unit tests
+readline, ncurses - CLI tab completion
+libhttpd          - ZKUI
+mpi               - clusterlib unittests
 
 
 Environment:
@@ -29,7 +87,7 @@ Building:
 
 autoconf
 automake
-./configure 
+./configure (with appropriate paths set for zookeeper, boost, log4cxx, etc.)
 make
 
 
