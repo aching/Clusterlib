@@ -103,12 +103,51 @@ class FactoryOps {
     ~FactoryOps();
 
     /**
-     * Create a cluster client object.
+     * Create a cluster client object.  This object is a gateway to
+     * the clusterlib objects and a context for user-level events.
      *
      * @return a Client pointer
      */
     Client *createClient();
 
+    /**
+     * Create a client for handling JSON-RPC responses.
+     *
+     * Register a special handler to allow this client to support
+     * JSON-RPC response handling.  After JSON-RPC requests are sent,
+     * this handler watches for responses.  This handler must be
+     * registered prior to any JSON-RPC requests if a response is
+     * desired.
+     *
+     * @param responseQueue the queue this client specifies for the
+     *        response to its JSON-RPC requests
+     * @param completedQueue the queue this client specifies for the
+     *        problems with elements in the response queue
+     * @return a Client pointer
+     */
+    Client *createJSONRPCResponseClient(Queue *responseQueue,
+                                        Queue *completedQueue);
+    
+    /**
+     * Create a client for handling JSON-RPC methods.
+     *
+     * Register a special handler to allow this client to support
+     * JSON-RPC according to a JSONRPCManager.  Any encoded JSON-RPC
+     * messages in the recvQueue are processed according to the
+     * rpcManager and placed in the sender's response queue if
+     * provided or the completedQueue.
+     *
+     * @param recvQueue the queue where this client receives JSON-RPC requests
+     * @param completedQueue the queue where this client places responses or 
+     *        errors for JSON-RPC requests if no destination is specified.
+     * @param rpcManager actually invokes the methods to process JSON-RPC
+     *        requests
+     * @return a Client pointer
+     */
+    Client *createJSONRPCMethodClient(Queue *recvQueue,
+                                      Queue *completedQueue,
+                                      ::json::rpc::JSONRPCManager *rpcManager);
+    
     /**
      * Is the factory connected to ZooKeeper?
      * 
@@ -632,16 +671,23 @@ class FactoryOps {
     void removeNotifyableFromCacheByKey(const std::string &key);
 
     /*
-     * Get bits of Node state.
+     * Retrieve Node connected state.
+     *
+     * @param key the key of the node to check
+     * @param id filled in if connected (who connected)
+     * @param msecs filled in if connected (when connected)
+     * @return true if connected, false otherwise
      */
-    bool isNodeConnected(const std::string &key);
+    bool isNodeConnected(const std::string &key, 
+                         std::string &id, 
+                         int64_t &msecs);
     std::string getNodeClientState(const std::string &key);
     int32_t getNodeMasterSetState(const std::string &key);
 
     /*
      * Manage a node's connected state.
      */
-    bool createConnected(const std::string &key);
+    bool createConnected(const std::string &key, const std::string &id);
     void removeConnected(const std::string &key);
 
     /*
@@ -737,6 +783,24 @@ class FactoryOps {
     }
 
     /**
+     * Add a response to an id.
+     *
+     * @param id the id of the request that generated this response
+     * @param response the response of the request
+     */
+    void setIdResponse(const std::string &id, 
+                       ::json::JSONValue::JSONObject response);
+
+    /**
+     * Get a response from an id.  After this is called, the response
+     * object is removed.  It should only be called once per id.
+     *
+     * @param id the id for the response
+     * @return the response object
+     */
+    ::json::JSONValue::JSONObject getIdResponse(const std::string &id);
+
+    /**
      * Get the sync event signal map
      *
      * @return pointer to the synchronization event signal map
@@ -757,6 +821,16 @@ class FactoryOps {
      */
     SignalMap *getQueueEventSignalMap() { return &m_queueEventSignalMap; }
     
+    /**
+     * Get the response signal map pointer.
+     *
+     * @return the pointer to the response signal map
+     */
+    SignalMap *getResponseSignalMap() 
+    {
+        return &m_responseSignalMap;
+    }
+
   private:
     /**
      * Clean up clients
@@ -896,6 +970,16 @@ class FactoryOps {
     std::set<Notifyable *> m_removedNotifyables;
     Mutex m_removedNotifyablesLock;
 
+    /**
+     * Protects m_idResponseMap.
+     */
+    Mutex m_idResponseMapMutex;
+
+    /**
+     * Map of JSON-RPC request ids to responses.
+     */
+    std::map<std::string, ::json::JSONValue::JSONObject> m_idResponseMap;
+
     /*
      * Remember whether an END event has been dispatched
      * so that all threads wind down. Can do this only
@@ -990,6 +1074,11 @@ class FactoryOps {
      * Keeps track of notification of (distributed) queue events
      */
     SignalMap m_queueEventSignalMap;
+
+    /**
+     * Keeps track of the notification of JSON-RPC responses.
+     */
+    SignalMap m_responseSignalMap;
 
     /**
      * Handles all the locks for clusterlib objects

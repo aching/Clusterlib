@@ -169,6 +169,6 @@ class DataDistributionImpl
     int32_t m_shardTreeCount;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_DATADISTRIBUTIONIMPL_H_ */

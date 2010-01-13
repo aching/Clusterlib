@@ -436,13 +436,15 @@ function showContent() {
 			$("#dialogNewValue").dialog('open');
 			$("#dialogNewValue").dialog('option', 'title', 
 			    event.originalEvent.target.textContent);
-			$("#dialogNewValue").text(
-			    "Are you sure?");
-			// Set the buttons for removal
+
+	                var inputBoxHtml = '<form><fieldset style="border:0;"><label for="newValue">Remove the children as well? </label><input type="checkbox" name="newValue" id="removeChildrenValue" class="text ui-corner-all"><br><br>Are you sure?</fieldset></form>';
+			$("#dialogNewValue").html(inputBoxHtml);
+
 			var removeButtons = {};
 			removeButtons["Yes"] = function(event) {
 			    var ret = rpcCall.removeNotifyableFromKey(
-				currentState.id); 
+				currentState.id, 
+                                $("#removeChildrenValue").attr('checked')); 
 
 			    $("#dialogNewValue").dialog('close');
 			    if (handleRPCerror(rpcCall, ret)) {

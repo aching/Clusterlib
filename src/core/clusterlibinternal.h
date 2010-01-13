@@ -19,7 +19,7 @@
 #include "intervaltree.h"
 #include "event.h"
 #include "signalmap.h"
-
+#include "clusterlibrpc.h"
 #include "callbackandcontext.h"
 #include "zkadapter.h"
 
@@ -39,6 +39,8 @@
 #include "internalchangehandlers.h"
 #include "distributedlocks.h"
 #include "factoryops.h"
+#include "jsonrpcresponsehandler.h"
+#include "jsonrpcmethodhandler.h"
 
 DEFINE_LOGGER(CL_LOG, "clusterlib")
 

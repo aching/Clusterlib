@@ -102,6 +102,13 @@ class ClusterlibHealthCheck : public MPITestFixture {
             _checker->setMsecsPerCheckIfHealthy(10);
             _checker->setMsecsPerCheckIfUnhealthy(10);
             MPI_CPPUNIT_ASSERT(_node0->isHealthy() == false);
+            _node0->initializeConnection(true);
+            string id;
+            int64_t time;
+            bool connected = _node0->isConnected(&id, &time);
+            MPI_CPPUNIT_ASSERT(connected == true);
+            cerr << "testHealthCheck1: connected=" << connected 
+                 << ",id=" << id << ",time=" << time << endl << endl;
             _node0->registerHealthChecker(_checker);
             sleep(1);
             /*
@@ -136,6 +143,7 @@ class ClusterlibHealthCheck : public MPITestFixture {
             }
             catch (InvalidMethodException &e) {
             }
+            _node0->initializeConnection(true);
             _node0->registerHealthChecker(_checker);
             /* Even though unregisterHealthChecker() is not called,
              * things should be cleaned up wihtout any exceptions or
@@ -176,6 +184,7 @@ class ClusterlibHealthCheck : public MPITestFixture {
             _checker->setMsecsPerCheckIfHealthy(10);
             _checker->setMsecsPerCheckIfUnhealthy(10);
             MPI_CPPUNIT_ASSERT(_node0->isHealthy() == false);
+            _node0->initializeConnection(true);
             _node0->registerHealthChecker(_checker);
             sleep(1);
             /*

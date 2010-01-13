@@ -59,7 +59,7 @@ PredMutexCond::predSignal()
 }
 
 bool
-PredMutexCond::predWait(const uint64_t timeout)
+PredMutexCond::predWait(const int64_t timeout)
 {
     TRACE(CL_LOG, "predWait");
 
@@ -76,6 +76,10 @@ PredMutexCond::predWait(const uint64_t timeout)
                   timeout);
         if (timeout == 0) {
             cond.wait(mutex);
+        }
+        else if (timeout < 0) {
+            mutex.release();
+            return false;
         }
         else {
             if (TimerService::compareTimeUsecs(maxMicroSecs) >= 0) {

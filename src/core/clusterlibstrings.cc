@@ -46,6 +46,7 @@ const string ClusterlibStrings::ADDRESS = "_address";
 const string ClusterlibStrings::LASTCONNECTED = "_lastConnected";
 const string ClusterlibStrings::CLIENTVERSION = "_clientVersion";
 const string ClusterlibStrings::CONNECTED = "_connected";
+
 const string ClusterlibStrings::BOUNCY = "_bouncy";
 const string ClusterlibStrings::READY = "_ready";
 const string ClusterlibStrings::ALIVE = "_alive";
@@ -91,7 +92,7 @@ const string ClusterlibStrings::QUEUEELEMENTPREFIX = "_queueElementPrefix";
 const string ClusterlibStrings::SHARDS = "_shards";
 const string ClusterlibStrings::GOLDENSHARDS = "_goldenShards";
 
-const string ClusterlibStrings::SEQUENCE_SPLIT = "=";
+const string ClusterlibStrings::SEQUENCE_SPLIT = "_";
 
 const string ClusterlibStrings::NOTIFYABLELOCK = "_notifyableLock";
 const string ClusterlibStrings::LEADERLOCK = "_leaderLock";
@@ -142,6 +143,8 @@ const string ClusterlibStrings::HISTORYSIZE = "_history.size";
 const string ClusterlibStrings::LEADERFAILLIMIT = "_leader.failLimit";
 const string ClusterlibStrings::SERVERBIN = "_server.bin";
 
+const string ClusterlibStrings::DEFAULT_CLI_APPLICATION = "_cli";
+
 /*
  * Names associated with the special clusterlib master application.
  */
@@ -149,6 +152,7 @@ const string ClusterlibStrings::MASTER = "_master";
 
 const string ClusterlibStrings::RPC_START_PROCESS = "_startProcess";
 const string ClusterlibStrings::RPC_STOP_PROCESS = "_stopProcess";
+const string ClusterlibStrings::RPC_GENERIC = "_generic";
 
 const string ClusterlibStrings::JSONOBJECTKEY_METHOD = "_method";
 const string ClusterlibStrings::JSONOBJECTKEY_ADDENV = "_env";
@@ -157,6 +161,7 @@ const string ClusterlibStrings::JSONOBJECTKEY_COMMAND = "_command";
 const string ClusterlibStrings::JSONOBJECTKEY_RESPQUEUEKEY = "_respQueueKey";
 const string ClusterlibStrings::JSONOBJECTKEY_NOTIFYABLEKEY = "_notifyableKey";
 const string ClusterlibStrings::JSONOBJECTKEY_SIGNAL = "_signal";
-
+const string ClusterlibStrings::JSONOBJECTKEY_CONNECTEDID = "_connectedId";
+const string ClusterlibStrings::JSONOBJECTKEY_TIME = "_time";
 
 };	/* End of 'namespace clusterlib' */

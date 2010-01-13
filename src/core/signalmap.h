@@ -49,12 +49,13 @@ class SignalMap {
      *
      * @param key to the PredMutexCond
      * @param timeout how long to wait until an signal becomes available, 
-     *        in milliseconds; if <code>0</code> then wait forever;
+     *        in milliseconds; if <code>0</code> then wait forever; 
+     *        if <code>< 0</code>, then do not wait at all
      * @return false if the function timed out, true if predicate changed
      *         (always true if it returns and the timeout == 0)
      */
     bool waitPredMutexCond(const std::string &key, 
-                           const uint64_t timeout = 0);
+                           const int64_t timeout = 0);
 
   private:
     /**

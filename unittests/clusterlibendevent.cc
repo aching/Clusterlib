@@ -89,6 +89,7 @@ class ClusterlibEndEvent : public MPITestFixture {
         Node *myNode = _app->getNode(ss.str(), true);
         MPI_CPPUNIT_ASSERT(myNode != NULL);
         _checker = new MyHealthChecker();
+        myNode->initializeConnection(true);
         myNode->registerHealthChecker(_checker);
         _checker->setMsecsPerCheckIfHealthy(1);
         _checker->setMsecsPerCheckIfUnhealthy(1);

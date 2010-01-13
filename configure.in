@@ -625,7 +625,7 @@ if test ! -d docs/doxygen-internal; then
    mkdir docs/doxygen-internal
 fi
 if test ! -d docs/doxygen-user; then
-   mkdir docs/doxgyen-user
+   mkdir docs/doxygen-user
 fi
 
 AC_OUTPUT(

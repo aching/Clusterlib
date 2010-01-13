@@ -407,7 +407,7 @@ class PredMutexCond
      * @return false if the function timed out, true if predicate changed
      *         (always true if it returns and the timeout == 0)
      */
-    bool predWait(const uint64_t timeout = 0);
+    bool predWait(const int64_t timeout = 0);
 
     /**
      * Has the predicate been satified?

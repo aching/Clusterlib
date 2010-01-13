@@ -1,3 +1,4 @@
+#include <clusterlib.h>
 #include "jsonrpc_httpd_adaptor.h"
 
 using namespace std;

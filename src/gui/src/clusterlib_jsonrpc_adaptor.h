@@ -23,6 +23,7 @@ const ::json::JSONValue::JSONString idNodeState = "clientstate";
 const ::json::JSONValue::JSONString idNodeStateSetTime = 
     "client state set time";
 const ::json::JSONValue::JSONString idNodeConnected = "connected";
+const ::json::JSONValue::JSONString idNodeConnectedId = "connectedId";
 const ::json::JSONValue::JSONString idNodeConnectedTime = 
     "connected time";
 const ::json::JSONValue::JSONString idNodeHealth = "health";
@@ -105,85 +106,126 @@ const std::string addQueueElement = "Add queue element";
 class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod {
   public:
     MethodAdaptor(clusterlib::Client *client);
+
+    virtual std::string getName();
+    
+    virtual bool checkParams(const ::json::JSONValue::JSONArray &paramArr);
+
     ::json::JSONValue invoke(const std::string &name, 
                              const ::json::JSONValue::JSONArray &param, 
                              ::json::rpc::StatePersistence *persistence);
+
   private:
-    static log4cxx::LoggerPtr m_logger;
-    clusterlib::Client *m_client;
-    clusterlib::Root *m_root;
     ::json::JSONValue::JSONString addNotifyableFromKey(
         const ::json::JSONValue::JSONString &key,
         const ::json::JSONValue::JSONString &op,
         const ::json::JSONValue::JSONString &name);
+
     ::json::JSONValue::JSONString removeNotifyableFromKey(
-        const ::json::JSONValue::JSONString &key);
+        const ::json::JSONValue::JSONString &key,
+        const ::json::JSONValue::JSONBoolean &removeChildren);
+
     ::json::JSONValue::JSONArray getApplications();
+
     ::json::JSONValue::JSONObject getNotifyableAttributesFromKey(
         const ::json::JSONValue::JSONString &name);
+
     ::json::JSONValue::JSONString setNotifyableAttributesFromKey(
         const ::json::JSONValue::JSONArray &obj);
+
     ::json::JSONValue::JSONString removeNotifyableAttributesFromKey(
         const ::json::JSONValue::JSONString &key,
         const ::json::JSONValue::JSONString &op,
         const ::json::JSONValue::JSONString &attribute);
+
     ::json::JSONValue::JSONObject getNotifyableChildrenFromKey(
         const ::json::JSONValue::JSONString &name);
+
     ::json::JSONValue::JSONObject getApplication(
         const ::json::JSONValue::JSONObject &name);
+
     ::json::JSONValue::JSONObject getGroup(
         const ::json::JSONValue::JSONObject &name);
+
     ::json::JSONValue::JSONObject getDataDistribution(
         const ::json::JSONValue::JSONObject &name);
+
     ::json::JSONValue::JSONObject getNode(
         const ::json::JSONValue::JSONObject &name);
+
     ::json::JSONValue::JSONObject getProcessSlot(
         const ::json::JSONValue::JSONObject &name);
+
     ::json::JSONValue::JSONObject getPropertyList(
         const ::json::JSONValue::JSONObject &name);
+
     ::json::JSONValue::JSONObject getNotifyableId(
         clusterlib::Notifyable *notifyable);
+
     ::json::JSONValue::JSONObject getPropertyList(
         clusterlib::PropertyList *propertyList);
+
     clusterlib::Notifyable *getNotifyable(
         const ::json::JSONValue::JSONObject &id, 
         const std::string &expectType);
     
     ::json::JSONValue::JSONArray getApplicationStatus(
         const ::json::JSONValue::JSONArray &ids);
+
     ::json::JSONValue::JSONArray getNodeStatus(
         const ::json::JSONValue::JSONArray &ids);
+
     ::json::JSONValue::JSONArray getProcessSlotStatus(
         const ::json::JSONValue::JSONArray &ids);
+
     ::json::JSONValue::JSONArray getGroupStatus(
         const ::json::JSONValue::JSONArray &ids);
+
     ::json::JSONValue::JSONArray getDataDistributionStatus(
         const ::json::JSONValue::JSONArray &ids);
+
     ::json::JSONValue::JSONArray getPropertyListStatus(
         const ::json::JSONValue::JSONArray &ids);
+
     ::json::JSONValue::JSONArray getQueueStatus(
         const ::json::JSONValue::JSONArray &ids);
+
     ::json::JSONValue::JSONArray getShardStatus(
         std::vector<clusterlib::Shard> &shardVec);
     
     ::json::JSONValue::JSONObject getOneNotifyableStatus(
         clusterlib::Notifyable *notifyable);
+
     ::json::JSONValue::JSONObject getOneApplicationStatus(
         clusterlib::Application *application);
+
     ::json::JSONValue::JSONObject getOneNodeStatus(
         clusterlib::Node *node);
+
     ::json::JSONValue::JSONObject getOneProcessSlotStatus(
         clusterlib::ProcessSlot *processSlot);
+
     ::json::JSONValue::JSONObject getOneGroupStatus(
         clusterlib::Group *group);
+
     ::json::JSONValue::JSONObject getOneDataDistributionStatus(
         clusterlib::DataDistribution *distribution);
+
     ::json::JSONValue::JSONObject getOnePropertyListStatus(
         clusterlib::PropertyList *propertyList);
+
     ::json::JSONValue::JSONObject getOneQueueStatus(
         clusterlib::Queue *queue);
+
     ::json::JSONValue::JSONObject getOneShardStatus(
         clusterlib::Shard &shard);
+
+  private:
+    static log4cxx::LoggerPtr m_logger;
+
+    clusterlib::Client *m_client;
+
+    clusterlib::Root *m_root;
 };
 }}}
 #endif

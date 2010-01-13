@@ -145,11 +145,17 @@ class ClusterlibStrings
      */
     static const std::string MASTER;
 
+    /**
+     * Default CLI application for issuing JSON-RPC 
+     */
+    static const std::string DEFAULT_CLI_APPLICATION;
+
     /*
      * Strings associated with clusterlib rpc methods
      */
     static const std::string RPC_START_PROCESS;
     static const std::string RPC_STOP_PROCESS;
+    static const std::string RPC_GENERIC;
 
     /*
      * Known json object keys
@@ -161,6 +167,8 @@ class ClusterlibStrings
     static const std::string JSONOBJECTKEY_RESPQUEUEKEY;
     static const std::string JSONOBJECTKEY_NOTIFYABLEKEY;
     static const std::string JSONOBJECTKEY_SIGNAL;
+    static const std::string JSONOBJECTKEY_CONNECTEDID;
+    static const std::string JSONOBJECTKEY_TIME;
 
   private:
     ClusterlibStrings()

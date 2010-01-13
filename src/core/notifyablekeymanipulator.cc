@@ -62,31 +62,12 @@ NotifyableKeyManipulator::createLockNodeKey(const string &notifyableKey,
     res.append(ClusterlibStrings::KEYSEPARATOR);
     res.append(lockName);
     res.append(ClusterlibStrings::KEYSEPARATOR);
-
-    const int32_t bufLen = 128;
-    char tmp[bufLen + 1];
-    tmp[bufLen] = '\0';
-    if (gethostname(tmp, bufLen) != 0) {
-        throw SystemFailureException("acquire: gethostname failed");
-    }
-    res.append(tmp);
-    res.append(":");
-
-    /*
-     * Lock nodes have the hostname, pid, and tid of the calling
-     * thread.
-     */
-    snprintf(tmp, bufLen, "0x%x", (uint32_t) getpid());
-    res.append(tmp);
-    res.append("-");
-    snprintf(tmp, bufLen, "0x%x", (uint32_t) pthread_self());
-    res.append(tmp);
+    res.append(ClientImpl::getHostnamePidTid());
 
     /* 
      * Our unique sequence number splitter to make readability easier.
      */
     res.append(ClusterlibStrings::SEQUENCE_SPLIT);
-
     return res;
 }
                                             

@@ -36,6 +36,7 @@ namespace zookeeper { namespace ui {
         ZooKeeperUIServer();
         ~ZooKeeperUIServer();
         configurator::Configuration config;
+        std::auto_ptr<json::rpc::JSONRPCManager> rpcManager;
         std::auto_ptr<httpd::HttpServer> httpd;
         std::auto_ptr<json::rpc::HttpServerAdaptor> adaptor;
         std::auto_ptr<clusterlib::rpc::json::MethodAdaptor> clusterRpcMethod;

@@ -20,11 +20,12 @@
 
 using namespace std;
 using namespace boost;
+using namespace json;
 
 namespace clusterlib
 {
 
-/** 5 seconds */
+/** 5 seconds for the lease timeout (heartbeat) */
 static const uint32_t ZkTimeoutMsecs = 5000;
 
 /*
@@ -149,9 +150,6 @@ FactoryOps::waitForThreads()
     m_externalEventThread.Join();
 }
 
-/*
- * Create a client.
- */
 Client *
 FactoryOps::createClient()
 {
@@ -179,6 +177,35 @@ FactoryOps::createClient()
         return NULL;
     }
 }
+
+Client *
+FactoryOps::createJSONRPCResponseClient(Queue *responseQueue,
+                                        Queue *completedQueue)
+{
+    TRACE(CL_LOG, "createJSONRPCResponseClient");
+
+    ClientImpl *client = dynamic_cast<ClientImpl *>(createClient());
+    assert(client);
+    client->registerJSONRPCResponseHandler(responseQueue,
+                                           completedQueue);
+    return client;
+}
+
+Client *
+FactoryOps::createJSONRPCMethodClient(Queue *recvQueue,
+                                      Queue *completedQueue,
+                                      ::json::rpc::JSONRPCManager *rpcManager)
+{
+    TRACE(CL_LOG, "createJSONRPCMethodClient");
+
+    ClientImpl *client = dynamic_cast<ClientImpl *>(createClient());
+    assert(client);
+    client->registerJSONRPCMethodHandler(recvQueue,
+                                         completedQueue,
+                                         rpcManager);
+    return client;
+}
+
 
 bool
 FactoryOps::isConnected() const
@@ -626,7 +653,9 @@ FactoryOps::dispatchZKEvent(zk::ZKWatcherEvent *zp)
             string("Unexpected NULL event context: ") + buf);
     }
 
-    LOG_DEBUG(CL_LOG, "Dispatching ZK event!");
+    LOG_DEBUG(CL_LOG, 
+              "Dispatching ZK event for key (%s)!", 
+              zp->getPath().c_str());
 
     /*
      * Update the cache representation of the clusterlib
@@ -640,10 +669,12 @@ FactoryOps::dispatchZKEvent(zk::ZKWatcherEvent *zp)
      * to clients.
      */
     uep = updateCachedObject(fehp, zp);
+    LOG_DEBUG(CL_LOG, 
+              "dispatchZKEvent: If NULL cluster event payload on key %s, "
+              "will not propogate to clients, payload is %u",
+              zp->getPath().c_str(),
+              (uint32_t) uep);
     if (uep == NULL) {
-        LOG_DEBUG(CL_LOG, 
-                  "dispatchZKEvent: NULL cluster event payload "
-                  "will not propogate to clients");
         return;
     }
 
@@ -659,6 +690,12 @@ FactoryOps::dispatchZKEvent(zk::ZKWatcherEvent *zp)
              clIt != m_clients.end(); 
              clIt++) {
             uepp = new UserEventPayload(*uep);
+            LOG_DEBUG(CL_LOG, 
+                      "dispatchZKEvent: Sending payload %u to client %u "
+                      "on key %s",
+                      (uint32_t) uep,
+                      (uint32_t) (*clIt),
+                      zp->getPath().c_str());
             (*clIt)->sendEvent(uepp);
         }
     }
@@ -889,7 +926,11 @@ FactoryOps::getApplication(const string &name, bool create)
 {
     TRACE(CL_LOG, "getApplication");
     
-    if (!NotifyableKeyManipulator::isValidNotifyableName(name)) {
+    /* 
+     * Can accept the DEFAULT_CLI_APPLICATION (different than other names)
+     */
+    if ((name.compare(ClusterlibStrings::DEFAULT_CLI_APPLICATION)) &&
+        (!NotifyableKeyManipulator::isValidNotifyableName(name))) {
         LOG_WARN(CL_LOG,
                  "getApplication: illegal application name %s",
                  name.c_str());
@@ -3394,11 +3435,8 @@ FactoryOps::removeNotifyableFromCacheByKey(const string &key)
     ntpMap->erase(ntpMapIt);
 }
 
-/*
- * Retrieve bits of Node state.
- */
 bool
-FactoryOps::isNodeConnected(const string &nodeKey)
+FactoryOps::isNodeConnected(const string &nodeKey, string &id, int64_t &msecs)
 {
     TRACE(CL_LOG, "isNodeConnected");
 
@@ -3406,8 +3444,13 @@ FactoryOps::isNodeConnected(const string &nodeKey)
         nodeKey +
         ClusterlibStrings::KEYSEPARATOR +
         ClusterlibStrings::CONNECTED;
+    string encodedJsonObj;
     bool exists = false;
 
+    /* 
+     * Set the event handler to fire when the node changes (or is
+     * created) 
+     */
     SAFE_CALLBACK_ZK(
         (exists = m_zk.nodeExists(
             ckey,
@@ -3422,6 +3465,40 @@ FactoryOps::isNodeConnected(const string &nodeKey)
         nodeKey.c_str(),
         false,
         true);
+    if (exists) {
+        SAFE_CALL_ZK((exists = m_zk.getNodeData(
+                          ckey,
+                          encodedJsonObj)),
+                     "Could not determine whether key %s is connected: %s",
+                     ckey.c_str(),
+                     false,
+                     true);
+        if (exists) {
+            JSONValue jsonValue = JSONCodec::decode(encodedJsonObj);
+            JSONValue::JSONObject jsonObj = 
+                jsonValue.get<JSONValue::JSONObject>();
+            JSONValue::JSONObject::const_iterator jsonObjIt;
+            jsonObjIt = 
+                jsonObj.find(ClusterlibStrings::JSONOBJECTKEY_CONNECTEDID);
+            if (jsonObjIt != jsonObj.end()) {
+                id = jsonObjIt->second.get<JSONValue::JSONString>();
+            }
+            else {
+                throw InconsistentInternalStateException(
+                    string("isNodeConnected: Cannot find id in value ") + 
+                    encodedJsonObj);
+            }
+            jsonObjIt = jsonObj.find(ClusterlibStrings::JSONOBJECTKEY_TIME);
+            if (jsonObjIt != jsonObj.end()) {
+                msecs = jsonObjIt->second.get<JSONValue::JSONInteger>();
+            }
+            else {
+                throw InconsistentInternalStateException(
+                    string("isNodeConnected: Cannot find time in value ") + 
+                    encodedJsonObj);
+            }
+        }
+    }
 
     return exists;
 }
@@ -3488,31 +3565,32 @@ FactoryOps::getNodeMasterSetState(const string &nodeKey)
  * Create a node's connected state.
  */
 bool
-FactoryOps::createConnected(const string &key)
+FactoryOps::createConnected(const string &key, const string &id)
 {
     TRACE(CL_LOG, "createConnected");
 
-    char buf[1024];
     string ckey =
         key +
         ClusterlibStrings::KEYSEPARATOR +
         ClusterlibStrings::CONNECTED;
         
-    snprintf(buf,
-             1024,
-             "%d;%d;%lld",
-             (int32_t) getpid(),
-             (int32_t) pthread_self(),
-             (uint64_t) TimerService::getCurrentTimeMsecs());
-
     try {
         /*
          * Create the node.
          */
-        SAFE_CALL_ZK(m_zk.createNode(ckey, string(buf), ZOO_EPHEMERAL),
+        JSONValue::JSONObject jsonObj;
+        jsonObj[ClusterlibStrings::JSONOBJECTKEY_CONNECTEDID] = id;
+        jsonObj[ClusterlibStrings::JSONOBJECTKEY_TIME] = 
+            TimerService::getCurrentTimeMsecs();
+        string encodedJsonObj = JSONCodec::encode(jsonObj);
+        LOG_DEBUG(CL_LOG,
+                  "createConnected: Key (%s) object (%s)",
+                  ckey.c_str(),
+                  encodedJsonObj.c_str());
+        SAFE_CALL_ZK(m_zk.createNode(ckey, encodedJsonObj, ZOO_EPHEMERAL),
                      "Could not create %s CONNECTED subnode -- "
                      "already exists: %s",
-                     key.c_str(),
+                     ckey.c_str(),
                      true,
                      true);
         /*
@@ -4045,7 +4123,27 @@ FactoryOps::getChildren(Notifyable *ntp)
     Node *node = dynamic_cast<Node *>(ntp);
     if (node != NULL) {
         LOG_DEBUG(CL_LOG, "getChildren: %s is a Node", ntp->getKey().c_str());
-        NameList nameList = node->getProcessSlotNames();
+        NameList nameList = node->getQueueNames();
+        for (nameListIt = nameList.begin();
+             nameListIt != nameList.end(); 
+             nameListIt++) {
+            tempNtp = node->getQueue(*nameListIt);
+            if (tempNtp == NULL) {
+                LOG_WARN(CL_LOG, 
+                         "getChildren: Shouldn't get NULL queue for %s"
+                         " if I have the lock",
+                         nameListIt->c_str());
+            }
+            else {
+                LOG_DEBUG(CL_LOG, 
+                          "getChildren: found Queue %s for %s", 
+                          tempNtp->getKey().c_str(),
+                          ntp->getKey().c_str());
+                ntList.push_back(tempNtp);
+            }
+        }
+
+        nameList = node->getProcessSlotNames();
         for (nameListIt = nameList.begin(); 
              nameListIt != nameList.end(); 
              nameListIt++) {
@@ -4125,6 +4223,26 @@ FactoryOps::getChildren(Notifyable *ntp)
             else {
                 LOG_DEBUG(CL_LOG, 
                           "getChildren: found DataDistribution %s for %s", 
+                          tempNtp->getKey().c_str(),
+                          ntp->getKey().c_str());
+                ntList.push_back(tempNtp);
+            }
+        }
+
+        nameList = group->getQueueNames();
+        for (nameListIt = nameList.begin();
+             nameListIt != nameList.end(); 
+             nameListIt++) {
+            tempNtp = group->getQueue(*nameListIt);
+            if (tempNtp == NULL) {
+                LOG_WARN(CL_LOG, 
+                         "getChildren: Shouldn't get NULL queue for %s"
+                         " if I have the lock",
+                         nameListIt->c_str());
+            }
+            else {
+                LOG_DEBUG(CL_LOG, 
+                          "getChildren: found Queue %s for %s", 
                           tempNtp->getKey().c_str(),
                           ntp->getKey().c_str());
                 ntList.push_back(tempNtp);
@@ -4334,6 +4452,11 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
         }
     }
 
+    LOG_DEBUG(CL_LOG, 
+              "updateCachedObject: Returning payload for event %d for key %s",
+              e,
+              notifyablePath.c_str());
+              
     if (e == EN_NOEVENT) {
         return NULL;
     }
@@ -4366,6 +4489,41 @@ FactoryOps::establishNotifyableStateChange(NotifyableImpl *ntp)
         ntp->getKey().c_str(),
         true,
         true);
+}
+
+void
+FactoryOps::setIdResponse(const string &id, JSONValue::JSONObject response)
+{
+    TRACE(CL_LOG, "setIdResponse");
+
+    Locker l(&m_idResponseMapMutex);
+    map<string, JSONValue::JSONObject>::const_iterator idResponseMapIt =
+        m_idResponseMap.find(id);
+    if (idResponseMapIt != m_idResponseMap.end()) {
+        throw InconsistentInternalStateException(
+            string("setIdResponse: Response ") + 
+            JSONCodec::encode(m_idResponseMap[id]) + 
+            string(" already exists for id ") + id);
+    }
+    m_idResponseMap[id] = response;
+}
+
+JSONValue::JSONObject
+FactoryOps::getIdResponse(const string &id)
+{
+    TRACE(CL_LOG, "getIdResponse");
+
+    Locker l(&m_idResponseMapMutex);
+    map<string, JSONValue::JSONObject>::iterator idResponseMapIt =
+        m_idResponseMap.find(id);
+    if (idResponseMapIt == m_idResponseMap.end()) {
+        throw InconsistentInternalStateException(
+            string("getIdResponse: Response for id ") + id + 
+            string(" cannot be found"));
+    }
+    JSONValue::JSONObject retObj = idResponseMapIt->second;
+    m_idResponseMap.erase(idResponseMapIt);
+    return retObj;
 }
 
 };	/* End of 'namespace clusterlib' */

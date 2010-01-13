@@ -19,6 +19,8 @@
 
 using namespace std;
 using namespace clusterlib;
+using namespace json;
+using namespace json::rpc;
 
 class SetLogLevel : public CliCommand
 {
@@ -506,6 +508,44 @@ class AddPropertyList : public CliCommand
 };
 
 /**
+ * Add a queue to the clusterlib hierarchy
+ */
+class AddQueue : public CliCommand
+{
+  public:
+    AddQueue(Client *client) 
+        : CliCommand("addqueue", client) 
+    {
+        vector<CliCommand::ArgType> argTypeVec;
+        argTypeVec.push_back(CliCommand::NotifyableArg);
+        argTypeVec.push_back(CliCommand::StringArg);
+        setArgTypeVec(argTypeVec);
+    } 
+    virtual void action() 
+    {
+        Notifyable *ntp = getNotifyableArg(0);
+        if (ntp == NULL) {
+            throw Exception("AddQueue failed to get " + 
+                            getNativeArg(0));
+        }
+        Queue *queue = 
+            ntp->getQueue(getStringArg(1), true);
+        if (queue == NULL) {
+            throw InvalidMethodException(
+                "AddQueue: Failed to get queue " + 
+                getStringArg(1));
+        }
+    }
+    virtual string helpMessage()
+    {
+        return "NotifyableArg is the notifyable "
+            "where the queue may be added. StringArg is the "
+            "name of the new queue.";
+    }
+    virtual ~AddQueue() {}
+};
+
+/**
  * Get commands and arguments.
  */
 class Help : public CliCommand
@@ -552,6 +592,85 @@ class Help : public CliCommand
 
   private:
     CliParams *m_params;
+};
+
+/**
+ * Issue JSON-RPC request
+ */
+class JSONRPCCommand : public CliCommand
+{
+  public:
+    JSONRPCCommand(Client *client, Queue *respQueue) 
+        : CliCommand("jsonrpc", client),
+          m_respQueue(respQueue)
+    {
+        vector<CliCommand::ArgType> argTypeVec;
+        argTypeVec.push_back(CliCommand::NotifyableArg);
+        argTypeVec.push_back(CliCommand::StringArg);
+        argTypeVec.push_back(CliCommand::StringArg);
+        setArgTypeVec(argTypeVec); 
+    } 
+    virtual void action() 
+    {
+        Queue *queue = dynamic_cast<Queue *>(getNotifyableArg(0));
+        if (queue == NULL) {
+            throw Exception("JSONRPCCommand failed to get the queue " +
+                            getNativeArg(0));
+        }
+        JSONValue::JSONObject rpcObj;
+
+        try {
+            JSONValue::JSONObject respObj;
+            JSONValue paramValue = JSONCodec::decode(getNativeArg(2));
+            /*
+             * Add in the response queue to the paramArr.
+             */
+            JSONValue::JSONArray paramArr = 
+                paramValue.get<JSONValue::JSONArray>();
+            JSONValue::JSONObject paramObj = 
+                paramArr[0].get<JSONValue::JSONObject>();
+            paramObj[ClusterlibStrings::JSONOBJECTKEY_RESPQUEUEKEY] = 
+                m_respQueue->getKey();
+            paramArr.clear();
+            paramArr.push_back(paramObj);
+            string queueKey = getNativeArg(0);
+            auto_ptr<json::rpc::JSONRPCRequest> req;
+            if (!getNativeArg(1).compare(
+                    ClusterlibStrings::RPC_START_PROCESS)) {
+                req.reset(new StartProcessRequest(getClient()));
+            }
+            else if (!getNativeArg(1).compare(
+                    ClusterlibStrings::RPC_STOP_PROCESS)) {
+                req.reset(new StopProcessRequest(getClient()));
+            }
+            else {
+                /* Try the generic request if the method is not recognized. */
+                req.reset(new GenericRequest(getClient(), getNativeArg(1)));
+            }
+
+            req->prepareRequest(paramArr);
+            req->sendRequest(queueKey.c_str());
+            req->waitResponse();
+            respObj = req->getResponse();
+            cout << "response: " << JSONCodec::encode(respObj);
+        }
+        catch (const JSONRPCInvocationException &ex) {
+            throw Exception("JSONRPCCommand failed to parse your JSON-RPC "
+                            "request " + getNativeArg(1) + 
+                            string(" with params ") + getNativeArg(2) + ": " +
+                            ex.what());
+        }
+    }
+    virtual string helpMessage()
+    {
+        return "NotifyableArg is the queue to send the request to.  "
+            "StringArg is the method name.  StringArg is the encoded "
+            "JSON-RPC parameter array.";
+    }
+    virtual ~JSONRPCCommand() {}
+
+  private:
+    Queue *m_respQueue;
 };
 
 /**
@@ -674,10 +793,28 @@ int main(int argc, char* argv[])
      */
     SetLogLevel *setLogLevelCommand = new SetLogLevel;
     vector<string> logLevelArgVec;
-    logLevelArgVec.push_back("0");
+    stringstream logLevelSs;
+    logLevelSs << params->getLogLevel();
+    logLevelArgVec.push_back(logLevelSs.str());
     setLogLevelCommand->setArgVec(vector<string>(logLevelArgVec));
     setLogLevelCommand->action();
                                   
+    /*
+     * Enable the JSON-RPC response handler and create the appropriate
+     * response queue for this client.
+     */
+    Root *root = params->getClient()->getRoot();
+    Application *cliApp = root->getApplication(
+        ClusterlibStrings::DEFAULT_CLI_APPLICATION, true);
+    string respQueueName = ClientImpl::getHostnamePidTid() + 
+        ClusterlibStrings::DEFAULT_RESP_QUEUE;
+    Queue *respQueue = cliApp->getQueue(respQueueName, true);
+    string completedQueueName = ClientImpl::getHostnamePidTid() + 
+        ClusterlibStrings::DEFAULT_COMPLETED_QUEUE;
+    Queue *completedQueue = cliApp->getQueue(completedQueueName, true);
+    params->getFactory()->createJSONRPCResponseClient(respQueue,
+                                                      completedQueue);
+
     /* Register the commands after connecting */
     params->registerCommand(setLogLevelCommand);
     params->registerCommand(new RemoveNotifyable(params->getClient()));
@@ -688,6 +825,9 @@ int main(int argc, char* argv[])
     params->registerCommand(new AddDataDistribution(params->getClient()));
     params->registerCommand(new AddNode(params->getClient()));
     params->registerCommand(new AddPropertyList(params->getClient()));
+    params->registerCommand(new AddQueue(params->getClient()));
+    params->registerCommand(new JSONRPCCommand(params->getClient(), 
+                                               respQueue));
     params->registerCommand(new Help(params));
     params->registerCommand(new Quit(params));
     
@@ -708,6 +848,23 @@ int main(int argc, char* argv[])
          it != params->getCommandMap()->end();
          it++) {
         delete it->second;
+    }
+
+    /* Clean up the Factory to clear out all the events and clients */
+    delete params->getFactory();
+
+    /* Initialize the factory again to clean up our objects */
+    params->initFactoryAndClient();
+    root = params->getClient()->getRoot();
+    respQueue = dynamic_cast<Queue *>(
+        root->getNotifyableFromKey(respQueueName));
+    if (respQueue != NULL) {
+        respQueue->remove();
+    }
+    completedQueue = dynamic_cast<Queue *>(
+        root->getNotifyableFromKey(completedQueueName));
+    if (completedQueue != NULL) {
+        completedQueue->remove();
     }
 
     return 0;

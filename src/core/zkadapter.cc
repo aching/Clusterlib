@@ -386,10 +386,10 @@ ZooKeeperAdapter::reconnect()
         throw ZooKeeperException(
             "reconnect: Failed since no reconnection is allowed!");
     }
-    //clear the connection state
+    /* clear the connection state */
     disconnect();
     
-    //establish a new connection to ZooKeeper
+    /* Establish a new connection to ZooKeeper */
     mp_zkHandle = zookeeper_init(m_zkConfig.getHosts().c_str(), 
                                  zkWatcher, 
                                  m_zkConfig.getLeaseTimeout(),

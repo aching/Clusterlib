@@ -87,7 +87,7 @@ bool SignalMap::signalPredMutexCond(const string &key)
     return true;
 }
 
-bool SignalMap::waitPredMutexCond(const string &key, const uint64_t timeout)
+bool SignalMap::waitPredMutexCond(const string &key, const int64_t timeout)
 {
     TRACE(CL_LOG, "waitPredMutexCond");
 

@@ -33,6 +33,12 @@ libcluster_a_SOURCES = \
 	signalmap.cc \
 	thread.cc \
 	zkadapter.cc \
+	jsonrpcresponsehandler.cc \
+	jsonrpcmethodhandler.cc \
+	startprocessrpc.cc \
+	stopprocessrpc.cc \
+	genericrpc.cc \
+	clusterlibrpc.cc \
         md5/md5.cc
 SUBDIRS = md5
 

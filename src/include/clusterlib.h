@@ -28,10 +28,15 @@
 #include "blockingqueue.h"
 #include "mutex.h"
 #include "thread.h"
+#include "timerservice.h"
+#include "healthchecker.h"
+
 #include "json.h"
 #include "jsonrpc.h"
-#include "healthchecker.h"
-#include "timerservice.h"
+#include "clusterlibrpc.h"
+#include "startprocessrpc.h"
+#include "stopprocessrpc.h"
+#include "genericrpc.h"
 
 #include "clusterlibstrings.h"
 #include "clusterlibints.h"

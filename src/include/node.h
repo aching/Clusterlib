@@ -41,10 +41,20 @@ class Node
     /**
      * Is this node connected?
      *
+     * @param id if a valid pointer, the id is set if connected
+     * @param msecs if a valid pointer, the id is set if connected
      * @return true if this node is connected.
      */
-    virtual bool isConnected() = 0;
+    virtual bool isConnected(std::string *id = NULL, 
+                             int64_t *msecs = NULL) = 0;
 
+    /**
+     * Try to make this node connected
+     *
+     * @param force if true, replace the old one if it exists.
+     */
+    virtual bool initializeConnection(bool force = false) = 0;
+    
     /**
      * Return the time at the client state was set.
      */

@@ -15,7 +15,6 @@
 #include <sys/wait.h>
 #include "clusterlibinternal.h"
 #include "activenodeparams.h"
-#include "activenodejsonrpcadaptor.h"
 
 #define LOG_LEVEL LOG_WARN
 #define MODULE_NAME "ClusterLib"
@@ -94,74 +93,29 @@ class ProcessHandler : public UserEventHandler
     Mutex *m_globalMutex;
 };
 
-
 /**
- * Handle commands in the receiving queue.
+ * Check the health of this node
  */
-class CommandQueueHandler : public UserEventHandler
-{
+class NodeHealthChecker : public HealthChecker {
   public:
-    CommandQueueHandler(Queue *commandQueue,
-                        Queue *defaultCompletedQueue,
-                        Root *root,
-                        Event mask,
-                        ClientData cd,
-                        Mutex *globalMutex)
-        : UserEventHandler(commandQueue, mask, cd),
-          m_globalMutex(globalMutex),
-          m_root(root),
-          m_commandQueue(commandQueue),
-          m_defaultCompletedQueue(defaultCompletedQueue) {}
-    virtual void handleUserEvent(Event e)
-    {
-        TRACE(CL_LOG, "handleUserEvent");
+    NodeHealthChecker(Node *node) 
+        : m_node(node) {}
 
-        if (m_commandQueue == NULL) {
-            throw InconsistentInternalStateException(
-                "handleUserEvent: No command queue exists!!!");
-            return;
+    virtual HealthReport checkHealth() {
+        if (m_node->getUseProcessSlots()) {
+            return clusterlib::HealthReport(
+                clusterlib::HealthReport::HS_HEALTHY, 
+                "Process slots can still be used");
         }
-
-        if (m_commandQueue->empty()) {
-            LOG_DEBUG(CL_LOG, 
-                      "handleUserEvent: Empty command queue on event %u",
-                      e);
-            return;
+        else {
+            return clusterlib::HealthReport(
+                clusterlib::HealthReport::HS_UNHEALTHY,
+                "Process slots not allowed");
         }
-
-        bool timedOut = true;
-        string command = m_commandQueue->take(commandQueueTimeOut, &timedOut);
-        if (timedOut) {
-            LOG_DEBUG(CL_LOG, 
-                      "handleUserEvent: Waited %llu msecs and "
-                      "couldn't find any elements",
-                      commandQueueTimeOut);
-            return;
-        }
-
-        /*
-         * Do the commands commands registered in the RPC Manager
-         *
-         * Handling return value:
-         *
-         * If DEFAULT_RESP_QUEUE exists and is valid, write result to
-         * that queue.  Otherwise write result to DEFAULT_COMPLETED_QUEUE.
-         *
-         */
-        LOG_DEBUG(CL_LOG,
-                  "handleUserEvent: Got command (%s)", 
-                  command.c_str());
-        JSONRPCManager *rpcManager = JSONRPCManager::getInstance();
-        rpcManager->invokeAndResp(command,
-                                  m_root,
-                                  m_defaultCompletedQueue);
     }
 
   private:
-    Mutex *m_globalMutex;
-    Root *m_root;
-    Queue *m_commandQueue;
-    Queue *m_defaultCompletedQueue;
+    Node *m_node;
 };
 
 int main(int argc, char* argv[]) 
@@ -169,19 +123,20 @@ int main(int argc, char* argv[])
     ActiveNodeParams params;
     params.parseArgs(argc, argv);
 
-    JSONRPCManager *rpcManager = JSONRPCManager::getInstance();
-    
+    auto_ptr<JSONRPCManager> rpcManager(new JSONRPCManager());
     auto_ptr<Factory> factory(new Factory(params.getZkServerPortList()));
     Client *client = factory->createClient();
     Root *root = client->getRoot();
 
-    /* Create the RPC adaptor and register available methods. */
-    auto_ptr<ActiveNodeJSONRPCAdaptor> jsonRpcAdaptor(
-        new ActiveNodeJSONRPCAdaptor(client));
-    rpcManager->registerMethod(ClusterlibStrings::RPC_START_PROCESS,
-                               jsonRpcAdaptor.get());
-    rpcManager->registerMethod(ClusterlibStrings::RPC_STOP_PROCESS,
-                               jsonRpcAdaptor.get());
+    /* Create and register available methods. */
+    auto_ptr<StartProcessMethod> startProcessMethod(
+        new StartProcessMethod(client));
+    rpcManager->registerMethod(startProcessMethod->getName(),
+                               startProcessMethod.get());
+    auto_ptr<StopProcessMethod> stopProcessMethod(
+        new StopProcessMethod(client));
+    rpcManager->registerMethod(stopProcessMethod->getName(),
+                               stopProcessMethod.get());
 
     vector<string> groupVec = params.getGroupsVec();
     if (groupVec.size() <= 0) {
@@ -208,7 +163,9 @@ int main(int argc, char* argv[])
      * activate the node */
     Mutex activeNodeMutex;
     Node *activeNode = group->getNode(hostnameString, true);
-    activeNode->acquireLock();
+    activeNode->initializeConnection(true);
+    NodeHealthChecker nodeHealthChecker(activeNode);
+    activeNode->registerHealthChecker(&nodeHealthChecker);
     
     /* Get rid of all the previous processes */
     NameList nl = activeNode->getProcessSlotNames();
@@ -238,23 +195,16 @@ int main(int argc, char* argv[])
         client->registerHandler(handler);
     }
 
-    /* Setup the command queue and associated handlers */
-    Queue *commandQueue =
+    /* Setup the receiving queue and associated handler */
+    Queue *recvQueue =
         activeNode->getQueue(ClusterlibStrings::DEFAULT_RECV_QUEUE, 
                              true);
-    Queue *defaultCompletedQueue =
+    Queue *completedQueue =
         activeNode->getQueue(ClusterlibStrings::DEFAULT_COMPLETED_QUEUE, 
                              true);
-    UserEventHandler *handler = new CommandQueueHandler(
-        commandQueue,
-        defaultCompletedQueue,
-        root,
-        EN_QUEUECHILDCHANGE,
-        NULL,
-        &activeNodeMutex);
-    handlerVec.push_back(handler);
-    client->registerHandler(handler);
-    activeNode->releaseLock();
+    factory->createJSONRPCMethodClient(recvQueue,
+                                       completedQueue,
+                                       rpcManager.get());
     activeNode->setUseProcessSlots(true);
 
     /* Check if process clean up is needed every so many seconds and
@@ -283,6 +233,7 @@ int main(int argc, char* argv[])
     }
 
     /* Clean up */
+    activeNode->unregisterHealthChecker();
     vector<UserEventHandler *>::iterator handlerVecIt;
     for (handlerVecIt = handlerVec.begin(); 
          handlerVecIt != handlerVec.end();

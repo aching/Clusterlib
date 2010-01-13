@@ -37,12 +37,13 @@ class Queue
      * queue.
      *
      * @param timeout how long to wait in milliseonds until an element is
-     *        available.  If 0, then wait indefinitely.
+     *        available.  If 0, then wait indefinitely.  If <0, return 
+     *        immediately
      * @param timedOut if not NULL, then set to true if the function timed out
      *        and did not retrieve an element
      * @return the element from the queue
      */
-    virtual std::string take(const uint64_t timeout = 0, 
+    virtual std::string take(const int64_t timeout = 0, 
                              bool *timedOut = NULL) = 0;
 
     /**

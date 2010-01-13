@@ -1,5 +1,5 @@
 #include <boost/test/auto_unit_test.hpp>
-#include "jsonrpc.h"
+#include <clusterlib.h>
 #include "util.h"
 
 using namespace std;
@@ -8,8 +8,27 @@ using namespace json;
 using namespace json::rpc;
 
 class MockMethod : public JSONRPCMethod {
-public:
-    JSONValue invoke(const string &name, const JSONValue::JSONArray &params, StatePersistence *persistence) {
+  public:
+    virtual std::string getName()
+    {
+        return "MockMethod"; 
+    }
+    
+    virtual bool checkParams(const ::json::JSONValue::JSONArray &paramArr)
+    {
+        try {
+            string encodedString = JSONCodec::encode(paramArr);
+            return true;
+        }
+        catch (const JSONRPCInvocationException &ex) {
+            return false;
+        }
+    }
+
+    virtual JSONValue invoke(const string &name, 
+                             const JSONValue::JSONArray &params, 
+                             StatePersistence *persistence) 
+    {
         JSONValue::JSONArray array = params;
         array.push_back(string("ADDITIONAL DATA"));
         array.push_back(name);
@@ -18,21 +37,36 @@ public:
 };
 
 class MockErrorMethod : public JSONRPCMethod {
-public:
-    JSONValue invoke(const string &name, const JSONValue::JSONArray &params, StatePersistence *persistence) {
+  public:
+    virtual std::string getName()
+    {
+        return "MockErrorMethod"; 
+    }
+    
+    virtual bool checkParams(const ::json::JSONValue::JSONArray &paramArr)
+    {
+        try {
+            string encodedString = JSONCodec::encode(paramArr);
+            return true;
+        }
+        catch (const JSONRPCInvocationException &ex) {
+            return false;
+        }
+    }
+
+    virtual JSONValue invoke(const string &name, 
+                             const JSONValue::JSONArray &params, 
+                             StatePersistence *persistence) 
+    {
         throw JSONRPCInvocationException("Something goes wrong");
     }
 };
     
-BOOST_AUTO_TEST_CASE(testJSONRPCManagerGetInstance) {
-    // Test the singleton
-    BOOST_CHECK_EQUAL(JSONRPCManager::getInstance(), JSONRPCManager::getInstance());
-}
-
 BOOST_AUTO_TEST_CASE(testInvokeNonObject) {
     JSONValue invoke = JSONValue::JSONArray();
     JSONValue::JSONObject result;
-    JSONRPCManager::getInstance()->invoke(invoke).get(&result);
+    JSONRPCManager rpcManager;
+    rpcManager.invoke(invoke).get(&result);
     BOOST_CHECK(result["result"].type() == typeid(JSONValue::JSONNull));
     BOOST_CHECK(result["error"].type() != typeid(JSONValue::JSONNull));
 }
@@ -43,7 +77,8 @@ BOOST_AUTO_TEST_CASE(testInvokeObjectInvalid) {
     request["nothingisvalid"] = "blah";
     JSONValue invoke = request;
     JSONValue::JSONObject result;
-    JSONRPCManager::getInstance()->invoke(invoke).get(&result);
+    JSONRPCManager rpcManager;
+    rpcManager.invoke(invoke).get(&result);
     BOOST_CHECK(result["result"].type() == typeid(JSONValue::JSONNull));
     BOOST_CHECK(result["error"].type() != typeid(JSONValue::JSONNull));
 }
@@ -55,7 +90,8 @@ BOOST_AUTO_TEST_CASE(testInvokeObjectParamsInvalid) {
     request["id"] = "ok";
     JSONValue invoke = request;
     JSONValue::JSONObject result;
-    JSONRPCManager::getInstance()->invoke(invoke).get(&result);
+    JSONRPCManager rpcManager;
+    rpcManager.invoke(invoke).get(&result);
     BOOST_CHECK(result["result"].type() == typeid(JSONValue::JSONNull));
     BOOST_CHECK(result["error"].type() != typeid(JSONValue::JSONNull));
     BOOST_CHECK_EQUAL(result["id"].get<JSONValue::JSONString>(), "ok");
@@ -71,7 +107,8 @@ BOOST_AUTO_TEST_CASE(testInvokeObjectUnknown) {
     request["id"] = "ok";
     JSONValue invoke = request;
     JSONValue::JSONObject result;
-    JSONRPCManager::getInstance()->invoke(invoke).get(&result);
+    JSONRPCManager rpcManager;
+    rpcManager.invoke(invoke).get(&result);
     BOOST_CHECK(result["result"].type() == typeid(JSONValue::JSONNull));
     BOOST_CHECK(result["error"].type() != typeid(JSONValue::JSONNull));
     BOOST_CHECK_EQUAL(result["id"].get<JSONValue::JSONString>(), "ok");
@@ -79,7 +116,8 @@ BOOST_AUTO_TEST_CASE(testInvokeObjectUnknown) {
 
 BOOST_AUTO_TEST_CASE(testInvokeObjectNormal) {
     MockMethod mockMethod;
-    BOOST_CHECK(JSONRPCManager::getInstance()->registerMethod("mock", &mockMethod));
+    JSONRPCManager rpcManager;
+    BOOST_CHECK(rpcManager.registerMethod("mock", &mockMethod));
 
     JSONValue::JSONObject request;
     JSONValue::JSONArray params;
@@ -90,7 +128,7 @@ BOOST_AUTO_TEST_CASE(testInvokeObjectNormal) {
     request["id"] = "ok";
     JSONValue invoke = request;
     JSONValue::JSONObject result;
-    JSONRPCManager::getInstance()->invoke(invoke).get(&result);
+    rpcManager.invoke(invoke).get(&result);
     
     JSONValue::JSONArray expected;
     expected.push_back("param1");
@@ -102,12 +140,13 @@ BOOST_AUTO_TEST_CASE(testInvokeObjectNormal) {
     BOOST_CHECK_EQUAL(result["id"].get<JSONValue::JSONString>(), "ok");
 
     // Clean up
-    BOOST_CHECK(JSONRPCManager::getInstance()->unregisterMethod("mock"));
+    BOOST_CHECK(rpcManager.unregisterMethod("mock"));
 }
 
 BOOST_AUTO_TEST_CASE(testInvokeObjectError) {
     MockErrorMethod mockErrorMethod;
-    BOOST_CHECK(JSONRPCManager::getInstance()->registerMethod("mock", &mockErrorMethod));
+    JSONRPCManager rpcManager;
+    BOOST_CHECK(rpcManager.registerMethod("mock", &mockErrorMethod));
 
     JSONValue::JSONObject request;
     JSONValue::JSONArray params;
@@ -118,25 +157,27 @@ BOOST_AUTO_TEST_CASE(testInvokeObjectError) {
     request["id"] = "ok";
     JSONValue invoke = request;
     JSONValue::JSONObject result;
-    JSONRPCManager::getInstance()->invoke(invoke).get(&result);
+    rpcManager.invoke(invoke).get(&result);
     
     BOOST_CHECK(result["result"].type() == typeid(JSONValue::JSONNull));
     BOOST_CHECK(result["error"].type() != typeid(JSONValue::JSONNull));
     BOOST_CHECK_EQUAL(result["id"].get<JSONValue::JSONString>(), "ok");
 
     // Clean up
-    BOOST_CHECK(JSONRPCManager::getInstance()->unregisterMethod("mock"));
+    BOOST_CHECK(rpcManager.unregisterMethod("mock"));
 }
 
 BOOST_AUTO_TEST_CASE(testUnregisterUnknown) {
-    BOOST_CHECK(!JSONRPCManager::getInstance()->unregisterMethod("mock"));
+    JSONRPCManager rpcManager;
+    BOOST_CHECK(!rpcManager.unregisterMethod("mock"));
 }
 
 BOOST_AUTO_TEST_CASE(testDoubleRegister) {
     MockErrorMethod mockErrorMethod;
-    BOOST_CHECK(JSONRPCManager::getInstance()->registerMethod("mock", &mockErrorMethod));
-    BOOST_CHECK(!JSONRPCManager::getInstance()->registerMethod("mock", &mockErrorMethod));
+    JSONRPCManager rpcManager;
+    BOOST_CHECK(rpcManager.registerMethod("mock", &mockErrorMethod));
+    BOOST_CHECK(!rpcManager.registerMethod("mock", &mockErrorMethod));
 
     // Clean up
-    BOOST_CHECK(JSONRPCManager::getInstance()->unregisterMethod("mock"));
+    BOOST_CHECK(rpcManager.unregisterMethod("mock"));
 }

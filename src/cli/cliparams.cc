@@ -107,8 +107,8 @@ CliParams::CliParams()
       m_client(NULL),
       m_finished(false), 
       m_line(NULL),
-      m_keySetMaxSize(1024*1024)
-
+      m_keySetMaxSize(1024*1024),
+      m_logLevel(0)
 {
 
 #ifndef NO_TAB_COMPLETION
@@ -129,6 +129,7 @@ CliParams::printUsage(char *exec) const
 " -h  --help            Display this help and exit.\n"
 " -l  --list_cmds       List all available commands.\n"
 " -z  --zk_server_port  Zookeeper server port list \n"
+" -d  --debug_level     Set the debug level 0-5 (default 0)\n"
 " -c  --command         Run a command.  Spaces delimit arguments\n";
 }
 
@@ -147,7 +148,7 @@ CliParams::parseArgs(int argc, char **argv)
     /* Index of current long option into opt_lng array */
     int32_t option_index = 0;
     int32_t err = -1;
-    const char *optstring = ":hz:l:c:";
+    const char *optstring = ":hz:d:lc:";
 
     /* Parse all standard command line arguments */
     while (1) {
@@ -161,6 +162,9 @@ CliParams::parseArgs(int argc, char **argv)
                 exit(-1);
             case 'z':
                 m_zkServerPortList = optarg;
+                break;
+            case 'd':
+                m_logLevel = atoi(optarg);
                 break;
             case 'l':
                 printCommandNames();
@@ -181,8 +185,7 @@ CliParams::parseArgs(int argc, char **argv)
         printUsage(argv[0]);
         ::exit(-1);
     }
-    m_factory = new Factory(getZkServerPortList());
-    m_client = m_factory->createClient();
+    initFactoryAndClient();
 
     /* Add the root key to the key set. */
     addToKeySet(m_client->getRoot()->getKey());
@@ -199,7 +202,7 @@ CliParams::parseAndRunLine()
 
     if (m_command.empty()) {
 #ifndef NO_TAB_COMPLETION
-        m_line = readline("Enter command (Use '?' if help is required):\n");
+        m_line = readline("\nEnter command (Use '?' if help is required):\n");
         /* If the line has text, save it to history. */
         if (m_line && *m_line) {
             add_history(m_line);
@@ -212,7 +215,7 @@ CliParams::parseAndRunLine()
         }        
 #else
         char lineString[4096];
-        cout << "Enter command (Use '?' if help is required):" << endl;
+        cout << "\nEnter command (Use '?' if help is required):" << endl;
         cin.getline(lineString, 4096);
         split(components, lineString, is_any_of(keySeparator));
 #endif
@@ -271,5 +274,12 @@ CliParams::getCommandByName(const string &name)
     }
     
     return it->second;
+}
+
+void
+CliParams::initFactoryAndClient()
+{
+    m_factory = new Factory(getZkServerPortList());
+    m_client = m_factory->createClient();
 }
 

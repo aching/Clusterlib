@@ -258,6 +258,7 @@ class ClusterlibUserEvents
              * and in the process, cause the EN_CONNECTED event
              * to happen on the node.
              */
+            _nod0->initializeConnection(true);
             _nod0->registerHealthChecker(hcp);
 
             /*
@@ -338,6 +339,7 @@ class ClusterlibUserEvents
              * and in the process, cause the EN_CONNECTED event
              * to happen on the node.
              */
+            _nod0->initializeConnection(true);
             _nod0->registerHealthChecker(hcp);
             
             /*

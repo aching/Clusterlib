@@ -585,7 +585,10 @@ class ClusterlibCache
         /*
          * Create the connectivity znode.
          */
-        _zk->createNode(rpath, "yes", 0, false);
+        _zk->createNode(rpath, 
+                        "{\"_connectedId\":\"testCache9\",\"_time\":9}", 
+                        0, 
+                        false);
 
         /*
          * Wait for event propagation.

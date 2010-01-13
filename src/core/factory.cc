@@ -45,9 +45,6 @@ Factory::~Factory()
     delete m_ops;
 }
 
-/*
- * Create a client.
- */
 Client *
 Factory::createClient()
 {
@@ -56,15 +53,31 @@ Factory::createClient()
     return getOps()->createClient();
 }
 
+Client *
+Factory::createJSONRPCResponseClient(Queue *responseQueue,
+                                     Queue *completedQueue)
+{
+    return getOps()->createJSONRPCResponseClient(responseQueue,
+                                                 completedQueue);
+}
+
+Client *
+Factory::createJSONRPCMethodClient(Queue *recvQueue,
+                                   Queue *completedQueue,
+                                   ::json::rpc::JSONRPCManager *rpcManager)
+{
+    return getOps()->createJSONRPCMethodClient(recvQueue,
+                                               completedQueue,
+                                               rpcManager);
+}
+
+
 bool
 Factory::isConnected()
 {
     return getOps()->isConnected();
 }
 
-/*
- * Try to synchronize with the underlying data store.
- */
 void
 Factory::synchronize()
 {

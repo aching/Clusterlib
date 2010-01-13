@@ -16,6 +16,7 @@
 #define MODULE_NAME "ClusterLib"
 
 using namespace std;
+using namespace json;
 
 namespace clusterlib
 {
@@ -23,7 +24,7 @@ namespace clusterlib
 Root *
 ClientImpl::getRoot()
 {
-    return getDelegate()->getRoot();
+    return getOps()->getRoot();
 }
 
 void
@@ -32,6 +33,42 @@ ClientImpl::sendEvent(UserEventPayload *cepp)
     TRACE(CL_LOG, "sendEvent");
 
     m_queue.put(cepp);
+}
+
+string 
+ClientImpl::getHostnamePidTid()
+{
+    TRACE(CL_LOG, "getHostnamePidTid");
+    
+    const int32_t bufLen = 256;
+    char tmp[bufLen + 1];
+    tmp[bufLen] = '\0';
+    if (gethostname(tmp, bufLen) != 0) {
+        throw SystemFailureException("getHostnamePidTid: gethostname failed");
+    }
+    string res(tmp);
+    res.append(":");
+
+    /*
+     * Get the hostname, pid, and tid of the calling
+     * thread.
+     */
+    snprintf(tmp, bufLen, "0x%x", (uint32_t) getpid());
+    res.append(tmp);
+    res.append("-");
+    snprintf(tmp, bufLen, "0x%x", (uint32_t) pthread_self());
+    res.append(tmp);
+
+    return res;
+}
+
+uint64_t
+ClientImpl::fetchAndIncrRequestCounter()
+{
+    TRACE(CL_LOG, "fetchAndIncrRequestCounter");
+    
+    Locker l(&m_jsonRPCRequestCounterMutex);
+    return m_jsonRPCRequestCounter++;
 }
 
 /*
@@ -54,6 +91,9 @@ ClientImpl::consumeUserEvents(void *param)
     bool endEventReceived = false;
     string rootKey = NotifyableKeyManipulator::createRootKey();
     while (endEventReceived != true) {
+        LOG_DEBUG(CL_LOG,
+                  "consumeUserEvents: Waiting to take "
+                  "from the event queue...");
 	uepp = m_queue.take();
 
         /*
@@ -98,6 +138,8 @@ ClientImpl::consumeUserEvents(void *param)
 void
 ClientImpl::dispatchHandlers(const string &key, Event e)
 {
+    TRACE(CL_LOG, "dispatchHandlers");
+
     if (key.empty()) {
         LOG_INFO(CL_LOG,
                  "dispatchHandlers: empty key, not dispatching");
@@ -206,7 +248,7 @@ ClientImpl::registerHandler(UserEventHandler *uehp)
 {
     TRACE(CL_LOG, "registerHandler");
 
-    LOG_WARN(CL_LOG,
+    LOG_INFO(CL_LOG,
              "Registering handler for %s",
              uehp->getNotifyable()->getKey().c_str());
 
@@ -240,6 +282,78 @@ ClientImpl::cancelHandler(UserEventHandler *uehp)
         }
     }
     return false;
+}
+
+void
+ClientImpl::registerJSONRPCResponseHandler(Queue *responseQueue,
+                                           Queue *completedQueue)
+{
+    TRACE(CL_LOG, "registerJSONRPCResponseHandler");
+
+    if (m_jsonRPCResponseHandler) {
+        throw InvalidMethodException(
+            "registerJSONRPCResponseHandler: Already registered!");
+    }
+    m_jsonRPCResponseHandler = new JSONRPCResponseHandler(
+        responseQueue,
+        completedQueue,
+        this,
+        getOps()->getResponseSignalMap());
+
+    registerHandler(m_jsonRPCResponseHandler);
+}
+
+bool
+ClientImpl::cancelJSONRPCResponseHandler()
+{
+    TRACE(CL_LOG, "cancelJSONRPCMethodHandler");
+
+    if (m_jsonRPCResponseHandler) {
+        bool ret = cancelHandler(m_jsonRPCResponseHandler);
+        delete m_jsonRPCResponseHandler;
+        m_jsonRPCResponseHandler = NULL;
+        return ret;
+    }
+    else {
+        return false;
+    }
+}
+
+void
+ClientImpl::registerJSONRPCMethodHandler(
+        Queue *recvQueue,
+        Queue *completedQueue,
+        ::json::rpc::JSONRPCManager *rpcManager)
+{
+    TRACE(CL_LOG, "registerJSONRPCMethodHandler");
+
+    if (m_jsonRPCMethodHandler) {
+        throw InvalidMethodException(
+            "registerJSONRPCMethodHandler: Already registered!");
+    }
+    m_jsonRPCMethodHandler = new JSONRPCMethodHandler(
+        recvQueue,
+        completedQueue,
+        getRoot(),
+        rpcManager);
+
+    registerHandler(m_jsonRPCMethodHandler);
+}
+
+bool
+ClientImpl::cancelJSONRPCMethodHandler()
+{
+    TRACE(CL_LOG, "cancelJSONRPCMethodHandler");
+
+    if (m_jsonRPCMethodHandler) {
+        bool ret = cancelHandler(m_jsonRPCMethodHandler);
+        delete m_jsonRPCMethodHandler;
+        m_jsonRPCMethodHandler = NULL;
+        return ret;
+    }
+    else {
+        return false;
+    }
 }
 
 /*

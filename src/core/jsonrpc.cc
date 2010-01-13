@@ -1,5 +1,4 @@
 #include "clusterlibinternal.h"
-#include "jsonrpc.h"
 
 using namespace std;
 using namespace log4cxx;
@@ -11,20 +10,6 @@ namespace json { namespace rpc {
 
 JSONRPCInvocationException::JSONRPCInvocationException(
     const string &message) : JSONException(message) {
-}
-
-auto_ptr<JSONRPCManager> JSONRPCManager::singleton;
-    
-JSONRPCManager *JSONRPCManager::getInstance() {
-    if (!singleton.get()) {
-        singleton.reset(new JSONRPCManager());
-    }
-    
-    return singleton.get();
-}
-
-JSONRPCManager::JSONRPCManager() 
-{
 }
 
 JSONRPCManager::~JSONRPCManager() 
@@ -148,7 +133,7 @@ JSONRPCManager::invokeAndResp(const string &rpcInvocation,
     
     JSONValue jsonInput, jsonResult;
     JSONValue::JSONObject inputObj;
-    JSONValue::JSONObject::iterator jsonInputIt;
+    JSONValue::JSONObject::const_iterator jsonInputIt;
     string result;
     try {
         jsonInput = JSONCodec::decode(rpcInvocation);
@@ -159,7 +144,12 @@ JSONRPCManager::invokeAndResp(const string &rpcInvocation,
                   rpcInvocation.c_str(),
                   result.c_str());
         inputObj = jsonInput.get<JSONValue::JSONObject>();
-        jsonInputIt = inputObj.find(ClusterlibStrings::DEFAULT_RESP_QUEUE);
+        const JSONValue::JSONArray &paramArr = 
+            inputObj["params"].get<JSONValue::JSONArray>();
+        const JSONValue::JSONObject &paramObj = 
+            paramArr[0].get<JSONValue::JSONObject>();
+        jsonInputIt = paramObj.find(
+            ClusterlibStrings::JSONOBJECTKEY_RESPQUEUEKEY);
         if (jsonInputIt != inputObj.end()) {
             string respQueueKey = 
             jsonInputIt->second.get<JSONValue::JSONString>();
@@ -182,7 +172,7 @@ JSONRPCManager::invokeAndResp(const string &rpcInvocation,
             defaultCompletedQueue->put(result);
         }
     }
-    catch (const JSONParseException &ex) {
+    catch (const JSONException &ex) {
         JSONValue::JSONObject jsonObject;
         string queueElement = JSONCodec::encode(jsonObject);
         LOG_WARN(CL_LOG,

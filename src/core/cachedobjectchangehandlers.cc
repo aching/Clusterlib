@@ -1171,12 +1171,12 @@ CachedObjectChangeHandlers::handleNodeConnectionChange(NotifyableImpl *ntp,
     /*
      * Convert it to a NodeImpl *
      */
-    NodeImpl *np = dynamic_cast<NodeImpl *>(ntp);
+    NodeImpl *node = dynamic_cast<NodeImpl *>(ntp);
 
     /*
      * If there's no Node, punt.
      */
-    if (np == NULL) {
+    if (node == NULL) {
         LOG_WARN(CL_LOG,
                  "Conversion to NodeImpl * failed for %s",
                  key.c_str());
@@ -1191,18 +1191,17 @@ CachedObjectChangeHandlers::handleNodeConnectionChange(NotifyableImpl *ntp,
     /*
      * Get the current value and re-establish watch.
      */
-    bool curconn = getOps()->isNodeConnected(np->getKey());
+    string id;
+    int64_t msecs;
+    bool connected = getOps()->isNodeConnected(node->getKey(), id, msecs);
 
-    /*
-     * Cause a user level event and update the cache
-     * if the returned value is different than the
-     * currently cached value.
-     */
-    if (curconn == np->isConnected()) {
-        return EN_NOEVENT;
+    if (connected) {
+        node->setConnectedAndTime(connected, id, msecs);
     }
-
-    np->setConnectedAndTime(curconn, TimerService::getCurrentTimeMsecs());
+    else {
+        node->setConnectedAndTime(
+            false, "", TimerService::getCurrentTimeMsecs());
+    }
 
     return EN_CONNECTEDCHANGE;
 }

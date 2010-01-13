@@ -197,6 +197,21 @@ class CliParams {
     }
 
     /**
+     * Get the clusterlib factory.
+     *
+     * @return the clusterlib factory pointer
+     */
+    clusterlib::Factory *getFactory()
+    {
+        return m_factory;
+    }
+
+    /**
+     * Initialize the factory and client.
+     */
+    void initFactoryAndClient();
+    
+    /**
      * Destructor.
      */
     ~CliParams() 
@@ -205,6 +220,14 @@ class CliParams {
             delete m_factory;
             m_factory = NULL;
         }
+    }
+
+    /**
+     * Get the initial log level desired.
+     */
+    int32_t getLogLevel()
+    {
+        return m_logLevel;
     }
 
   private:
@@ -259,6 +282,12 @@ class CliParams {
      * Maximum m_keySet size.
      */
     int64_t m_keySetMaxSize;
+
+    /**
+     * The debug level
+     */
+    int32_t m_logLevel;
+    
 
     /** Single instance */
     static CliParams *m_params;

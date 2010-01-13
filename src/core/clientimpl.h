@@ -30,6 +30,20 @@ class ClientImpl
 
     virtual bool cancelHandler(UserEventHandler *cehp);
 
+    virtual void registerJSONRPCResponseHandler(Queue *responseQueue,
+                                                Queue *completedQueue);
+
+    virtual bool cancelJSONRPCResponseHandler();
+
+    virtual void registerJSONRPCMethodHandler(
+        Queue *recvQueue,
+        Queue *completedQueue,
+        ::json::rpc::JSONRPCManager *rpcManager);
+
+    virtual bool cancelJSONRPCMethodHandler();
+
+    virtual uint64_t fetchAndIncrRequestCounter();
+
     /*
      * Internal functions not used by outside clients
      */
@@ -38,7 +52,10 @@ class ClientImpl
      * Constructor used by the factory.
      */
     ClientImpl(FactoryOps *fp)
-        : mp_f(fp)
+        : mp_f(fp),
+          m_jsonRPCRequestCounter(0),
+          m_jsonRPCResponseHandler(NULL),
+          m_jsonRPCMethodHandler(NULL)
     {
         /**
          * Empty out the handlers table.
@@ -55,13 +72,25 @@ class ClientImpl
 
     /**
      * Get the associated factory delegate object.
+     *
+     * @return a pointer to the factory delegate
      */
-    FactoryOps *getDelegate() { return mp_f; }
+    FactoryOps *getOps() { return mp_f; }
 
     /**
      * Send an event to this client.
+     *
+     * @param cepp the payload that goes into the queue
      */
     void sendEvent(UserEventPayload *cepp);
+
+    /**
+     * Get hostname, process id and thread id string.  Useful for
+     * uniquely identifying a client.
+     *
+     * @return string of hostname, process id, and thread id
+     */
+    static std::string getHostnamePidTid();
 
     /**
      * Make the destructor protected so it can only be invoked
@@ -73,7 +102,7 @@ class ClientImpl
          * Wait till all events have been handled.
          */
         m_eventThread.Join();
-    }
+   }
 
   private:
     /**
@@ -95,15 +124,21 @@ class ClientImpl
 
     /**
      * Get the event handlers registry lock.
+     *
+     * @return a pointer to the mutex
      */
     Mutex *getEventHandlersLock() { return &m_eventHandlersLock; }
 
     /**
      * Dispatch all handlers registered for this combo of event and
      * Notifyable.
+     *
+     * @param key the key of the notifyable
+     * @param e the event on this notifyable
      */
     void dispatchHandlers(const std::string &key, Event e);
 
+  private:
     /**
      * The factory delegate instance we're using.
      */
@@ -125,6 +160,26 @@ class ClientImpl
      */
     EventHandlersMultimap m_eventHandlers;
     Mutex m_eventHandlersLock;
+
+    /**
+     * Protect m_jsonRPCRequestCounter
+     */
+    Mutex m_jsonRPCRequestCounterMutex;
+    
+    /**
+     * Counter to make sure our requests are unique.
+     */
+    uint64_t m_jsonRPCRequestCounter;
+
+    /**
+     * JSONRPCResponseHandler pointer
+     */
+    JSONRPCResponseHandler *m_jsonRPCResponseHandler;
+
+    /**
+     * JSONRPCMethodHandler pointer
+     */
+    JSONRPCMethodHandler *m_jsonRPCMethodHandler;
 };
 
 };	/* End of 'namespace clusterlib' */

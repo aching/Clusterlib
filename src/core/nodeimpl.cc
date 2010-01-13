@@ -46,6 +46,43 @@ namespace clusterlib
     LOG_DEBUG(CL_LOG, "...disarming the bomb");  \
 }
 
+bool
+NodeImpl::isConnected(string *id, int64_t *msecs) 
+{
+    TRACE(CL_LOG, "isConnected");
+
+    Locker l(getStateMutex());
+    LOG_DEBUG(CL_LOG, "isConnected: id=%s,msecs=%Ld", m_connectedId.c_str(), m_connectionTime);
+    if (m_connected) {
+        if (id) {
+            *id = m_connectedId;
+        }
+        if (msecs) {
+            *msecs = m_connectionTime;
+        }
+    }
+    return m_connected; 
+}
+
+bool
+NodeImpl::initializeConnection(bool force)
+{
+    TRACE(CL_LOG, "initializeConnection");
+
+    Locker l(getStateMutex());
+    if (force) {
+        getOps()->removeConnected(getKey());
+    }
+    bool ret = getOps()->createConnected(getKey(), 
+                                         ClientImpl::getHostnamePidTid());
+    if (ret) {
+        m_connected = true;
+        m_connectedId = ClientImpl::getHostnamePidTid();
+    }
+
+    return ret;
+}
+
 /*****************************************************************************/
 /* Health management.                                                        */
 /*****************************************************************************/
@@ -56,41 +93,44 @@ NodeImpl::registerHealthChecker(HealthChecker *healthChecker)
     TRACE(CL_LOG, "registerHealthChecker" );
 
     /*
-     * Create the "connected" node.
+     * Check to make sure that this client initialized the connection.
      */
-    if (!getOps()->createConnected(getKey())) {
-        throw AlreadyConnectedException(
-            getKey() +
-            ": registerHealthChecker: Node already connected ");
+    if (!m_connected) {
+        throw InvalidArgumentsException(
+            "registerHealthChecker: Must be connected to this node prior "
+            "to registering a health checker!");
+    }
+    if (m_connectedId != ClientImpl::getHostnamePidTid()) {
+            throw AlreadyConnectedException(
+                getKey() +
+                ": registerHealthChecker: Node already connected for thread " +
+                m_connectedId + " cannot connect with " +
+                ClientImpl::getHostnamePidTid());
     }
 
     if (healthChecker == NULL) {
-        getOps()->removeConnected(getKey());
         throw InvalidArgumentsException(
             "registerHealthChecker: Cannot use a NULL healthChecker");
     }
 
     if (healthChecker->getMsecsPerCheckIfHealthy() <= 0) {
-        getOps()->removeConnected(getKey());
         throw InvalidArgumentsException(
             "registerHealthChecker: Cannot have a healthy "
             "msec check cycle <= 0");
     }
 
     if (healthChecker->getMsecsPerCheckIfUnhealthy() <= 0) {
-        getOps()->removeConnected(getKey());
         throw InvalidArgumentsException(
             "registerHealthChecker: Cannot have a unhealthy "
             "msec check cycle <= 0");
     }
 
-    Locker l1(getHealthMutex());
+    Locker l(getHealthMutex());
     if (mp_healthChecker != NULL) {
         LOG_ERROR(CL_LOG,
                   "registerHealthChecker: Already registered healthChecker "
                   "0x%x",
                   reinterpret_cast<uint32_t>(healthChecker));
-        getOps()->removeConnected(getKey());
         throw InvalidMethodException(
             "registerHealthChecker: Already registered a health checker");
     }
@@ -112,7 +152,7 @@ NodeImpl::unregisterHealthChecker()
     getOps()->removeConnected(getKey());
 
     {
-        Locker l1(getHealthMutex());
+        Locker l(getHealthMutex());
         if (mp_healthChecker == NULL) {
             LOG_ERROR(CL_LOG,
                       "unregisterHealthChecker: No registered healthChecker ");
@@ -126,7 +166,7 @@ NodeImpl::unregisterHealthChecker()
 
     m_doHealthChecksThread.Join();
 
-    Locker l1(getHealthMutex());
+    Locker l(getHealthMutex());
     mp_healthChecker = NULL;
 }
 
@@ -265,7 +305,7 @@ NodeImpl::~NodeImpl()
      */
     bool stopHealthChecker = false;
     {
-        Locker l1(getHealthMutex());
+        Locker l(getHealthMutex());
         if (mp_healthChecker != NULL) {
             stopHealthChecker = true;
         }
@@ -281,7 +321,7 @@ NodeImpl::isHealthy()
 {
     TRACE(CL_LOG, "isHealthy");
 
-    Locker l1(getStateMutex());
+    Locker l(getStateMutex());
     LOG_DEBUG(CL_LOG, 
               "isHealthy: Notifyable = (%s), clientState = (%s)",
               getKey().c_str(),
@@ -382,6 +422,23 @@ NodeImpl::doHealthChecks(void *param)
               (uint32_t) pthread_self());
 }
 
+void 
+NodeImpl::setConnectedAndTime(bool nc, const string &id, int64_t t)
+{ 
+    Locker l1(getStateMutex());
+
+    LOG_DEBUG(CL_LOG,
+              "setConnectedAndTime: connected (%s), id (%s), time (%lld)",
+              (nc ? "true" : "false"),
+              id.c_str(),
+              t);
+
+    m_connected = nc; 
+    m_connectedId = id;
+    m_connectionTime = t; 
+}
+
+
 /*
  * Initialize the cached representation of this node.
  */
@@ -394,8 +451,15 @@ NodeImpl::initializeCachedRepresentation()
      * Ensure that the cache contains all the information
      * about this node, and that all watches are established.
      */
-    m_connected = getOps()->isNodeConnected(
-        getKey());
+    string connectedId;
+    int64_t connectionTime;
+        
+    Locker l(getStateMutex());
+    bool connected = getOps()->isNodeConnected(
+        getKey(), connectedId, connectionTime);
+    if (connected) {
+        setConnectedAndTime(connected, connectedId, connectionTime);
+    }
     m_clientState = getOps()->getNodeClientState(
         getKey());
     m_masterSetState = getOps()->getNodeMasterSetState(

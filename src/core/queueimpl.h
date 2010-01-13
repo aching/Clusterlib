@@ -26,7 +26,7 @@ class QueueImpl
   public:
     virtual int64_t put(const std::string &element);
 
-    virtual std::string take(const uint64_t timeout = 0, 
+    virtual std::string take(const int64_t timeout = 0, 
                              bool *timedOut = NULL);
 
     virtual std::string front(bool *foundFront = NULL);

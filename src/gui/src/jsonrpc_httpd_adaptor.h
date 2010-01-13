@@ -16,23 +16,24 @@ namespace json { namespace rpc {
         JSONRPCManager *manager;
         static log4cxx::LoggerPtr logger;
 
-        class HttpSessionPersistableState : public virtual httpd::HttpSessionState {
-        public:
+        class HttpSessionPersistableState 
+            : public virtual httpd::HttpSessionState {
+          public:
             HttpSessionPersistableState(PersistableState *state);
             ~HttpSessionPersistableState();
             PersistableState *get();
-        private:
+          private:
             PersistableState *state;
         };
 
         class HttpSessionStatePersistence : public virtual StatePersistence {
-        public:
+          public:
             HttpSessionStatePersistence(httpd::HttpSession *session);
             ~HttpSessionStatePersistence();
             PersistableState *get(const std::string &name);
             void set(const std::string &name, PersistableState *state);
             void erase(const std::string &name);
-        private:
+          private:
             httpd::HttpSession *session;
         };
     };

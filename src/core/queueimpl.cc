@@ -75,7 +75,7 @@ QueueImpl::put(const string &element)
 }
 
 string
-QueueImpl::take(const uint64_t timeout, bool *timedOut)
+QueueImpl::take(const int64_t timeout, bool *timedOut)
 {
     TRACE(CL_LOG, "take");
 
@@ -84,10 +84,10 @@ QueueImpl::take(const uint64_t timeout, bool *timedOut)
     bool signaled;
     int64_t microSecs = 0;
     int64_t maxMicroSecs = 0;
+    if (timedOut) {
+        *timedOut = false;
+    }
     if (timeout != 0) {
-        if (timedOut) {
-            *timedOut = false;
-        }
         maxMicroSecs = 
             TimerService::getCurrentTimeUsecs() + timeout * 1000;
     }
@@ -430,6 +430,8 @@ QueueImpl::~QueueImpl()
 void 
 QueueImpl::establishQueueWatch()
 {
+    TRACE(CL_LOG, "establishQueueWatch");
+
     const string &queueParent = getKey();
     NameList childList;
     SAFE_CALLBACK_ZK(

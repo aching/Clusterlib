@@ -1,5 +1,5 @@
-#include "clusterlib_jsonrpc_adaptor.h"
 #include <clusterlib.h>
+#include "clusterlib_jsonrpc_adaptor.h"
 
 using namespace json;
 using namespace json::rpc;
@@ -13,6 +13,24 @@ LoggerPtr MethodAdaptor::m_logger(
 
 MethodAdaptor::MethodAdaptor(clusterlib::Client *f) : m_client(f) {
     m_root = m_client->getRoot();
+}
+
+std::string 
+MethodAdaptor::getName() 
+{
+    return "clusterlib::rpc::json::MethodAdaptor"; 
+}
+
+bool
+MethodAdaptor::checkParams(const JSONValue::JSONArray &paramArr)
+{
+    try {
+        string encodedString = JSONCodec::encode(paramArr);
+        return true;
+    }
+    catch (const JSONRPCInvocationException &ex) {
+        return false;
+    }
 }
 
 JSONValue 
@@ -68,13 +86,16 @@ MethodAdaptor::invoke(const std::string &name,
             param[1].get<JSONValue::JSONString>(),
             param[2].get<JSONValue::JSONString>());
     } else if (name == "removeNotifyableFromKey") {
-        if (param.size() != 1 ||
-            param[0].type() != typeid(JSONValue::JSONString)) {
+        if (param.size() != 2 ||
+            param[0].type() != typeid(JSONValue::JSONString) ||
+            param[1].type() != typeid(JSONValue::JSONBoolean)) {
             throw JSONRPCInvocationException(
-                "Method '" + name + "' requires one string parameter.");
+                "Method '" + name + "' requires one string parameter and "
+                "one boolean parameter.");
         }
         return removeNotifyableFromKey(
-            param[0].get<JSONValue::JSONString>());
+            param[0].get<JSONValue::JSONString>(),
+            param[1].get<JSONValue::JSONBoolean>());
     } else if (name == "getApplication") {
         if (param.size() != 1 || 
             param[0].type() != typeid(JSONValue::JSONObject)) {
@@ -410,9 +431,16 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableAttributesFromKey(
             Node *node = dynamic_cast<Node *>(notifyable);
             attributes[idNodeState] = node->getClientState();
             attributes[idNodeStateSetTime] = node->getClientStateTime();
-            attributes[idNodeConnected] = 
-                node->isConnected() ? "true" : "false";
-            attributes[idNodeConnectedTime] = node->getConnectionTime();
+            string connectedId;
+            int64_t connectionTime = -1;
+            bool connected = node->isConnected(&connectedId, &connectionTime);
+            attributes[idNodeConnected] = connected ? "true" : "false";
+            if (connected) {
+                cerr << "connectedid=" << connectedId << ",connectiontime="
+                     << connectionTime << endl;
+                attributes[idNodeConnectedId] = connectedId;
+                attributes[idNodeConnectedTime] = connectionTime;
+            }
             attributes[idNodeHealth] = 
                 node->isHealthy() ? "healthy" : "unhealthy";
             attributes[idNodeUseProcessSlots] = 
@@ -741,7 +769,9 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableChildrenFromKey(
                  ++iter) {
                 Application *child = 
                     m_root->getApplication(*iter);
-                applications.push_back(getNotifyableId(child));
+                if (child) {
+                    applications.push_back(getNotifyableId(child));
+                }
             }
         }
         else if (dynamic_cast<Application *>(notifyable)) {
@@ -752,7 +782,9 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableChildrenFromKey(
                  iter != names.end(); 
                  ++iter) {
                 Group *child = application->getGroup(*iter);
-                groups.push_back(getNotifyableId(child));
+                if (child) {
+                    groups.push_back(getNotifyableId(child));
+                }
             }
             names = application->getDataDistributionNames();
             for (NameList::const_iterator iter = names.begin(); 
@@ -760,14 +792,18 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableChildrenFromKey(
                  ++iter) {
                 DataDistribution *child = 
                     application->getDataDistribution(*iter);
-                dataDistributions.push_back(getNotifyableId(child));
+                if (child) {
+                    dataDistributions.push_back(getNotifyableId(child));
+                }
             }
             names = application->getNodeNames();
             for (NameList::const_iterator iter = names.begin(); 
                  iter != names.end(); 
                  ++iter) {
                 Node *child = application->getNode(*iter);
-                nodes.push_back(getNotifyableId(child));
+                if (child) {
+                    nodes.push_back(getNotifyableId(child));
+                }
             }
         }
         else if (dynamic_cast<Group *>(notifyable)) {
@@ -777,7 +813,9 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableChildrenFromKey(
                  iter != names.end(); 
                  ++iter) {
                 Group *child = group->getGroup(*iter);
-                groups.push_back(getNotifyableId(child));
+                if (child) {
+                    groups.push_back(getNotifyableId(child));
+                }
             }
             names = group->getDataDistributionNames();
             for (NameList::const_iterator iter = names.begin(); 
@@ -785,14 +823,18 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableChildrenFromKey(
                  ++iter) {
                 DataDistribution *child = 
                     group->getDataDistribution(*iter);
-                dataDistributions.push_back(getNotifyableId(child));
+                if (child) {
+                    dataDistributions.push_back(getNotifyableId(child));
+                }
             }
             names = group->getNodeNames();
             for (NameList::const_iterator iter = names.begin(); 
                  iter != names.end(); 
                  ++iter) {
                 Node *child = group->getNode(*iter);
-                nodes.push_back(getNotifyableId(child));
+                if (child) {
+                    nodes.push_back(getNotifyableId(child));
+                }
             }
         }
         else if (dynamic_cast<Node *>(notifyable)) {
@@ -802,7 +844,9 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableChildrenFromKey(
                  iter != names.end(); 
                  ++iter) {
                 ProcessSlot *child = node->getProcessSlot(*iter);
-                processSlots.push_back(getNotifyableId(child));
+                if (child) {
+                    processSlots.push_back(getNotifyableId(child));
+                }
             }
         }
 
@@ -813,7 +857,9 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableChildrenFromKey(
                  iter != names.end(); 
                  ++iter) {
                 PropertyList *child = notifyable->getPropertyList(*iter);
-                propertyLists.push_back(getNotifyableId(child));
+                if (child) {
+                    propertyLists.push_back(getNotifyableId(child));
+                }
             }
         }
 
@@ -828,7 +874,9 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableChildrenFromKey(
                  iter != names.end(); 
                  ++iter) {
                 Queue *child = notifyable->getQueue(*iter);
-                queues.push_back(getNotifyableId(child));
+                if (child) {
+                    queues.push_back(getNotifyableId(child));
+                }
             }
         }
 
@@ -984,7 +1032,8 @@ JSONValue::JSONString MethodAdaptor::addNotifyableFromKey(
 }
 
 JSONValue::JSONString MethodAdaptor::removeNotifyableFromKey(
-    const JSONValue::JSONString &key) {
+    const JSONValue::JSONString &key,
+    const JSONValue::JSONBoolean &removeChildren) {
     try {
         Notifyable *notifyable = m_root->getNotifyableFromKey(key);
         if (notifyable == NULL) {
@@ -992,8 +1041,7 @@ JSONValue::JSONString MethodAdaptor::removeNotifyableFromKey(
                 "removeNotifyableFromKey: Cannot get Notifyable from key "
                 + key);
         }
-
-        notifyable->remove();
+        notifyable->remove(removeChildren);
         return string("0");
     } catch (const ::clusterlib::Exception &ex) {
         LOG4CXX_WARN(m_logger,

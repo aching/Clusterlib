@@ -182,7 +182,8 @@ namespace zookeeper { namespace ui {
         LOG4CXX_INFO(logger, "Starting server...");
 
         httpd.reset(new microhttpd::MicroHttpServer((uint16_t)atoi(config["httpd.port"].c_str()), config["httpd.rootDirectory"], config["httpd.ipv6"] == "true"));
-        adaptor.reset(new HttpServerAdaptor(httpd.get(), JSONRPCManager::getInstance()));
+        rpcManager.reset(new JSONRPCManager());
+        adaptor.reset(new HttpServerAdaptor(httpd.get(), rpcManager.get()));
         clusterFactory.reset(new clusterlib::Factory(config["zookeeper.servers"]));
         clusterRpcMethod.reset(new clusterlib::rpc::json::MethodAdaptor(clusterFactory->createClient()));
         zookeeperRpcMethod.reset(new zookeeper::rpc::json::MethodAdaptor(config["zookeeper.servers"]));
@@ -221,47 +222,47 @@ namespace zookeeper { namespace ui {
         httpd->registerAccessHandler(this);
         httpd->registerIncludeHandler("ZOOKEEPER_SERVERS", this);
         httpd->registerIncludeHandler("ZKUI_VERSION", this);
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "addNotifyableFromKey", clusterRpcMethod.get());
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "removeNotifyableFromKey", clusterRpcMethod.get());
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "getApplicationStatus", clusterRpcMethod.get());
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "getGroupStatus", clusterRpcMethod.get());
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "getNodeStatus", clusterRpcMethod.get());
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "getDataDistributionStatus", clusterRpcMethod.get());
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "getNotifyableAttributesFromKey", clusterRpcMethod.get());        
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "setNotifyableAttributesFromKey", clusterRpcMethod.get());        
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "removeNotifyableAttributesFromKey", clusterRpcMethod.get()); 
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "getNotifyableChildrenFromKey", clusterRpcMethod.get());        
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "getApplications", clusterRpcMethod.get());
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "getApplication", clusterRpcMethod.get());
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "getProperties", clusterRpcMethod.get());
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "getGroup", clusterRpcMethod.get());
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "getDataDistribution", clusterRpcMethod.get());
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "getNode", clusterRpcMethod.get());
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "getNode", clusterRpcMethod.get());
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "zoo_exists", zookeeperRpcMethod.get());
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "zoo_get", zookeeperRpcMethod.get());
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "zoo_set", zookeeperRpcMethod.get());
-        JSONRPCManager::getInstance()->registerMethod(
+        rpcManager->registerMethod(
             "zoo_get_children", zookeeperRpcMethod.get());
 
         httpd->start();
@@ -281,7 +282,7 @@ namespace zookeeper { namespace ui {
         zookeeperRpcMethod.reset(NULL);
         clusterRpcMethod.reset(NULL);
         clusterFactory.reset(NULL);
-        JSONRPCManager::getInstance()->clearMethods();
+        rpcManager->clearMethods();
 
         LOG4CXX_INFO(logger, "Server stopped.");
     }

@@ -35,11 +35,9 @@ class NodeImpl
         return m_masterSetState; 
     }
 
-    virtual bool isConnected() 
-    {
-        Locker l1(getStateMutex());
-        return m_connected; 
-    }
+    virtual bool isConnected(std::string *id = NULL, int64_t *msecs = NULL);
+
+    virtual bool initializeConnection(bool force = false);
 
     virtual int64_t getClientStateTime() 
     {
@@ -100,7 +98,6 @@ class NodeImpl
           mp_healthChecker(NULL),
           m_terminateDoHealthChecks(false) {}
 
-
     /*
      * Destructor.
      */
@@ -133,12 +130,7 @@ class NodeImpl
     /*
      * Set the connected state and connected time of this node.
      */
-    void setConnectedAndTime(bool nc, int64_t t)
-    { 
-        Locker l1(getStateMutex());
-        m_connected = nc; 
-        m_connectionTime = t; 
-    }
+    void setConnectedAndTime(bool nc, const std::string &id, int64_t t);
 
   private:
     /*
@@ -203,6 +195,7 @@ class NodeImpl
      * The connected state for this node.
      */
     bool m_connected;
+    std::string m_connectedId;
     int64_t m_connectionTime;
 
     /**

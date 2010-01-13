@@ -16,7 +16,6 @@
 #include <vector>
 #include <map>
 #include <utility>
-#include <clusterlib.h>
 
 /**
  * Defines the namespace of JSON-RPC manager. JSON-RPC manager is
@@ -68,6 +67,11 @@ class StatePersistence {
 class JSONRPC {
   public:
     /**
+     * Destructor
+     */
+    virtual ~JSONRPC() {}
+
+    /**
      * Get the name of this JSON-RPC
      */
     virtual std::string getName() = 0;
@@ -75,17 +79,18 @@ class JSONRPC {
     /**
      * Check parameters of this JSON-RPC
      *
-     * @param paramObj the parameters of this object
+     * @param paramArr the parameters of this object
      * @return true if success, false if failure
      */
-    virtual bool checkParams(JSONValue::JSONObject &paramObj) = 0;
+    virtual bool checkParams(const JSONValue::JSONArray &paramArr) = 0;
 };
  
 /**
  * Defines a JSON-RPC method.  This method should be registered with a
  * JSONRPCManager to process incoming requests.
  */
-class JSONRPCMethod 
+ class JSONRPCMethod 
+     : public virtual JSONRPC
 {
   public:
     /**
@@ -110,24 +115,26 @@ class JSONRPCMethod
 
 /**
  * Defines a JSON-RPC Request.  Clients use this object to make
- * requests to Clusterlib clients that understand JSON-RPC.
+ * requests to servers understand JSON-RPC.
  */ 
 class JSONRPCRequest 
     : public virtual JSONRPC
 {
+  public:
     /**
      * Prepares the RPC request for submission.  The request is
      * checked as well.  Must be called prior to sendRequest.
      *
      * @param paramObj the params that will be used for the next request
      */
-    virtual void prepareRequest(const JSONValue::JSONObject &paramObj) = 0;
+    virtual void prepareRequest(const JSONValue::JSONArray &paramArr) = 0;
     
     /**
-     * Send the request.  Do not overload unless you know what you
-     * are doing.
+     * Send the request to the destination.
+     *
+     * @param destination implementation-dependent destination
      */
-    virtual void sendRequest();
+    virtual void sendRequest(const void *destination) = 0;
 
     /**
      * Wait for a number of milliseconds for the response.
@@ -136,14 +143,14 @@ class JSONRPCRequest
      *        and if > 0, then wait that many milliseconds
      * @return true if response exists
      */
-    virtual bool waitResponse(int64_t timeout = 0);
+    virtual bool waitResponse(int64_t timeout = 0) = 0;
 
     /**
      * Get response after waitResponse() has succeeded.
      *
      * @return the JSONValue for this RPC.
      */
-    virtual JSONValue getResponse();
+    virtual const JSONValue::JSONObject &getResponse() = 0;
 };
 
 /**
@@ -154,16 +161,6 @@ class JSONRPCRequest
  */
 class JSONRPCManager {
   public:
-    /**
-     * Gets the singleton instance of the RPC manager. This method
-     * is not thread-safe for the first call. Subsquent calls are
-     * thread-safe. DO NOT destroy the instance returned by this
-     * method.
-     *
-     * @return the singleton instance of RPC manager.
-     */
-    static JSONRPCManager *getInstance();
-
     /**
      * Registers the RPC method. Each RPC method should have
      * unique name. Registration will fail if the same name has
@@ -227,28 +224,17 @@ class JSONRPCManager {
      * Destroys the RPC manager instance.
      */
     virtual ~JSONRPCManager();
-  protected:
+
+  private:
     /**
      * Defines the map type to store RPC methods.
      */
     typedef std::map<std::string, JSONRPCMethod *> RPCMethodMap;
     
     /**
-     * Represents the singleton instance of the RPC manager.
-     */
-    static std::auto_ptr<JSONRPCManager> singleton;
-    
-    /**
      * Represents the registered RPC methods. Keys are names.
      */
     RPCMethodMap rpcMethods;
-    
-    /**
-     * Creates a new instance of JSONRPCManager. This private
-     * constructor prohibits the creation of a new instance of
-     * JSONRPCManager.
-     */
-    JSONRPCManager();
     
     /**
      * Generates the error JSON-RPC response.
