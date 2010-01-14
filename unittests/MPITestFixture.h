@@ -61,7 +61,7 @@ class MPITestFixture : public CppUnit::TestFixture {
      * test.
      *
      * @param minSize If == -1, it runs with any number of processes. If 
-     *        != -1, it requires exactly this many processes.
+     *        != -1, it requires at least this many processes.
      * @param singleProcessMode supports running when only less than minSize 
      *        processes exist.  Process 0 is the only process that meets all
      *        isMyRank() and allWaitsForOrder() conditions.
@@ -76,6 +76,7 @@ class MPITestFixture : public CppUnit::TestFixture {
                                      bool clusterlibSync,
                                      std::string testName = "")
     {
+        MPI_CPPUNIT_ASSERT(minSize >= -1);
         m_testMinSize = minSize;
         m_testSingleProcessMode = singleProcessMode;
         m_testName = testName;

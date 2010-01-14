@@ -146,6 +146,14 @@ JSONRPCManager::invokeAndResp(const string &rpcInvocation,
         inputObj = jsonInput.get<JSONValue::JSONObject>();
         const JSONValue::JSONArray &paramArr = 
             inputObj["params"].get<JSONValue::JSONArray>();
+        if (paramArr.size() == 0) {
+            LOG_WARN(JRPC_LOG, 
+                     "invokeAndResp: No params for the request, so putting "
+                     "result in default completed queue (%s)",
+                     defaultCompletedQueue->getKey().c_str());
+            defaultCompletedQueue->put(result);
+            return;
+        }
         const JSONValue::JSONObject &paramObj = 
             paramArr[0].get<JSONValue::JSONObject>();
         jsonInputIt = paramObj.find(

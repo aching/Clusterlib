@@ -30,7 +30,7 @@ class JSONRPCMethodHandler : public UserEventHandler
                          Queue *completedQueue,
                          Root *root,
                          ::json::rpc::JSONRPCManager *rpcManager)
-        : UserEventHandler(recvQueue, EN_QUEUECHILDCHANGE, NULL),
+        : UserEventHandler(recvQueue, EN_QUEUECHILDCHANGE, NULL, true),
           m_recvQueue(recvQueue),
           m_completedQueue(completedQueue),
           m_root(root),

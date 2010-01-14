@@ -61,8 +61,11 @@ JSONRPCMethodHandler::handleUserEvent(Event e)
      *
      */
     LOG_DEBUG(CL_LOG,
-              "handleUserEvent: Got request (%s)", 
-              request.c_str());
+              "handleUserEvent: Got request (%s) and invoking on root"
+              " (%s), with completed queue (%s)", 
+              request.c_str(),
+              m_root->getKey().c_str(),
+              m_completedQueue->getKey().c_str());
     m_rpcManager->invokeAndResp(request,
                                 m_root,
                                 m_completedQueue);

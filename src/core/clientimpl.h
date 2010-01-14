@@ -159,6 +159,13 @@ class ClientImpl
      * Map of user event handlers.
      */
     EventHandlersMultimap m_eventHandlers;
+    /**
+     * Map of first-time user event handles.
+     */
+    std::vector<UserEventHandler *> m_firstTimeEventHandlers;
+    /**
+     * Protects both m_eventHandlers and m_firstTimeEventHandlers
+     */
     Mutex m_eventHandlersLock;
 
     /**

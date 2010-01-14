@@ -806,12 +806,12 @@ int main(int argc, char* argv[])
     Root *root = params->getClient()->getRoot();
     Application *cliApp = root->getApplication(
         ClusterlibStrings::DEFAULT_CLI_APPLICATION, true);
-    string respQueueName = ClientImpl::getHostnamePidTid() + 
-        ClusterlibStrings::DEFAULT_RESP_QUEUE;
-    Queue *respQueue = cliApp->getQueue(respQueueName, true);
-    string completedQueueName = ClientImpl::getHostnamePidTid() + 
-        ClusterlibStrings::DEFAULT_COMPLETED_QUEUE;
-    Queue *completedQueue = cliApp->getQueue(completedQueueName, true);
+    Queue *respQueue = cliApp->getQueue(ClientImpl::getHostnamePidTid() + 
+        ClusterlibStrings::DEFAULT_RESP_QUEUE, true);
+    string respQueueKey = respQueue->getKey();
+    Queue *completedQueue = cliApp->getQueue(ClientImpl::getHostnamePidTid() + 
+        ClusterlibStrings::DEFAULT_COMPLETED_QUEUE, true);
+    string completedQueueKey = completedQueue->getKey();    
     params->getFactory()->createJSONRPCResponseClient(respQueue,
                                                       completedQueue);
 
@@ -857,14 +857,20 @@ int main(int argc, char* argv[])
     params->initFactoryAndClient();
     root = params->getClient()->getRoot();
     respQueue = dynamic_cast<Queue *>(
-        root->getNotifyableFromKey(respQueueName));
+        root->getNotifyableFromKey(respQueueKey));
     if (respQueue != NULL) {
         respQueue->remove();
     }
+    else {
+        cerr << "Couldn't find response queue: " << respQueueKey << endl;
+    }
     completedQueue = dynamic_cast<Queue *>(
-        root->getNotifyableFromKey(completedQueueName));
+        root->getNotifyableFromKey(completedQueueKey));
     if (completedQueue != NULL) {
         completedQueue->remove();
+    }
+    else {
+        cerr << "Couldn't find completed queue: " << completedQueueKey << endl;
     }
 
     return 0;

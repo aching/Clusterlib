@@ -25,7 +25,6 @@ SignalMap::addRefPredMutexCond(const string &key)
     Locker l1(getSignalMapLock());
     LOG_DEBUG(CL_LOG, "addRefPredMutexCond: finding (%s)", key.c_str());
     map<string, PredMutexCond *>::iterator it = m_signalMap.find(key);
-    bool found = false;
     if (it == m_signalMap.end()) {
         m_signalMap.insert(make_pair(key, new PredMutexCond()));
         it = m_signalMap.find(key);
@@ -35,7 +34,6 @@ SignalMap::addRefPredMutexCond(const string &key)
         }
     }
     else {
-        found = true;
         LOG_WARN(CL_LOG, 
                  "addRefPredMutexCond: Key (%s) already exists and has "
                  "refcount (%d)",
@@ -58,30 +56,41 @@ void SignalMap::removeRefPredMutexCond(const string &key)
         throw InconsistentInternalStateException(
             "removeRefPredMutexCond: Can not find key to remove ref");
     }
+    if (it->second->refCount == 0) {
+        throw InconsistentInternalStateException(
+            string("removeRefPredMutexCond: Ref count is 0 for key ") + key);
+    }
     it->second->refCount--;
     if (it->second->refCount == 0) {
+        if (it->second == NULL) {
+            throw InconsistentInternalStateException(
+                string("removeRefPredMutexCond: No PredMutexCond for key ") +
+                key);
+        }
         delete it->second;
         m_signalMap.erase(it);
-    } 
+    }
 }
 
 bool SignalMap::signalPredMutexCond(const string &key)
 {
     TRACE(CL_LOG, "signalPredMutexCond");
 
-    map<string, PredMutexCond *>::iterator it;
-    {
-        Locker l1(getSignalMapLock());
-        LOG_DEBUG(CL_LOG, 
-                  "signalPredMutexCond: signaling key (%s)",
-                  key.c_str());
-        it = m_signalMap.find(key);
-        if (it == m_signalMap.end()) {
-            LOG_WARN(CL_LOG,
-                     "signalPredMutexCond: Cannot signal on missing key %s",
-                     key.c_str());
-            return false;
-        }
+    Locker l1(getSignalMapLock());
+    LOG_DEBUG(CL_LOG, 
+              "signalPredMutexCond: signaling key (%s)",
+              key.c_str());
+    map<string, PredMutexCond *>::iterator it = m_signalMap.find(key);
+    if (it == m_signalMap.end()) {
+        LOG_WARN(CL_LOG,
+                 "signalPredMutexCond: Cannot signal on missing key %s",
+                 key.c_str());
+        return false;
+    }
+    if (it->second == NULL) {
+        throw InconsistentInternalStateException(
+            string("signalPredMutexCond: Key ") + key + 
+            " has no PredMutexCond");
     }
     it->second->predSignal();
     return true;
@@ -103,6 +112,10 @@ bool SignalMap::waitPredMutexCond(const string &key, const int64_t timeout)
             throw InconsistentInternalStateException(
                 string("waitPredMutexCond: Cannot wait on missing key") +
                 key);
+        }
+        if (it->second->refCount == 0) {
+            throw InconsistentInternalStateException(
+                string("waitPredMutexCond: Ref count is 0 for key ") + key);
         }
     }
     return it->second->predWait(timeout);

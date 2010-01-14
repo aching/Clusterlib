@@ -1296,6 +1296,10 @@ JSONValue::JSONObject MethodAdaptor::getOneNotifyableStatus(
             return getOnePropertyListStatus(
                 dynamic_cast<PropertyList *>(notifyable));
         }
+        else if (dynamic_cast<Queue *>(notifyable)) {
+            return getOneQueueStatus(
+                dynamic_cast<Queue *>(notifyable));
+        }
         else {
             throw JSONRPCInvocationException("Invalid notifyable type");
         }

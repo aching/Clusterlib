@@ -91,6 +91,26 @@ ClientImpl::consumeUserEvents(void *param)
     bool endEventReceived = false;
     string rootKey = NotifyableKeyManipulator::createRootKey();
     while (endEventReceived != true) {
+        /*
+         * Run all the handlers that have initialRun true and then
+         * move them into the regular user event multimap.
+         */
+        {
+            Locker l1(getEventHandlersLock());
+            Event userEventMask;
+            vector<UserEventHandler *>::iterator ftEhIt;
+            for (ftEhIt = m_firstTimeEventHandlers.begin();
+                 ftEhIt != m_firstTimeEventHandlers.end();
+                 ++ftEhIt) {
+                userEventMask = (*ftEhIt)->getMask();
+                (*ftEhIt)->handleUserEventDelivery(userEventMask);
+                m_eventHandlers.insert(
+                    pair<const string, UserEventHandler *>
+                    ((*ftEhIt)->getNotifyable()->getKey(), (*ftEhIt)));
+            }
+            m_firstTimeEventHandlers.clear();
+        }
+
         LOG_DEBUG(CL_LOG,
                   "consumeUserEvents: Waiting to take "
                   "from the event queue...");
@@ -253,9 +273,18 @@ ClientImpl::registerHandler(UserEventHandler *uehp)
              uehp->getNotifyable()->getKey().c_str());
 
     Locker l1(getEventHandlersLock());
-
-    m_eventHandlers.insert(pair<const string, UserEventHandler *>
-                           (uehp->getNotifyable()->getKey(), uehp));
+    
+    /*
+     * If the user event handler is to be run immediately put in
+     * m_firstTimeEventHandlers, otherwise add it normally to m_eventHandlers.
+     */
+    if (uehp->getInitialRun()) {
+        m_firstTimeEventHandlers.push_back(uehp);
+    }
+    else {
+        m_eventHandlers.insert(pair<const string, UserEventHandler *>
+                               (uehp->getNotifyable()->getKey(), uehp));
+    }
 }
 
 /*
@@ -274,6 +303,15 @@ ClientImpl::cancelHandler(UserEventHandler *uehp)
     string key = uehp->getNotifyable()->getKey();
     EventHandlersMultimapRange range = m_eventHandlers.equal_range(key);
     EventHandlersIterator ehIt;
+
+    vector<UserEventHandler *>::iterator ftEhIt;
+    ftEhIt = find(m_firstTimeEventHandlers.begin(), 
+                  m_firstTimeEventHandlers.end(), 
+                  uehp);
+    if (ftEhIt != m_firstTimeEventHandlers.end()) {
+        m_firstTimeEventHandlers.erase(ftEhIt);
+        return true;
+    }
 
     for (ehIt = range.first; ehIt != range.second; ehIt++) {
         if ((*ehIt).second == uehp) {

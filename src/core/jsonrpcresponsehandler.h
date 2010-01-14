@@ -30,7 +30,7 @@ class JSONRPCResponseHandler : public UserEventHandler
                            Queue *completedQueue,
                            Client *client,
                            SignalMap *responseSignalMap)
-        : UserEventHandler(respQueue, EN_QUEUECHILDCHANGE, NULL),
+        : UserEventHandler(respQueue, EN_QUEUECHILDCHANGE, NULL, true),
           m_respQueue(respQueue),
           m_completedQueue(completedQueue),
           m_responseSignalMap(responseSignalMap) 

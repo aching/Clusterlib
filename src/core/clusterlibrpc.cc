@@ -88,16 +88,23 @@ bool
 ClusterlibRPCRequest::waitResponse(int64_t timeout)
 {
     TRACE(CL_LOG, "waitResponse");
-    
-    bool finished = 
-        m_client->getOps()->getResponseSignalMap()->waitPredMutexCond(
-            m_id, 
-            timeout);
-    if (finished) {
+
+    if (!m_gotResponse) {
+        m_gotResponse =
+            m_client->getOps()->getResponseSignalMap()->waitPredMutexCond(
+                m_id, 
+                timeout);
+        if (!m_gotResponse) {
+            return false;
+        }
+
         m_client->getOps()->getResponseSignalMap()->removeRefPredMutexCond(
             m_id);
+        m_response = m_client->getOps()->getIdResponse(m_id);
         return true;
     }
+
+    /* Should never get here. */
     return false;
 }
 
@@ -107,8 +114,9 @@ ClusterlibRPCRequest::getResponse()
     TRACE(CL_LOG, "getResponse");
 
     if (!m_gotResponse) {
-        m_response = m_client->getOps()->getIdResponse(m_id);
-        m_gotResponse = true;
+        throw InvalidMethodException(
+            string("getResponse: waitResponse did not "
+                   "complete yet for ") + getName());
     }
 
     return m_response;

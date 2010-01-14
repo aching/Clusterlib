@@ -27,6 +27,7 @@ unittests_LDADD = \
 unittests_SOURCES = \
 	test.cc \
 	testparams.cc \
+	clusterlibjsonrpc.cc \
 	clusterlibhierarchy.cc \
 	clusterlibqueue.cc \
 	clusterlibprocessslot.cc \

@@ -134,14 +134,31 @@ class UserEventHandler
 {
   public:
     /*
-     * Constructor.
+     * Constructor.  The initialRun parameter provides a way for a
+     * user to run the handler at least once prior to receiving an
+     * event that matches the mask.  For example, if a handler should
+     * take action when a Node's health changed to "unhealthy", but
+     * the handler was registered after the event has passed, the
+     * handler wouldn't get run until the next event (possibly never).
+     * Instead, the handler could be constructed with initialRun =
+     * true to do a first check.  Then, after it was registered,
+     * events would cause the handler to run at the appropriate time.
+     *
+     * @param np the notifyable pointer that is stored
+     * @param mask the event mask that will trigger this handler
+     * @param cd any pointer of user-information to store
+     * @param initialRun if true, generate an event with the mask and the 
+     *        notifyable to run the event handler once as soon as it is 
+     *        registered by a clusterlib client
      */
     UserEventHandler(Notifyable *np,
                      Event mask,
-                     ClientData cd)
+                     ClientData cd,
+                     bool initialRun = false)
         : mp_np(np),
           m_mask(mask),
-          m_cd(cd) {}
+          m_cd(cd),
+          m_initialRun(initialRun) {}
 
     /*
      * Destructor.
@@ -154,6 +171,7 @@ class UserEventHandler
     Notifyable *getNotifyable() { return mp_np; }
     Event getMask() { return m_mask; }
     ClientData getClientData() { return m_cd; }
+    bool getInitialRun() { return m_initialRun; }
 
     void setNotifyable(Notifyable *np) { mp_np = np; }
     void setMask(Event e) { m_mask = e; }
@@ -161,14 +179,6 @@ class UserEventHandler
 
     Event addEvent(Event a) { m_mask |= a; return m_mask; }
     Event removeEvent(Event a) { m_mask &= (~a); return m_mask; }
-
-    /**
-     * Call the user defined handler, and then deal with conditions
-     * & waiting. Intended for use by clusterlib internals.
-     *
-     * @param e the event to be processed.
-     */
-    void handleUserEventDelivery(Event e);
 
     /**
      * \brief Handle the event -- this must be implemented by subclasses.
@@ -216,10 +226,11 @@ class UserEventHandler
     /**
      * \brief Acquires the lock for waitUntilCondition.
      *
-     * Advisory lock. Must be held before waitUntilCondition is called.
-     * Internal clusterlib event system always respects this lock, and relies
-     * on clients calling acquireLock in order to guarantee that conditions
-     * are checked with a consistent ordering with respect to waitUntilCondition.
+     * Advisory lock. Must be held before waitUntilCondition is
+     * called.  Internal clusterlib event system always respects this
+     * lock, and relies on clients calling acquireLock in order to
+     * guarantee that conditions are checked with a consistent
+     * ordering with respect to waitUntilCondition.
      */
     void acquireLock() { m_waitMutex.lock(); }
 
@@ -231,6 +242,15 @@ class UserEventHandler
      */
     void releaseLock() { m_waitMutex.unlock(); }
 
+  public:
+    /**
+     * Call the user defined handler, and then deal with conditions
+     * & waiting. Intended for use by clusterlib internals.
+     *
+     * @param e the event to be processed.
+     */
+    void handleUserEventDelivery(Event e);
+
   private:
     /**
      * Notify any threads that are waiting for the condition, that it
@@ -239,26 +259,37 @@ class UserEventHandler
     void notifyWaiters() { m_waitCond.signal_all(); }
 
   private:
-    /*
+    /**
      * The Notifyable this handler is for.
      */
     Notifyable *mp_np;
 
-    /*
+    /**
      * The events (a mask) that this handler is for.
      */
     Event m_mask;
 
-    /*
+    /**
      * Arbitrary data to pass to the handler for each
      * event as it is triggered.
      */
     ClientData m_cd;
 
+    /**
+     * If set, the first time the client thread sees it, run it.
+     * After it is run, only run this handler when a clusterlib event
+     * matches.
+     */
+    bool m_initialRun;
+
     /*
-     * Mutex and Cond used for waiting & condition mgmt.
+     * Conditional for use with m_waitCond to synchronize handler.
      */
     Cond m_waitCond;
+
+    /**
+     * Mutex for use with m_waitCond to synchronize handler.
+     */
     Mutex m_waitMutex;
 };
 
