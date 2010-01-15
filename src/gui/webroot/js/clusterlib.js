@@ -138,6 +138,7 @@ function handleRPCerror(rpcObj, retObj) {
 	else {
 	    $("#dialogNotify").html(msg + '<br>Output: ' + retObj);
 	}
+	$("#dialogNotify").dialog('option', 'title', 'Notification');
 	$('#dialogNotify').dialog('open');
 	return true;
     }
@@ -587,6 +588,10 @@ function showContent() {
 	'<a class="navButton" href="javascript:void(0)" rel="forward">forward</a>' +
 	'</div></span>';
 
+    // Add more html for the "get" buttons
+    html += '<span id="getDiv" class="text ui-corner-all" style="float : left; width: 100%;"><div id="getButtons "style="float:left"> Get: ' + 
+        '<a class="getButton" href="javascript:void(0)" rel="allLockBids">all lock bids</a></div></span>';
+
     // Add more html for the changing the refreshing period
     html += refreshHtml();
 
@@ -657,6 +662,20 @@ function showContent() {
         }
     });
 
+    // Handle the clicks of "getButton" events
+    $(".getButton").click(function() {
+	if ($(this).attr('rel') == "allLockBids") {
+            var ret = rpcCall.getChildrenLockBids(currentState.id);
+            if (!(handleRPCerror(rpcCall, ret))) {
+                var lockBidString = ret.join("<br><br>");
+	        $("#dialogNotify").dialog('option', 'title', 
+				          unescape($(this).text()));
+                $("#dialogNotify").html(lockBidString);
+                $("#dialogNotify").dialog('open');
+            }
+        }
+    });
+    
     // Handle the clicks of the "childAttribute" events
     $(".childAttribute").click(function() {
         showNodeContent($(this));

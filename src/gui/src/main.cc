@@ -255,7 +255,7 @@ namespace zookeeper { namespace ui {
         rpcManager->registerMethod(
             "getNode", clusterRpcMethod.get());
         rpcManager->registerMethod(
-            "getNode", clusterRpcMethod.get());
+            "getChildrenLockBids", clusterRpcMethod.get());
         rpcManager->registerMethod(
             "zoo_exists", zookeeperRpcMethod.get());
         rpcManager->registerMethod(

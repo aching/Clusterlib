@@ -23,9 +23,6 @@ using namespace boost;
 namespace clusterlib
 {
 
-/*
- * Key creation and recognition.
- */
 string
 NotifyableKeyManipulator::createLocksKey(const string &notifyableKey)
 {

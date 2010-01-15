@@ -94,6 +94,8 @@ class NotifyableImpl
     
     virtual bool hasLock();
     
+    virtual NameList getLockBids(bool children = false);
+
     virtual void remove(bool removeChildren = false);
 
     /*

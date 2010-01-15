@@ -316,6 +316,41 @@ NotifyableImpl::hasLock()
         hasLock(this, ClusterlibStrings::NOTIFYABLELOCK);
 }
 
+NameList
+NotifyableImpl::getLockBids(bool children)
+{
+    TRACE(CL_LOG, "getLockBids");
+
+    string lockKey = NotifyableKeyManipulator::createLockKey(
+        getKey(),
+        ClusterlibStrings::NOTIFYABLELOCK);
+
+    NameList tmpBidList;
+    NameList finalBidList;
+    SAFE_CALL_ZK(getOps()->getRepository()->getNodeChildren(lockKey,
+                                                            tmpBidList),
+                 "getLockBids: Getting bids for group %s failed: %s",
+                 lockKey.c_str(),
+                 false,
+                 true);
+    finalBidList.insert(finalBidList.end(),
+                        tmpBidList.begin(), 
+                        tmpBidList.end());
+    if (children) {
+        NotifyableList notifyableList = getMyChildren();
+        NotifyableList::iterator notifyableListIt;
+        for (notifyableListIt = notifyableList.begin();
+             notifyableListIt != notifyableList.end();
+             ++notifyableListIt) {
+            tmpBidList = (*notifyableListIt)->getLockBids(children);
+            finalBidList.insert(finalBidList.end(),
+                                tmpBidList.begin(), 
+                                tmpBidList.end());
+        }
+    }
+    return finalBidList;
+}
+
 void
 NotifyableImpl::remove(bool removeChildren)
 {

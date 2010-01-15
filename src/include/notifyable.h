@@ -204,7 +204,6 @@ class Notifyable
      * is held until until the client destroys the factory or a
      * network connection is lost.
      *
-     *
      * @param releaseChildren release the children as well?
      * @throw Exception if internal state is in consistent 
      */
@@ -216,6 +215,16 @@ class Notifyable
      * @return true is I have the lock, false otherwise
      */
     virtual bool hasLock() = 0;
+
+    /**
+     * Helps with lock debugging.  It specifies the clients and their
+     * respective bids that are waiting or own this Notifyable's lock.
+     * If children is set, the bids will be searched in any Notifyable
+     * that is a child of this Notifyable.
+     * 
+     * @return a list of the strings naming the clients and their bids
+     */
+    virtual NameList getLockBids(bool children = false) = 0;
 
     /**
      * Remove the this notifyable.  This causes the object to be

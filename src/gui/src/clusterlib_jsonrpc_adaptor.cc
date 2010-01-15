@@ -173,6 +173,14 @@ MethodAdaptor::invoke(const std::string &name,
         }
         return getDataDistributionStatus(
             param[0].get<JSONValue::JSONArray>());
+    } else if (name == "getChildrenLockBids") {
+        if (param.size() != 1 || 
+            param[0].type() != typeid(JSONValue::JSONString)) {
+            throw JSONRPCInvocationException(
+                "Method '" + name + "' requires one string parameter.");
+        }
+        return getChildrenLockBids(
+            param[0].get<JSONValue::JSONString>());
     } else {
         throw JSONRPCInvocationException(
             "Unknown method '" + name + "' invoked.");
@@ -239,12 +247,25 @@ MethodAdaptor::getNotifyableId(
             optionRemove;
     } else {
         type = "unknown";
+        throw JSONRPCInvocationException(
+            "getNotifyableId: No such notifyable");
+    }
+
+    /* Find the locks and their bids of this notifyable */
+    NameList bidList = notifyable->getLockBids(false);
+    JSONValue::JSONArray bidArr;
+    NameList::const_iterator bidListIt;
+    for (bidListIt = bidList.begin(); 
+         bidListIt != bidList.end();
+         ++bidListIt) {
+        bidArr.push_back(*bidListIt);
     }
     
     id[idTypeProperty] = type;
     id[idProperty] = notifyable->getKey();
     id[idNameProperty] = notifyable->getName();
-    
+    id[idBidArr] = bidArr;
+
     return id;
 }
     
@@ -307,7 +328,7 @@ Notifyable *MethodAdaptor::getNotifyable(
             " found, expect " + expectType + ".");
     }
     
-    Notifyable* notifyable = m_root->getNotifyableFromKey(
+    Notifyable *notifyable = m_root->getNotifyableFromKey(
         idIter->second.get<JSONValue::JSONString>());
     if (expectType == idTypeRoot) {
         notifyable = dynamic_cast<Root*>(notifyable);
@@ -1719,4 +1740,21 @@ JSONValue::JSONArray MethodAdaptor::getShardStatus(
     }
     return status;
 }
+
+JSONValue::JSONArray MethodAdaptor::getChildrenLockBids(
+    JSONValue::JSONString notifyableKey)
+{
+    Notifyable *notifyable = m_root->getNotifyableFromKey(notifyableKey); 
+    NameList bidList = notifyable->getLockBids(true);
+    JSONValue::JSONArray bidArr;
+    NameList::const_iterator bidListIt;
+    for (bidListIt = bidList.begin(); 
+         bidListIt != bidList.end();
+         ++bidListIt) {
+        bidArr.push_back(*bidListIt);
+    }
+    
+    return bidArr;
+}
+
 }}}

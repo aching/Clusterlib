@@ -11,6 +11,7 @@ const ::json::JSONValue::JSONString idTypeProperty = "type";
 const ::json::JSONValue::JSONString idProperty = "id";
 const ::json::JSONValue::JSONString idNameProperty = "name";
 const ::json::JSONValue::JSONString idOptions = "options";
+const ::json::JSONValue::JSONString idBidArr = "lockBidArray";
 const ::json::JSONValue::JSONString idAddAttribute = "addAttribute";
 const ::json::JSONValue::JSONString idNotifyableState = "state";
 const ::json::JSONValue::JSONString idNotifyableStatus = "status";
@@ -219,6 +220,9 @@ class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod {
 
     ::json::JSONValue::JSONObject getOneShardStatus(
         clusterlib::Shard &shard);
+
+    ::json::JSONValue::JSONArray getChildrenLockBids(
+        ::json::JSONValue::JSONString notifyableKey);
 
   private:
     static log4cxx::LoggerPtr m_logger;
