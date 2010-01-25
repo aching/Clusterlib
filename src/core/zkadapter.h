@@ -112,18 +112,16 @@ class ZooKeeperConfig
      * 
      * @param hosts the comma separated list of host and port pairs of 
      *              ZK nodes
-     * @param leaseTimeout the lease timeout (heartbeat)
-     * @param autoReconnect whether to allow for auto-reconnect
      * @param connectTimeout the connect timeout, in milliseconds;
+     * @param autoReconnect whether to allow for auto-reconnect
      */
     ZooKeeperConfig(const std::string &hosts, 
-                    int32_t leaseTimeout, 
-                    bool autoReconnect = true, 
-                    int64_t connectTimeout = 30000)
+                    int64_t connectTimeout,
+                    bool autoReconnect = true)
+
         : m_hosts(hosts), 
-          m_leaseTimeout(leaseTimeout), 
-          m_autoReconnect(autoReconnect), 
-          m_connectTimeout(connectTimeout) {}
+          m_connectTimeout(connectTimeout),
+          m_autoReconnect(autoReconnect) {}
         
     /**
      * \brief Returns the list of ZK hosts to connect to.
@@ -131,22 +129,18 @@ class ZooKeeperConfig
     std::string getHosts() const { return m_hosts; }
         
     /**
-     * \brief Returns the lease timeout.
+     * \brief Gets the connect timeout.
+     * 
+     * @return the connect timeout
      */
-    int32_t getLeaseTimeout() const { return m_leaseTimeout; }
-        
+    int64_t getConnectTimeout() const { return m_connectTimeout; }
+
     /**
      * \brief Returns whether {@link ZooKeeperAdapter} should attempt 
      * \brief to automatically reconnect in case of a connection failure.
      */
     bool getAutoReconnect() const { return m_autoReconnect; }
 
-    /**
-     * \brief Gets the connect timeout.
-     * 
-     * @return the connect timeout
-     */
-    int64_t getConnectTimeout() const { return m_connectTimeout; }
                   
   private:        
     /**
@@ -155,22 +149,16 @@ class ZooKeeperConfig
     const std::string m_hosts;
 
     /**
-     * The ZK lease timeout.
+     * How long to wait, in milliseconds, before a connection 
+     * is established to ZK.
      */
-    const int32_t m_leaseTimeout;
-        
+    const int64_t m_connectTimeout;
+
     /**
      * True if this adapater should attempt to autoreconnect in case 
      * the current session has been dropped.
      */
     const bool m_autoReconnect;
-        
-    /**
-     * How long to wait, in milliseconds, before a connection 
-     * is established to ZK.
-     */
-    const int64_t m_connectTimeout;
-        
 };
 
 /**

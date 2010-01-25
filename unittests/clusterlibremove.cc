@@ -307,7 +307,7 @@ class ClusterlibRemove : public MPITestFixture {
                                     true, 
                                     _factory, 
                                     true, 
-                                    "testRemove30");
+                                    "testRemove31");
         
         if (isMyRank(0)) {
             Node *node = _group0->getNode("node-to-be-deleted", true);

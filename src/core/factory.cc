@@ -20,19 +20,12 @@ using namespace std;
 namespace clusterlib
 {
 
-/*
- * Constructor of Factory.
- *
- * Connect to cluster via the registry specification.
- * Initialize all the cache data structures.
- * Create the associated FactoryOps delegate object.
- */
-Factory::Factory(const string &registry)
+Factory::Factory(const string &registry, int64_t connectTimeout)
     : m_ops(NULL)
 {
     TRACE(CL_LOG, "Factory");
 
-    m_ops = new FactoryOps(registry);
+    m_ops = new FactoryOps(registry, connectTimeout);
 }
 
 /*

@@ -392,7 +392,7 @@ ZooKeeperAdapter::reconnect()
     /* Establish a new connection to ZooKeeper */
     mp_zkHandle = zookeeper_init(m_zkConfig.getHosts().c_str(), 
                                  zkWatcher, 
-                                 m_zkConfig.getLeaseTimeout(),
+                                 m_zkConfig.getConnectTimeout(),
                                  0,
                                  this, 
                                  0);
@@ -777,16 +777,19 @@ ZooKeeperAdapter::setState(AdapterState newState)
     TRACE(LOG, "setState");    
     if (newState != m_state) {
         LOG_INFO(LOG, 
-                 "Adapter state transition: %d -> %d", 
+                 "Adapter state transition: %d (%s) -> %d (%s)", 
                  m_state, 
-                 newState);
+                 getStateString(m_state).c_str(),
+                 newState,
+                 getStateString(newState).c_str());
         m_state = newState;
         m_connected = (newState == AS_CONNECTED);
         m_stateLock.notify();
     } else {
         LOG_TRACE(LOG,
-                  "New state same as the current: %d", 
-                  newState);
+                  "New state same as the current: %d (%s)", 
+                  newState,
+                  getStateString(newState).c_str());
     }
 }
 

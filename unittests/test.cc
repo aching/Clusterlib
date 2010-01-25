@@ -5,10 +5,9 @@
 #include <mpi.h>
 #include "testparams.h"
 #include <iomanip>
+#include <time.h>
 
 using namespace std;
-
-static const string prefix = "testOutput.";
 
 /* Global test parameters to be used in all tests */
 TestParams globalTestParams;
@@ -31,6 +30,21 @@ int main(int argc, char* argv[])
      * Inform users about the output files in case the test causes
      * failure before the results.
      */
+    const int32_t timeBufferSize = 1024;
+    char timeBuffer[timeBufferSize];
+    time_t curTime;
+    struct tm *localTime;
+    curTime = time (NULL);       
+    localTime = localtime(&curTime);
+    if (!strftime(timeBuffer, 
+                  timeBufferSize, 
+                  "cppunit.%Y-%m-%d-%H-%M-%S.mpi.", 
+                  localTime)) {
+        cerr << "Cannot parse time " << endl;
+        MPI::Finalize();
+        return -1;
+    }
+    string prefix(timeBuffer);
     uint32_t *pidArr = NULL;
     if (MPI::COMM_WORLD.Get_rank() == 0) {
         pidArr = new uint32_t[MPI::COMM_WORLD.Get_size()];
@@ -43,7 +57,8 @@ int main(int argc, char* argv[])
         (globalTestParams.getOutputType() == TestParams::FILE)) {
         cout << endl << "Output files:" << endl;
         for (int i = 0; i < MPI::COMM_WORLD.Get_size(); i++) {
-            cout << " " << prefix << i << ".0x" << hex << pidArr[i] << endl;
+            cout << setfill('0') << " " << prefix << setw(3) << i 
+                 << ".pid." << setw(6) << pidArr[i] << endl;
         }
         cout << endl;
     }
@@ -55,10 +70,12 @@ int main(int argc, char* argv[])
     FILE *stderrFile = NULL;
     if (globalTestParams.getOutputType() == TestParams::FILE) {
         stringstream fileStringStream;
+        fileStringStream << setfill('0');
         fileStringStream << prefix;
+        fileStringStream << setw(3);
         fileStringStream << MPI::COMM_WORLD.Get_rank();
-        fileStringStream << ".0x";
-        fileStringStream << hex;
+        fileStringStream << ".pid.";
+        fileStringStream << setw(6);
         fileStringStream << getpid();
         remove(fileStringStream.str().c_str());
         stderrFile = freopen(fileStringStream.str().c_str(), 
@@ -132,6 +149,7 @@ int main(int argc, char* argv[])
                 default:
                     cout << "Error: shouldn't have gotten here";
             }
+            cout << setfill(' ');
             for (int j = 0; j < MPI::COMM_WORLD.Get_size(); j++) {
                 if (i == 0) {
                     cout << setw(3) << dec << j << " ";

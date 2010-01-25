@@ -217,6 +217,12 @@ class ClusterlibJSONRPC : public MPITestFixture {
                            typeid(JSONValue::JSONString));
         MPI_CPPUNIT_ASSERT(respObj["result"].get<JSONValue::JSONString>() == 
                            testMsgSuccess);
+
+        /*
+         * If we don't barrier, some processes may never get around to
+         * processing the other process's messages!
+         */
+        barrier(_factory, true);
         
         /* 
          * Have to delete the factory prior to the auto_ptrs going out

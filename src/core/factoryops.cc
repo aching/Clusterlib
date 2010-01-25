@@ -25,22 +25,12 @@ using namespace json;
 namespace clusterlib
 {
 
-/** 5 seconds for the lease timeout (heartbeat) */
-static const uint32_t ZkTimeoutMsecs = 5000;
-
-/*
- * Constructor of FactoryOps.
- *
- * Connect to cluster via the registry specification.
- * Initialize all the cache data structures.
- * Create the associated FactoryOps delegate object.
- */
-FactoryOps::FactoryOps(const string &registry)
+FactoryOps::FactoryOps(const string &registry, int64_t connectTimeout)
     : mp_root(NULL),
       m_syncEventId(0),
       m_syncEventIdCompleted(0),
       m_endEventDispatched(false),
-      m_config(registry, ZkTimeoutMsecs), 
+      m_config(registry, connectTimeout, true), 
       m_zk(m_config, NULL, false),
       m_timerEventAdapter(m_timerEventSrc),
       m_zkEventAdapter(m_zk),
@@ -76,8 +66,14 @@ FactoryOps::FactoryOps(const string &registry)
     try {
         m_zk.reconnect();
         LOG_INFO(CL_LOG, 
-                 "Waiting for connect event from ZooKeeper");
-        if (m_eventSyncLock.lockedWait(ZkTimeoutMsecs) == false) {
+                 "Waiting for connect event from ZooKeeper up to %Ld msecs",
+                 connectTimeout);
+        if (m_firstConnect.predWait(connectTimeout) == false) {
+            LOG_ERROR(CL_LOG,
+                      "FactoryOps: Did not receive connect event from %s in "
+                      "time (%Ld msecs), aborting",
+                      m_config.getHosts().c_str(),
+                      connectTimeout);
 	    throw RepositoryConnectionFailureException(
 		"Did not receive connect event in time, aborting");
         }
@@ -86,6 +82,9 @@ FactoryOps::FactoryOps(const string &registry)
                  static_cast<int>(m_connected));
     } catch (zk::ZooKeeperException &e) {
         m_zk.disconnect();
+        LOG_FATAL(CL_LOG, 
+                  "Failed to connect to Zookeeper (%s)",
+                  m_config.getHosts().c_str());
         throw RepositoryInternalsFailureException(e.what());
     }
 
@@ -707,11 +706,12 @@ FactoryOps::dispatchSessionEvent(zk::ZKWatcherEvent *zep)
 {
     TRACE(CL_LOG, "dispatchSessionEvent");
 
-    LOG_DEBUG(CL_LOG,
-              "dispatchSessionEvent: (type: %d, state: %d, key: %s)",
-              zep->getType(), 
-              zep->getState(),
-              zep->getPath().c_str());
+    LOG_INFO(CL_LOG,
+             "dispatchSessionEvent: (type: %d, state: %d (%s), key: %s)",
+             zep->getType(), 
+             zep->getState(),
+             zk::ZooKeeperAdapter::getStateString(zep->getState()).c_str(),
+             zep->getPath().c_str());
 
     if ((zep->getState() == ZOO_ASSOCIATING_STATE) ||
         (zep->getState() == ZOO_CONNECTING_STATE)) {
@@ -733,10 +733,10 @@ FactoryOps::dispatchSessionEvent(zk::ZKWatcherEvent *zep)
         m_connected = true;
 
         /*
-         * Notify anyone waiting that this factory is
-         * now connected.
+         * Notify the FactoryOps constructor that the connection to
+         * Zookeeper has been made.
          */
-        m_eventSyncLock.lockedNotify();
+        m_firstConnect.predSignal();
     }
     else if (zep->getState() == ZOO_EXPIRED_SESSION_STATE) {
         /*
@@ -747,19 +747,15 @@ FactoryOps::dispatchSessionEvent(zk::ZKWatcherEvent *zep)
 #endif
         m_shutdown = true;
         m_connected = false;
-
-        /*
-         * Notify anyone waiting that this factory is
-         * now disconnected.
-         */
-        m_eventSyncLock.lockedNotify();
     }
     else {
-        LOG_WARN(CL_LOG,
+        LOG_ERROR(CL_LOG,
                  "Session event with unknown state "
                  "(type: %d, state: %d)",
                  zep->getType(), 
                  zep->getState());
+        throw InconsistentInternalStateException(
+            "dispatchSessionEvent: Unknown state");
     }
 }
 

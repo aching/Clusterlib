@@ -82,7 +82,8 @@ class MPITestFixture : public CppUnit::TestFixture {
         m_testName = testName;
 
         if (m_testName.empty() == false) {
-            std::cerr << m_testName << ": initialized" << std::endl;
+            std::cerr << "===== " << m_testName << ": initialized =====" 
+                      << std::endl;
         }
 
         if (factory) {
@@ -116,7 +117,8 @@ class MPITestFixture : public CppUnit::TestFixture {
         }
         
         if (m_testName.empty() == false) {
-            std::cerr << m_testName << ": finished" << std::endl;
+            std::cerr << "===== " << m_testName << ": finished =====" 
+                      << std::endl;
         }
 
         /*
