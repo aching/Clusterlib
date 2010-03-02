@@ -1,8 +1,14 @@
 @SOURCE_PATH@/src/include			/include
 - *.h
 
+@SOURCE_PATH@/src/cli	         		/include
+- *.h
+
 @BUILD_PATH@/src/core				/lib
 - libcluster.a
+
+@BUILD_PATH@/src/cli				/lib
+- libcli.a
 
 @BUILD_PATH@/src/cli				/bin
 - cli

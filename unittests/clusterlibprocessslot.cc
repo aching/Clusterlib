@@ -1,5 +1,5 @@
-#include "MPITestFixture.h"
 #include "testparams.h"
+#include "MPITestFixture.h"
 #include <algorithm>
 
 extern TestParams globalTestParams;
@@ -16,13 +16,15 @@ class ClusterlibProcessSlot : public MPITestFixture {
 
   public:
     
-    ClusterlibProcessSlot() : _factory(NULL),
-                             _client0(NULL),
-                             _app0(NULL),
-                             _group0(NULL),
-                             _node0(NULL),
-                             _processSlot0(NULL) {}
-
+    ClusterlibProcessSlot() 
+        : MPITestFixture(globalTestParams),
+          _factory(NULL),
+          _client0(NULL),
+          _app0(NULL),
+          _group0(NULL),
+          _node0(NULL),
+          _processSlot0(NULL) {}
+    
     /* Runs prior to each test */
     virtual void setUp() 
     {

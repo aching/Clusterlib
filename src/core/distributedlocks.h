@@ -8,8 +8,8 @@
  * $Date$
  */
 
-#ifndef	_DISTRIBUTEDLOCKS_H_
-#define	_DISTRIBUTEDLOCKS_H_
+#ifndef	_CL_DISTRIBUTEDLOCKS_H_
+#define	_CL_DISTRIBUTEDLOCKS_H_
 
 namespace clusterlib
 {
@@ -27,15 +27,33 @@ class DistributedLocks
         : mp_ops(factoryOps) {}
 
     /**
-     * Try to lock this Notifyable.  The Notifyable cannot be the
-     * Root.  The lock can be used to prevent any process from
+     * Lock this Notifyable.  The Notifyable cannot be the
+     * Root.  The lock can be used to prevent any thread from
      * interfering with operations on this NotifyableImpl.
      *
      * @param ntp is the Notifyable to be locked.
      * @param lockName is the name of the lock
+     * @return true if the lock was acquired, false otherwise
      * @throw Exception if the Notifyable doesn't exist
      */
-    void acquire(Notifyable *ntp, const std::string &lockName);
+    void acquire(Notifyable *ntp, 
+                 const std::string &lockName);
+
+    /**
+     * Try to lock this Notifyable.  The Notifyable cannot be the
+     * Root.  The lock can be used to prevent any thread from
+     * interfering with operations on this NotifyableImpl.
+     *
+     * @param timeout -1 for wait forever, 0 for return immediately, 
+     *        otherwise the number of milliseconds to wait for the lock.
+     * @param ntp is the Notifyable to be locked.
+     * @param lockName is the name of the lock
+     * @return true if the lock was acquired, false otherwise
+     * @throw Exception if the Notifyable doesn't exist
+     */
+    bool acquireWaitUsecs(int64_t usecTimeout, 
+                          Notifyable *ntp, 
+                          const std::string &lockName);
 
     /**
      * Try to unlock this Notifyable.
@@ -97,4 +115,4 @@ class DistributedLocks
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_DISTRIBUTEDLOCKS_H_ */
+#endif	/* !_CL_DISTRIBUTEDLOCKS_H_ */

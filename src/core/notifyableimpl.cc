@@ -160,6 +160,16 @@ NotifyableImpl::getSyncLock() const
     return &m_syncLock;
 }
 
+Mutex *
+NotifyableImpl::getSyncDistLock()
+{
+    TRACE(CL_LOG, "getSyncDistLock");
+
+    LOG_DEBUG(CL_LOG, "getSyncDistLock: For notifyable %s", getKey().c_str());
+
+    return &m_syncDistLock;
+}
+
 string
 NotifyableImpl::getStateString(Notifyable::State state)
 {
@@ -179,8 +189,36 @@ void
 NotifyableImpl::acquireLock(bool acquireChildren)
 {
     TRACE(CL_LOG, "acquireLock");
+    
+    if (!acquireLockWaitMsecs(-1LL, acquireChildren)) {
+        throw InconsistentInternalStateException(
+            "acquireLock: Impossible that acquireLockWaitMsecs failed!");
+    }
+}
+
+bool
+NotifyableImpl::acquireLockWaitMsecs(int64_t msecTimeout, bool acquireChildren)
+{
+    TRACE(CL_LOG, "acquireLockWaitMsecs");
 
     throwIfRemoved();
+
+    if (msecTimeout < -1) {
+        stringstream ss;
+        ss << "acquireLockWaitMsecs: Cannot have msecTimeout < -1 (" 
+           << msecTimeout << ")";
+        throw InvalidArgumentsException(ss.str());
+    }
+
+    /* Adjust the curUsecTimeout for msecTimeout */
+    int64_t curUsecTimeout = 0;
+    int64_t maxUsecs = 0;
+    if (msecTimeout != -1) {
+        maxUsecs = TimerService::getCurrentTimeUsecs() + msecTimeout * 1000;
+    }
+    else {
+        curUsecTimeout = -1;
+    }
 
     if (getMyParent() == NULL) {
         throw InvalidMethodException(
@@ -188,45 +226,67 @@ NotifyableImpl::acquireLock(bool acquireChildren)
             "(most likely because it is the Root!)");
     }
 
-    getOps()->getDistributedLocks()->acquire(
-        getMyParent(), 
-        ClusterlibStrings::NOTIFYABLELOCK);
-
     LOG_DEBUG(CL_LOG, 
               "acquireLock: acquring parent lock on %s", 
               getKey().c_str()); 
-    if (acquireChildren == true) {
-        NotifyableList ntList, tmpNtList;
-        ntList.push_back(this);
-        uint32_t ntListIndex = 0;
-        do {
-            LOG_DEBUG(CL_LOG, 
-                      "acquireLock: acquiring lock on %s", 
-                      ntList[ntListIndex]->getKey().c_str());
-            getOps()->getDistributedLocks()->acquire(
-                ntList[ntListIndex],
-                ClusterlibStrings::NOTIFYABLELOCK);
+    
+    /*
+     * Algorithm:
+     * -Acquire locks for this notifyable and its parent
+     * -If acquireChildren is set, acquire all child locks of this notifyable
+     */
+    bool gotLock = false;
+    NotifyableList ntList, tmpNtList;
+    ntList.push_back(getMyParent());
+    ntList.push_back(this);
+    uint32_t ntListIndex = 0;
+    do {
+        if (curUsecTimeout != -1) {
+            /* Don't let curUsecTimeout go negative if not already -1. */
+            curUsecTimeout = max(
+                maxUsecs - TimerService::getCurrentTimeUsecs(), 0LL);
+        }
+        LOG_DEBUG(CL_LOG, 
+                  "acquireLock: acquiring lock on %s with curUsecTimeout=%lld",
+                  ntList[ntListIndex]->getKey().c_str(),
+                  curUsecTimeout);
+        gotLock = getOps()->getDistributedLocks()->acquireWaitUsecs(
+            curUsecTimeout,
+            ntList[ntListIndex],
+            ClusterlibStrings::NOTIFYABLELOCK);
+        if (!gotLock) {
+            break;
+        }
+
+        if ((ntListIndex != 0) && (acquireChildren)) {
             tmpNtList = getOps()->getChildren(ntList[ntListIndex]);
-
-            /*
-             * Invalidates all iterators (therefore use of index)
-             */
+            /* Invalidates all iterators (therefore use of index) */
             ntList.insert(ntList.end(), tmpNtList.begin(), tmpNtList.end()); 
-            ntListIndex++;
-        } while (ntListIndex != ntList.size());
+        }
 
-        /* Release notifyables from getChildren() */
-        NotifyableList::iterator ntIt;
-        for (ntIt = ntList.begin(); ntIt != ntList.end(); ntIt++) {
-            if (*ntIt != this) {
-                (*ntIt)->releaseRef();
-            }
+        ++ntListIndex;
+    } while (ntListIndex != ntList.size());
+
+    /* Release the acquired locks if the last lock attempt failed */
+    if (!gotLock && (ntListIndex > 0)) {
+        for (int i = ntListIndex - 1; i >= 0; --i) {
+            ntList[ntListIndex]->releaseLock(false);
         }
     }
+
+    /* Release notifyables from getChildren() */
+    NotifyableList::iterator ntIt;
+    for (ntIt = ntList.begin(); ntIt != ntList.end(); ntIt++) {
+        if (*ntIt != this && *ntIt != getMyParent()) {
+            (*ntIt)->releaseRef();
+        }
+    }
+
+    if (gotLock) {
+        return true;
+    }
     else {
-        getOps()->getDistributedLocks()->acquire(
-            this,
-            ClusterlibStrings::NOTIFYABLELOCK);
+        return false;
     }
 }
 
@@ -363,6 +423,11 @@ NotifyableImpl::remove(bool removeChildren)
             "remove: Can not remove a Notifyable that has no parent");
     }
 
+    LOG_DEBUG(CL_LOG, 
+              "remove: removing %s (removeChildren=%d)", 
+              getKey().c_str(),
+              removeChildren); 
+
     /*
      * Algorithm: 
      *
@@ -388,15 +453,10 @@ NotifyableImpl::remove(bool removeChildren)
      * remove event was already propagated through the clusterlib
      * 'external' event thread. 
      */
-
     acquireLock(removeChildren);
 
     try {
         if (removeChildren == false) {
-            LOG_DEBUG(CL_LOG, 
-                      "remove: removing %s", 
-                      getKey().c_str()); 
-
             NotifyableList ntList = getOps()->getChildren(this);
             if (ntList.empty() == false) {
                 LOG_ERROR(CL_LOG,

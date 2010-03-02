@@ -287,7 +287,11 @@ class CliParams {
      * The debug level
      */
     int32_t m_logLevel;
-    
+
+    /**
+     * Print the command names then exit.
+     */
+    bool m_listCommands;
 
     /** Single instance */
     static CliParams *m_params;

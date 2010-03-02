@@ -6,8 +6,8 @@
  * ============================================================================
  */
 
-#ifndef __EVENT_H__
-#define __EVENT_H__
+#ifndef _CL_EVENT_H_
+#define _CL_EVENT_H_
 
 #include <string>
 #include <set>
@@ -52,7 +52,6 @@ template<typename E>
 class EventListener
 {
   public:
-        
     /**
      * \brief This method is invoked whenever an event 
      * \brief has been received by the event source being observed.
@@ -61,8 +60,7 @@ class EventListener
      * @param event the actual event being triggered
      */
     virtual void eventReceived(const EventSource<E> &source, 
-                               const E &e)
-        = 0;
+                               const E &e) = 0;
 };  
 
 /**
@@ -77,7 +75,6 @@ template<typename E>
 class EventSource
 {
   public:
-        
     /**
      * \brief The type corresponding to the list of registered
      * event listeners.
@@ -91,6 +88,7 @@ class EventSource
      */
     void addListener(EventListener<E> *listener)
     {
+        Locker l(&m_listenersLock);
         m_listeners.insert(listener);
     }
         
@@ -101,6 +99,7 @@ class EventSource
      */
     void removeListener(EventListener<E> *listener)
     {
+        Locker l(&m_listenersLock);
         m_listeners.erase(listener);
     }
         
@@ -110,7 +109,6 @@ class EventSource
     virtual ~EventSource() {}
         
   protected:
-        
     /**
      * \brief Fires the given event to all registered listeners.
      * 
@@ -135,11 +133,15 @@ class EventSource
     virtual void fireEvent(EventListener<E> *listener, const E &event);
         
   private:
-        
     /**
      * The set of registered event listeners.
      */
-    EventListeners m_listeners;            
+    EventListeners m_listeners;
+    
+    /**
+     * Make modifying m_listeners thread-safe
+     */
+    Mutex m_listenersLock;
 };
 
 /**
@@ -195,7 +197,6 @@ class EventWrapper
 class GenericEvent
 {
   public:
-        
     /**
      * \brief Constructor.
      */
@@ -223,6 +224,13 @@ class GenericEvent
     {
         m_type = ge.getType();
         mp_eventWrapper = ge.mp_eventWrapper->clone();
+    }
+
+    GenericEvent &operator = (const GenericEvent &ge)
+    {
+        m_type = ge.getType();
+        mp_eventWrapper = ge.mp_eventWrapper->clone();
+        return *this;
     }
 
     /**
@@ -261,11 +269,6 @@ class GenericEvent
         
   private:
     /**
-     * No assignment operator allowed
-     */
-    GenericEvent &operator = (const GenericEvent &ge);
-
-    /**
      * The event type.
      */
     int32_t m_type;
@@ -288,8 +291,7 @@ class EventListenerAdapter
     : public virtual EventListener<E>,
       public virtual EventSource<GenericEvent>
 {
-  public:
-        
+  public:        
     /**
      * \brief Constructor.
      * 
@@ -322,8 +324,7 @@ class SynchronousEventAdapter
     : public EventListener<E>
 {
   public:
-        
-    void eventReceived(const EventSource<E> &source, const E &e)
+    virtual void eventReceived(const EventSource<E> &source, const E &e)
     {
         TRACE(EV_LOG, "eventReceived");
         LOG_DEBUG(EV_LOG, 
@@ -336,29 +337,36 @@ class SynchronousEventAdapter
     }
 
     /**
-     * \brief Returns the next available event from the underlying queue,
-     * \brief possibly blocking, if no data is available.
+     * \brief Returns the next available event from the underlying
+     * queue, blocking if no data is available.
      * 
-     * @param timeout how long to wait until an element becomes available, 
-     *                in milliseconds; if <code>0</code> then wait forever;
-     *                if <code>< 0</code> then do not wait at all.
-     * @param timedOut if not NULL then set to true whether this 
-     *                 function timed out
-     * @return the next available event
+     * @param e the element filled in if returned true
      */
-    E getNextEvent(int32_t timeout = 0, bool *timedOut = NULL)
+    void getNextEvent(E &e)
     {
         TRACE(EV_LOG, "getNextEvent");
+        getNextEventWaitMsecs(-1LL, e);
+    }
+
+    /**
+     * \brief Returns the next available event from the underlying
+     * queue, possibly blocking, if no data is available.
+     * 
+     * @param msecTimeout the amount of msecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediately
+     * @param e the element filled in if returned true
+     * @return true if an element was retrieved, false otherwise
+     */
+    bool getNextEventWaitMsecs(int64_t msecTimeout, E &e)
+    {
+        TRACE(EV_LOG, "getNextEventWaitMsecs");
 
         LOG_DEBUG(EV_LOG, 
-                  "getNextEvent: timeout %d, bool address 0x%x, "
-                  "instance 0x%x, thread 0x%x",
-                  timeout,
-                  (uint32_t) timedOut,
+                  "getNextEvent: msecTimeout %lld, instance 0x%x, thread 0x%x",
+                  msecTimeout,
                   (uint32_t) this, 
                   (uint32_t) pthread_self());
-
-        return m_queue.take(timeout, timedOut);
+        return m_queue.takeWaitMsecs(msecTimeout, e);
     }
         
     /**
@@ -378,7 +386,6 @@ class SynchronousEventAdapter
     virtual ~SynchronousEventAdapter() {}
 
   private:
-
     /**
      * The blocking queue of all events received so far.
      */
@@ -388,6 +395,7 @@ class SynchronousEventAdapter
 template<typename E>
 void EventSource<E>::fireEventToAllListeners(const E &event)
 {
+    Locker l(&m_listenersLock);
     for (typename EventListeners::iterator eIt = m_listeners.begin(); 
          eIt != m_listeners.end(); 
          ++eIt) 
@@ -588,7 +596,6 @@ template<typename T>
 class TimerEvent
 {
   public:
-       
     /**
      * \brief Constructor.
      * 
@@ -671,7 +678,6 @@ class Timer
     : public EventSource<TimerEvent<T> >
 {
   public:
-        
     /**
      * \brief Constructor.
      */
@@ -770,7 +776,7 @@ class Timer
             //1 step - wait until there is an event in the queue
             if (m_queue.empty()) {
                 //wait up to 100ms to get next event
-                m_lock.wait(100);
+                m_lock.waitMsecs(100);
             }
             bool fire = false;
             if (!m_queue.empty()) {
@@ -786,7 +792,7 @@ class Timer
                     //is canceled)
                     fire = true;    
                 } else {
-                    m_lock.wait(timeToWait);
+                    m_lock.waitMsecs(timeToWait);
                 }
                 m_lock.unlock();
                 if (fire) {
@@ -805,7 +811,6 @@ class Timer
     }
         
   private:
-        
     /**
      * The type of timer events queue.
      */
@@ -918,4 +923,4 @@ typedef BlockingQueue<TimerEventPayload *>	TimerEventQueue;
 
 }   /* end of 'namespace clusterlib' */
 
-#endif /* __EVENT_H__ */
+#endif /* _CL_EVENT_H_ */

@@ -10,8 +10,8 @@
  */
 
 
-#ifndef _PROPERTYLISTIMPL_H__
-#define _PROPERTYLISTIMPL_H__
+#ifndef _CL_PROPERTYLISTIMPL_H_
+#define _CL_PROPERTYLISTIMPL_H_
 
 namespace clusterlib
 {

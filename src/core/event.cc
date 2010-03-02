@@ -37,7 +37,7 @@ UserEventHandler::waitUntilCondition(uint64_t maxMs, bool interruptible)
         if (remainingMs == 0) {
             m_waitCond.wait(m_waitMutex);
         } else {
-            result = m_waitCond.wait(m_waitMutex, remainingMs);
+            result = m_waitCond.waitUsecs(m_waitMutex, remainingMs * 1000);
         }
 
         /*

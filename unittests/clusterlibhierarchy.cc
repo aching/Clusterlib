@@ -1,5 +1,5 @@
-#include "MPITestFixture.h"
 #include "testparams.h"
+#include "MPITestFixture.h"
 
 extern TestParams globalTestParams;
 
@@ -15,9 +15,11 @@ class ClusterlibHierarchy : public MPITestFixture {
 
   public:
     
-    ClusterlibHierarchy() : _factory(NULL),
-                            _client(NULL),
-                            _app(NULL) {}
+    ClusterlibHierarchy() 
+        : MPITestFixture(globalTestParams),
+          _factory(NULL),
+          _client(NULL),
+          _app(NULL) {}
     
     /**
      * Runs prior to each test 

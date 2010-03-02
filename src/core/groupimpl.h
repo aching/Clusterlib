@@ -9,8 +9,8 @@
  * $Date$
  */
 
-#ifndef	_GROUPIMPL_H_
-#define _GROUPIMPL_H_
+#ifndef	_CL_GROUPIMPL_H_
+#define _CL_GROUPIMPL_H_
 
 namespace clusterlib
 {
@@ -79,4 +79,4 @@ class GroupImpl
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_GROUPIMPL_H_ */
+#endif	/* !_CL_GROUPIMPL_H_ */

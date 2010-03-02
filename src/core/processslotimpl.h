@@ -9,8 +9,8 @@
  * $Date$
  */
 
-#ifndef	_PROCESSSLOTIMPL_H_
-#define _PROCESSSLOTIMPL_H_
+#ifndef	_CL_PROCESSSLOTIMPL_H_
+#define _CL_PROCESSSLOTIMPL_H_
 
 namespace clusterlib
 {
@@ -158,4 +158,4 @@ class ProcessSlotImpl
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_PROCESSSLOTIMPL_H_ */
+#endif	/* !_CL_PROCESSSLOTIMPL_H_ */

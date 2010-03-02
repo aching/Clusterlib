@@ -108,7 +108,8 @@ CliParams::CliParams()
       m_finished(false), 
       m_line(NULL),
       m_keySetMaxSize(1024*1024),
-      m_logLevel(0)
+      m_logLevel(0),
+      m_listCommands(false)
 {
 
 #ifndef NO_TAB_COMPLETION
@@ -167,8 +168,8 @@ CliParams::parseArgs(int argc, char **argv)
                 m_logLevel = atoi(optarg);
                 break;
             case 'l':
-                printCommandNames();
-                exit(0);
+                m_listCommands = true;
+                break;
             case 'c':
                 m_command = optarg;
                 break;
@@ -185,10 +186,6 @@ CliParams::parseArgs(int argc, char **argv)
         printUsage(argv[0]);
         ::exit(-1);
     }
-    initFactoryAndClient();
-
-    /* Add the root key to the key set. */
-    addToKeySet(m_client->getRoot()->getKey());
 }
 
 /** The key separator arguments. */
@@ -199,6 +196,12 @@ CliParams::parseAndRunLine()
 {        
     cout << endl;
     vector<string> components;
+
+    if (m_listCommands) {
+        printCommandNames();
+        setFinished();
+        return;
+    }
 
     if (m_command.empty()) {
 #ifndef NO_TAB_COMPLETION
@@ -281,5 +284,8 @@ CliParams::initFactoryAndClient()
 {
     m_factory = new Factory(getZkServerPortList());
     m_client = m_factory->createClient();
+    
+    /* Add the root key to the key set. */
+    addToKeySet(m_client->getRoot()->getKey());
 }
 

@@ -1,5 +1,5 @@
-#include "MPITestFixture.h"
 #include "testparams.h"
+#include "MPITestFixture.h"
 #include "clusterlibinternal.h"
 
 extern TestParams globalTestParams;
@@ -17,7 +17,9 @@ class ClusterlibLeader : public MPITestFixture {
     CPPUNIT_TEST_SUITE_END();
 
   public:
-    ClusterlibLeader() : _factory(NULL) {}
+    ClusterlibLeader() 
+        : MPITestFixture(globalTestParams),
+          _factory(NULL) {}
     
     /**
      * Runs prior to each test 

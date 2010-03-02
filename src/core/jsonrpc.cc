@@ -158,7 +158,7 @@ JSONRPCManager::invokeAndResp(const string &rpcInvocation,
             paramArr[0].get<JSONValue::JSONObject>();
         jsonInputIt = paramObj.find(
             ClusterlibStrings::JSONOBJECTKEY_RESPQUEUEKEY);
-        if (jsonInputIt != inputObj.end()) {
+        if (jsonInputIt != paramObj.end()) {
             string respQueueKey = 
             jsonInputIt->second.get<JSONValue::JSONString>();
             Queue *respQueue = dynamic_cast<Queue *>(

@@ -6,8 +6,8 @@
  * ============================================================================
  */
 
-#ifndef __CALLBACKANDCONTEXT_H__
-#define __CALLBACKANDCONTEXT_H__
+#ifndef _CL_CALLBACKANDCONTEXT_H_
+#define _CL_CALLBACKANDCONTEXT_H_
 
 namespace clusterlib {
 
@@ -75,4 +75,4 @@ class CallbackAndContextManager {
 
 };   /* end of 'namespace clusterlib' */
 
-#endif /* __CALLBACKANDCONTEXT_H__ */
+#endif /* _CL_CALLBACKANDCONTEXT_H_ */

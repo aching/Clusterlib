@@ -1,5 +1,5 @@
-#include "MPITestFixture.h"
 #include "testparams.h"
+#include "MPITestFixture.h"
 #include "clusterlibinternal.h"
 
 extern TestParams globalTestParams;
@@ -7,8 +7,11 @@ extern TestParams globalTestParams;
 using namespace std;
 using namespace clusterlib;
 
-/*
+/**
  * The test class itself.
+ *
+ * Note: Since these tests violate the clusterlib API, they may cause
+ * occasional non-fatal problems.
  */
 class ClusterlibCache
     : public MPITestFixture
@@ -28,7 +31,8 @@ class ClusterlibCache
   public:
     
     ClusterlibCache()
-        : _factory(NULL),
+        : MPITestFixture(globalTestParams),
+          _factory(NULL),
           _client0(NULL),
           _app0(NULL),
           _grp0(NULL),

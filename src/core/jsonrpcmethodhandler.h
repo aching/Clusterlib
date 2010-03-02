@@ -11,8 +11,8 @@
  * ============================================================================
  */
 
-#ifndef _JSONRPCMETHODHANDLER_H_
-#define _JSONRPCMETHODHANDLER_H_
+#ifndef _CL_JSONRPCMETHODHANDLER_H_
+#define _CL_JSONRPCMETHODHANDLER_H_
 
 namespace clusterlib
 {
@@ -64,4 +64,4 @@ class JSONRPCMethodHandler : public UserEventHandler
 
 }	/* End of 'namespace clusterlib' */
 
-#endif	/* !_JSONRPCMETHODHANDLER_H_ */
+#endif	/* !_CL_JSONRPCMETHODHANDLER_H_ */

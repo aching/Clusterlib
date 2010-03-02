@@ -17,14 +17,20 @@ class TestParams {
         m_numProcs(-1),
         m_zkServerPortList("localhost:2221"),
         m_outputType(FILE),
-        m_parseArgsState(-1) {}
+        m_parseArgsState(-1),
+        m_clPropertyList("unittests"),
+        m_updateClPropertyList(false),
+        m_testCount(0) {}
 
     TestParams(int32_t myId, int32_t numProcs) :
         m_myId(myId),
         m_numProcs(numProcs),
         m_zkServerPortList("localhost:2221"),
         m_outputType(FILE),
-        m_parseArgsState(-1) {}
+        m_parseArgsState(-1),
+        m_clPropertyList("unittests"),
+        m_updateClPropertyList(false),
+        m_testCount(0) {}
 
     void printUsage(char *exec) const;
 
@@ -38,6 +44,23 @@ class TestParams {
      * processes.
      */
     int32_t scatterArgs();
+
+    /**
+     * Remove the old property list if around from last test.
+     */
+    void resetClPropertyList();
+
+    /**
+     * Increment the test count.
+     */
+    void incrTestCount();
+    
+    /**
+     * Get the test count.
+     * 
+     * @return the test count
+     */
+    int32_t getTestCount() const { return m_testCount; }
 
     int32_t getMyId() const { return m_myId; }
 
@@ -57,6 +80,10 @@ class TestParams {
     const std::string &getTestFixtureName() { return m_testFixtureName; }
 
     OutputType getOutputType() const { return m_outputType; }
+
+    const std::string & getClPropertyList() const { return m_clPropertyList; }
+
+    bool getUpdateClPropertyList() const { return m_updateClPropertyList; }
 
   private:
     /**
@@ -90,4 +117,19 @@ class TestParams {
      * -1 for failure, 0 for success
      */
     int32_t m_parseArgsState;
+
+    /**
+     * Special clusterlib output property list
+     */
+    const std::string m_clPropertyList;
+
+    /**
+     * Update the clusterlib output property list
+     */
+    int32_t m_updateClPropertyList;
+
+    /**
+     * The test count.
+     */
+    int32_t m_testCount;
 };

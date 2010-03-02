@@ -7,9 +7,64 @@
  */
 
 #include "clusterlibinternal.h"
+#include <sstream>
+
+using namespace std;
 
 namespace clusterlib
 {
+
+void
+Cond::wait(Mutex &mutex)
+{
+    TRACE(CL_LOG, "wait");
+    
+    int ret = pthread_cond_wait(&m_cond, &mutex.mutex);
+    if (ret) {
+        stringstream ss;
+        ss << "wait: pthread_cond_wait failed with " << ret;
+        throw SystemFailureException(ss.str());
+    }
+}
+
+bool
+Cond::waitUsecs(Mutex &mutex, int64_t usecTimeout)
+{
+    TRACE(CL_LOG, "waitUsecs");
+
+    if (usecTimeout < -1) {
+        stringstream ss;
+        ss << "wait: Cannot have usecTimeout < -1 (" << usecTimeout << ")";
+        throw InvalidArgumentsException(ss.str());
+    }
+    else if (usecTimeout == -1) {
+        wait(mutex);
+        return true;
+    }
+
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    struct timespec abstime;
+    int64_t usecs = now.tv_sec * 1000000LL + now.tv_usec;
+    usecs += usecTimeout;
+    abstime.tv_sec = usecs / 1000000LL;
+    abstime.tv_nsec = usecs % 1000000LL;
+    if (pthread_cond_timedwait(&m_cond, &mutex.mutex, &abstime) == 
+        ETIMEDOUT)
+    {
+        return false;
+    } 
+    else {
+        return true;
+    }
+}
+
+bool
+Cond::waitMsecs(Mutex &mutex, int64_t msecTimeout)
+{
+    TRACE(CL_LOG, "waitMsecs");
+    return waitUsecs(mutex, msecTimeout * 1000);
+}
 
 void
 Mutex::acquire()
@@ -59,39 +114,44 @@ PredMutexCond::predSignal()
 }
 
 bool
-PredMutexCond::predWait(const int64_t timeout)
+PredMutexCond::predWaitUsecs(int64_t usecTimeout)
 {
-    TRACE(CL_LOG, "predWait");
+    TRACE(CL_LOG, "predWaitUsecs");
 
-    int64_t microSecs = 0;
-    int64_t maxMicroSecs = 0;
-    mutex.acquire();
-    if (timeout != 0) {
-        maxMicroSecs = 
-            TimerService::getCurrentTimeUsecs() + timeout * 1000;
+    if (usecTimeout < -1) {
+        stringstream ss;
+        ss << "predWaitUsecs: Cannot have usecTimeout < -1 (" 
+           << usecTimeout << ")";
+        throw InvalidArgumentsException(ss.str());
     }
+
+    int64_t curUsecTimeout = 0;
+    int64_t maxUsecs = 0;
+    if (usecTimeout != -1) {
+        maxUsecs = TimerService::getCurrentTimeUsecs() + usecTimeout;
+    }
+    mutex.acquire();
     while (pred == false) {
         LOG_DEBUG(CL_LOG,
-                  "predWait: About to wait for %lld msecs", 
-                  timeout);
-        if (timeout == 0) {
+                  "predWaitUsecs: About to wait for a maximum of %lld usecs", 
+                  usecTimeout);
+        if (usecTimeout == -1) {
             cond.wait(mutex);
         }
-        else if (timeout < 0) {
-            mutex.release();
-            return false;
-        }
         else {
-            if (TimerService::compareTimeUsecs(maxMicroSecs) >= 0) {
+            /* Don't let curUsecTimeout go negative. */
+            curUsecTimeout = max(
+                maxUsecs - TimerService::getCurrentTimeUsecs(), 0LL);
+            LOG_DEBUG(CL_LOG, 
+                      "predWaitUsecs: Going to wait for %lld usecs (%lld "
+                      "usecs originally)", 
+                      curUsecTimeout,
+                      usecTimeout);
+            cond.waitUsecs(mutex, curUsecTimeout);
+            if (TimerService::compareTimeUsecs(maxUsecs) >= 0) {
                 mutex.release();
                 return false;
             }
-            microSecs = maxMicroSecs - TimerService::getCurrentTimeUsecs();
-            LOG_DEBUG(CL_LOG, 
-                      "predWait: Going to wait for %lld usecs (%lld msecs)", 
-                      microSecs,
-                      microSecs / 1000);
-            cond.wait(mutex, microSecs / 1000);
         }
     }
     mutex.release();

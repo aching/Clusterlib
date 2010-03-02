@@ -9,8 +9,8 @@
  * $Date$
  */
 
-#ifndef _STOPPROCESSRPC_H_
-#define _STOPPROCESSRPC_H_
+#ifndef _CL_STOPPROCESSRPC_H_
+#define _CL_STOPPROCESSRPC_H_
 
 namespace clusterlib {
 

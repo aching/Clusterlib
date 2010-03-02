@@ -18,7 +18,7 @@ using namespace json;
 using namespace json::rpc;
 
 /* Wait up to 1 second for a queue element */
-static const uint64_t recvQueueTimeOut = 1000;
+static const uint64_t recvQueueMsecTimeOut = 1000;
 
 namespace clusterlib
 {
@@ -41,13 +41,13 @@ JSONRPCMethodHandler::handleUserEvent(Event e)
         return;
     }
     
-    bool timedOut = true;
-    string request = m_recvQueue->take(recvQueueTimeOut, &timedOut);
-    if (timedOut) {
+    string request;
+    bool found = m_recvQueue->takeWaitMsecs(recvQueueMsecTimeOut, request);
+    if (!found) {
         LOG_DEBUG(CL_LOG, 
                   "handleUserEvent: Waited %llu msecs and "
                   "couldn't find any elements",
-                  recvQueueTimeOut);
+                  recvQueueMsecTimeOut);
         return;
     }
     

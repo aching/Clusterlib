@@ -6,6 +6,7 @@ INCLUDES = \
 METASOURCES = AUTO
 lib_LIBRARIES = libcluster.a
 libcluster_a_SOURCES = \
+	clusterlibexceptions.cc \
 	json.cc \
 	jsonrpc.cc \
 	queueimpl.cc \

@@ -10,8 +10,8 @@
  * $Date$
  */
 
-#ifndef	_QUEUEIMPL_H_
-#define _QUEUEIMPL_H_
+#ifndef	_CL_QUEUEIMPL_H_
+#define _CL_QUEUEIMPL_H_
 
 namespace clusterlib
 {
@@ -26,10 +26,12 @@ class QueueImpl
   public:
     virtual int64_t put(const std::string &element);
 
-    virtual std::string take(const int64_t timeout = 0, 
-                             bool *timedOut = NULL);
+    virtual void take(std::string &element);
 
-    virtual std::string front(bool *foundFront = NULL);
+    virtual bool takeWaitMsecs(int64_t msecTimeout, 
+                               std::string &element);
+
+    virtual bool front(std::string &element);
 
     virtual int64_t size();
 
@@ -79,4 +81,4 @@ class QueueImpl
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_QUEUEIMPL_H_ */
+#endif	/* !_CL_QUEUEIMPL_H_ */

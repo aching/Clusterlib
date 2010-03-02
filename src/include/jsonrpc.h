@@ -9,8 +9,8 @@
  * $Date: 2009-12-15 09:22:26 +0000 (Tue, 15 Dec 2009) $
  */
 
-#ifndef _JSONRPC_H_
-#define _JSONRPC_H_
+#ifndef _CL_JSONRPC_H_
+#define _CL_JSONRPC_H_
 #include <memory>
 #include <string>
 #include <vector>
@@ -137,13 +137,18 @@ class JSONRPCRequest
     virtual void sendRequest(const void *destination) = 0;
 
     /**
+     * Wait unconditionally  for the response.
+     */
+    virtual void waitResponse() = 0;
+
+    /**
      * Wait for a number of milliseconds for the response.
      *
-     * @param timeout if -1, then return immediately, if 0, wait indefinitely
-     *        and if > 0, then wait that many milliseconds
+     * @param msecTimeout the amount of msecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediately
      * @return true if response exists
      */
-    virtual bool waitResponse(int64_t timeout = 0) = 0;
+    virtual bool waitMsecsResponse(int64_t msecsTimeout) = 0;
 
     /**
      * Get response after waitResponse() has succeeded.
@@ -151,6 +156,16 @@ class JSONRPCRequest
      * @return the JSONValue for this RPC.
      */
     virtual const JSONValue::JSONObject &getResponse() = 0;
+
+    /**
+     * Get the user-defined data associated with the request.
+     */
+    virtual clusterlib::ClientData getClientData() = 0;
+    
+    /**
+     * Set the user-defined data associated with the request.
+     */
+    virtual void setClientData(clusterlib::ClientData data) = 0;
 };
 
 /**

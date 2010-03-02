@@ -1,5 +1,5 @@
-#include "MPITestFixture.h"
 #include "testparams.h"
+#include "MPITestFixture.h"
 
 extern TestParams globalTestParams;
 
@@ -35,9 +35,11 @@ class ClusterlibEndEvent : public MPITestFixture {
     CPPUNIT_TEST_SUITE_END();
 
   public:
-    ClusterlibEndEvent() : _factory(NULL),
-                           _client(NULL),
-                           _app(NULL) {}
+    ClusterlibEndEvent() 
+        : MPITestFixture(globalTestParams),
+          _factory(NULL),
+          _client(NULL),
+          _app(NULL) {}
     
     /**
      * Runs prior to each test 
@@ -95,6 +97,7 @@ class ClusterlibEndEvent : public MPITestFixture {
         _checker->setMsecsPerCheckIfUnhealthy(1);
         _checker->setMsecsAllowedPerHealthCheck(1);
         barrier(_factory, true);
+        finishedClTest(_factory);
 	delete _factory;
         delete _checker;
     }

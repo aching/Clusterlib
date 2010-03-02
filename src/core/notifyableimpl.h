@@ -8,8 +8,8 @@
  * $Date$
  */
 
-#ifndef	_NOTIFYABLEIMPL_H_
-#define _NOTIFYABLEIMPL_H_
+#ifndef	_CL_NOTIFYABLEIMPL_H_
+#define _CL_NOTIFYABLEIMPL_H_
 
 namespace clusterlib
 {
@@ -89,6 +89,9 @@ class NotifyableImpl
     virtual void releaseRef();
 
     virtual void acquireLock(bool acquireChildren = false);
+
+    virtual bool acquireLockWaitMsecs(int64_t msecTimeout, 
+                                      bool acquireChildren = false);
 
     virtual void releaseLock(bool releaseChildren = false);
     
@@ -219,6 +222,13 @@ class NotifyableImpl
     Mutex *getSyncLock() const;
 
     /**
+     * Get the NotifyableImpl synchronization lock for distributed locks
+     * 
+     * @return pointer to the synchronization lock for distributed locks
+     */
+    Mutex *getSyncDistLock();
+
+    /**
      * Return the stringified state
      */
     static std::string getStateString(Notifyable::State state);
@@ -300,7 +310,7 @@ class NotifyableImpl
     State m_state;
     
     /** 
-     * All locks, their owners and their owner's reference counts are
+     * All lock info (locks, their owners and their owner's reference counts are
      * stored here.
      */
     std::map<std::string, NameRef> m_distLockMap;
@@ -322,8 +332,13 @@ class NotifyableImpl
      * throwIfRemoved() - which is const so it can be used everywhere.
      */
     mutable Mutex m_syncLock;
+
+    /**
+     * Lock to synchronize all clusterlib distributed locks.
+     */
+    Mutex m_syncDistLock;
 };
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_NOTIFYABLEIMPL_H_ */
+#endif	/* !_CL_NOTIFYABLEIMPL_H_ */

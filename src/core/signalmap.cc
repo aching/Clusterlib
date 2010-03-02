@@ -96,29 +96,30 @@ bool SignalMap::signalPredMutexCond(const string &key)
     return true;
 }
 
-bool SignalMap::waitPredMutexCond(const string &key, const int64_t timeout)
+bool SignalMap::waitUsecsPredMutexCond(const string &key, int64_t usecTimeout)
 {
-    TRACE(CL_LOG, "waitPredMutexCond");
+    TRACE(CL_LOG, "waitUsecsPredMutexCond");
 
     map<string, PredMutexCond *>::iterator it;
     {
         Locker l1(getSignalMapLock());
         LOG_DEBUG(CL_LOG, 
-                  "waitPredMutexCond: waiting (%s), timeout (%lld)",
+                  "waitUsecsPredMutexCond: waiting (%s), timeout (%lld)",
                   key.c_str(),
-                  timeout);
+                  usecTimeout);
         it = m_signalMap.find(key);
         if (it == m_signalMap.end()) {
             throw InconsistentInternalStateException(
-                string("waitPredMutexCond: Cannot wait on missing key") +
+                string("waitUsecsPredMutexCond: Cannot wait on missing key") +
                 key);
         }
         if (it->second->refCount == 0) {
             throw InconsistentInternalStateException(
-                string("waitPredMutexCond: Ref count is 0 for key ") + key);
+                string("waitUsecsPredMutexCond: Ref count is 0 for key ") + 
+                key);
         }
     }
-    return it->second->predWait(timeout);
+    return it->second->predWaitUsecs(usecTimeout);
 }
 
 };

@@ -9,8 +9,8 @@
  * $Date$
  */
 
-#ifndef	_PROCESSSLOT_H_
-#define _PROCESSSLOT_H_
+#ifndef	_CL_PROCESSSLOT_H_
+#define _CL_PROCESSSLOT_H_
 
 namespace clusterlib
 {
@@ -229,6 +229,7 @@ class ProcessSlot
 
     /**
      * Get the current state of the ProcessSlot.
+     *
      * @return the current process state
      */
     virtual ProcessState getCurrentProcessState() = 0;
@@ -265,4 +266,4 @@ class ProcessSlot
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_PROCESSSLOT_H_ */
+#endif	/* !_CL_PROCESSSLOT_H_ */

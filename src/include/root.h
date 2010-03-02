@@ -9,8 +9,8 @@
  * $Date$
  */
 
-#ifndef	_ROOT_H_
-#define _ROOT_H_
+#ifndef	_CL_ROOT_H_
+#define _CL_ROOT_H_
 
 namespace clusterlib
 {
@@ -57,4 +57,4 @@ class Root
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_ROOT_H_ */
+#endif	/* !_CL_ROOT_H_ */

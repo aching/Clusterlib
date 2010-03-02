@@ -6,8 +6,8 @@
  * ============================================================================
  */
 
-#ifndef __SIGNAL_MAP_H__
-#define __SIGNAL_MAP_H__
+#ifndef _CL_SIGNAL_MAP_H_
+#define _CL_SIGNAL_MAP_H_
 
 namespace clusterlib {
 
@@ -48,14 +48,16 @@ class SignalMap {
      * addRefPredMutexCond().
      *
      * @param key to the PredMutexCond
+     * @param usecTimeout the amount of usecs to wait until a signal is 
+     *        available, -1 means wait forever, 0 means return immediately
      * @param timeout how long to wait until an signal becomes available, 
      *        in milliseconds; if <code>0</code> then wait forever; 
      *        if <code>< 0</code>, then do not wait at all
      * @return false if the function timed out, true if predicate changed
      *         (always true if it returns and the timeout == 0)
      */
-    bool waitPredMutexCond(const std::string &key, 
-                           const int64_t timeout = 0);
+    bool waitUsecsPredMutexCond(const std::string &key, 
+                                int64_t usecTimeout);
 
   private:
     /**
@@ -75,5 +77,5 @@ class SignalMap {
 
 };	/* End of 'namespace clusterlib' */
         
-#endif /* __SIGNAL_MAP_H__ */
+#endif /* _CL_SIGNAL_MAP_H_ */
 

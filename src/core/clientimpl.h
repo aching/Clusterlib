@@ -8,8 +8,8 @@
  * $Date$
  */
 
-#ifndef _CLIENTIMPL_H_
-#define _CLIENTIMPL_H_
+#ifndef _CL_CLIENTIMPL_H_
+#define _CL_CLIENTIMPL_H_
 
 namespace clusterlib
 {
@@ -21,7 +21,7 @@ class ClientImpl
     virtual Root *getRoot();
 
     virtual TimerId registerTimer(TimerEventHandler *tehp,
-                                  uint64_t afterTime,
+                                  uint64_t afterMsecs,
                                   ClientData data);
 
     virtual bool cancelTimer(TimerId id);
@@ -85,24 +85,9 @@ class ClientImpl
     void sendEvent(UserEventPayload *cepp);
 
     /**
-     * Get hostname, process id and thread id string.  Useful for
-     * uniquely identifying a client.
-     *
-     * @return string of hostname, process id, and thread id
+     * Virtual destructor.
      */
-    static std::string getHostnamePidTid();
-
-    /**
-     * Make the destructor protected so it can only be invoked
-     * from derived classes.
-     */
-    virtual ~ClientImpl()
-    {
-        /**
-         * Wait till all events have been handled.
-         */
-        m_eventThread.Join();
-   }
+    virtual ~ClientImpl();
 
   private:
     /**

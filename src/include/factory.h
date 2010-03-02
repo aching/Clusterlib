@@ -8,8 +8,8 @@
  * $Date$
  */
 
-#ifndef	_FACTORY_H_
-#define	_FACTORY_H_
+#ifndef	_CL_FACTORY_H_
+#define	_CL_FACTORY_H_
 
 namespace clusterlib
 {
@@ -102,6 +102,14 @@ class Factory
      * @return the ZooKeeperAdapter * from Factory Ops
      */
     zk::ZooKeeperAdapter *getRepository();    
+    
+    /**
+     * Get hostname, process id and thread id string.  Useful for
+     * uniquely identifying a client.
+     *
+     * @return string of hostname, process id, and thread id
+     */
+    static std::string getHostnamePidTid();
 
   private:
     /**
@@ -118,4 +126,4 @@ class Factory
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_FACTORY_H_ */
+#endif	/* !_CL_FACTORY_H_ */

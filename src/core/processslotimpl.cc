@@ -635,7 +635,6 @@ ProcessSlotImpl::getReservationName()
         NotifyableKeyManipulator::createProcessSlotReservationKey(getKey());
 
     string currentReservationName;
-    acquireLock();
     SAFE_CALLBACK_ZK(
         getOps()->getRepository()->getNodeData(
             processSlotReservationKey,
@@ -653,8 +652,6 @@ ProcessSlotImpl::getReservationName()
         processSlotReservationKey.c_str(),
         false,
         true);
-    releaseLock();
-
     return currentReservationName;
 }
 

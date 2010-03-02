@@ -9,8 +9,8 @@
  * $Date$
  */
 
-#ifndef	_NODE_H_
-#define _NODE_H_
+#ifndef	_CL_NODE_H_
+#define _CL_NODE_H_
 
 namespace clusterlib
 {
@@ -109,7 +109,7 @@ class Node
     virtual void setUseProcessSlots(bool use) = 0;
     
     /**
-     * get whether process slots to be used (an active
+     * Get whether process slots to be used (an active
      * clusterlib node process is running).
      */
     virtual bool getUseProcessSlots() = 0;
@@ -155,4 +155,4 @@ class Node
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_NODE_H_ */
+#endif	/* !_CL_NODE_H_ */

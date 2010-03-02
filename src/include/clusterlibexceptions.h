@@ -6,15 +6,12 @@
  * ===========================================================================
  */
 
-#ifndef __CLUSTERLIBEXCEPTION_H__
-#define __CLUSTERLIBEXCEPTION_H__
-
-#include <execinfo.h>
-#include <cxxabi.h>
+#ifndef _CL_CLUSTERLIBEXCEPTIONS_H_
+#define _CL_CLUSTERLIBEXCEPTIONS_H_
 
 namespace clusterlib {
 /**
- * \brief A general cluster related exception.
+ * \brief A general clusterlib related exception.
  */
 class Exception 
     : public std::exception
@@ -23,45 +20,7 @@ class Exception
     /**
      * Constructor.
      */
-    Exception(const std::string &msg) 
-        : m_message(msg) 
-    {
-        const int32_t maxDepth = 50;
-
-        void **mangledArr = 
-            static_cast<void **>(malloc(sizeof(void *)*maxDepth));
-        int actualDepth = backtrace(mangledArr, maxDepth);
-        char **symbols = backtrace_symbols(mangledArr, actualDepth);
-
-        m_message.append("\nbacktrace:\n");
-        std::string tempMangledFuncName;
-        bool success = false;
-        for (int32_t i = 0; i < actualDepth; i++) {
-            tempMangledFuncName = symbols[i];
-            size_t startNameIndex = tempMangledFuncName.find('(');
-            if (startNameIndex != std::string::npos) {
-                tempMangledFuncName.erase(0, startNameIndex + 1);
-            }
-            size_t endNameIndex = tempMangledFuncName.find('+');
-            if (endNameIndex != std::string::npos) {
-                tempMangledFuncName[endNameIndex] = '\0';
-                endNameIndex++;
-            }
-            size_t endOffsetIndex = tempMangledFuncName.rfind(')');
-            if (endOffsetIndex != std::string::npos) {
-                tempMangledFuncName[endOffsetIndex] = '\0';
-            }
-            m_message.append(
-                demangleName(&tempMangledFuncName[0], success));
-
-            m_message.append(" offset: ");
-            m_message.append(&tempMangledFuncName[endNameIndex]);
-            m_message.append("\n");
-        }
-        
-        free(symbols);
-        free(mangledArr);
-    }
+    Exception(const std::string &msg);
 
     /**
      * Demangle any name if possible to a string.
@@ -71,31 +30,7 @@ class Exception
      * @return a string with the demangled name if successful, 
      *         original string on failure
      */ 
-    static std::string demangleName(const char *mangledName, bool &success) 
-    {
-        std::string demangledString;
-        const size_t maxMangledNameSize = 512;
-        size_t actualMangledNameSize = maxMangledNameSize;
-        int status = -1;
-        char *demangledName = 
-            static_cast<char *>(malloc(sizeof(char)*maxMangledNameSize));
-
-        abi::__cxa_demangle(mangledName,
-                            demangledName,
-                            &actualMangledNameSize,
-                            &status);
-        if (status == 0) {
-            demangledString = demangledName;
-            success = true;
-        }
-        else {
-            demangledString = mangledName;
-            success = false;
-        }
-        free(demangledName);
-
-        return demangledString;
-    }
+    static std::string demangleName(const char *mangledName, bool &success);
 
     /**
      * Destructor.
@@ -175,6 +110,21 @@ class InvalidMethodException
 };
 
 /**
+ * A publish() operation on a clusterlib object failed since versions
+ * don't match.
+ */
+class PublishVersionException
+    : public Exception
+{
+  public:
+   /**
+     * Constructor.
+     */
+    PublishVersionException(const std::string &msg) throw() 
+        : Exception(msg) {}
+};
+
+/**
  * A clusterlib object have been removed
  */
 class ObjectRemovedException
@@ -210,8 +160,8 @@ class RepositoryInternalsFailureException
 {
   public:
    /**
-     * Constructor.
-     */
+    * Constructor.
+    */
     RepositoryInternalsFailureException(const std::string &msg) throw() 
         : Exception(msg) {}
 };
@@ -229,8 +179,6 @@ class SystemFailureException
     SystemFailureException(const std::string &msg) throw() 
         : Exception(msg) {}
 };
-
-
 
 }	/* End of 'namespace clusterlib' */
 

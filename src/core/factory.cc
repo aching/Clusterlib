@@ -11,6 +11,10 @@
  */
 
 #include "clusterlibinternal.h"
+#include <iomanip>
+#include <sys/types.h>
+#include <linux/unistd.h>
+_syscall0(pid_t,gettid)
 
 #define LOG_LEVEL LOG_WARN
 #define MODULE_NAME "ClusterLib"
@@ -85,6 +89,28 @@ Factory::getRepository()
     TRACE(CL_LOG, "getRepository");
 
     return getOps()->getRepository();
+}
+
+string 
+Factory::getHostnamePidTid()
+{
+    TRACE(CL_LOG, "getHostnamePidTid");
+    
+    const int32_t bufLen = 256;
+    char tmp[bufLen + 1];
+    tmp[bufLen] = '\0';
+    if (gethostname(tmp, bufLen) != 0) {
+        throw SystemFailureException("getHostnamePidTid: gethostname failed");
+    }
+
+    /*
+     * Get the hostname, pid, and tid of the calling
+     * thread.
+     */
+    stringstream ss;
+    ss << tmp << ".pid." << getpid() 
+       << ".tid." << gettid();
+    return ss.str();
 }
 
 };	/* End of 'namespace clusterlib' */

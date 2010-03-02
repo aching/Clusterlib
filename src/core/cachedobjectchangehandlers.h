@@ -8,8 +8,8 @@
  * $Date$
  */
 
-#ifndef	_CACHEDOBJECTCHANGEHANDLERS_H_
-#define	_CACHEDOBJECTCHANGEHANDLERS_H_
+#ifndef	_CL_CACHEDOBJECTCHANGEHANDLERS_H_
+#define	_CL_CACHEDOBJECTCHANGEHANDLERS_H_
 
 namespace clusterlib
 {
@@ -401,4 +401,4 @@ class CachedObjectChangeHandlers
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_CACHEDOBJECTCHANGEHANDLERS_H_ */
+#endif	/* !_CL_CACHEDOBJECTCHANGEHANDLERS_H_ */

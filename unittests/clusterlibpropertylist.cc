@@ -1,5 +1,5 @@
-#include "MPITestFixture.h"
 #include "testparams.h"
+#include "MPITestFixture.h"
 #include <algorithm>
 #include <sstream>
 
@@ -17,16 +17,19 @@ class ClusterlibPropertyList : public MPITestFixture {
     CPPUNIT_TEST(testGetPropertyList5);
     CPPUNIT_TEST(testGetPropertyList6);
     CPPUNIT_TEST(testGetPropertyList7);
+    CPPUNIT_TEST(testGetPropertyList8);
     CPPUNIT_TEST_SUITE_END();
 
   public:
     
-    ClusterlibPropertyList() : _factory(NULL),
-                             _client0(NULL),
-                             _app0(NULL),
-                             _group0(NULL),
-                             _node0(NULL),
-                             _propertyList0(NULL) {}
+    ClusterlibPropertyList() 
+        : MPITestFixture(globalTestParams),
+          _factory(NULL),
+          _client0(NULL),
+          _app0(NULL),
+          _group0(NULL),
+          _node0(NULL),
+          _propertyList0(NULL) {}
 
     /* Runs prior to each test */
     virtual void setUp() 
@@ -243,7 +246,10 @@ class ClusterlibPropertyList : public MPITestFixture {
             _propertyList0 = _node0->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST,
                 true);
+            _propertyList0->acquireLock();
             _propertyList0->deleteProperty(prop);
+            _propertyList0->publish();
+            _propertyList0->releaseLock();
         }
 
         barrier(_factory, true);
@@ -452,7 +458,10 @@ class ClusterlibPropertyList : public MPITestFixture {
             _propertyList0 = _node0->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST,
                 true);
+            _propertyList0->acquireLock();
             _propertyList0->deleteProperty(prop);
+            _propertyList0->publish();
+            _propertyList0->releaseLock();
         }
 
         barrier(_factory, true);
@@ -481,6 +490,103 @@ class ClusterlibPropertyList : public MPITestFixture {
         MPI_CPPUNIT_ASSERT(value.compare(value2) == 0);
     }
 
+    /* 
+     * No process should see the value of a property change while it
+     * is holding the distributed lock (similar to
+     * testGetPropertyList3). Also, the new property value should be
+     * evident to every process at the end.  This should flush out any
+     * issues with locking not getting all updates prior to lock by
+     * updating several property lists and trying them all out.
+     */
+    void testGetPropertyList8()
+    {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testGetPropertyList8");
+        string prop = "prop8";
+        string newValue = "prop8-newvalue";
+        string propList1Name = "propList1";
+        string propList2Name = "propList2";
+        string propList3Name = "propList3";
+        PropertyList *propList1 = NULL;
+        PropertyList *propList2 = NULL;
+        PropertyList *propList3 = NULL;
+
+        if (isMyRank(0)) {
+            propList1 = _node0->getPropertyList(propList1Name, true);
+            propList2 = _node0->getPropertyList(propList2Name, true);
+            propList3 = _node0->getPropertyList(propList2Name, true);
+            _node0->acquireLock();
+            propList1->deleteProperty(prop);
+            propList1->publish();
+            propList2->deleteProperty(prop);
+            propList2->publish();
+            propList3->deleteProperty(prop);
+            propList3->publish();
+            _node0->releaseLock();
+        }
+
+        barrier(_factory, true);
+
+        propList1 = _node0->getPropertyList(propList1Name);
+        propList2 = _node0->getPropertyList(propList2Name);
+        propList3 = _node0->getPropertyList(propList2Name);
+        MPI_CPPUNIT_ASSERT(propList1);
+        MPI_CPPUNIT_ASSERT(propList2);
+        MPI_CPPUNIT_ASSERT(propList3);
+        if (isMyRank(0)) {
+            _node0->acquireLock();
+            propList1->setProperty(prop, newValue);
+            MPI_CPPUNIT_ASSERT(propList1->getProperty(prop)
+                               == newValue);
+            propList2->setProperty(prop, newValue);
+            MPI_CPPUNIT_ASSERT(propList2->getProperty(prop)
+                               == newValue);
+            propList3->setProperty(prop, newValue);
+            MPI_CPPUNIT_ASSERT(propList3->getProperty(prop)
+                               == newValue);
+            /* Publish backward to make the error case the most likely */
+            propList3->publish();    
+            propList2->publish();
+            propList1->publish();     
+            _node0->releaseLock();
+            barrier(NULL, false);
+            MPI_CPPUNIT_ASSERT(propList1->getProperty(prop)
+                               == newValue);
+            MPI_CPPUNIT_ASSERT(propList2->getProperty(prop)
+                               == newValue);
+            MPI_CPPUNIT_ASSERT(propList3->getProperty(prop)
+                               == newValue);
+        }
+        else {
+            barrier(NULL, false);
+            _node0->acquireLock();
+            string value1_1 = propList1->getProperty(prop);
+            string value2_1 = propList2->getProperty(prop);
+            string value3_1 = propList3->getProperty(prop);
+            usleep(500000);
+            string value1_2 = propList1->getProperty(prop);
+            string value2_2 = propList2->getProperty(prop);
+            string value3_2 = propList3->getProperty(prop);
+            _node0->releaseLock();
+            cerr << "testGetPropertyList8: value1_1 (" << value1_1
+                 << "), value1_2 (" << value1_2 << ")" << endl;
+            MPI_CPPUNIT_ASSERT(value1_1.compare(value1_2) == 0);
+            cerr << "testGetPropertyList8: value2_1 (" << value2_1
+                 << "), value2_2 (" << value2_2 << ")" << endl;
+            MPI_CPPUNIT_ASSERT(value2_1.compare(value2_2) == 0);
+            cerr << "testGetPropertyList8: value3_1 (" << value3_1
+                 << "), value3_2 (" << value3_2 << ")" << endl;
+            MPI_CPPUNIT_ASSERT(value3_1.compare(value3_2) == 0);
+        }
+
+        barrier(_factory, true);
+        MPI_CPPUNIT_ASSERT(propList1->getProperty(prop) == newValue);
+        MPI_CPPUNIT_ASSERT(propList2->getProperty(prop) == newValue);
+        MPI_CPPUNIT_ASSERT(propList3->getProperty(prop) == newValue);
+    }
 
   private:
     Factory *_factory;

@@ -2,15 +2,23 @@
 #include <cppunit/extensions/TestFactoryRegistry.h>
 #include <cppunit/ui/text/TestRunner.h>
 #include "testparams.h"
+#include "clusterlib.h"
 
 using namespace std;
+using namespace clusterlib;
 
-void TestParams::printUsage(char *exec) const
+void
+TestParams::printUsage(char *exec) const
 {
     cout <<
         "Usage: " << exec <<
         " [OPTION]... [VAR=VALUE]...\n\n"
         " -h  --help            Display this help and exit.\n"
+        " -c  --cl_update       Update special clusterlib property list\n" 
+        "                       (" << m_clPropertyList << ") with current\n"
+        "                       test status\n" 
+        "                       0 - no (default)\n" 
+        "                       1 - yes\n" 
         " -o  --output_type     Choose the output type.\n"
         "                       console - console output\n"
         "                       file - file output (default)\n"
@@ -31,7 +39,8 @@ void TestParams::printUsage(char *exec) const
          << ")\n";
 }
 
-int32_t TestParams::rootParseArgs(int argc, char **argv)
+int32_t
+TestParams::rootParseArgs(int argc, char **argv)
 {
     /* Do not execute unless you are the root process */
     if (m_myId != 0) {
@@ -41,6 +50,7 @@ int32_t TestParams::rootParseArgs(int argc, char **argv)
     static struct option longopts[] =
     {
         {"help", 0, NULL, 'h'},
+        {"cl_update", 1, NULL, 'c'},
         {"test_fixture", 1, NULL, 't'},
         {"output_type", 1, NULL, 'o'},
         {"zk_server_port_list", 1, NULL, 'z'},
@@ -51,7 +61,7 @@ int32_t TestParams::rootParseArgs(int argc, char **argv)
     int32_t option_index = 0;
     int32_t err = -1;
     int32_t ret = 0;
-    const char *optstring = ":ht:o:z:";
+    const char *optstring = ":hc:t:o:z:";
     bool found = false;
 
     /* Parse all standard command line arguments */
@@ -64,6 +74,19 @@ int32_t TestParams::rootParseArgs(int argc, char **argv)
             case 'h':
                 printUsage(argv[0]);
                 return -1;
+            case 'c':
+                {
+                    int boolArg = ::atoi(optarg);
+                    if ((boolArg != 0) && (boolArg != 1)) {
+                        cout << optarg << " is invalid (only 0 or 1 accepted) "
+                             << endl;
+                        ret = -1;
+                    }
+                    else {
+                        m_updateClPropertyList = boolArg;
+                    }
+                }
+                break;
             case 't':
                 /* Get the top level suite from the registry. */
                 CppUnit::Test *suite = 
@@ -122,13 +145,17 @@ int32_t TestParams::rootParseArgs(int argc, char **argv)
     return ret;
 }
 
-int32_t TestParams::scatterArgs()
+int32_t
+TestParams::scatterArgs()
 {
     /* Check for successful argument parsing on the root process */
     MPI::COMM_WORLD.Bcast(&m_parseArgsState, 1, MPI::INT, 0);
     if (m_parseArgsState != 0) {
         return -1;
     }
+
+    /* Broadcast whether the property list will be updated */
+    MPI::COMM_WORLD.Bcast(&m_updateClPropertyList, 1, MPI::INT, 0);
 
     /* Broadcast the m_testFixtureName */
     int32_t testFixtureNameSize;
@@ -182,3 +209,23 @@ int32_t TestParams::scatterArgs()
 
     return 0;
 }
+
+void 
+TestParams::resetClPropertyList()
+{
+    if (m_updateClPropertyList) {
+	Factory *factory = new Factory(getZkServerPortList());
+        Root *root = factory->createClient()->getRoot();
+        PropertyList *propertyList = root->getPropertyList(m_clPropertyList);
+        if (propertyList != NULL) {
+            propertyList->remove();
+        }
+    }
+}
+
+void
+TestParams::incrTestCount()
+{
+    ++m_testCount;
+}
+

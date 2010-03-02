@@ -9,8 +9,8 @@
  * $Date$
  */
 
-#ifndef __PROPERTYLIST_H__
-#define __PROPERTYLIST_H__
+#ifndef _CL_PROPERTYLIST_H_
+#define _CL_PROPERTYLIST_H_
 
 namespace clusterlib
 {
@@ -81,11 +81,12 @@ class PropertyList
      * 
      * Changes made through setProperty are not seen by other clients
      * unless they are published.  It is possible that an exception
-     * from clusterlib may be thrown if the versions don't match.  In
-     * this case, the user should catch the exception, release the
-     * lock and wait until the properties are updated (either through
-     * polling or waiting on events).  Then they should try to set
-     * their properties again under a lock and publish again.
+     * from clusterlib may be thrown if the versions don't match
+     * (PublishVersionException).  In this case, the user should catch
+     * the exception, release the lock and wait until the PropertyList
+     * is updated (either through polling or waiting on events).
+     * Then they should try to set their properties again under a lock
+     * and publish again.
      */
     virtual void publish() = 0;
 

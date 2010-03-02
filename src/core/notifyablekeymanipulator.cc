@@ -59,7 +59,7 @@ NotifyableKeyManipulator::createLockNodeKey(const string &notifyableKey,
     res.append(ClusterlibStrings::KEYSEPARATOR);
     res.append(lockName);
     res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClientImpl::getHostnamePidTid());
+    res.append(Factory::getHostnamePidTid());
 
     /* 
      * Our unique sequence number splitter to make readability easier.

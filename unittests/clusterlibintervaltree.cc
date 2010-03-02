@@ -1,5 +1,5 @@
-#include "MPITestFixture.h"
 #include "testparams.h"
+#include "MPITestFixture.h"
 #include "clusterlibinternal.h"
 
 extern TestParams globalTestParams;
@@ -18,7 +18,8 @@ class ClusterlibIntervalTree : public MPITestFixture {
 
   public:
     
-    ClusterlibIntervalTree() {}
+    ClusterlibIntervalTree() 
+        : MPITestFixture(globalTestParams) {}
 
     /* Runs prior to each test */
     virtual void setUp() 

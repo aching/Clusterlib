@@ -236,3 +236,19 @@ them.  The unittests are in clusterlib/unittests.
 
 * When the map container is an rvalue, do not use the [], instead use find.
 * When using vector, use at() instead of [].
+
+- Locking & Timers
+
+* External locking APIs should also be presented uniformly with a void
+  return for blocking APIs and a bool return for non-blocking APIs.  The 
+  non-blocking API should have a msecTimeout parameter where -1 means 
+  blocking, 0 means immediate return, and > 0 means the number of msecs
+* Internal locking APIs should be presented uniformly with a single 
+  blocking/non-blocking API that has a bool return and a usecTimeout where -1 
+  means blocking, 0 means immediate return, and > 0 means the number of usecs
+* Shared APIs may have one or both interfaces (msTimeout and usTimeout)
+* In order to determine whether the interface is msecs or usecs, it will be in
+  the function name (i.e. waitMsecs(int64_t msecTimeout))
+* Clusterlib locks shall not be used implicitly unless during a modify 
+  operation.  Reads shall not acquire locks (this is up to the user) so that 
+  clients (i.e. the CLI or the GUI) have the option of not using locks.

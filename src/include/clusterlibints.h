@@ -8,8 +8,8 @@
  * $Date$
  */
 
-#ifndef	_CLUSTERLIBINTS_H_
-#define	_CLUSTERLIBINTS_H_
+#ifndef	_CL_CLUSTERLIBINTS_H_
+#define	_CL_CLUSTERLIBINTS_H_
 
 #include <iostream>
 
@@ -67,4 +67,4 @@ class ClusterlibInts
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_CLUSTERLIBINTS_H_ */
+#endif	/* !_CL_CLUSTERLIBINTS_H_ */

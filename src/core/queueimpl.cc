@@ -74,22 +74,30 @@ QueueImpl::put(const string &element)
     return myBid;
 }
 
-string
-QueueImpl::take(const int64_t timeout, bool *timedOut)
+void
+QueueImpl::take(string &element) 
 {
     TRACE(CL_LOG, "take");
+
+    if (!takeWaitMsecs(-1LL, element)) {
+        throw InconsistentInternalStateException(
+            "take: Impossible that takeWaitMsecs failed!");
+    }
+}
+
+bool
+QueueImpl::takeWaitMsecs(int64_t msecTimeout, 
+                         string &element)
+{
+    TRACE(CL_LOG, "takeWaitMsecs");
 
     const string &queueParent = getKey();
 
     bool signaled;
-    int64_t microSecs = 0;
-    int64_t maxMicroSecs = 0;
-    if (timedOut) {
-        *timedOut = false;
-    }
-    if (timeout != 0) {
-        maxMicroSecs = 
-            TimerService::getCurrentTimeUsecs() + timeout * 1000;
+    int64_t curUsecTimeout = 0;
+    int64_t maxUsecs = 0;
+    if (msecTimeout != 0) {
+        maxUsecs = TimerService::getCurrentTimeUsecs() + msecTimeout * 1000;
     }
     
     /*
@@ -101,7 +109,6 @@ QueueImpl::take(const int64_t timeout, bool *timedOut)
      * 4. Wait for the parent to change.
      * 5. Goto 1.
      */
-    string element;
     NameList childList;
     bool found = false;
     bool deletedNode = false;
@@ -143,7 +150,7 @@ QueueImpl::take(const int64_t timeout, bool *timedOut)
                           "take: Returning element (%s) from front (%s)", 
                           element.c_str(),
                           childList.front().c_str());
-                return element;
+                return true;
             }
             else {
                 continue;
@@ -175,29 +182,22 @@ QueueImpl::take(const int64_t timeout, bool *timedOut)
          * until remaining timeout)
          */
         LOG_DEBUG(CL_LOG, 
-                  "take: num chidren=%d, wait if 0, timeout = %Ld", 
-                  childList.size(), timeout);
-        if (timeout != 0) {
-            if (TimerService::compareTimeUsecs(maxMicroSecs) >= 0) { 
-                break;
-            }
-
-            microSecs = maxMicroSecs - TimerService::getCurrentTimeUsecs();
-        }
+                  "takeWaitMsecs: num chidren=%d, wait if 0, msecTimeout=%Ld", 
+                  childList.size(), msecTimeout);
         if (childList.size() == 0) {
-            if (timeout == 0) {
-                getOps()->getQueueEventSignalMap()->waitPredMutexCond(
-                    queueParent);
+            if (msecTimeout == -1) {
+                getOps()->getQueueEventSignalMap()->waitUsecsPredMutexCond(
+                    queueParent, msecTimeout);
             }
             else {
-                /* Always wait at least 1 millisecond. */
-                if ((microSecs / 1000) == 0) {
-                    microSecs = 1000;
-                }
+                /* Don't let curUsecTimeout go negative. */
+                curUsecTimeout = max(
+                    maxUsecs - TimerService::getCurrentTimeUsecs(), 0LL);
                 signaled = 
-                    getOps()->getQueueEventSignalMap()->waitPredMutexCond(
-                        queueParent, microSecs / 1000);
-                if (!signaled) {
+                    getOps()->getQueueEventSignalMap()->waitUsecsPredMutexCond(
+                        queueParent, curUsecTimeout);
+                if ((!signaled) || 
+                    (TimerService::compareTimeUsecs(maxUsecs) >= 0)) {
                     break;
                 }
             }
@@ -213,25 +213,17 @@ QueueImpl::take(const int64_t timeout, bool *timedOut)
     } while (1);
 
     /* Escaping the loop means that timeout passed. */
-    if (timedOut) {
-        *timedOut = true;
-    }
     getOps()->getQueueEventSignalMap()->removeRefPredMutexCond(
         queueParent);
-    return string();
+    return false;
 }
 
-string 
-QueueImpl::front(bool *foundFront)
+bool
+QueueImpl::front(string &element)
 {
     TRACE(CL_LOG, "front");
 
-    if (foundFront) {
-        *foundFront = false;
-    }
-
     const string &queueParent = getKey();
-    string element;
     NameList childList;
     bool found = false;
     SAFE_CALL_ZK(getOps()->getRepository()->getNodeChildren(
@@ -250,12 +242,10 @@ QueueImpl::front(bool *foundFront)
                      false,
                      true);
         if (found) {
-            if (foundFront) {
-                *foundFront = true;
-            }
+            return true;
         }
     }
-    return element;
+    return false;
 }
 
 int64_t

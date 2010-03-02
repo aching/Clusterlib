@@ -9,8 +9,8 @@
  * $Date$
  */
 
-#ifndef _CLUSTERLIBRPC_H_
-#define _CLUSTERLIBRPC_H_
+#ifndef _CL_CLUSTERLIBRPC_H_
+#define _CL_CLUSTERLIBRPC_H_
  
 namespace clusterlib 
 {
@@ -25,8 +25,11 @@ class ClusterlibRPCRequest
   public:
     /**
      * Constructor.
+     *
+     * @param client the client context to use/associate with this request
+     * @param data user-defined data that can be associated with the request
      */
-    ClusterlibRPCRequest(Client *client);
+    ClusterlibRPCRequest(Client *client, ClientData data = NULL);
 
     virtual void prepareRequest(
         const ::json::JSONValue::JSONArray &paramArr);
@@ -39,9 +42,15 @@ class ClusterlibRPCRequest
      */
     virtual void sendRequest(const void *destination);
 
-    virtual bool waitResponse(int64_t timeout = 0);
+    virtual void waitResponse();
+
+    virtual bool waitMsecsResponse(int64_t msecsTimeout);
 
     virtual const ::json::JSONValue::JSONObject &getResponse();
+
+    virtual ClientData getClientData();
+
+    virtual void setClientData(ClientData data);
 
     virtual ~ClusterlibRPCRequest() {}
 
@@ -78,6 +87,11 @@ class ClusterlibRPCRequest
      * The JSON-RPC response object
      */
     ::json::JSONValue::JSONObject m_response;
+
+    /**
+     * Allow the user to keep a pointer to user data.
+     */
+    ClientData m_data;
 };
 
 }

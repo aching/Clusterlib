@@ -8,8 +8,8 @@
  * $Date$
  */
 
-#ifndef	_TIMERSERVICE_H_
-#define	_TIMERSERVICE_H_
+#ifndef	_CL_TIMERSERVICE_H_
+#define	_CL_TIMERSERVICE_H_
 
 namespace clusterlib
 {
@@ -73,4 +73,4 @@ class TimerService {
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_TIMERSERVICE_H_ */
+#endif	/* !_CL_TIMERSERVICE_H_ */

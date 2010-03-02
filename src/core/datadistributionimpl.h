@@ -9,8 +9,8 @@
  * $Date$
  */
 
-#ifndef	_DATADISTRIBUTIONIMPL_H_
-#define _DATADISTRIBUTIONIMPL_H_
+#ifndef	_CL_DATADISTRIBUTIONIMPL_H_
+#define _CL_DATADISTRIBUTIONIMPL_H_
 
 namespace clusterlib
 {
@@ -171,4 +171,4 @@ class DataDistributionImpl
 
 }	/* End of 'namespace clusterlib' */
 
-#endif	/* !_DATADISTRIBUTIONIMPL_H_ */
+#endif	/* !_CL_DATADISTRIBUTIONIMPL_H_ */

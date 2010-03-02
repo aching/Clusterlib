@@ -6,8 +6,8 @@
  * ============================================================================
  */
 
-#ifndef __MUTEX_H__
-#define __MUTEX_H__
+#ifndef _CL_MUTEX_H_
+#define _CL_MUTEX_H_
 
 #include "clusterlibexceptions.h"
 #include "timerservice.h"
@@ -111,35 +111,27 @@ class Cond
      *
      * @param mutex the mutex to wait on
      */
-    void wait(Mutex& mutex)
-    {
-        pthread_cond_wait(&m_cond, &mutex.mutex);
-    }
+    void wait(Mutex& mutex);
 
     /**
      * Wait for the conditional to be signaled.
      * 
      * @param mutex the mutex to wait on
-     * @param timeout the amount of milliseconds to wait until giving up
+     * @param usecTimeout the amount of usecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediately
      * return true if the conditional was signaled, false if timed out
      */
-    bool wait(Mutex& mutex, uint64_t timeout)
-    {
-        struct timeval now;
-        gettimeofday(&now, NULL);
-        struct timespec abstime;
-        int64_t microSecs = now.tv_sec * 1000000LL + now.tv_usec;
-        microSecs += timeout * 1000;
-        abstime.tv_sec = microSecs / 1000000LL;
-        abstime.tv_nsec = (microSecs % 1000000LL) * 1000;
-        if (pthread_cond_timedwait(&m_cond, &mutex.mutex, &abstime) == 
-            ETIMEDOUT)
-        {
-            return false;
-        } else {
-            return true;
-        }
-    }
+    bool waitUsecs(Mutex& mutex, int64_t usecTimeout);
+    
+    /**
+     * Wait for the conditional to be signaled.
+     * 
+     * @param mutex the mutex to wait on
+     * @param msecTimeout the amount of msecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediately
+     * return true if the conditional was signaled, false if timed out
+     */
+    bool waitMsecs(Mutex& mutex, int64_t msecTimeout);
     
     void signal()
     {
@@ -176,9 +168,30 @@ class Lock
         m_cond.wait(m_mutex);
     }
 
-    bool wait(int64_t timeout)
+    /**
+     * Wait for the conditional to be signaled.
+     * 
+     * @param mutex the mutex to wait on
+     * @param usecTimeout the amount of usecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediately
+     * return true if the conditional was signaled, false if timed out
+     */
+    bool waitUsecs(int64_t usecTimeout)
     {
-        return m_cond.wait(m_mutex, timeout);
+        return m_cond.waitUsecs(m_mutex, usecTimeout);
+    }
+
+    /**
+     * Wait for the conditional to be signaled.
+     * 
+     * @param mutex the mutex to wait on
+     * @param msecTimeout the amount of usecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediately
+     * return true if the conditional was signaled, false if timed out
+     */
+    bool waitMsecs(int64_t msecTimeout)
+    {
+        return m_cond.waitUsecs(m_mutex, msecTimeout);
     }
         
     void notify()
@@ -193,12 +206,12 @@ class Lock
         m_mutex.unlock();
     }
 
-    bool lockedWait(int64_t timeout)
+    bool lockedWaitUsecs(int64_t usecTimeout)
     {
         bool res;
 
         m_mutex.lock();
-        res = m_cond.wait(m_mutex, timeout);
+        res = m_cond.waitUsecs(m_mutex, usecTimeout);
         m_mutex.unlock();
 
         return res;
@@ -401,13 +414,12 @@ class PredMutexCond
      * before calling either the predWait and predSignal functions on
      * either thread.
      *
-     * @param timeout how long to wait until an signal becomes available, 
-     *        in milliseconds; if <code>0</code> then wait forever;
-     *        if <code>< 0</code> then do not wait at all. 
+     * @param usecTimeout the amount of usecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediately
      * @return false if the function timed out, true if predicate changed
-     *         (always true if it returns and the timeout == 0)
+     *         (always true if it returns and the timeout == -1)
      */
-    bool predWait(const int64_t timeout = 0);
+    bool predWaitUsecs(int64_t usecTimeout);
 
     /**
      * Has the predicate been satified?
@@ -432,5 +444,5 @@ class PredMutexCond
 
 };	/* End of 'namespace clusterlib' */
         
-#endif /* __MUTEX_H__ */
+#endif /* _CL_MUTEX_H_ */
 

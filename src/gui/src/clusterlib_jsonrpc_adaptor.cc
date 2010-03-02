@@ -1412,8 +1412,12 @@ JSONValue::JSONObject MethodAdaptor::getOneGroupStatus(
     for (NameList::const_iterator iter = names.begin(); 
          iter != names.end(); 
          ++iter) {
+        Group *childGroup = group->getGroup(*iter);
+        if (childGroup == NULL) {
+            continue;
+        }
         notifyableStatus = 
-            getOneGroupStatus(group->getGroup(*iter))[idNotifyableStatus].get<JSONValue::JSONString>();
+            getOneGroupStatus(childGroup)[idNotifyableStatus].get<JSONValue::JSONString>();
         if (notifyableStatus == statusBad) {
             // If we have a bad status node, the group definitely is bad
             jsonObj[idNotifyableStatus] = statusBad;
@@ -1435,8 +1439,12 @@ JSONValue::JSONObject MethodAdaptor::getOneGroupStatus(
     for (NameList::const_iterator iter = names.begin(); 
          iter != names.end(); 
          ++iter) {
+        DataDistribution *distribution = group->getDataDistribution(*iter);
+        if (distribution == NULL) {
+            continue;
+        }
         notifyableStatus = 
-            getOneDataDistributionStatus(group->getDataDistribution(*iter))[idNotifyableStatus].get<JSONValue::JSONString>();
+            getOneDataDistributionStatus(distribution)[idNotifyableStatus].get<JSONValue::JSONString>();
         if (notifyableStatus == statusBad) {
             // If we have a bad status node, the group definitely is bad
             jsonObj[idNotifyableStatus] = statusBad;
@@ -1458,8 +1466,12 @@ JSONValue::JSONObject MethodAdaptor::getOneGroupStatus(
     for (NameList::const_iterator iter = names.begin(); 
          iter != names.end(); 
          ++iter) {
+        Node *node = group->getNode(*iter);
+        if (node == NULL) {
+            continue;
+        }
         notifyableStatus = 
-            getOneNodeStatus(group->getNode(*iter))[idNotifyableStatus].get<JSONValue::JSONString>();
+            getOneNodeStatus(node)[idNotifyableStatus].get<JSONValue::JSONString>();
         if (notifyableStatus == statusBad) {
             // If we have a bad status node, the group definitely is bad
             jsonObj[idNotifyableStatus] = statusBad;

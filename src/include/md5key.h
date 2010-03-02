@@ -12,8 +12,8 @@
  * $Date$
  */
 
-#ifndef _MD5KEY_H_
-#define _MD5KEY_H_
+#ifndef _CL_MD5KEY_H_
+#define _CL_MD5KEY_H_
 
 namespace clusterlib
 {
@@ -38,4 +38,4 @@ class Md5Key : public Key
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_MD5KEY_H_ */
+#endif	/* !_CL_MD5KEY_H_ */

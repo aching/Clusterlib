@@ -18,7 +18,7 @@ using namespace json;
 using namespace json::rpc;
 
 /* Wait up to 0.1 seconds for a queue element */
-static const uint64_t respQueueTimeOut = 100;
+static const int64_t respQueueMsecTimeOut = 100;
 
 namespace clusterlib
 {
@@ -41,14 +41,13 @@ JSONRPCResponseHandler::handleUserEvent(Event e)
         return;
     }
     
-    bool timedOut = false;
     JSONValue jsonValue;
     JSONValue::JSONObject respObj;
     string response;
     LOG_DEBUG(CL_LOG, "handleUserEvent: Starting to take");
     /* Process all responses in the queue that make the timeout */
-    response = m_respQueue->take(respQueueTimeOut, &timedOut);
-    while (timedOut == false) {
+    bool found = m_respQueue->takeWaitMsecs(respQueueMsecTimeOut, response);
+    while (found == true) {
         LOG_DEBUG(CL_LOG,
                   "handleUserEvent: Got response (%s)", 
                   response.c_str());
@@ -76,7 +75,7 @@ JSONRPCResponseHandler::handleUserEvent(Event e)
         }
         
         /* Try to get the next response. */
-        response = m_respQueue->take(respQueueTimeOut, &timedOut);
+        found = m_respQueue->takeWaitMsecs(respQueueMsecTimeOut, response);
     }
 }
 

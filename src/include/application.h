@@ -9,8 +9,8 @@
  * $Date$
  */
 
-#ifndef	_APPLICATION_H_
-#define _APPLICATION_H_
+#ifndef	_CL_APPLICATION_H_
+#define _CL_APPLICATION_H_
 
 namespace clusterlib
 {
@@ -25,4 +25,4 @@ class Application
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_APPLICATION_H_ */
+#endif	/* !_CL_APPLICATION_H_ */

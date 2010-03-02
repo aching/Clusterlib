@@ -82,6 +82,12 @@ const string ClusterlibStrings::DISABLED = "_disabled";
 const string ClusterlibStrings::DEFAULTPROPERTYLIST = "_defaultPropertyList";
 const string ClusterlibStrings::KEYVAL = "_keyval";
 
+const string ClusterlibStrings::PLK_STATE = "_state";
+const string ClusterlibStrings::PLV_STATE_INITIAL = "_initial";
+const string ClusterlibStrings::PLV_STATE_PREPARING = "_preparing";
+const string ClusterlibStrings::PLV_STATE_READY = "_ready";
+const string ClusterlibStrings::PLV_STATE_STOPPED = "_stopped";
+
 const string ClusterlibStrings::DEFAULT_RECV_QUEUE = "_defaultRecvQueue";
 const string ClusterlibStrings::DEFAULT_RESP_QUEUE = "_defaultRespQueue";
 const string ClusterlibStrings::DEFAULT_COMPLETED_QUEUE = 

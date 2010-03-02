@@ -9,8 +9,8 @@
  * $Date$
  */
 
-#ifndef	_ROOTIMPL_H_
-#define _ROOTIMPL_H_
+#ifndef	_CL_ROOTIMPL_H_
+#define _CL_ROOTIMPL_H_
 
 namespace clusterlib
 {
@@ -52,17 +52,17 @@ class RootImpl
         throw InvalidMethodException("RootImpl cannot have properties");
     }
 
-    virtual void acquireLock(bool acquireChildren = 0)
+    virtual void acquireLock(bool acquireChildren = false)
     {
         throw InvalidMethodException("RootImpl cannot acquire locks");
     }
 
-    virtual void releaseLock(bool releaseChildren = 0)
+    virtual void releaseLock(bool releaseChildren = false)
     {
         throw InvalidMethodException("RootImpl cannot release locks");
     }
 
-    virtual void remove(bool removeChildren = 0) 
+    virtual void remove(bool removeChildren = false) 
     {
         throw InvalidMethodException("RootImpl cannot be removed");
     }
@@ -108,4 +108,4 @@ class RootImpl
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_ROOTIMPL_H_ */
+#endif	/* !_CL_ROOTIMPL_H_ */

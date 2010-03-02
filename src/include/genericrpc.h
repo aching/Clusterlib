@@ -9,8 +9,8 @@
  * $Date$
  */
 
-#ifndef _GENERICRPC_H_
-#define _GENERICRPC_H_
+#ifndef _CL_GENERICRPC_H_
+#define _CL_GENERICRPC_H_
 
 namespace clusterlib {
 
@@ -37,10 +37,15 @@ class GenericRequest
   public:
     /**
      * Constructor.
+     *
+     * @param client the client context to use/associate with this request
+     * @param requestName the name of the request
+     * @param data user-defined data that can be associated with the request
      */
     GenericRequest(Client *client, 
-                   const std::string &requestName) 
-        : ClusterlibRPCRequest(client),
+                   const std::string &requestName,
+                   ClientData data = NULL) 
+        : ClusterlibRPCRequest(client, data),
           m_requestName(requestName) {}
 
     /**

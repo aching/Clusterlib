@@ -35,31 +35,21 @@ ClientImpl::sendEvent(UserEventPayload *cepp)
     m_queue.put(cepp);
 }
 
-string 
-ClientImpl::getHostnamePidTid()
+ClientImpl::~ClientImpl()
 {
-    TRACE(CL_LOG, "getHostnamePidTid");
-    
-    const int32_t bufLen = 256;
-    char tmp[bufLen + 1];
-    tmp[bufLen] = '\0';
-    if (gethostname(tmp, bufLen) != 0) {
-        throw SystemFailureException("getHostnamePidTid: gethostname failed");
-    }
-    string res(tmp);
-    res.append(":");
+    /*
+     * Wait till all events have been handled.
+     */
+    m_eventThread.Join();
 
     /*
-     * Get the hostname, pid, and tid of the calling
-     * thread.
+     * Clean up.
      */
-    snprintf(tmp, bufLen, "0x%x", (uint32_t) getpid());
-    res.append(tmp);
-    res.append("-");
-    snprintf(tmp, bufLen, "0x%x", (uint32_t) pthread_self());
-    res.append(tmp);
-
-    return res;
+    cancelJSONRPCMethodHandler();
+    cancelJSONRPCResponseHandler();
+    Locker l(getEventHandlersLock());
+    m_firstTimeEventHandlers.clear();
+    m_eventHandlers.clear();
 }
 
 uint64_t
@@ -114,7 +104,7 @@ ClientImpl::consumeUserEvents(void *param)
         LOG_DEBUG(CL_LOG,
                   "consumeUserEvents: Waiting to take "
                   "from the event queue...");
-	uepp = m_queue.take();
+	m_queue.take(uepp);
 
         /*
          * Exit on NULL user event payload, this is a signal from
@@ -127,10 +117,10 @@ ClientImpl::consumeUserEvents(void *param)
 
 	LOG_DEBUG(CL_LOG,
                   "ConsumeUserEvents: Received user event 0x%x with "
-                  "path %s and Event %d",
+                  "path %s and Event %s",
                   (int32_t) uepp,
                   uepp->getKey().c_str(),
-                  uepp->getEvent());
+                  UserEventHandler::getEventsString(uepp->getEvent()).c_str());
 
         /* Dispatch this event. */
         dispatchHandlers(uepp->getKey(), uepp->getEvent());
@@ -173,8 +163,9 @@ ClientImpl::dispatchHandlers(const string &key, Event e)
     int32_t counter = 0;	/* Debug counter for # of handlers found. */
 
     LOG_INFO(CL_LOG,
-             "dispatchHandlers: Looking for handlers for event: %d on: %s",
-             e, key.c_str());
+             "dispatchHandlers: Looking for handlers for event: %s on: %s",
+             UserEventHandler::getEventsString(e).c_str(), 
+             key.c_str());
 
     {
         Locker l1(getEventHandlersLock());
@@ -185,8 +176,9 @@ ClientImpl::dispatchHandlers(const string &key, Event e)
          */
         if (range.first == m_eventHandlers.end()) {
             LOG_INFO(CL_LOG,
-                     "dispatchHandlers: No handlers found for event %d on %s",
-                     e, key.c_str());
+                     "dispatchHandlers: No handlers found for event %s on %s",
+                     UserEventHandler::getEventsString(e).c_str(), 
+                     key.c_str());
             return;
         }
 
@@ -234,8 +226,10 @@ ClientImpl::dispatchHandlers(const string &key, Event e)
     }
 
     LOG_INFO(CL_LOG,
-             "dispatchEventHandlers: Found %d handlers for event %d on %s",
-             counter, e, key.c_str());
+             "dispatchEventHandlers: Found %d handlers for event %s on %s",
+             counter, 
+             UserEventHandler::getEventsString(e).c_str(),  
+             key.c_str());
 
     /*
      * If there are no handlers registered for this event on
@@ -399,12 +393,12 @@ ClientImpl::cancelJSONRPCMethodHandler()
  */
 TimerId
 ClientImpl::registerTimer(TimerEventHandler *tehp,
-                          uint64_t afterTime,
+                          uint64_t afterMsecs,
                           ClientData data)
 {
     TRACE(CL_LOG, "registerTimer");
 
-    return mp_f->registerTimer(tehp, afterTime, data);
+    return mp_f->registerTimer(tehp, afterMsecs, data);
 }
 
 /*

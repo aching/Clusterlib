@@ -58,7 +58,7 @@ PropertyListImpl::updatePropertyListMap()
     string keyValMap = getOps()->loadKeyValMap(getKey(), version);
 
     LOG_DEBUG(CL_LOG, 
-              "updatePropertiesMap: Property list key = %s, "
+              "updatePropertiesListMap: Property list key = %s, "
               "new version = %d, old version = %d, new keyValMap = %s",
               getKey().c_str(),
               version,
@@ -76,7 +76,7 @@ PropertyListImpl::updatePropertyListMap()
         setValueChangeTime(TimerService::getCurrentTimeMsecs());
     }
     else {
-        LOG_WARN(CL_LOG,
+        LOG_INFO(CL_LOG,
                  "updatePropertyListMap: Have a newer (or same) version (%d) "
                  "than the repository (%d)",
                  getKeyValVersion(),
@@ -120,10 +120,14 @@ PropertyListImpl::publish()
     string marshalledKeyValMap = marshall();
     int32_t finalVersion;
 	
-    getOps()->updatePropertyList(getKey(),
-                                 marshalledKeyValMap,
-                                 getKeyValVersion(),
-                                 finalVersion);
+    try {
+        getOps()->updatePropertyList(getKey(),
+                                     marshalledKeyValMap,
+                                     getKeyValVersion(),
+                                     finalVersion);
+    } catch (const zk::BadVersionException &e) {
+        throw PublishVersionException(e.what());
+    }
     
     /* 
      * Since we should have the lock, the data should be identical to
@@ -164,7 +168,7 @@ PropertyListImpl::getProperty(const string &name, bool searchParent)
     if (ssIt != m_keyValMap.end()) {
         LOG_DEBUG(CL_LOG,
                   "getProperty: Found name (%s) with val (%s) "
-                  "in Properties key (%s), version (%d)",
+                  "in PropertyList key (%s), version (%d)",
                   name.c_str(),
                   ssIt->second.get<JSONValue::JSONString>().c_str(),
                   getKey().c_str(),
@@ -172,6 +176,12 @@ PropertyListImpl::getProperty(const string &name, bool searchParent)
 	return ssIt->second.get<JSONValue::JSONString>();
     }
     else if (searchParent == false) {
+        LOG_DEBUG(CL_LOG,
+                  "getProperty: Did not find name (%s) "
+                  "in PropertyList key (%s), version (%d)",
+                  name.c_str(),
+                  getKey().c_str(),
+                  getKeyValVersion());
         /*
          * Don't try the parent if not explicit
          */

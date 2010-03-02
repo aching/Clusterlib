@@ -6,8 +6,8 @@
  * ============================================================================
  */
 
-#ifndef __THREAD_H__
-#define __THREAD_H__
+#ifndef _CL_THREAD_H_
+#define _CL_THREAD_H_
 
 #include <errno.h>
 #include <string.h>
@@ -92,5 +92,5 @@ class CXXThread
 
 };	/* End of 'namespace clusterlib' */
 
-#endif /* __THREAD_H__ */
+#endif /* _CL_THREAD_H_ */
 

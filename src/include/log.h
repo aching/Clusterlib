@@ -6,8 +6,8 @@
  * ============================================================================
  */
 
-#ifndef __LOG_H__
-#define __LOG_H__
+#ifndef _CL_LOG_H_
+#define _CL_LOG_H_
 
 #include <log4cxx/logger.h> 
 #include <log4cxx/propertyconfigurator.h> 
@@ -86,5 +86,5 @@ class Trace \
 } traceObj(x);
 #endif  /* DISABLE_TRACE */
     
-#endif  /* __LOG_H__ */
+#endif  /* _CL_LOG_H_ */
 

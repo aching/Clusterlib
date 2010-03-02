@@ -9,8 +9,8 @@
  * $Date$
  */
 
-#ifndef	_NODEIMPL_H_
-#define _NODEIMPL_H_
+#ifndef	_CL_NODEIMPL_H_
+#define _CL_NODEIMPL_H_
 
 namespace clusterlib
 {
@@ -228,4 +228,4 @@ class NodeImpl
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_NODEIMPL_H_ */
+#endif	/* !_CL_NODEIMPL_H_ */

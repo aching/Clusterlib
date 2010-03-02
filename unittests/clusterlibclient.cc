@@ -1,5 +1,5 @@
-#include "MPITestFixture.h"
 #include "testparams.h"
+#include "MPITestFixture.h"
 
 extern TestParams globalTestParams;
 
@@ -36,7 +36,8 @@ class ClusterlibClient
   public:
     
     ClusterlibClient()
-        : _factory(NULL),
+        : MPITestFixture(globalTestParams),
+          _factory(NULL),
           _client0(NULL),
           _app0(NULL),
           _id0(0),
@@ -44,7 +45,17 @@ class ClusterlibClient
           _cancelled0(false) {}
 
     /* Called from the timer handler. */
-    void setFired0(bool v) { _fired0 = v; }
+    void setFired0(bool v) 
+    { 
+        clusterlib::Locker l(&_fired0Lock);
+        _fired0 = v; 
+    }
+
+    bool getFired0()
+    {
+        clusterlib::Locker l(&_fired0Lock);
+        return _fired0;
+    }
 
     /* Runs prior to each test */
     virtual void setUp() 
@@ -119,19 +130,19 @@ class ClusterlibClient
 
         _id0 = _client0->registerTimer(_handler0, 500, this);
         MPI_CPPUNIT_ASSERT(_id0 > -1);
-        MPI_CPPUNIT_ASSERT(_fired0 == false);
+        MPI_CPPUNIT_ASSERT(getFired0() == false);
         MPI_CPPUNIT_ASSERT(_cancelled0 == false);
 
         _cancelled0 = _client0->cancelTimer(_id0);
         MPI_CPPUNIT_ASSERT(_cancelled0 == true);
-        MPI_CPPUNIT_ASSERT(_fired0 == false);
+        MPI_CPPUNIT_ASSERT(getFired0() == false);
 
         cerr << "Before sleep" << endl;
         sleep(1);
         cerr << "After sleep" << endl;
 
         MPI_CPPUNIT_ASSERT(_cancelled0 == true);
-        MPI_CPPUNIT_ASSERT(_fired0 == false);
+        MPI_CPPUNIT_ASSERT(getFired0() == false);
     }
     void testClient3()
     {
@@ -148,14 +159,14 @@ class ClusterlibClient
 
         _id0 = _client0->registerTimer(_handler0, 500, this);
         MPI_CPPUNIT_ASSERT(_id0 > -1);
-        MPI_CPPUNIT_ASSERT(_fired0 == false);
+        MPI_CPPUNIT_ASSERT(getFired0() == false);
         MPI_CPPUNIT_ASSERT(_cancelled0 == false);
 
         cerr << "Before sleep" << endl;
         sleep(1);
         cerr << "After sleep" << endl;
 
-        MPI_CPPUNIT_ASSERT(_fired0 == true);
+        MPI_CPPUNIT_ASSERT(getFired0() == true);
         MPI_CPPUNIT_ASSERT(_cancelled0 == false);
     }
     void testClient4()
@@ -173,16 +184,16 @@ class ClusterlibClient
         _fired0 = _cancelled0 = false;
 
         _id0 = _client0->registerTimer(_handler0, 1000, this);
-        MPI_CPPUNIT_ASSERT(_fired0 == false);
+        MPI_CPPUNIT_ASSERT(getFired0() == false);
         MPI_CPPUNIT_ASSERT(_cancelled0 == false);
 
         _cancelled0 = _client0->cancelTimer(_id0);
-        MPI_CPPUNIT_ASSERT(_fired0 == false);
+        MPI_CPPUNIT_ASSERT(getFired0() == false);
         MPI_CPPUNIT_ASSERT(_cancelled0 == true);
         cerr << "After first cancel" << endl;
 
         _cancelled1 = _client0->cancelTimer(_id0);
-        MPI_CPPUNIT_ASSERT(_fired0 == false);
+        MPI_CPPUNIT_ASSERT(getFired0() == false);
         MPI_CPPUNIT_ASSERT(_cancelled1 == false);
         cerr << "After second cancel" << endl;
     }
@@ -325,8 +336,12 @@ class ClusterlibClient
     clusterlib::TimerId _id1;
 
     bool _fired0;
+    /**
+     * Makes _fired0 thread-safe;
+     */
+    clusterlib::Mutex _fired0Lock;
+
     bool _cancelled0;
-    bool _fired1;
     bool _cancelled1;
 
     ClientTimerEventHandler *_handler0;

@@ -68,7 +68,7 @@ FactoryOps::FactoryOps(const string &registry, int64_t connectTimeout)
         LOG_INFO(CL_LOG, 
                  "Waiting for connect event from ZooKeeper up to %Ld msecs",
                  connectTimeout);
-        if (m_firstConnect.predWait(connectTimeout) == false) {
+        if (m_firstConnect.predWaitUsecs(connectTimeout * 1000) == false) {
             LOG_ERROR(CL_LOG,
                       "FactoryOps: Did not receive connect event from %s in "
                       "time (%Ld msecs), aborting",
@@ -135,6 +135,16 @@ FactoryOps::~FactoryOps()
 
     /* Clean up any contexts that are being waited on. */
     m_handlerAndContextManager.deleteAllCallbackAndContext();
+
+    /*
+     * Unlink the event sources prior to their destructor being called
+     * or else events may be propagated to missing listeners through
+     * fireEvent().
+     */
+    m_zk.removeListener(&m_zkEventAdapter);
+    m_timerEventSrc.removeListener(&m_timerEventAdapter);
+    m_timerEventAdapter.removeListener(&m_externalEventAdapter);
+    m_zkEventAdapter.removeListener(&m_externalEventAdapter);
 }
 
 /*
@@ -283,7 +293,7 @@ FactoryOps::synchronize()
      * Wait for this sync event to be processed through the clusterlib
      * external event thread. 
      */
-    getSyncEventSignalMap()->waitPredMutexCond(syncEventKey);
+    getSyncEventSignalMap()->waitUsecsPredMutexCond(syncEventKey, -1);
     getSyncEventSignalMap()->removeRefPredMutexCond(syncEventKey);
 
     LOG_DEBUG(CL_LOG, "synchronize: event id (%lld) Complete", syncEventId);
@@ -512,7 +522,8 @@ FactoryOps::dispatchExternalEvents(void *param)
              * Get the next event and send it off to the
              * correct handler.
              */
-            GenericEvent ge(m_externalEventAdapter.getNextEvent());
+            GenericEvent ge;
+            m_externalEventAdapter.getNextEvent(ge);
 
             LOG_DEBUG(CL_LOG,
                       "[%d, 0x%x] dispatchExternalEvents() received "
@@ -522,58 +533,55 @@ FactoryOps::dispatchExternalEvents(void *param)
                       GenericEvent::getTypeString(ge.getType()).c_str());
             
             switch (ge.getType()) {
+                case ILLEGALEVENT:
+                    LOG_FATAL(CL_LOG, "Illegal event");
+                    throw InconsistentInternalStateException(
+                        "dispatchExternalEvents: Illegal event");
+                case TIMEREVENT:
+                    {
+                        ClusterlibTimerEvent *tp =
+                            (ClusterlibTimerEvent *) ge.getEvent();
+                        
+                        LOG_DEBUG(CL_LOG,
+                                  "Dispatching timer event: 0x%x, id: "
+                                  "%d, alarm time: %lld",
+                                  (unsigned int) tp,
+                                  tp->getID(),
+                                  tp->getAlarmTime());
+                        
+                        dispatchTimerEvent(tp);
+                    }
+                    break;
+                case ZKEVENT:
+                    {
+                        zk::ZKWatcherEvent *zp =
+                            (zk::ZKWatcherEvent *) ge.getEvent();
+                        
+                        LOG_DEBUG(CL_LOG,
+                                  "Processing ZK event (type: %s, state: %d, "
+                                  "context: 0x%x, path: %s)",
+                                  zk::ZooKeeperAdapter::getEventString(
+                                      zp->getType()).c_str(),
+                                  zp->getState(),
+                                  (unsigned int) zp->getContext(),
+                                  zp->getPath().c_str());
+                        
+                        if ((zp->getType() == ZOO_SESSION_EVENT) &&
+                            (zp->getPath().compare(ClusterlibStrings::SYNC) 
+                             != 0)) {
+                            dispatchSessionEvent(zp);
+                        } 
+                        else {
+                            dispatchZKEvent(zp);
+                        }
+                    }
+                    break;
                 default:
                     LOG_FATAL(CL_LOG,
                               "Illegal event with type %d",
                               ge.getType());
-                    ::abort();
-                    
-                case ILLEGALEVENT:
-                    LOG_FATAL(CL_LOG, "Illegal event");
-                    ::abort();
-                    
-                case TIMEREVENT:
-                {
-                    ClusterlibTimerEvent *tp =
-                        (ClusterlibTimerEvent *) ge.getEvent();
-                    
-                    LOG_DEBUG(CL_LOG,
-                              "Dispatching timer event: 0x%x, id: "
-                              "%d, alarm time: %lld",
-                              (unsigned int) tp,
-                              tp->getID(),
-                              tp->getAlarmTime());
-                    
-                    dispatchTimerEvent(tp);
-                }
-
-                break;
-
-                case ZKEVENT:
-                {
-                    zk::ZKWatcherEvent *zp =
-                        (zk::ZKWatcherEvent *) ge.getEvent();
-                    
-                    LOG_DEBUG(CL_LOG,
-                              "Processing ZK event "
-                              "(type: %s, state: %d, context: 0x%x, path: %s)",
-                              zk::ZooKeeperAdapter::getEventString(
-                                  zp->getType()).c_str(),
-                              zp->getState(),
-                              (unsigned int) zp->getContext(),
-                              zp->getPath().c_str());
-                    
-                    if ((zp->getType() == ZOO_SESSION_EVENT) &&
-                        (zp->getPath().compare(ClusterlibStrings::SYNC) 
-                         != 0)) {
-                        dispatchSessionEvent(zp);
-                    } 
-                    else {
-                        dispatchZKEvent(zp);
-                    }
-
-                    break;
-                }
+                    throw InconsistentInternalStateException(
+                        "dispatchExternalEvents: Unknown event");
             }
         }
 
@@ -823,7 +831,7 @@ FactoryOps::consumeTimerEvents(void *param)
 
     try {
         for (;;) {
-            tepp = m_timerEventQueue.take();
+            m_timerEventQueue.take(tepp);
 
             /*
              * If we received the terminate signal,
@@ -853,7 +861,6 @@ FactoryOps::consumeTimerEvents(void *param)
             /*
              * Deallocate the payload object.
              */
-
             {
                 Locker l(getTimersLock());
 
@@ -2058,8 +2065,8 @@ FactoryOps::getGroupFromComponents(const vector<string> &components,
         return NULL;
     }
     GroupImpl *parent = getGroupFromComponents(components,
-                                           parentGroupCount,
-                                           create);
+                                               parentGroupCount,
+                                               create);
     if (parent == NULL) {
         LOG_WARN(CL_LOG, "getGroupFromComponents: Tried to get "
                  "parent with name %s",
@@ -4283,13 +4290,13 @@ FactoryOps::getChildren(Notifyable *ntp)
  */
 TimerId
 FactoryOps::registerTimer(TimerEventHandler *handler,
-                          uint64_t afterTime,
+                          uint64_t afterMsecs,
                           ClientData data)
 {
     Locker l(getTimersLock());
     TimerEventPayload *tepp =
-        new TimerEventPayload(afterTime, handler, data);
-    TimerId id = m_timerEventSrc.scheduleAfter(afterTime, tepp);
+        new TimerEventPayload(afterMsecs, handler, data);
+    TimerId id = m_timerEventSrc.scheduleAfter(afterMsecs, tepp);
 
     tepp->updateTimerId(id);
     m_timerRegistry[id] = tepp;

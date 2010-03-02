@@ -5,14 +5,49 @@ using namespace std;
 namespace clusterlib {
 
 void
-DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
+DistributedLocks::acquire(Notifyable *ntp, 
+                          const string &lockName)
 {
     TRACE(CL_LOG, "acquire");
 
+    if (!acquireWaitUsecs(-1LL, ntp, lockName)) {
+        throw InconsistentInternalStateException(
+            "acquire: Impossible that acquireWaitUsecs failed!");
+    }
+}
+
+bool
+DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
+                                   Notifyable *ntp, 
+                                   const string &lockName)
+{
+    TRACE(CL_LOG, "acquireWaitUsecs");
+
+    if (usecTimeout < -1) {
+        stringstream ss;
+        ss << "acquireWaitUsecs: Cannot have usecTimeout < -1 (" 
+           << usecTimeout << ")";
+        throw InvalidArgumentsException(ss.str());
+    }
+
+    int64_t curUsecTimeout = 0;
+    int64_t maxUsecs = 0;
+    if (usecTimeout != -1) {
+        maxUsecs = TimerService::getCurrentTimeUsecs() + usecTimeout;
+    }
+    else {
+        curUsecTimeout = -1;
+    }
     NotifyableImpl *castedNtp = dynamic_cast<NotifyableImpl *>(ntp);
     if (castedNtp == NULL) {
-        InvalidArgumentsException("acquire: Notifyable is NULL");
+        InvalidArgumentsException("acquireWaitUsecs: Notifyable is NULL");
     }
+
+    /* 
+     * Locking operations are serialized for each thread on a lock
+     * granular basis.
+     */
+    Locker l(castedNtp->getSyncDistLock());
 
     /**
      * Algorithm:
@@ -27,14 +62,16 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
      *    exit
      * 5. The client calls exists() with the watch flag set on the path in the 
      *    lock directory with the next lowest sequence number.
-     * 6. if exists( ) returns false, go to step 3. Otherwise, wait for a 
+     * 6. If exists(), returns false, go to step 3. Otherwise, wait for a 
      *    notification for the pathname from the previous step before going 
      *    to step 3.
      */
     string locksKey = NotifyableKeyManipulator::createLocksKey(
         castedNtp->getKey());
 
-    LOG_DEBUG(CL_LOG, "acquire: Creating locks node %s", locksKey.c_str());
+    LOG_DEBUG(CL_LOG, 
+              "acquireWaitUsecs: Creating locks node %s", 
+              locksKey.c_str());
 
     SAFE_CALL_ZK(getOps()->getRepository()->createNode(locksKey, "", 0, false),
                  "Creation of %s failed: %s",
@@ -46,7 +83,9 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
         castedNtp->getKey(),
         lockName);
 
-    LOG_DEBUG(CL_LOG, "acquire: Creating lock node %s", lockKey.c_str());
+    LOG_DEBUG(CL_LOG, 
+              "acquireWaitUsecs: Creating lock node %s", 
+              lockKey.c_str());
 
     SAFE_CALL_ZK(getOps()->getRepository()->createNode(lockKey, "", 0, false),
                  "Creation of %s failed: %s",
@@ -67,16 +106,18 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
             lockName).find(lockNode);
     if (pos != string::npos) {
         LOG_WARN(CL_LOG, 
-                 "acquire: Already have the lock on %s (had %d references)", 
+                 "acquireWaitUsecs: Already have the lock on %s (had "
+                 "%d references)", 
                  castedNtp->getKey().c_str(),
                  castedNtp->getDistributedLockOwnerCount(
                      lockName));
         castedNtp->incrDistributedLockOwnerCount(
             lockName);
-        return;
+        return true;
     }
 
     int64_t myBid = -1;
+    string myBidThread;
     string createdPath;
     SAFE_CALL_ZK((myBid = getOps()->getRepository()->createSequence(
                       lockNode, 
@@ -88,9 +129,14 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
                  lockKey.c_str(),
                  false,
                  true);
+    zk::ZooKeeperAdapter::splitSequenceNode(createdPath,
+                                            &myBidThread,
+                                            NULL);
+    
 
     LOG_DEBUG(CL_LOG, 
-              "acquire: Creating lock entry node %s with createdPath %s", 
+              "acquireWaitUsecs: Creating lock entry node %s "
+              "with createdPath %s", 
               lockNode.c_str(),
               createdPath.c_str());
     
@@ -100,6 +146,7 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
      */
     string precZkNode;
     int64_t tmpBid = -1, lowerBid = -1;
+    string tmpBidThread, lowerBidThread;
     do {
         NameList childList;
         SAFE_CALL_ZK(getOps()->getRepository()->getNodeChildren(lockKey,
@@ -118,16 +165,25 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
              * Get the bid number from the path.
              */
             zk::ZooKeeperAdapter::splitSequenceNode(*childListIt, 
-                                                    NULL,
+                                                    &tmpBidThread,
                                                     &tmpBid);
 
             LOG_DEBUG(CL_LOG, 
-                      "acquire: thread 0x%x, this 0x%x "
+                      "acquireWaitUsecs: thread 0x%x, this 0x%x "
                       "got bid %s with bid %lld", 
                       static_cast<uint32_t>(pthread_self()),
                       reinterpret_cast<uint32_t>(this),
                       childListIt->c_str(),
                       tmpBid);
+            if ((!tmpBidThread.compare(myBidThread)) &&
+                 (myBid != tmpBid)) {
+                stringstream ss;
+                ss << "acquireWaitUsecs: Impossible that " << myBidThread 
+                   << " already has bid " << tmpBid 
+                   << " and is adding myBid " << myBid;
+                LOG_FATAL(CL_LOG, "%s", ss.str().c_str());
+                throw InconsistentInternalStateException(ss.str());
+            }
 
             /*
              * Try to get the bid that is highest one that is lower
@@ -155,11 +211,14 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
                 ((tmpBid < myBid) && (tmpBid > lowerBid)) ||
                 ((tmpBid < myBid) && (myBid == lowerBid))) {
                 LOG_DEBUG(CL_LOG, 
-                          "acquire: Replaced lowerBid %lld with tmpBid %lld "
-                          "(myBid = %lld)",
+                          "acquireWaitUsecs: Replaced lowerBid %lld (from %s) "
+                          "with tmpBid %lld (from %s), myBid = %lld",
                           lowerBid,
+                          lowerBidThread.c_str(),
                           tmpBid,
+                          tmpBidThread.c_str(),
                           myBid);
+                lowerBidThread = tmpBidThread;
                 lowerBid = tmpBid;
                 lowerChildIt = childListIt;
             }
@@ -169,9 +228,10 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
             bool exists = false;
 
             LOG_DEBUG(CL_LOG,
-                      "acquire: waiting for lowerBid %lld for mybid %lld for "
-                      "thread 0x%x",
+                      "acquireWaitUsecs: Waiting for lowerBid %lld (from %s) "
+                      "for mybid %lld for thread 0x%x",
                       lowerBid,
+                      lowerBidThread.c_str(),
                       myBid,
                       (uint32_t) pthread_self());
 
@@ -180,7 +240,7 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
              * lock can be acquired.
              */
             if (lowerBid == -1) {
-                throw ObjectRemovedException("acquire: No children!");
+                throw ObjectRemovedException("acquireWaitUsecs: No children!");
             }
 
             /*
@@ -205,12 +265,24 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
             /* 
              * Wait until it a signal from the from event handler
              */
-            LOG_DEBUG(CL_LOG, "acquire: Wait for handler? = %d", exists);
+            LOG_DEBUG(CL_LOG, 
+                      "acquireWaitUsecs: Wait for handler? = %d", 
+                      exists);
             if (exists) {
-                getOps()->getLockEventSignalMap()->waitPredMutexCond(
-                    *lowerChildIt);
+                if (curUsecTimeout != -1) {
+                    /* Don't let curUsecTimeout go negative. */
+                    curUsecTimeout = max(
+                        maxUsecs - TimerService::getCurrentTimeUsecs(), 0LL);
+                }
+                LOG_DEBUG(CL_LOG, 
+                          "acquireWaitUsecs: Going to wait for %lld "
+                          "usecs (%lld usecs originally)", 
+                          curUsecTimeout,
+                          usecTimeout);
+                getOps()->getLockEventSignalMap()->waitUsecsPredMutexCond(
+                    *lowerChildIt, curUsecTimeout);                    
             }
-            
+
             /*
              * Only clean up if we are the last thread to wait on this
              * conditional (otherwise, just decrease the reference
@@ -222,10 +294,35 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
              */
             getOps()->getLockEventSignalMap()->removeRefPredMutexCond(
                 *lowerChildIt);
+
+            /* 
+             * Give up and remove my bid since lock wasn't acquired
+             * within the usecTimeout.
+             */
+            if ((usecTimeout != -1) &&
+                (TimerService::compareTimeUsecs(maxUsecs) >= 0)) {
+                bool deleted = false;
+                SAFE_CALL_ZK((deleted = getOps()->getRepository()->deleteNode(
+                                  createdPath,
+                                  false,
+                                  -1)),
+                             "acquireWaitUsecs: Trying to delete lock node: %s"
+                             " failed: %s",
+                             createdPath.c_str(),
+                             false,
+                             true);
+                if (deleted == false) {
+                    LOG_ERROR(CL_LOG,
+                              "acquireWaitUsecs: Couldn't remove my bid %s",
+                              createdPath.c_str());
+                }
+                return false;
+            }
         }
         else if (lowerBid > myBid) {
             throw InconsistentInternalStateException(
-                "acquire: Impossible the loweer bid is greater than my own.");
+                "acquireWaitUsecs: Impossible the lower bid is greater "
+                "than my own.");
         }
     } while (lowerBid != myBid);
 
@@ -236,12 +333,20 @@ DistributedLocks::acquire(Notifyable *ntp, const string &lockName)
                                        createdPath);
     castedNtp->incrDistributedLockOwnerCount(
         lockName);
-    LOG_DEBUG(CL_LOG, "acquire: Setting distributed lock key of Notifyable %s "
-              "with %s (%u references)",
+    LOG_DEBUG(CL_LOG, "acquireWaitUsecs: Setting distributed lock key "
+              "of Notifyable %s with %s (%u references)",
               castedNtp->getKey().c_str(),
               createdPath.c_str(),
               castedNtp->getDistributedLockOwnerCount(
                   lockName));
+    /*
+     * In order to guarantee that changes are seen from one locked
+     * region to another locked region, synchronize must be used prior
+     * to making any changes.
+     */
+    mp_ops->synchronize();
+
+    return true;
 }
 
 void
@@ -253,6 +358,12 @@ DistributedLocks::release(Notifyable *ntp, const string &lockName)
     if (castedNtp == NULL) {
         throw InvalidArgumentsException("release: Notifyable is NULL");
     }
+
+    /* 
+     * Locking operations are serialized for each thread on a lock
+     * granular basis. 
+     */
+    Locker l(castedNtp->getSyncDistLock());
 
     string lockNode = 
         NotifyableKeyManipulator::createLockNodeKey(
@@ -332,6 +443,12 @@ DistributedLocks::hasLock(Notifyable *ntp, const string &lockName)
     if (castedNtp == NULL) {
         throw InvalidArgumentsException("release: Notifyable is NULL");
     }
+
+    /* 
+     * Locking operations are serialized for each thread on a lock
+     * granular basis. 
+     */
+    Locker l(castedNtp->getSyncDistLock());
 
     string lockOwner = castedNtp->getDistributedLockOwner(lockName);
     

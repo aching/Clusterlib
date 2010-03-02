@@ -6,11 +6,12 @@
  * =============================================================================
  */
  
-#ifndef __BLOCKINGQUEUE_H__
-#define __BLOCKINGQUEUE_H__
+#ifndef _CL_BLOCKINGQUEUE_H_
+#define _CL_BLOCKINGQUEUE_H_
  
 #include <deque>
-
+#include <sstream>
+#include <algorithm>
 #include "mutex.h"
 
 namespace clusterlib {
@@ -34,17 +35,24 @@ class BlockingQueue
         void put(E e);
         
         /**
-         * \brief Retrieves and removes the head of this queue, waiting if 
-         * \brief no elements are present in this queue.
+         * \brief Retrieves and removes the head of this queue,
+         * waiting forever if no elements are present in this
+         * queue.
          * 
-         * @param timeout how long to wait until an element becomes available, 
-         *                in milliseconds; if <code>0</code> then wait forever;
-         *                if <code>< 0</code> then do not wait at all.
-         * @param timedOut if not NULL then set to true whether this 
-         *                 function timed out
-         * @return the element from the queue
+         * @param e the element filled in
          */
-        E take(int32_t timeout = 0, bool *timedOut = NULL);
+        void take(E &e);
+        
+        /**
+         * \brief Retrieves and removes the head of this queue,
+         * waiting if no elements are present in this queue.
+         * 
+         * @param msecTimeout the amount of msecs to wait until giving up, 
+         *        -1 means wait forever, 0 means return immediately
+         * @param e the element filled in if returned true
+         * @return true if an element was retrieved, false otherwise
+         */
+        bool takeWaitMsecs(int64_t msecTimeout, E &e);
         
         /**
          * Returns the current size of this blocking queue.
@@ -114,39 +122,70 @@ void BlockingQueue<E>::put(E e)
     m_mutex.release();
 }
 
+/**
+ * Get an element from the blocking queue without a wait
+ *
+ * @param e the element returned
+ */
 template<class E> 
-E BlockingQueue<E>::take(int32_t timeout, bool *timedOut)
+void BlockingQueue<E>::take(E &e)
 {
+    takeWaitMsecs(-1, e);
+}
+
+/**
+ * Get an element from the blocking queue with/without a wait
+ *
+ */
+template<class E> 
+bool BlockingQueue<E>::takeWaitMsecs(int64_t msecTimeout, E &e)
+{
+    if (msecTimeout < -1) {
+        std::stringstream ss;
+        ss << "takeWaitMsecs: Cannot have msecTimeout < -1 (" 
+           << msecTimeout << ")";
+        throw InvalidArgumentsException(ss.str());
+    }
+
+    /* Adjust the curUsecTimeout for msecTimeout */
+    int64_t curUsecTimeout = 0;
+    int64_t maxUsecs = 0;
+    if (msecTimeout != -1) {
+        maxUsecs = TimerService::getCurrentTimeUsecs() + msecTimeout * 1000;
+    }
+    else {
+        curUsecTimeout = -1;
+    }
+
     m_mutex.acquire();
     bool hasResult = true;
     while (m_queue.empty()) {
-        if (timeout < 0) {
+        if (curUsecTimeout != -1) {
+            /* Don't let curUsecTimeout go negative if not already -1. */
+            curUsecTimeout = std::max(
+                maxUsecs - TimerService::getCurrentTimeUsecs(), 0LL);
+        }        
+        if (!m_cond.waitUsecs(m_mutex, curUsecTimeout)) {
             hasResult = false;
             break;
         }
-        if (timeout == 0) {
-            m_cond.wait(m_mutex);
-        } else {
-            if (!m_cond.wait(m_mutex, timeout)) {
-                hasResult = false;
-                break;
-            }
+
+        /* Ran out of time */
+        if ((curUsecTimeout != -1 ) &&
+            (TimerService::compareTimeUsecs(maxUsecs) >= 0)) {
+            hasResult = false;
+            break;
         }
     }
     if (hasResult) {
-        E e = m_queue.front();
+        e = m_queue.front();
         m_queue.pop_front();            
-        if (timedOut) {
-            *timedOut = false;
-        }
         m_mutex.release();
-        return e;
-    } else {
-        if (timedOut) {
-            *timedOut = true;
-        }
+        return true;
+    } 
+    else {
         m_mutex.release();
-        return E();
+        return false;
     }
 }
 
@@ -160,5 +199,5 @@ void BlockingQueue<E>::erase()
 
 }	/* End of 'namespace clusterlib' */
 
-#endif  /* __BLOCKINGQUEUE_H__ */
+#endif  /* _CL_BLOCKINGQUEUE_H_ */
 

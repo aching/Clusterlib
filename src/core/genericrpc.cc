@@ -64,7 +64,7 @@ GenericRequest::sendRequest(const void *destination)
     else {
         /* Ready the response */
         stringstream idSs;
-        idSs << ClientImpl::getHostnamePidTid() 
+        idSs << Factory::getHostnamePidTid() 
              << m_client->fetchAndIncrRequestCounter();
         m_id = idSs.str();
         m_client->getOps()->getResponseSignalMap()->addRefPredMutexCond(m_id);

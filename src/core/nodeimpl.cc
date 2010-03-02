@@ -74,10 +74,10 @@ NodeImpl::initializeConnection(bool force)
         getOps()->removeConnected(getKey());
     }
     bool ret = getOps()->createConnected(getKey(), 
-                                         ClientImpl::getHostnamePidTid());
+                                         Factory::getHostnamePidTid());
     if (ret) {
         m_connected = true;
-        m_connectedId = ClientImpl::getHostnamePidTid();
+        m_connectedId = Factory::getHostnamePidTid();
     }
 
     return ret;
@@ -100,12 +100,12 @@ NodeImpl::registerHealthChecker(HealthChecker *healthChecker)
             "registerHealthChecker: Must be connected to this node prior "
             "to registering a health checker!");
     }
-    if (m_connectedId != ClientImpl::getHostnamePidTid()) {
+    if (m_connectedId != Factory::getHostnamePidTid()) {
             throw AlreadyConnectedException(
                 getKey() +
                 ": registerHealthChecker: Node already connected for thread " +
                 m_connectedId + " cannot connect with " +
-                ClientImpl::getHostnamePidTid());
+                Factory::getHostnamePidTid());
     }
 
     if (healthChecker == NULL) {
@@ -199,7 +199,6 @@ NodeImpl::getUseProcessSlots()
     string processSlotsUsageKey = 
         NotifyableKeyManipulator::createProcessSlotsUsageKey(getKey());
 
-    acquireLock();
     string encodedJsonValue;
     SAFE_CALLBACK_ZK(
         getOps()->getRepository()->getNodeData(
@@ -218,8 +217,6 @@ NodeImpl::getUseProcessSlots()
         processSlotsUsageKey.c_str(),
         true,
         true);
-    releaseLock();
-
     if (encodedJsonValue.empty()) {
         return false;
     }
@@ -257,7 +254,6 @@ NodeImpl::getMaxProcessSlots()
     string processSlotsMaxKey = 
         NotifyableKeyManipulator::createProcessSlotsMaxKey(getKey());
 
-    acquireLock();
     string encodedJsonValue;
     SAFE_CALL_ZK(getOps()->getRepository()->getNodeData(
                       processSlotsMaxKey,
@@ -266,8 +262,6 @@ NodeImpl::getMaxProcessSlots()
                  processSlotsMaxKey.c_str(),
                  true,
                  false);
-    releaseLock();
-
     if (encodedJsonValue.empty()) {
         return -1;
     }
@@ -408,8 +402,8 @@ NodeImpl::doHealthChecks(void *param)
         LOG_DEBUG(CL_LOG,
                   "About to wait %lld msec before next health check...",
                   curPeriod);
-        getHealthCond()->wait(*getHealthMutex(), 
-                              static_cast<uint64_t>(curPeriod));
+        getHealthCond()->waitUsecs(*getHealthMutex(), 
+                                   static_cast<uint64_t>(curPeriod) * 1000);
         LOG_DEBUG(CL_LOG, "...awoken!");
 
         getHealthMutex()->release();

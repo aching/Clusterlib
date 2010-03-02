@@ -1,5 +1,5 @@
-#include "MPITestFixture.h"
 #include "testparams.h"
+#include "MPITestFixture.h"
 
 extern TestParams globalTestParams;
 
@@ -121,7 +121,8 @@ class ClusterlibUserEvents
      * Constructor.
      */
     ClusterlibUserEvents()
-        : _factory(NULL),
+        : MPITestFixture(globalTestParams), 
+          _factory(NULL),
           _client0(NULL),
           _app0(NULL),
           _grp0(NULL),
@@ -294,6 +295,9 @@ class ClusterlibUserEvents
 
             uehp->releaseLock();
 
+            MPI_CPPUNIT_ASSERT(_client0->cancelHandler(uehp) == true);
+            MPI_CPPUNIT_ASSERT(_client0->cancelHandler(uehp) == true);
+            MPI_CPPUNIT_ASSERT(_client0->cancelHandler(uehp) == true);
             /*
              * Clean up.
              */
@@ -405,6 +409,7 @@ class ClusterlibUserEvents
          * return till the EN_ENDEVENT has propagated, so we do not
          * wait explicitly.
          */
+        finishedClTest(_factory);
         delete _factory;
         _factory = NULL;
 

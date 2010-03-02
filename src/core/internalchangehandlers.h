@@ -8,8 +8,8 @@
  * $Date$
  */
 
-#ifndef	_INTERNALCHANGEHANDLERS_H_
-#define	_INTERNALCHANGEHANDLERS_H_
+#ifndef	_CL_INTERNALCHANGEHANDLERS_H_
+#define	_CL_INTERNALCHANGEHANDLERS_H_
 
 namespace clusterlib
 {
@@ -64,4 +64,4 @@ class InternalChangeHandlers
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_INTERNALCHANGEHANDLERS_H_ */
+#endif	/* !_CL_INTERNALCHANGEHANDLERS_H_ */

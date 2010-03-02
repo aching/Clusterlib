@@ -11,8 +11,8 @@
  * $Date$
  */
 
-#ifndef _CLIENT_H_
-#define _CLIENT_H_
+#ifndef _CL_CLIENT_H_
+#define _CL_CLIENT_H_
 
 namespace clusterlib
 {
@@ -159,6 +159,104 @@ class UserEventHandler
           m_mask(mask),
           m_cd(cd),
           m_initialRun(initialRun) {}
+
+    /**
+     * Returns a comma-separated string of the events encoded in the int32_t 
+     *
+     * @param event the event mask
+     * @return the comma-separated string of the encoded events
+     */
+    static std::string getEventsString(int32_t event)
+    {
+        std::string encodedEvents;
+        if (event & EN_CREATED) { /* 0 */
+            encodedEvents.append("EN_CREATED,");
+        }
+        if (event & EN_DELETED) { /* 1 */
+            encodedEvents.append("EN_DELETED,");
+        }
+        if (event & EN_STATECHANGE) { /* 2 */
+            encodedEvents.append("EN_STATECHANGE,");
+        }
+        if (event & EN_GROUPSCHANGE) { /* 3 */
+            encodedEvents.append("EN_GROUPSCHANGE,");
+        }
+        if (event & EN_DISTSCHANGE) { /* 4 */
+            encodedEvents.append("EN_DISTSCHANGE,");
+        }
+        if (event & EN_NODESCHANGE) { /* 5 */
+            encodedEvents.append("EN_NODESCHANGE,");
+        }
+        if (event & EN_LEADERSHIPCHANGE) { /* 6 */
+            encodedEvents.append("EN_LEADERSHIPCHANGE,");
+        }
+        if (event & EN_CLIENTSTATECHANGE)  { /* 7 */
+            encodedEvents.append("EN_CLIENTSTATECHANGE,");
+        }
+        if (event & EN_CONNECTEDCHANGE) { /* 8 */
+            encodedEvents.append("EN_CONNECTEDCHANGE,");
+        }
+        if (event & EN_MASTERSTATECHANGE) { /* 9 */
+            encodedEvents.append("EN_MASTERSTATECHANGE,");
+        }
+        if (event & EN_PROCESSSLOTSUSAGECHANGE) { /* 10 */
+            encodedEvents.append("EN_PROCESSSLOTSUSAGECHANGE,");
+        }
+        if (event & EN_PROCESSSLOTSCHANGE) { /* 11 */
+            encodedEvents.append("EN_PROCESSSLOTSCHANGE,");
+        }
+        if (event & EN_PROCESSSLOTPORTVECCHANGE) { /* 12 */
+            encodedEvents.append("EN_PROCESSSLOTPORTVECCHANGE,");
+        }
+        if (event & EN_PROCESSSLOTEXECARGSCHANGE) { /* 13 */
+            encodedEvents.append("EN_PROCESSSLOTEXECARGSCHANGE,");
+        }
+        if (event & EN_PROCESSSLOTRUNNINGEXECARGSCHANGE) { /* 14 */
+            encodedEvents.append("EN_PROCESSSLOTRUNNINGEXECARGSCHANGE,");
+        }
+        if (event & EN_PROCESSSLOTPIDCHANGE) { /* 15 */
+            encodedEvents.append("EN_PROCESSSLOTPIDCHANGE,");
+        }
+        if (event & EN_PROCESSSLOTDESIREDSTATECHANGE) { /* 16 */
+            encodedEvents.append("EN_PROCESSSLOTDESIREDSTATECHANGE,");
+        }
+        if (event & EN_PROCESSSLOTCURRENTSTATECHANGE) { /* 17 */
+            encodedEvents.append("EN_PROCESSSLOTCURRENTSTATECHANGE,");
+        }
+        if (event & EN_PROCESSSLOTRESERVATIONCHANGE) { /* 18 */
+            encodedEvents.append("EN_PROCESSSLOTRESERVATIONCHANGE,");
+        }
+        if (event & EN_SHARDSCHANGE) { /* 19 */
+            encodedEvents.append("EN_SHARDSCHANGE,");
+        }
+        if (event & EN_PROPLISTSCHANGE) { /* 20 */
+            encodedEvents.append("EN_PROPLISTSCHANGE,");
+        }
+        if (event & EN_PROPLISTVALUESCHANGE) { /* 21 */
+            encodedEvents.append("EN_PROPLISTVALUESCHANGE,");
+        }
+        if (event & EN_APPSCHANGE) { /* 22 */
+            encodedEvents.append("EN_APPSCHANGE,");
+        }
+        if (event & EN_LOCKNODECHANGE) { /* 23 */
+            encodedEvents.append("EN_LOCKNODECHANGE,");
+        }
+        if (event & EN_QUEUECHILDCHANGE) { /* 24 */
+            encodedEvents.append("EN_QUEUECHILDCHANGE,");
+        }
+        if (event & EN_ENDEVENT) { /* 25 */
+            encodedEvents.append("EN_ENDEVENT,");
+        }
+
+        /* Get rid of the last ',' */
+        if (!encodedEvents.empty()) {
+            encodedEvents.erase(encodedEvents.size() - 1, 1);
+        }
+        else {
+            encodedEvents = "EN_NOEVENT";
+        }
+        return encodedEvents;
+    }
 
     /*
      * Destructor.
@@ -308,12 +406,12 @@ class Client
      * \brief Register a timer handler to be called after a specified delay.
      * 
      * @param tehp pointer to the handler class that is managed by the user
-     * @param afterTime milliseconds to wait for the event to be triggered
+     * @param afterMsecs milliseconds to wait for the event to be triggered
      * @param data the pointer to user-defined data that is given back when 
      *        handling the event.
      */
     virtual TimerId registerTimer(TimerEventHandler *tehp,
-                                  uint64_t afterTime,
+                                  uint64_t afterMsecs,
                                   ClientData data) = 0;
 
     /**
@@ -336,6 +434,11 @@ class Client
      * @return true if successful, false otherwise
      */
     virtual bool cancelHandler(UserEventHandler *uehp) = 0;
+
+    /**
+     * Virtual destructor.
+     */
+    virtual ~Client() {}
 };
 
 };	/* End of 'namespace clusterlib' */

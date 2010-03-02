@@ -1,5 +1,5 @@
-#include "MPITestFixture.h"
 #include "testparams.h"
+#include "MPITestFixture.h"
 
 extern TestParams globalTestParams;
 
@@ -23,6 +23,7 @@ class MyTimerEventHandler
      */
     void resetCounter()
     {
+        Locker l(&counterLock);
         counter = 0;
     }
 
@@ -31,6 +32,7 @@ class MyTimerEventHandler
      */
     int32_t getCounter()
     {
+        Locker l(&counterLock);
         return counter;
     }
 
@@ -40,9 +42,15 @@ class MyTimerEventHandler
      */
     virtual void handleTimerEvent(TimerId id, ClientData data)
     {
-        counter++;
+        Locker l(&counterLock);
+        ++counter;
     }
   private:
+    /**
+     * Makes counter thread-safe.
+     */ 
+    Mutex counterLock;
+
     /*
      * Count how many times a timer event was fired.
      */
@@ -59,13 +67,13 @@ class ClusterlibTimer
     CPPUNIT_TEST(testTimer1);
     CPPUNIT_TEST(testTimer2);
     CPPUNIT_TEST(testTimer3);
-
     CPPUNIT_TEST_SUITE_END();
 
   public:
     
     ClusterlibTimer()
-        : _factory(NULL),
+        : MPITestFixture(globalTestParams),
+          _factory(NULL),
           _client0(NULL),
           _app0(NULL),
           _grp0(NULL),
@@ -125,18 +133,14 @@ class ClusterlibTimer
                                     true,
                                     _factory,
                                     true,
-                                    "testCache13");
-
-        if (!isMyRank(0)) {
-            return;
-        }
-
+                                    "testTimer1");
         MPI_CPPUNIT_ASSERT(_timer0->getCounter() == 0);
-        TimerId id1 = _client0->registerTimer(_timer0, 200, (ClientData) NULL);
+        TimerId id1 = _client0->registerTimer(_timer0, 5000, (ClientData) NULL);
         bool cancelled = _client0->cancelTimer(id1);
         MPI_CPPUNIT_ASSERT(cancelled == true);
         cancelled = _client0->cancelTimer(id1);
         MPI_CPPUNIT_ASSERT(cancelled == false);
+        cerr << "counter=" << _timer0->getCounter() << endl;
         MPI_CPPUNIT_ASSERT(_timer0->getCounter() == 0);
     }
 
@@ -146,12 +150,7 @@ class ClusterlibTimer
                                     true,
                                     _factory,
                                     true,
-                                    "testCache13");
-
-        if (!isMyRank(0)) {
-            return;
-        }
-
+                                    "testTimer2");
         (void) _client0->registerTimer(_timer0, 200, (ClientData) NULL);
         sleep(1);
         MPI_CPPUNIT_ASSERT(_timer0->getCounter() == 1);
@@ -159,6 +158,7 @@ class ClusterlibTimer
         (void) _client0->registerTimer(_timer0, 200, (ClientData) NULL);
         (void) _client0->registerTimer(_timer0, 200, (ClientData) NULL);
         sleep(1);
+        cerr << "counter=" << _timer0->getCounter() << endl;
         MPI_CPPUNIT_ASSERT(_timer0->getCounter() == 4);
     }
 
@@ -168,18 +168,15 @@ class ClusterlibTimer
                                     true,
                                     _factory,
                                     true,
-                                    "testCache13");
-
-        if (!isMyRank(0)) {
-            return;
-        }
-
+                                    "testTimer3");
         (void) _client0->registerTimer(_timer0, 200, (ClientData) NULL);
-        TimerId id2 = _client0->registerTimer(_timer0, 200, (ClientData) NULL);
+        TimerId id2 = 
+            _client0->registerTimer(_timer0, 5000, (ClientData) NULL);
         (void) _client0->registerTimer(_timer0, 200, (ClientData) NULL);
         bool cancelled = _client0->cancelTimer(id2);
         MPI_CPPUNIT_ASSERT(cancelled == true);
         sleep(1);
+        cerr << "counter=" << _timer0->getCounter() << endl;
         MPI_CPPUNIT_ASSERT(_timer0->getCounter() == 2);
     }
 

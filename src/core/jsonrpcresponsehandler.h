@@ -11,8 +11,8 @@
  * ============================================================================
  */
 
-#ifndef _JSONRPCRESPONSEHANDLER_H_
-#define _JSONRPCRESPONSEHANDLER_H_
+#ifndef _CL_JSONRPCRESPONSEHANDLER_H_
+#define _CL_JSONRPCRESPONSEHANDLER_H_
 
 namespace clusterlib
 {
@@ -64,4 +64,4 @@ class JSONRPCResponseHandler : public UserEventHandler
 
 }	/* End of 'namespace clusterlib' */
 
-#endif	/* !_JSONRPCRESPONSEHANDLER_H_ */
+#endif	/* !_CL_JSONRPCRESPONSEHANDLER_H_ */

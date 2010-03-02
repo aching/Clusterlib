@@ -8,8 +8,8 @@
  * $Date$
  */
 
-#ifndef	_CLUSTERLIBSTRINGS_H_
-#define	_CLUSTERLIBSTRINGS_H_
+#ifndef	_CL_CLUSTERLIBSTRINGS_H_
+#define	_CL_CLUSTERLIBSTRINGS_H_
 
 #include <iostream>
 
@@ -79,6 +79,15 @@ class ClusterlibStrings
 
     static const std::string DEFAULTPROPERTYLIST;
     static const std::string KEYVAL;
+
+    /**
+     * Defined PropertyList keys (prefix PLK) and values (prefix PLV).
+     */
+    static const std::string PLK_STATE;
+    static const std::string PLV_STATE_INITIAL;
+    static const std::string PLV_STATE_PREPARING;
+    static const std::string PLV_STATE_READY;
+    static const std::string PLV_STATE_STOPPED;
 
     /** 
      * Default recv queue a notifyable 
@@ -180,4 +189,4 @@ class ClusterlibStrings
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_CLUSTERLIBSTRINGS_H_ */
+#endif	/* !_CL_CLUSTERLIBSTRINGS_H_ */

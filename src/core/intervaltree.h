@@ -1,5 +1,16 @@
-#ifndef _INTERVALTREE_H_
-#define _INTERVALTREE_H_
+/*
+ * intervaltree.h --
+ *
+ * Definition and implementation of template class IntervalTree; it
+ * represents a set of nodes in an interval tree.
+ *
+ * $Header:$
+ * $Revision$
+ * $Date$
+ */
+
+#ifndef _CL_INTERVALTREE_H_
+#define _CL_INTERVALTREE_H_
 
 #include "log.h"
 #include <queue>

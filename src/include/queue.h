@@ -10,8 +10,8 @@
  * $Date$
  */
 
-#ifndef	_QUEUE_H_
-#define _QUEUE_H_
+#ifndef	_CL_QUEUE_H_
+#define _CL_QUEUE_H_
 
 namespace clusterlib
 {
@@ -34,28 +34,34 @@ class Queue
     /**
      * Retrieves and removes the head of this queue, waiting if the
      * lock is held by another client or if there are no elements in the
-     * queue.
+     * queue.  This will wait unconditionally.
      *
-     * @param timeout how long to wait in milliseonds until an element is
-     *        available.  If 0, then wait indefinitely.  If <0, return 
-     *        immediately
-     * @param timedOut if not NULL, then set to true if the function timed out
-     *        and did not retrieve an element
-     * @return the element from the queue
+     * @param element the element retrieved from the queue if successful
      */
-    virtual std::string take(const int64_t timeout = 0, 
-                             bool *timedOut = NULL) = 0;
+    virtual void take(std::string &element) = 0;
 
     /**
-     * Return the front string in the queue (does not remove it).  The
-     * queue is locked during this operation and unlocked after this
-     * operation.
+     * Retrieves and removes the head of this queue, waiting if the
+     * lock is held by another client or if there are no elements in the
+     * queue.  This will wait up to msecTimeout milliseconds.
      *
-     * @param foundFront if not NULL, will be true if the front was returned,
-     *        false if the list was empty
-     * @return the front string in the queue.
+     * @param msecTimeout the amount of usecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediately
+     * @param element the element retrieved from the queue if successful
+     * @return true if an element was retrieved, false otherwise
      */
-    virtual std::string front(bool *foundFront = NULL) = 0;
+    virtual bool takeWaitMsecs(int64_t msecTimeout, 
+                               std::string &element) = 0;
+
+    /**
+     * Return the front string in the queue if there is any (does not
+     * remove it).  The queue is locked during this operation and
+     * unlocked after this operation.
+     *
+     * @param element the element retrieved from the queue if successful
+     * @return true if an element was retrieved, false otherwise
+     */
+    virtual bool front(std::string &element) = 0;
 
     /**
      * Gets the size of the queue (does not implicitly lock).  Hold
@@ -105,4 +111,4 @@ class Queue
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_QUEUE_H_ */
+#endif	/* !_CL_QUEUE_H_ */

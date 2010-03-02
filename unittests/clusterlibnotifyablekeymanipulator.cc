@@ -1,5 +1,5 @@
-#include "MPITestFixture.h"
 #include "testparams.h"
+#include "MPITestFixture.h"
 #include "clusterlibinternal.h"
 
 extern TestParams globalTestParams;
@@ -16,7 +16,9 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture {
 
   public:
     
-    ClusterlibNotifyableKeyManipulator() : _factory(NULL) {}
+    ClusterlibNotifyableKeyManipulator() 
+        : MPITestFixture(globalTestParams),
+          _factory(NULL) {}
     
     /**
      * Runs prior to each test 

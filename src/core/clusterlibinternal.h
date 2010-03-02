@@ -8,8 +8,8 @@
  * $Date$
  */
 
-#ifndef	_CLUSTERLIBINTERNAL_H_
-#define	_CLUSTERLIBINTERNAL_H_
+#ifndef	_CL_CLUSTERLIBINTERNAL_H_
+#define	_CL_CLUSTERLIBINTERNAL_H_
 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -21,6 +21,7 @@
 #include "signalmap.h"
 #include "clusterlibrpc.h"
 #include "callbackandcontext.h"
+#include "zkexceptions.h"
 #include "zkadapter.h"
 
 #include "notifyableimpl.h"
@@ -44,4 +45,4 @@
 
 DEFINE_LOGGER(CL_LOG, "clusterlib")
 
-#endif	/* !_CLUSTERLIBINTERNAL_H_ */
+#endif	/* !_CL_CLUSTERLIBINTERNAL_H_ */

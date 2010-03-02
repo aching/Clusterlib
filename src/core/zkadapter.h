@@ -6,8 +6,8 @@
  * ============================================================================
  */
 
-#ifndef __ZKADAPTER_H__
-#define __ZKADAPTER_H__
+#ifndef _CL_ZKADAPTER_H_
+#define _CL_ZKADAPTER_H_
 
 extern "C" {
 #include <c-client-src/zookeeper.h>
@@ -64,14 +64,6 @@ class ZooKeeperException :
     const char *what() const throw()
     {
         return m_message.c_str();
-    }
-    
-    /**
-     * \brief Returns the ZK error code.
-     */
-    int32_t getZKErrorCode() const 
-    {
-        return m_zkErrorCode;
     }
     
     /**
@@ -216,7 +208,7 @@ class ZKWatcherEvent
          * DELETED_EVENT, CHANGED_EVENT, CHILD_EVENT, SESSION_EVENT or
          * NOTWATCHING_EVENT.  See zookeeper.h for more details.
          */
-        const int32_t m_type;
+        int32_t m_type;
         
         /**
          * The state of ZK at the time of sending this event.
@@ -224,13 +216,13 @@ class ZKWatcherEvent
          * CONNECTED_STATE, EXPIRED_SESSION_STATE or AUTH_FAILED_STATE.
          * See {@file zookeeper.h} for more details.
          */
-        const int32_t m_state;
+        int32_t m_state;
         
         /**
          * The corresponding path of the node in subject. It may be empty
          * for some event types.
          */
-        const std::string m_path;
+        std::string m_path;
         
         /**
          * The pointer to the user specified context, possibly NULL.
@@ -327,6 +319,22 @@ class ZooKeeperAdapter
                                   int64_t *sequenceNumber = NULL);
 
     /**
+     * Takes an ZooKeeper function error code and throws the
+     * appropriate zk::Exception.  If the error code does not map to a
+     * zk::Exception child object, a generic UnknownErrorCodeException
+     * is thrown.  Exceptions will be thrown for all error codes
+     * (including ZOK).
+     * 
+     * @param msg the additional message with the exception
+     * @param errorCode the error code that will be used to generate
+     *        the appropriate zk::Exception
+     * @param connected is the adapter connected?
+     */
+    static void throwErrorCode(const std::string &msg,
+                               int32_t errorCode,
+                               bool connected);
+
+    /**
      * \brief The global function that handles all ZK asynchronous
      * notifications.
      */
@@ -410,6 +418,14 @@ class ZooKeeperAdapter
 
     /**
      * \brief Synchronizes all events with ZK with the local server.
+     *
+     * @param path the absolute path name of the node to synced
+     * @param listener the listener for ZK watcher events; 
+     *                 passing non <code>NULL</code> effectively establishes
+     *                 a ZK watch on the given node
+     * @param context the user specified context that is to be passed
+     *                in a corresponding {@link ZKWatcherEvent} at later time; 
+     *                not used if <code>listener</code> is <code>NULL</code>
      */
     bool sync(const std::string &path,
               ZKEventListener *listener,
@@ -801,4 +817,4 @@ class ZooKeeperAdapter
         
 }   /* end of 'namespace zk' */
 
-#endif /* __ZKADAPTER_H__ */
+#endif /* _CL_ZKADAPTER_H_ */

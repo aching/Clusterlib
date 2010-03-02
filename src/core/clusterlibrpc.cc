@@ -23,8 +23,10 @@ using namespace json::rpc;
 namespace clusterlib
 {
 
-ClusterlibRPCRequest::ClusterlibRPCRequest(Client *client) 
-    : m_gotResponse(false)
+ClusterlibRPCRequest::ClusterlibRPCRequest(Client *client, 
+                                           ClientData data) 
+    : m_gotResponse(false),
+      m_data(data)
 {
     TRACE(CL_LOG, "ClusterlibRPCRequest");
 
@@ -64,7 +66,7 @@ ClusterlibRPCRequest::sendRequest(const void *destination)
     else {
         /* Ready the response */
         stringstream idSs;
-        idSs << ClientImpl::getHostnamePidTid() 
+        idSs << Factory::getHostnamePidTid() 
              << m_client->fetchAndIncrRequestCounter();
         m_id = idSs.str();
         m_client->getOps()->getResponseSignalMap()->addRefPredMutexCond(m_id);
@@ -84,16 +86,27 @@ ClusterlibRPCRequest::sendRequest(const void *destination)
     }
 }
 
-bool
-ClusterlibRPCRequest::waitResponse(int64_t timeout)
+void
+ClusterlibRPCRequest::waitResponse()
 {
     TRACE(CL_LOG, "waitResponse");
 
+    if (!waitMsecsResponse(-1)) {
+        throw InconsistentInternalStateException(
+            "waitResponse: waitMsecsResponse impossibly returned false!");
+    }
+}
+
+bool
+ClusterlibRPCRequest::waitMsecsResponse(int64_t msecsTimeout)
+{
+    TRACE(CL_LOG, "waitMsecsResponse");
+
     if (!m_gotResponse) {
+        int64_t usecsTimeout = (msecsTimeout == -1) ? -1 : msecsTimeout * 1000;
         m_gotResponse =
-            m_client->getOps()->getResponseSignalMap()->waitPredMutexCond(
-                m_id, 
-                timeout);
+            m_client->getOps()->getResponseSignalMap()->waitUsecsPredMutexCond(
+                m_id, usecsTimeout);
         if (!m_gotResponse) {
             return false;
         }
@@ -120,6 +133,22 @@ ClusterlibRPCRequest::getResponse()
     }
 
     return m_response;
+}
+
+ClientData
+ClusterlibRPCRequest::getClientData()
+{
+    TRACE(CL_LOG, "getClientData");
+
+    return m_data;
+}
+
+void
+ClusterlibRPCRequest::setClientData(ClientData data)
+{
+    TRACE(CL_LOG, "setClientData");
+    
+    m_data = data;
 }
 
 bool

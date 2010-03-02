@@ -103,19 +103,24 @@ int main(int argc, char* argv[])
     runner.setOutputter(
         new CppUnit::CompilerOutputter(&runner.result(), std::cerr));
 
+    /* Cleanup the old property list */
+    if (MPI::COMM_WORLD.Get_rank() == 0) {
+        globalTestParams.resetClPropertyList();
+    }
+    MPI::COMM_WORLD.Barrier();
+
     /* Run one or more test fixtures. */
     double startTime = MPI_Wtime();
     int wasSuccessful = runner.run(globalTestParams.getTestFixtureName());
 
     /* Check if all processes were successful */
-    /* [wasSuccessful, total tests, successful tests, failed tests]  */
+    /* [wasSuccessful, total tests, test errors, test failures]  */
     const int resultArrLen = 4;
     int resultArr[resultArrLen];
     resultArr[0] = wasSuccessful;
     resultArr[1] = runner.result().runTests();
-    resultArr[2] = runner.result().runTests() - 
-        runner.result().testFailuresTotal();
-    resultArr[3] = runner.result().testFailuresTotal();
+    resultArr[2] = runner.result().testErrors();
+    resultArr[3] = runner.result().testFailures();
     int *allResultArr = NULL;
     if (MPI::COMM_WORLD.Get_rank() == 0) {
         allResultArr = new int[MPI::COMM_WORLD.Get_size() * resultArrLen];
@@ -135,16 +140,16 @@ int main(int argc, char* argv[])
         for (int i = 0; i < resultArrLen; i ++) {
             switch (i) {
                 case 0:
-                    cout << "   MPI process id ";
+                    cout << "      MPI process id ";
                     break;
                 case 1: 
-                    cout << "      total tests ";
+                    cout << "         total tests ";
                     break;
                 case 2:
-                    cout << " successful tests ";
+                    cout << " uncaught exceptions ";
                     break;
                 case 3:
-                    cout << "     failed tests ";
+                    cout << "          assertions ";
                     break;
                 default:
                     cout << "Error: shouldn't have gotten here";

@@ -9,8 +9,8 @@
  * $Date$
  */
 
-#ifndef	_FORWARDDECLS_H_
-#define	_FORWARDDECLS_H_
+#ifndef	_CL_FORWARDDECLS_H_
+#define	_CL_FORWARDDECLS_H_
 
 namespace clusterlib
 {
@@ -183,4 +183,4 @@ class ZooKeeperAdapter;
 
 };	/* End of 'namespace zk' */
 
-#endif	/* !_FORWARDDECLS_H_ */
+#endif	/* !_CL_FORWARDDECLS_H_ */

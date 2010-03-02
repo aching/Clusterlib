@@ -8,8 +8,8 @@
  * $Date$
  */
 
-#ifndef _JSON_H_
-#define _JSON_H_
+#ifndef _CL_JSON_H_
+#define _CL_JSON_H_
 #include <string>
 #include <deque>
 #include <map>

@@ -8,8 +8,8 @@
  * $Date$
  */
 
-#ifndef	_NOTIFYABLEKEYMANIPULATOR_H_
-#define	_NOTIFYABLEKEYMANIPULATOR_H_
+#ifndef	_CL_NOTIFYABLEKEYMANIPULATOR_H_
+#define	_CL_NOTIFYABLEKEYMANIPULATOR_H_
 
 namespace clusterlib
 {
@@ -370,4 +370,4 @@ class NotifyableKeyManipulator
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_NOTIFYABLEKEYMANIPULATOR_H_ */
+#endif	/* !_CL_NOTIFYABLEKEYMANIPULATOR_H_ */

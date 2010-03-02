@@ -4,6 +4,7 @@
 #include <mpi.h>
 #include <cppunit/extensions/HelperMacros.h>
 #include <clusterlib.h>
+#include <iomanip>
 
 #define MPI_TAG 1000
 
@@ -47,13 +48,54 @@
  */
 class MPITestFixture : public CppUnit::TestFixture {
   public:
-    MPITestFixture() : 
+    /**
+     * Constructor.
+     *
+     * @param testParams the test parameters used for this test
+     */
+    MPITestFixture(TestParams &testParams) : 
 	m_rank(MPI::COMM_WORLD.Get_rank()),
 	m_size(MPI::COMM_WORLD.Get_size()),
         m_testSingleProcessMode(false),
-        m_testMinSize(-1) {}
+        m_testMinSize(-1),
+        m_clPropertyList(testParams.getClPropertyList()),
+        m_updateClPropertyList(testParams.getUpdateClPropertyList()),
+        m_testCount(testParams.getTestCount())
+    {
+        testParams.incrTestCount();
+        const int32_t bufLen = 256;
+        char tmp[bufLen + 1];
+        tmp[bufLen] = '\0';
+        if (gethostname(tmp, bufLen) == 0) {
+            m_hostname = tmp;
+        }
+    }
 
     virtual ~MPITestFixture() {}
+
+    /**
+     * Generate a test key that keep tracks of the count.
+     * 
+     * @return the test key
+     */
+    std::string genTestKey()
+    {
+        std::stringstream ss;
+        ss << std::setfill('0') << std::setw(3) << m_testCount 
+           <<  ":" << m_testName;
+        return ss.str();
+    }
+
+    /**
+     * Make a unique ID to represent this process in the clusterlib
+     * property list.
+     */
+    std::string genPropertyListId()
+    {
+        std::stringstream ss;
+        ss << m_rank << ":" << m_hostname;
+        return ss.str();
+    }
 
     /**
      * Must be called prior to the beginning of any test.  It barriers
@@ -68,13 +110,13 @@ class MPITestFixture : public CppUnit::TestFixture {
      * @param factory the factory pointer (if NULL, barrier is called without 
      *        the clusterlib sync)
      * @param clusterlibSync use the clusterlib sync with the barrier?
-     * @param testName if not empty, prints a "testName: started"
+     * @param testName if not empty, prints a "testName: initialized"
      */
     void initializeAndBarrierMPITest(int32_t minSize, 
                                      bool singleProcessMode, 
                                      clusterlib::Factory *factory,
                                      bool clusterlibSync,
-                                     std::string testName = "")
+                                     std::string testName)
     {
         MPI_CPPUNIT_ASSERT(minSize >= -1);
         m_testMinSize = minSize;
@@ -87,10 +129,79 @@ class MPITestFixture : public CppUnit::TestFixture {
         }
 
         if (factory) {
+            if (m_updateClPropertyList) {
+                /* Make sure all updates have been seen! */
+                factory->synchronize();
+                clusterlib::Root *root = factory->createClient()->getRoot();
+                clusterlib::PropertyList *propList =
+                    root->getPropertyList(m_clPropertyList, true);
+                bool done = false;
+                /* 
+                 * publish() can fail if another process publishes at
+                 * the same time.
+                 */
+                while (!done) {
+                    try {
+                        propList->acquireLock();
+                        std::string value = 
+                            propList->getProperty(genTestKey());
+                        value.append(" ");
+                        value.append(genPropertyListId());
+                        propList->setProperty(genTestKey(), value);
+                        propList->publish();
+                        done = true;
+                        propList->releaseLock();  
+                    }
+                    catch (const clusterlib::PublishVersionException &e) {
+                        propList->releaseLock();
+                    }
+                }
+            }
             barrier(factory, true);
         }
         else {
             barrier(NULL, false);
+        }
+    }
+
+    /**
+     * Some tests must end prior to the cleanAndBarrierMPITest().
+     * Therefore, calling this will clean up their clusterlib property
+     * list data.  The preferred way however is through
+     * cleanAndBarrierMPITest().
+     */
+    void finishedClTest(clusterlib::Factory *factory)
+    {
+        assert(factory);
+
+        if (m_updateClPropertyList) {
+            clusterlib::Root *root = factory->createClient()->getRoot();
+            clusterlib::PropertyList *propList =
+                root->getPropertyList(m_clPropertyList, true);
+            std::stringstream ss;
+            ss << " " << m_rank << ":" << m_hostname;
+            bool done = false;
+            /* 
+             * publish() can fail if another process publishes at
+             * the same time.
+             */
+            while (!done) {
+                try {
+                    propList->acquireLock();
+                    std::string value = propList->getProperty(genTestKey());
+                    size_t index = value.find(genPropertyListId());
+                    if (index != std::string::npos) {
+                        value.erase(index, genPropertyListId().size());
+                    }
+                    propList->setProperty(genTestKey(), value);
+                    propList->publish();
+                    done = true;
+                    propList->releaseLock();
+                }
+                catch (const clusterlib::PublishVersionException &e) {
+                    propList->releaseLock();
+                }
+            }
         }
     }
     
@@ -110,6 +221,7 @@ class MPITestFixture : public CppUnit::TestFixture {
                                 bool clusterlibSync)
     {
         if (factory) {
+            finishedClTest(factory);
             barrier(factory, true);
         }
         else {
@@ -340,6 +452,7 @@ class MPITestFixture : public CppUnit::TestFixture {
         if (m_testError.empty()) {
             m_testError.append("\n");
         }
+        std::cerr << ss.str();
         m_testError.append(ss.str());
     }
 
@@ -387,6 +500,26 @@ class MPITestFixture : public CppUnit::TestFixture {
      * be outputted by the cleanAndBarrierMPITest() in the tearDown().
      */
     std::string m_testError;
+
+    /**
+     * Special clusterlib output property list
+     */
+    std::string m_clPropertyList;
+
+    /**
+     * Update the clusterlib output property list
+     */
+    bool m_updateClPropertyList;
+
+    /**
+     * What test is this?
+     */
+    int32_t m_testCount;
+
+    /**
+     * My hostname.
+     */
+    std::string m_hostname;
 };
 
 #endif

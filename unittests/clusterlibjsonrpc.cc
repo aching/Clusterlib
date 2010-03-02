@@ -1,5 +1,5 @@
-#include "MPITestFixture.h"
 #include "testparams.h"
+#include "MPITestFixture.h"
 #include <algorithm>
 #include <sstream>
 
@@ -61,9 +61,11 @@ class ClusterlibJSONRPC : public MPITestFixture {
     CPPUNIT_TEST_SUITE_END();
 
   public:    
-    ClusterlibJSONRPC() : _factory(NULL),
-                          _client0(NULL),
-                          _app0(NULL) {}
+    ClusterlibJSONRPC() 
+        : MPITestFixture(globalTestParams),
+          _factory(NULL),
+          _client0(NULL),
+          _app0(NULL) {}
     
     /* Runs prior to each test */
     virtual void setUp() 
@@ -191,7 +193,7 @@ class ClusterlibJSONRPC : public MPITestFixture {
             myDestRank = 0;
         }
         ss << recvQueuePrefix << "_id_" << myDestRank;
-        Queue *destQueue = _app0->getQueue(ss.str());
+        Queue *destQueue = _app0->getQueue(ss.str(), true);
         MPI_CPPUNIT_ASSERT(destQueue);
 
         /* 
@@ -223,7 +225,8 @@ class ClusterlibJSONRPC : public MPITestFixture {
          * processing the other process's messages!
          */
         barrier(_factory, true);
-        
+        finishedClTest(_factory);        
+
         /* 
          * Have to delete the factory prior to the auto_ptrs going out
          * scope or else there could be segmentation faults.

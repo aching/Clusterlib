@@ -8,8 +8,8 @@
  * $Date$
  */
 
-#ifndef	_CLUSTERLIB_H_
-#define	_CLUSTERLIB_H_
+#ifndef	_CL_CLUSTERLIB_H_
+#define	_CL_CLUSTERLIB_H_
 
 #include <string>
 #include <vector>
@@ -56,4 +56,4 @@
 
 #include "md5key.h"
 
-#endif	/* !_CLUSTERLIB_H_ */
+#endif	/* !_CL_CLUSTERLIB_H_ */

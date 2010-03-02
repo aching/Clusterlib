@@ -10,8 +10,8 @@
  * $Date$
  */
 
-#ifndef	_DATADISTRIBUTION_H_
-#define _DATADISTRIBUTION_H_
+#ifndef	_CL_DATADISTRIBUTION_H_
+#define _CL_DATADISTRIBUTION_H_
 
 namespace clusterlib
 {
@@ -91,7 +91,10 @@ class DataDistribution
     
     /**
      *  Publish any changes to the clusterlib repository.  An
-     *  exception will be thrown if any of the Shards have NULL notifyables.
+     *  exception will be thrown if any of the Shards have NULL
+     *  notifyables.  PublishVersionException will be thrown if the
+     *  versions do not match.  In that case, the user should catch
+     *  the exception, unlock the DataDistribution and try again.
      */
     virtual void publish() = 0;
 
@@ -138,4 +141,4 @@ class DataDistribution
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_DATADISTRIBUTION_H_ */
+#endif	/* !_CL_DATADISTRIBUTION_H_ */

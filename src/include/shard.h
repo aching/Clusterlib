@@ -9,8 +9,8 @@
  * $Date$
  */
 
-#ifndef _SHARD_H__
-#define _SHARD_H__
+#ifndef _CL_SHARD_
+#define _CL_SHARD_
 
 namespace clusterlib
 {
@@ -88,4 +88,4 @@ class Shard {
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_SHARD_H__ */
+#endif	/* !_CL_SHARD_ */

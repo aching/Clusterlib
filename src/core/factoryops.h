@@ -8,8 +8,8 @@
  * $Date$
  */
 
-#ifndef	_FACTORYOPS_H_
-#define	_FACTORYOPS_H_
+#ifndef	_CL_FACTORYOPS_H_
+#define	_CL_FACTORYOPS_H_
 
 /**
  * Macro for safely executing calls to ZooKeeper.
@@ -183,12 +183,24 @@ class FactoryOps {
     void addClient(ClientImpl *clp);
     void removeClient(ClientImpl *clp);
 
-    /*
-     * Register/cancel a timer handler.
+    /**
+     * Register a timer handler.
+     * 
+     * @param handler the handler to invoke at the proper time
+     * @param afterMsecs the number of msecs to invoke the handler
+     * @param data the data to be used by the handler
+     * @return the id of the registered timer (to be used in cancelTimer)
      */
     TimerId registerTimer(TimerEventHandler *handler,
-                          uint64_t afterTime,
+                          uint64_t afterMsecs,
                           ClientData data);
+
+    /**
+     * Cancel a timer event handler.
+     * 
+     * @param id the id from registerTimer to cancel
+     * @return true if the timer was successfully cancelled
+     */
     bool cancelTimer(TimerId id);
     
     /*
@@ -1093,4 +1105,4 @@ class FactoryOps {
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_FACTORYOPS_H_ */
+#endif	/* !_CL_FACTORYOPS_H_ */

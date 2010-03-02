@@ -8,8 +8,8 @@
  * $Date$
  */
 
-#ifndef	_HEALTHCHECKER_H_
-#define	_HEALTHCHECKER_H_
+#ifndef	_CL_HEALTHCHECKER_H_
+#define	_CL_HEALTHCHECKER_H_
 
 namespace clusterlib
 {
@@ -226,4 +226,4 @@ class HealthChecker
 };
 
 };	/* End of 'namespace clusterlib' */
-#endif	/* !_HEALTHCHECKER_H_ */
+#endif	/* !_CL_HEALTHCHECKER_H_ */

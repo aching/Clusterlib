@@ -10,8 +10,8 @@
  * $Date$
  */
 
-#ifndef _KEY_H_
-#define _KEY_H_
+#ifndef _CL_KEY_H_
+#define _CL_KEY_H_
 
 namespace clusterlib
 {
@@ -29,8 +29,13 @@ class Key
      * @return the hashed key
      */
     virtual HashRange hashKey() const = 0;
+
+    /**
+     * Virtual destructor.
+     */
+    virtual ~Key() {}
 };
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_KEY_H_ */
+#endif	/* !_CL_KEY_H_ */

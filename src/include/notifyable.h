@@ -8,8 +8,8 @@
  * $Date$
  */
 
-#ifndef	_NOTIFYABLE_H_
-#define _NOTIFYABLE_H_
+#ifndef	_CL_NOTIFYABLE_H_
+#define _CL_NOTIFYABLE_H_
 
 namespace clusterlib
 {
@@ -195,6 +195,29 @@ class Notifyable
     virtual void acquireLock(bool acquireChildren = 0) = 0;
 
     /** 
+     * \brief Acquire the clusterlib lock for this Notifyable within a
+     * number of msecs.
+     *
+     * Advisory lock.  In order to guarantee that changes to
+     * Notifyable objects are ordered, clients must also
+     * acquire/release the appropriate locks and work with
+     * coordinating clients (that also respect locks).  This call can
+     * also lock all children.  Clients must be careful (i.e. have
+     * some resource ordering) to ensure that deadlock does not occur.
+     * The only time locks are implicitly grabbed by clusterlib is
+     * when trying to create/remove an object.  If the function
+     * returns true, then all locks have been acquired.  Otherwise, no
+     * locks have been acquired.
+     *
+     * @param msecTimeout the amount of usecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediately
+     * @param acquireChildren lock the children as well?
+     * @return true if the lock was acquired or false if timed out
+     */
+    virtual bool acquireLockWaitMsecs(int64_t msecTimeout,
+                                      bool acquireChildren = 0) = 0;
+
+    /** 
      * \brief Release the clusterlib lock for this Notifyable.
      *
      * Advisory lock.  In order to guarantee that changes to
@@ -247,4 +270,4 @@ class Notifyable
 
 };	/* End of 'namespace clusterlib' */
 
-#endif	/* !_NOTIFYABLE_H_ */
+#endif	/* !_CL_NOTIFYABLE_H_ */
