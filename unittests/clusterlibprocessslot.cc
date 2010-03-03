@@ -82,9 +82,8 @@ class ClusterlibProcessSlot : public MPITestFixture {
         if (isMyRank(1)) {
             _processSlot0 = _node0->getProcessSlot(processSlotName);
             MPI_CPPUNIT_ASSERT(_processSlot0);
-            vector<int32_t> portVec = _processSlot0->getPortVec();
             _processSlot0->acquireLock();
-
+            vector<int32_t> portVec = _processSlot0->getPortVec();
             MPI_CPPUNIT_ASSERT(portVec.size() == 2);
             if (portVec.size() == 2) {
                 MPI_CPPUNIT_ASSERT(portVec[0] == 1234);
