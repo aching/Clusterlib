@@ -248,7 +248,7 @@ sub startZookeeper()
 	&setCmdPrintExec("print FH \"initLimit=4\n\"");
 	&setCmdPrintExec("print FH \"syncLimit=4\n\"");
 	&setCmdPrintExec("print FH \"electionAlg=0\n\"");
-	&setCmdPrintExec("print FH \"server\.0=$ENV{'HOSTNAME'}\:$zookeeperServerPort\n\"");
+	&setCmdPrintExec("print FH \"server\.0=$hostname\:$zookeeperServerPort\n\"");
 	&setCmdPrintExec('close FH');
 	&setSystemCmdPrintExec("chmod 700 $zookeeperCfg");
 	print "\nStarting up zookeeper ($zookeeperExec) for user $user...\n";
