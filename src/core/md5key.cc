@@ -26,7 +26,7 @@ Md5Key::hashKey() const
     char *hexOutput = context.hex_digest();
     hexOutput[16] = '\0';
     HashRange res = ::strtoll(hexOutput, NULL, 16);
-    delete hexOutput;
+    delete [] hexOutput;
 
     return res;
 }
