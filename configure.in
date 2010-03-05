@@ -354,7 +354,7 @@ AC_SUBST(EXPAT_LIB)
 if test -z "$enable_release"; then
    BASE_CXXFLAGS="-Wall -Werror -O0 -g -rdynamic"
 else
-   BASE_CXXFLAGS="-Wall -Werror -O3 -g -rdynamic"
+   BASE_CXXFLAGS="-Wall -Werror -O2 -g -rdynamic"
 fi
 AC_SUBST(BASE_CXXFLAGS)
 
