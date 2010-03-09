@@ -18,7 +18,8 @@ class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod {
     
     virtual std::string getName();
     
-    virtual bool checkParams(const ::json::JSONValue::JSONArray &paramArr);
+    virtual bool checkInitParams(const ::json::JSONValue::JSONArray &paramArr,
+                                 bool initialize);
     
     ::json::JSONValue invoke(const std::string &name, 
                              const ::json::JSONValue::JSONArray &param, 

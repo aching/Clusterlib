@@ -10,6 +10,7 @@ using namespace std;
 using namespace json;
 using namespace json::rpc;
 
+const string appName = "unittests-jsonrpc-app";
 const string testMsgSuccess = "testMsgSuccess";
 
 class TestMsgRPC 
@@ -18,7 +19,8 @@ class TestMsgRPC
   public:
     virtual string getName() { return "testMsg"; }
 
-    virtual bool checkParams(const JSONValue::JSONArray &paramArr)
+    virtual bool checkInitParams(const JSONValue::JSONArray &paramArr,
+                                 bool initialize)
     {
         if (paramArr.size() == 1) {
             return true;
@@ -49,7 +51,6 @@ class TestMsgRequest
     TestMsgRequest(Client *client) : ClusterlibRPCRequest(client) {}
 };
 
-const string appName = "JSONRPC-app";
 const string respQueuePrefix = "respQueue";
 const string recvQueuePrefix = "recvQueue";
 const string compQueuePrefix = "compQueue";
@@ -138,6 +139,8 @@ class ClusterlibJSONRPC : public MPITestFixture {
 
         _factory->createJSONRPCMethodClient(recvQueue,
                                             compRecvQueue,
+                                            -1,
+                                            NULL,
                                             &rpcManager);
     }
 
@@ -185,6 +188,8 @@ class ClusterlibJSONRPC : public MPITestFixture {
                                   testMsgMethod.get());
         _factory->createJSONRPCMethodClient(recvQueue,
                                             compRecvQueue,
+                                            -1,
+                                            NULL,
                                             rpcManager.get());
 
         /* Find who to send the message to */

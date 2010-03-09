@@ -7,7 +7,7 @@ extern TestParams globalTestParams;
 using namespace std;
 using namespace clusterlib;
 
-const string appName = "datadistribution-app";
+const string appName = "unittests-datadistribution-app";
 
 class ClusterlibDataDistribution : public MPITestFixture {
     CPPUNIT_TEST_SUITE(ClusterlibDataDistribution);

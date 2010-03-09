@@ -191,7 +191,7 @@ class Lock
      */
     bool waitMsecs(int64_t msecTimeout)
     {
-        return m_cond.waitUsecs(m_mutex, msecTimeout);
+        return m_cond.waitMsecs(m_mutex, msecTimeout);
     }
         
     void notify()
@@ -420,6 +420,19 @@ class PredMutexCond
      *         (always true if it returns and the timeout == -1)
      */
     bool predWaitUsecs(int64_t usecTimeout);
+
+    /**
+     * Wait on a predicate to be changed by another thread.  This is a
+     * one time wait.  Make sure that the predicate is set to false
+     * before calling either the predWait and predSignal functions on
+     * either thread.
+     *
+     * @param msecTimeout the amount of msecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediately
+     * @return false if the function timed out, true if predicate changed
+     *         (always true if it returns and the timeout == -1)
+     */
+    bool predWaitMsecs(int64_t msecTimeout);
 
     /**
      * Has the predicate been satified?

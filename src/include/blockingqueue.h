@@ -151,7 +151,7 @@ bool BlockingQueue<E>::takeWaitMsecs(int64_t msecTimeout, E &e)
     int64_t curUsecTimeout = 0;
     int64_t maxUsecs = 0;
     if (msecTimeout != -1) {
-        maxUsecs = TimerService::getCurrentTimeUsecs() + msecTimeout * 1000;
+        maxUsecs = TimerService::getCurrentTimeUsecs() + (msecTimeout * 1000);
     }
     else {
         curUsecTimeout = -1;
@@ -179,7 +179,7 @@ bool BlockingQueue<E>::takeWaitMsecs(int64_t msecTimeout, E &e)
     }
     if (hasResult) {
         e = m_queue.front();
-        m_queue.pop_front();            
+        m_queue.pop_front();
         m_mutex.release();
         return true;
     } 

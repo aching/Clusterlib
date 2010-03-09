@@ -20,9 +20,11 @@ const ::json::JSONValue::JSONString idNotifyableStatus = "status";
 const ::json::JSONValue::JSONString idNodesHealthy = "nodesHealthy";
 const ::json::JSONValue::JSONString idNodesUnhealthy = "nodesUnhealthy";
 const ::json::JSONValue::JSONString idDataDistributionCovered = "covered";
-const ::json::JSONValue::JSONString idNodeState = "clientstate";
 const ::json::JSONValue::JSONString idNodeStateSetTime = 
     "client state set time";
+const ::json::JSONValue::JSONString idNodeState = "client state";
+const ::json::JSONValue::JSONString idNodeStateDesc = 
+    "client state description";
 const ::json::JSONValue::JSONString idNodeConnected = "connected";
 const ::json::JSONValue::JSONString idNodeConnectedId = "connectedId";
 const ::json::JSONValue::JSONString idNodeConnectedTime = 
@@ -39,6 +41,8 @@ const ::json::JSONValue::JSONString idProcessSlotDesiredProcessState =
     "desiredProcessState";
 const ::json::JSONValue::JSONString idProcessSlotCurrentProcessState = 
     "currentProcessState";
+const ::json::JSONValue::JSONString idProcessSlotReservationName = 
+    "reservation name";
 const ::json::JSONValue::JSONString idPropertyListProperty = 
     "property";
 const ::json::JSONValue::JSONString idQueueCount = "count";
@@ -110,7 +114,8 @@ class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod {
 
     virtual std::string getName();
     
-    virtual bool checkParams(const ::json::JSONValue::JSONArray &paramArr);
+    virtual bool checkInitParams(const ::json::JSONValue::JSONArray &paramArr,
+                                 bool initialize);
 
     ::json::JSONValue invoke(const std::string &name, 
                              const ::json::JSONValue::JSONArray &param, 

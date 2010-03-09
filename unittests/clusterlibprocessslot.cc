@@ -7,7 +7,7 @@ extern TestParams globalTestParams;
 using namespace clusterlib;
 using namespace std;
 
-const string appName = "processSlot-app";
+const string appName = "unittests-processSlot-app";
 
 class ClusterlibProcessSlot : public MPITestFixture {
     CPPUNIT_TEST_SUITE(ClusterlibProcessSlot);

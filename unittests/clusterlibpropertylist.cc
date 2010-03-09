@@ -8,6 +8,8 @@ extern TestParams globalTestParams;
 using namespace clusterlib;
 using namespace std;
 
+const string appName = "unittests-propertylist-app";
+
 class ClusterlibPropertyList : public MPITestFixture {
     CPPUNIT_TEST_SUITE(ClusterlibPropertyList);
     CPPUNIT_TEST(testGetPropertyList1);
@@ -39,7 +41,7 @@ class ClusterlibPropertyList : public MPITestFixture {
 	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
 	MPI_CPPUNIT_ASSERT(_client0 != NULL);
-	_app0 = _client0->getRoot()->getApplication("propertyList-app", true);
+	_app0 = _client0->getRoot()->getApplication(appName, true);
 	MPI_CPPUNIT_ASSERT(_app0 != NULL);
 	_group0 = _app0->getGroup("propertyList-group-servers", true);
 	MPI_CPPUNIT_ASSERT(_group0 != NULL);

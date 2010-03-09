@@ -20,7 +20,7 @@ class Exception
     /**
      * Constructor.
      */
-    Exception(const std::string &msg);
+    explicit Exception(const std::string &msg);
 
     /**
      * Demangle any name if possible to a string.
@@ -63,7 +63,7 @@ class AlreadyConnectedException
     /*
      * Constructor.
      */
-    AlreadyConnectedException(const std::string &msg) throw()
+    explicit AlreadyConnectedException(const std::string &msg) throw()
         : Exception(msg) {}
 };
 
@@ -77,7 +77,8 @@ class InconsistentInternalStateException
    /**
      * Constructor.
      */
-    InconsistentInternalStateException(const std::string &msg) throw() 
+    explicit InconsistentInternalStateException(
+        const std::string &msg) throw() 
         : Exception(msg) {}
 };
 
@@ -91,7 +92,7 @@ class InvalidArgumentsException
    /**
      * Constructor.
      */
-    InvalidArgumentsException(const std::string &msg) throw() 
+    explicit InvalidArgumentsException(const std::string &msg) throw() 
         : Exception(msg) {}
 };
 
@@ -105,7 +106,7 @@ class InvalidMethodException
    /**
      * Constructor.
      */
-    InvalidMethodException(const std::string &msg) throw() 
+    explicit InvalidMethodException(const std::string &msg) throw() 
         : Exception(msg) {}
 };
 
@@ -120,7 +121,7 @@ class PublishVersionException
    /**
      * Constructor.
      */
-    PublishVersionException(const std::string &msg) throw() 
+    explicit PublishVersionException(const std::string &msg) throw() 
         : Exception(msg) {}
 };
 
@@ -134,7 +135,7 @@ class ObjectRemovedException
    /**
      * Constructor.
      */
-    ObjectRemovedException(const std::string &msg) throw() 
+    explicit ObjectRemovedException(const std::string &msg) throw() 
         : Exception(msg) {}
 };
 
@@ -148,7 +149,8 @@ class RepositoryConnectionFailureException
    /**
      * Constructor.
      */
-    RepositoryConnectionFailureException(const std::string &msg) throw() 
+    explicit RepositoryConnectionFailureException(
+        const std::string &msg) throw() 
         : Exception(msg) {}
 };
 
@@ -162,7 +164,8 @@ class RepositoryInternalsFailureException
    /**
     * Constructor.
     */
-    RepositoryInternalsFailureException(const std::string &msg) throw() 
+    explicit RepositoryInternalsFailureException(
+        const std::string &msg) throw() 
         : Exception(msg) {}
 };
 
@@ -176,7 +179,7 @@ class SystemFailureException
    /**
      * Constructor.
      */
-    SystemFailureException(const std::string &msg) throw() 
+    explicit SystemFailureException(const std::string &msg) throw() 
         : Exception(msg) {}
 };
 

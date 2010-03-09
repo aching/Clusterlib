@@ -28,7 +28,8 @@ StartProcessRPC::getName()
 }
 
 bool
-StartProcessRPC::checkParams(const JSONValue::JSONArray &paramArr)
+StartProcessRPC::checkInitParams(const JSONValue::JSONArray &paramArr,
+                                 bool initialize)
 {
     try {
         if (paramArr.size() != 1) {
@@ -43,6 +44,18 @@ StartProcessRPC::checkParams(const JSONValue::JSONArray &paramArr)
             ClusterlibStrings::JSONOBJECTKEY_NOTIFYABLEKEY);
         if (paramObjIt == paramObj.end()) {
             throw JSONRPCInvocationException("checkParams: No notifyable!");
+        }
+        paramObjIt = paramObj.find(ClusterlibStrings::JSONOBJECTKEY_ADDENV);
+        if (paramObjIt == paramObj.end()) {
+            throw JSONRPCInvocationException("checkParams: No addenv!");
+        }
+        paramObjIt = paramObj.find(ClusterlibStrings::JSONOBJECTKEY_PATH);
+        if (paramObjIt == paramObj.end()) {
+            throw JSONRPCInvocationException("checkParams: No path!");
+        }
+        paramObjIt = paramObj.find(ClusterlibStrings::JSONOBJECTKEY_COMMAND);
+        if (paramObjIt == paramObj.end()) {
+            throw JSONRPCInvocationException("checkParams: No command!");
         }
 
         return true;

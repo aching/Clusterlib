@@ -201,9 +201,12 @@ FactoryOps::createJSONRPCResponseClient(Queue *responseQueue,
 }
 
 Client *
-FactoryOps::createJSONRPCMethodClient(Queue *recvQueue,
-                                      Queue *completedQueue,
-                                      ::json::rpc::JSONRPCManager *rpcManager)
+FactoryOps::createJSONRPCMethodClient(
+    Queue *recvQueue,
+    Queue *completedQueue,
+    int32_t completedQueueMaxSize,
+    PropertyList *rpcMethodHandlerPropertyList,
+    ::json::rpc::JSONRPCManager *rpcManager)
 {
     TRACE(CL_LOG, "createJSONRPCMethodClient");
 
@@ -211,6 +214,8 @@ FactoryOps::createJSONRPCMethodClient(Queue *recvQueue,
     assert(client);
     client->registerJSONRPCMethodHandler(recvQueue,
                                          completedQueue,
+                                         completedQueueMaxSize,
+                                         rpcMethodHandlerPropertyList,
                                          rpcManager);
     return client;
 }
@@ -3505,8 +3510,11 @@ FactoryOps::isNodeConnected(const string &nodeKey, string &id, int64_t &msecs)
 
     return exists;
 }
-string
-FactoryOps::getNodeClientState(const string &nodeKey)
+void
+FactoryOps::getNodeClientState(const string &nodeKey,
+                               int64_t &msecs,
+                               string &clientState,
+                               string &clientStateDesc)
 {
     TRACE(CL_LOG, "getNodeClientState");
 
@@ -3531,8 +3539,22 @@ FactoryOps::getNodeClientState(const string &nodeKey)
         nodeKey.c_str(),
         false,
         true);
-
-    return res;
+    if (res.empty()) {
+        msecs = -1;
+        clientState.clear();
+        clientStateDesc.clear();
+    }
+    else {
+        JSONValue jsonValue = JSONCodec::decode(res);
+        JSONValue::JSONArray jsonArr = jsonValue.get<JSONValue::JSONArray>();
+        if (jsonArr.size() != 3) {
+            throw InconsistentInternalStateException(
+                "getNodeClientState: Didn't get 3 elements");
+        }
+        msecs = jsonArr[0].get<JSONValue::JSONInteger>();
+        clientState = jsonArr[1].get<JSONValue::JSONString>();
+        clientStateDesc = jsonArr[2].get<JSONValue::JSONString>();
+    }
 }
 int32_t
 FactoryOps::getNodeMasterSetState(const string &nodeKey)
@@ -4456,7 +4478,9 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
     }
 
     LOG_DEBUG(CL_LOG, 
-              "updateCachedObject: Returning payload for event %d for key %s",
+              "updateCachedObject: Returning payload for event %s (%d) for "
+              "key %s",
+              UserEventHandler::getEventsString(e).c_str(),
               e,
               notifyablePath.c_str());
               

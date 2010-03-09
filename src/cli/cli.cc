@@ -58,10 +58,12 @@ int main(int argc, char* argv[])
     Root *root = params->getClient()->getRoot();
     Application *cliApp = root->getApplication(
         ClusterlibStrings::DEFAULT_CLI_APPLICATION, true);
-    Queue *respQueue = cliApp->getQueue(Factory::getHostnamePidTid() + 
+    Queue *respQueue = cliApp->getQueue(
+        ProcessThreadService::getHostnamePidTid() + 
         ClusterlibStrings::DEFAULT_RESP_QUEUE, true);
     string respQueueKey = respQueue->getKey();
-    Queue *completedQueue = cliApp->getQueue(Factory::getHostnamePidTid() + 
+    Queue *completedQueue = cliApp->getQueue(
+        ProcessThreadService::getHostnamePidTid() + 
         ClusterlibStrings::DEFAULT_COMPLETED_QUEUE, true);
     string completedQueueKey = completedQueue->getKey();    
     params->getFactory()->createJSONRPCResponseClient(respQueue,

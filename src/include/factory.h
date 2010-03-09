@@ -74,13 +74,21 @@ class Factory
      * @param recvQueue the queue where this client receives JSON-RPC requests
      * @param completedQueue the queue where this client places responses or 
      *        errors for JSON-RPC requests if no destination is specified.
+     * @param completedQueueMaxSize the maximum number of elements in the 
+     *        completedQueue, -1 for infinite, 0 for none.
+     * @param rpcMethodHandlerPropertyList if set, the rpcManager will update
+     *        rpcMethodHandlerPropertyList with the current request and status
+     *        information
      * @param rpcManager actually invokes the methods to process JSON-RPC
      *        requests
      * @return a Client pointer
      */
-    Client *createJSONRPCMethodClient(Queue *recvQueue,
-                                      Queue *completedQueue,
-                                      ::json::rpc::JSONRPCManager *rpcManager);
+    Client *createJSONRPCMethodClient(
+        Queue *recvQueue,
+        Queue *completedQueue,
+        int32_t completedQueueMaxSize,
+        PropertyList *rpcMethodHandlerPropertyList,
+        ::json::rpc::JSONRPCManager *rpcManager);
 
     /**
      * Is the factory connected to ZooKeeper?
@@ -103,14 +111,6 @@ class Factory
      */
     zk::ZooKeeperAdapter *getRepository();    
     
-    /**
-     * Get hostname, process id and thread id string.  Useful for
-     * uniquely identifying a client.
-     *
-     * @return string of hostname, process id, and thread id
-     */
-    static std::string getHostnamePidTid();
-
   private:
     /**
      * Private access to the m_ops

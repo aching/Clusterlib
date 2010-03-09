@@ -7,7 +7,7 @@ extern TestParams globalTestParams;
 using namespace std;
 using namespace clusterlib;
 
-const string appName = "remove-app";
+const string appName = "unittests-remove-app";
 
 class ClusterlibRemove : public MPITestFixture {
     CPPUNIT_TEST_SUITE(ClusterlibRemove);
@@ -24,6 +24,7 @@ class ClusterlibRemove : public MPITestFixture {
     CPPUNIT_TEST(testRemove30);
     CPPUNIT_TEST(testRemove31);
     CPPUNIT_TEST(testRemove40);
+    CPPUNIT_TEST(testRemove99);
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -358,6 +359,34 @@ class ClusterlibRemove : public MPITestFixture {
         }
     }
 
+    /**
+     * Make sure that removing all the unittest applications is
+     * successful.  As long this is the last test, it will clean up
+     * the unittest applications in the clusterlib object hierarchy.
+     */
+    void testRemove99()
+    {
+        initializeAndBarrierMPITest(1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testRemove99");
+        if (isMyRank(0)) {
+            NameList nl =  _client0->getRoot()->getApplicationNames();
+            NameList::iterator it;
+            const string unittestPrefix = "unittests-";
+            for (it = nl.begin(); it != nl.end(); ++it) {
+                if ((it->size() > unittestPrefix.size()) &&
+                    (it->compare(0,
+                                 unittestPrefix.size(),
+                                 unittestPrefix) == 0)) {
+                    _client0->getRoot()->getApplication(*it)->remove(true);
+                    cerr << "Removed the application " << *it << endl;
+                }
+            }
+        }
+    }
+
   private:
     Factory *_factory;
     Client *_client0;
@@ -368,4 +397,3 @@ class ClusterlibRemove : public MPITestFixture {
 
 /* Registers the fixture into the 'registry' */
 CPPUNIT_TEST_SUITE_REGISTRATION(ClusterlibRemove);
-

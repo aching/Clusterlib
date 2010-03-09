@@ -7,7 +7,7 @@ extern TestParams globalTestParams;
 using namespace std;
 using namespace clusterlib;
 
-const string appName = "healthCheck-app";
+const string appName = "unittests-healthCheck-app";
 
 class MyHealthChecker : public HealthChecker {
   public:
@@ -119,7 +119,8 @@ class ClusterlibHealthCheck : public MPITestFixture {
              */
             
             bool health = _node0->isHealthy();
-            string healthdesc = _node0->getClientState();
+            string healthdesc;
+            _node0->getClientState(NULL, &healthdesc, NULL);
             cerr << "testHealthCheck1: health = "
                  << ((health == true) ? "good" : "bad")
                  << " and description (" << healthdesc << ")" << endl;

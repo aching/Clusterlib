@@ -145,13 +145,21 @@ class FactoryOps {
      * @param recvQueue the queue where this client receives JSON-RPC requests
      * @param completedQueue the queue where this client places responses or 
      *        errors for JSON-RPC requests if no destination is specified.
+     * @param completedQueueMaxSize the maximum number of elements in the 
+     *        completedQueue, -1 for infinite, 0 for none.
+     * @param rpcMethodHandlerPropertyList if set, the rpcManager will update
+     *        rpcMethodHandlerPropertyList with the current request and status
+     *        information
      * @param rpcManager actually invokes the methods to process JSON-RPC
      *        requests
      * @return a Client pointer
      */
-    Client *createJSONRPCMethodClient(Queue *recvQueue,
-                                      Queue *completedQueue,
-                                      ::json::rpc::JSONRPCManager *rpcManager);
+    Client *createJSONRPCMethodClient(
+        Queue *recvQueue,
+        Queue *completedQueue,
+        int32_t completedQueueMaxSize,
+        PropertyList *rpcMethodHandlerPropertyList,
+        ::json::rpc::JSONRPCManager *rpcManager);
     
     /**
      * Is the factory connected to ZooKeeper?
@@ -698,7 +706,21 @@ class FactoryOps {
     bool isNodeConnected(const std::string &key, 
                          std::string &id, 
                          int64_t &msecs);
-    std::string getNodeClientState(const std::string &key);
+
+    /**
+     * Get the client state fields from the repository.
+     *
+     * @param key the key of the node for the state
+     * @param msecs the msecs since the epoch when the state was last reported
+     * @param clientState the current state of the node (defined in class
+     *        HealthReport)
+     * @param clientStateDesc the human readable state of the node
+     */
+    void getNodeClientState(const std::string &key,
+                            int64_t &msecs,
+                            std::string &clientState,
+                            std::string &clientStateDesc);
+
     int32_t getNodeMasterSetState(const std::string &key);
 
     /*

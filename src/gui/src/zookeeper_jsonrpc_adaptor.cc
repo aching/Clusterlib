@@ -18,7 +18,8 @@ MethodAdaptor::getName()
 }
 
 bool
-MethodAdaptor::checkParams(const JSONValue::JSONArray &paramArr)
+MethodAdaptor::checkInitParams(const JSONValue::JSONArray &paramArr,
+                               bool initialize)
 {
     try {
         string encodedString = JSONCodec::encode(paramArr);
@@ -62,7 +63,12 @@ void MethodAdaptor::reconnect() {
     
     // Connect asynchronously
     LOG4CXX_INFO(logger, "Establishing ZooKeeper connection");
-    zkHandle = zookeeper_init(servers.c_str(), staticGlobalWatcher, SESSION_TIMEOUT * 1000, NULL, this, 0);
+    zkHandle = zookeeper_init(servers.c_str(), 
+                              staticGlobalWatcher, 
+                              SESSION_TIMEOUT * 1000, 
+                              NULL, 
+                              this, 
+                              0);
     if (!zkHandle) {
         throw JSONRPCInvocationException("Cannot create a zookeeper handle.");
     }

@@ -17,8 +17,8 @@ using namespace clusterlib;
 using namespace json;
 using namespace json::rpc;
 
-/* Wait up to 0.1 seconds for a queue element */
-static const int64_t respQueueMsecTimeOut = 100;
+/* Wait up to 0.5 seconds for a queue element */
+static const int64_t respQueueMsecTimeOut = 500;
 
 namespace clusterlib
 {
@@ -65,7 +65,7 @@ JSONRPCResponseHandler::handleUserEvent(Event e)
             m_client->getOps()->getResponseSignalMap()->signalPredMutexCond(
                 respObj["id"].get<JSONValue::JSONString>());
         }
-        catch (const JSONException &ex) {
+        catch (const json::Exception &ex) {
             LOG_WARN(CL_LOG,
                      "handleUserEvent: Got non-valid JSON-RPC data (%s), "
                      "moving to completed queue (%s)",

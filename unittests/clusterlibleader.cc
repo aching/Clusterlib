@@ -7,7 +7,7 @@ extern TestParams globalTestParams;
 using namespace std;
 using namespace clusterlib;
 
-const string appName = "leader-app";
+const string appName = "unittests-leader-app";
 
 class ClusterlibLeader : public MPITestFixture {
     CPPUNIT_TEST_SUITE(ClusterlibLeader);

@@ -6,6 +6,8 @@ extern TestParams globalTestParams;
 using namespace std;
 using namespace clusterlib;
 
+const string appName = "unittests-hierarchy-app";
+
 class ClusterlibHierarchy : public MPITestFixture {
     CPPUNIT_TEST_SUITE(ClusterlibHierarchy);
     CPPUNIT_TEST(testHierarchy1);
@@ -31,7 +33,7 @@ class ClusterlibHierarchy : public MPITestFixture {
 	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client = _factory->createClient();
 	MPI_CPPUNIT_ASSERT(_client != NULL);
-	_app = _client->getRoot()->getApplication("hierarchy-app", true);
+	_app = _client->getRoot()->getApplication(appName, true);
 	MPI_CPPUNIT_ASSERT(_app != NULL);
     }
 
@@ -226,6 +228,7 @@ class ClusterlibHierarchy : public MPITestFixture {
                                     true, 
                                     "testHierarchy3");
 
+        const string postfix = "next-hierarchy";
         uint32_t appCount = 0;
         if (isMyRank(1)) {
             NameList nl =  _client->getRoot()->getApplicationNames();
@@ -252,7 +255,7 @@ class ClusterlibHierarchy : public MPITestFixture {
                 }
             }
 
-            string newkey = nl[index] + "next";
+            string newkey = nl[index] + postfix;
             Application *app0 = 
                 _client->getRoot()->getApplication(newkey, true);
             MPI_CPPUNIT_ASSERT(app0);
@@ -265,11 +268,17 @@ class ClusterlibHierarchy : public MPITestFixture {
             cerr << "Orignally had " << appCount << " applications, now has "
                  << nl.size() << " ." << endl; 
             MPI_CPPUNIT_ASSERT(appCount + 1 == nl.size());
-            /* Clean up all applications, since we are always
-             * increasing the size of it. */
+            /* Clean up last application we added. */
             NameList::iterator it;
             for (it = nl.begin(); it != nl.end(); it++) {
-                _client->getRoot()->getApplication(*it)->remove(true);
+                if ((it->size() > postfix.size()) &&
+                    (it->compare(it->size() - postfix.size(), 
+                                 postfix.size(), 
+                                 postfix) == 0)) {
+                    _client->getRoot()->getApplication(*it)->remove(true);
+                    cerr << "Removed the application " << *it << endl;
+                    break;
+                }
             }
         }
     }

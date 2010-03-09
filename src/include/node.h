@@ -25,10 +25,10 @@ class Node
     /**
      * Get the client-state of this node.
      *
-     * @return a string representing the client state for this
-     * node.
      */
-    virtual std::string getClientState() = 0;
+    virtual void getClientState(int64_t *msecs,
+                                std::string *clientState,
+                                std::string *clentStateDesc) = 0;
     
     /**
      * Get the master-set state of this node.
@@ -39,10 +39,15 @@ class Node
     virtual int32_t getMasterSetState() = 0;
 
     /**
+     * Return the time at the master state was set.
+     */
+    virtual int64_t getMasterSetStateTime() = 0;
+
+    /**
      * Is this node connected?
      *
      * @param id if a valid pointer, the id is set if connected
-     * @param msecs if a valid pointer, the id is set if connected
+     * @param msecs if a valid pointer, of when connected
      * @return true if this node is connected.
      */
     virtual bool isConnected(std::string *id = NULL, 
@@ -54,21 +59,6 @@ class Node
      * @param force if true, replace the old one if it exists.
      */
     virtual bool initializeConnection(bool force = false) = 0;
-    
-    /**
-     * Return the time at the client state was set.
-     */
-    virtual int64_t getClientStateTime() = 0;
- 
-    /**
-     * Return the time at the master state was set.
-     */
-    virtual int64_t getMasterSetStateTime() = 0;
-
-    /**
-     * Return the time at the connection happened.
-     */
-    virtual int64_t getConnectionTime() = 0;
 
     /**
      * Is this node healthy?

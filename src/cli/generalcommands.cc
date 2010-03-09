@@ -291,10 +291,15 @@ GetAttributes::action()
     else if (dynamic_cast<Node *>(ntp) != NULL) {
         CliFormat::attributeOut("type", "Node");
         Node *node = dynamic_cast<Node *>(ntp);
-        CliFormat::attributeOut("client state", node->getClientState());
-        CliFormat::attributeOut("connected", node->isConnected());
-        CliFormat::attributeOut("connection time", 
-                                node->getConnectionTime());
+        int64_t connectionTime = -1, clientStateTime = -1;
+        string clientState, clientStateDesc;
+        node->getClientState(&clientStateTime, &clientState, &clientStateDesc);
+        CliFormat::attributeOut("client state time", clientStateTime);
+        CliFormat::attributeOut("client state", clientState);
+        CliFormat::attributeOut("client state desc", clientStateDesc);
+        CliFormat::attributeOut("connected", 
+                                node->isConnected(NULL, &connectionTime));
+        CliFormat::attributeOut("connection time", connectionTime);
         CliFormat::attributeOut("healthy", node->isHealthy());
         CliFormat::attributeOut("use process slot", 
                                 node->getUseProcessSlots());

@@ -38,6 +38,8 @@ class ClientImpl
     virtual void registerJSONRPCMethodHandler(
         Queue *recvQueue,
         Queue *completedQueue,
+        int32_t completedQueueMaxSize,
+        PropertyList *rpcMethodHandlerPropertyList,
         ::json::rpc::JSONRPCManager *rpcManager);
 
     virtual bool cancelJSONRPCMethodHandler();

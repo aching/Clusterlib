@@ -21,7 +21,7 @@ class Exception
     /**
      * Constructor.
      */
-    Exception(const std::string &msg) throw()
+    explicit Exception(const std::string &msg) throw()
         : clusterlib::Exception(msg),
           m_errorCode(0), 
           m_connected(true) {}
@@ -72,10 +72,11 @@ class InconsistentInternalStateException
     : public Exception
 {
   public:
-   /**
+    /**
     * Constructor.
     */
-    InconsistentInternalStateException(const std::string &msg) throw() 
+    explicit InconsistentInternalStateException(
+        const std::string &msg) throw() 
         : Exception(msg) {}
 };
 
@@ -89,7 +90,7 @@ class InvalidArgumentsException
    /**
      * Constructor.
      */
-    InvalidArgumentsException(const std::string &msg) throw() 
+    explicit InvalidArgumentsException(const std::string &msg) throw() 
         : Exception(msg) {}
 };
 
@@ -103,7 +104,7 @@ class InvalidMethodException
    /**
      * Constructor.
      */
-    InvalidMethodException(const std::string &msg) throw() 
+    explicit InvalidMethodException(const std::string &msg) throw() 
         : Exception(msg) {}
 };
 
@@ -117,7 +118,7 @@ class SystemFailureException
    /**
      * Constructor.
      */
-    SystemFailureException(const std::string &msg) throw() 
+    explicit SystemFailureException(const std::string &msg) throw() 
         : Exception(msg) {}
 };
 

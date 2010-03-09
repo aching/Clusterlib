@@ -20,6 +20,26 @@ namespace clusterlib
 class TimerService {
   public:
     /**
+     * Get the time in a human-readable format based on the msecs from
+     * the epoch.
+     *
+     * @param msecs the number of msecs from the epoch
+     * @return a human-readable string of the time
+     */
+    static std::string getMsecsTimeString(int64_t msecs)
+    {
+        time_t secsFromEpoch = msecs / 1000;
+        struct tm *timeInfo;
+        
+        timeInfo = localtime(&secsFromEpoch);
+        std::string ret(asctime(timeInfo));
+        if (!ret.empty()) {
+            ret.resize(ret.size() - 1);
+        }
+        return ret;
+    }
+
+    /**
      * Convenience function -- return the current time in msec
      * from the unix epoch.
      *

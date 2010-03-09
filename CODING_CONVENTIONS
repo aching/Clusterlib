@@ -252,3 +252,9 @@ them.  The unittests are in clusterlib/unittests.
 * Clusterlib locks shall not be used implicitly unless during a modify 
   operation.  Reads shall not acquire locks (this is up to the user) so that 
   clients (i.e. the CLI or the GUI) have the option of not using locks.
+
+- Explicit
+
+* All single argument constructors or constructory that have default
+  arguments such that it can be a single argument constructor must be
+  'explicit' to prevent implicit construction.

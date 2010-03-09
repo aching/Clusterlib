@@ -6,6 +6,8 @@ extern TestParams globalTestParams;
 using namespace std;
 using namespace clusterlib;
 
+const string appName = "unittests-endevent-app";
+
 class MyHealthChecker : public HealthChecker {
   public:
     MyHealthChecker() 
@@ -52,13 +54,13 @@ class ClusterlibEndEvent : public MPITestFixture {
 	_client = _factory->createClient();
 	MPI_CPPUNIT_ASSERT(_client != NULL);
         if (isMyRank(0)) {
-            _app = _client->getRoot()->getApplication("endevent-app");
+            _app = _client->getRoot()->getApplication(appName);
             if (_app != NULL) {
                 _app->remove(true);
             }
         }
         barrier(_factory, true);
-	_app = _client->getRoot()->getApplication("endevent-app", true);
+	_app = _client->getRoot()->getApplication(appName, true);
 	MPI_CPPUNIT_ASSERT(_app != NULL);
     }
 

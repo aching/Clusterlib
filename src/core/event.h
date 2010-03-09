@@ -345,7 +345,11 @@ class SynchronousEventAdapter
     void getNextEvent(E &e)
     {
         TRACE(EV_LOG, "getNextEvent");
-        getNextEventWaitMsecs(-1LL, e);
+
+        if (!getNextEventWaitMsecs(-1LL, e)) {
+            throw InconsistentInternalStateException(
+                "getNextEvent: getNextEventWaitMsecs cannot return false!");
+        }
     }
 
     /**

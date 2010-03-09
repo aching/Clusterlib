@@ -28,7 +28,8 @@ GenericRPC::getName()
 }
 
 bool
-GenericRPC::checkParams(const JSONValue::JSONArray &paramArr)
+GenericRPC::checkInitParams(const JSONValue::JSONArray &paramArr, 
+                            bool initialize)
 {
     try {
         if (paramArr.size() != 1) {
@@ -64,7 +65,7 @@ GenericRequest::sendRequest(const void *destination)
     else {
         /* Ready the response */
         stringstream idSs;
-        idSs << Factory::getHostnamePidTid() 
+        idSs << ProcessThreadService::getHostnamePidTid() 
              << m_client->fetchAndIncrRequestCounter();
         m_id = idSs.str();
         m_client->getOps()->getResponseSignalMap()->addRefPredMutexCond(m_id);

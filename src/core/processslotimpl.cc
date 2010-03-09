@@ -148,7 +148,7 @@ ProcessSlotImpl::startLocal()
     LOG_DEBUG(CL_LOG, 
               "startLocal: with path=%s, cmd=%s", 
               path.c_str(), cmd.c_str());
-    pid_t pid = forkExec(addEnv, path, cmd);
+    pid_t pid = ProcessThreadService::forkExec(addEnv, path, cmd);
     setRunningExecArgs(addEnv, path, cmd);
     releaseLock();
     if (pid == -1) {
@@ -742,90 +742,6 @@ ProcessSlotImpl::releaseReservationIfMatches(string reservationName)
 
     return ret;
 }
-
-pid_t 
-ProcessSlotImpl::forkExec(const vector<string> &addEnv, 
-                          const string &path, 
-                          const string &cmd)
-{
-    TRACE(CL_LOG, "forkExec");
-    
-
-    pid_t pid = fork();
-
-    /* I am the child */
-    if (pid == 0) {
-	int ret = -1;
-
-	/* Change path if specified */
-	if (path.size() != 0) {
-	    chdir(path.c_str());
-	}
-
-	/* Debugging */
-	LOG_DEBUG(CL_LOG, 
-                  "Child process (%d):\nrunning from PATH=%s\nCMD=%s\n"
-                  "added ENV:",
-                  pid,
-                  path.c_str(),
-                  cmd.c_str());
-	for (vector<string>::const_iterator it = addEnv.begin(); 
-	     it != addEnv.end();
-	     it++) {
-	    LOG_DEBUG(CL_LOG, "%s", it->c_str());
-	}
-	
-	/* Execute */
-	if (addEnv.size() != 0) {
-	    // Get the size of the current environment
-	    int envCount = 0;
-	    while (environ[envCount]) { 
-                envCount++;
-            }
-	    
-	    int newEnvCount = envCount + addEnv.size();
-	    /* One extra for the blank one */
-	    char **newEnvArr = new char *[newEnvCount + 1];
-	    for (int i = 0; i < newEnvCount; i++) {
-		if (i < envCount) {
-		    newEnvArr[i] = new char[strlen(environ[i]) + 1];
-		    strcpy(newEnvArr[i], environ[i]);
-		}
-		else {
-		    newEnvArr[i] = new char[addEnv[i - envCount].size()];
-		    strncpy(newEnvArr[i], addEnv[i - envCount].c_str(), 
-			    addEnv[i - envCount].size());
-		}
-	    }
-	    newEnvArr[newEnvCount] = NULL;
-	    ret = execle("/bin/sh", "/bin/sh", "-c", cmd.c_str(), NULL, 
-			 newEnvArr);
-	    for (int i = 0; i < newEnvCount; i++) {
-		delete newEnvArr[i];
-	    }
-	    delete newEnvArr;
-	}
-	else {
-	    ret = execl("/bin/sh", "/bin/sh", "-c", cmd.c_str(), NULL);
-	}
-	if (ret == -1) {
-            stringstream ss;
-            ss << "ForkExec: execl failed with error " << errno << " " 
-               << strerror(errno);
-            throw SystemFailureException(ss.str());
-	}
-    }
-    else { /* I am the parent */
-	if (pid == -1) {
-	    throw SystemFailureException("ForkExec: fork failed");
-	}
-
-	return pid;
-    }
-
-    return pid;
-}
-
 void
 ProcessSlotImpl::initializeCachedRepresentation()
 {

@@ -1,3 +1,4 @@
+#include "clusterlibinternal.h"
 #include <json.h>
 #include <sstream>
 #include <cstring>
@@ -9,29 +10,6 @@ using namespace boost;
 DEFINE_LOGGER(J_LOG, "json");
 
 namespace json {
-
-/*JSONException-----------------------------------------------------------------------------------*/
-
-    JSONException::JSONException(const string &message) {
-        this->message = message;
-    }
-
-    const char *JSONException::what() const throw() {
-        return message.c_str();
-    }
-
-    JSONException::~JSONException() throw() {
-    }
-
-/*JSONParseException------------------------------------------------------------------------------*/
-
-    JSONParseException::JSONParseException(const string &message) : JSONException(message) {
-    }
-
-/*JSONValueException------------------------------------------------------------------------------*/
-
-    JSONValueException::JSONValueException(const string &message) : JSONException(message) {
-    }
 
 /*JSONValue::JSONNull----------------------------------------------------------------------------*/
 

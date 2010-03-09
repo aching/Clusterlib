@@ -23,11 +23,9 @@ class NodeImpl
       public virtual NotifyableImpl
 {
   public:
-    virtual std::string getClientState() 
-    {
-        Locker l1(getStateMutex());
-        return m_clientState; 
-    }
+    virtual void getClientState(int64_t *msecs,
+                                std::string *clientState,
+                                std::string *clientStateDesc);
 
     virtual int32_t getMasterSetState() 
     {
@@ -108,13 +106,22 @@ class NodeImpl
     virtual void removeRepositoryEntries();
 
     /**
-     * Set the client state and set time associated with this node.
+     * Set the client state, client state description, and set time
+     * associated with this node.
+     *
+     * @param msecs the msecs since the epoch when the state was last reported
+     * @param clientState the current state of the node (defined in class
+     *        HealthReport)
+     * @param clientStateDesc the human readable state of the node
      */
-    void setClientStateAndTime(std::string ns, int64_t t) 
+    void setClientState(int64_t msecs, 
+                        std::string clientState, 
+                        std::string clientStateDesc) 
     {
         Locker l1(getStateMutex());
-        m_clientState = ns; 
-        m_clientStateTime = t; 
+        m_clientStateTime = msecs;
+        m_clientState = clientState; 
+        m_clientStateDesc = clientStateDesc;
     }
 
     /*
@@ -183,6 +190,7 @@ class NodeImpl
      * The client state associated with this node.
      */
     std::string m_clientState;
+    std::string m_clientStateDesc;
     int64_t m_clientStateTime;
 
     /*

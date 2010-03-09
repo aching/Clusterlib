@@ -24,7 +24,8 @@ class GenericRPC : public virtual ::json::rpc::JSONRPC {
      * @param paramArr the JSONArray of parameters
      * @return true if passes, false if fails
      */
-    virtual bool checkParams(const ::json::JSONValue::JSONArray &paramArr);
+    virtual bool checkInitParams(const ::json::JSONValue::JSONArray &paramArr,
+                                 bool initialize);
 };
 
 /**

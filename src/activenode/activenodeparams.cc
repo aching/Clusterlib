@@ -4,6 +4,8 @@
 using namespace std;
 using namespace boost;
 
+namespace activenode {
+
 void 
 ActiveNodeParams::printUsage(char *exec) const
 {
@@ -107,3 +109,4 @@ ActiveNodeParams::parseArgs(int argc, char **argv)
     }
 }
 
+}

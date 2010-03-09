@@ -5,6 +5,8 @@ extern TestParams globalTestParams;
 
 using namespace std;
 
+const string appName = "unittests-client-app";
+
 /*
  * Forward decl needed for the timer & user
  * event handlers.
@@ -102,7 +104,7 @@ class ClusterlibClient
          * Create applications with different names and
          * observe allowed creation and exceptions.
          */
-        _app0 = _client0->getRoot()->getApplication("foo-app", true);
+        _app0 = _client0->getRoot()->getApplication(appName, true);
         MPI_CPPUNIT_ASSERT(_app0 != NULL);
         /* Should not exist, didn't try to create, so return NULL */
         _app0 = _client0->getRoot()->getApplication("", false);

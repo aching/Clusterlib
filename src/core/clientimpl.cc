@@ -355,6 +355,8 @@ void
 ClientImpl::registerJSONRPCMethodHandler(
         Queue *recvQueue,
         Queue *completedQueue,
+        int32_t completedQueueMaxSize,
+        PropertyList *rpcMethodHandlerPropertyList,
         ::json::rpc::JSONRPCManager *rpcManager)
 {
     TRACE(CL_LOG, "registerJSONRPCMethodHandler");
@@ -366,6 +368,8 @@ ClientImpl::registerJSONRPCMethodHandler(
     m_jsonRPCMethodHandler = new JSONRPCMethodHandler(
         recvQueue,
         completedQueue,
+        completedQueueMaxSize,
+        rpcMethodHandlerPropertyList,
         getRoot(),
         rpcManager);
 

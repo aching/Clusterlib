@@ -6,6 +6,8 @@ extern TestParams globalTestParams;
 using namespace std;
 using namespace clusterlib;
 
+const string appName = "unittests-timer-app";
+
 /*
  * Helper class that counts how many times a timer fired.
  */
@@ -95,7 +97,7 @@ class ClusterlibTimer
         MPI_CPPUNIT_ASSERT(_zk != NULL);
 	_client0 = _factory->createClient();
 	MPI_CPPUNIT_ASSERT(_client0 != NULL);
-        _app0 = _client0->getRoot()->getApplication("foo-app", true);
+        _app0 = _client0->getRoot()->getApplication(appName, true);
         MPI_CPPUNIT_ASSERT(_app0 != NULL);
         _grp0 = _app0->getGroup("bar-group", true);
         MPI_CPPUNIT_ASSERT(_grp0 != NULL);

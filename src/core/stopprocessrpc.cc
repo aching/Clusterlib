@@ -28,7 +28,8 @@ StopProcessRPC::getName()
 }
 
 bool
-StopProcessRPC::checkParams(const JSONValue::JSONArray &paramArr)
+StopProcessRPC::checkInitParams(const JSONValue::JSONArray &paramArr,
+                                bool initialize)
 {
     try {
         if (paramArr.size() != 1) {

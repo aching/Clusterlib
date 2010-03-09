@@ -7,7 +7,7 @@ extern TestParams globalTestParams;
 using namespace std;
 using namespace clusterlib;
 
-const string appName = "lock-app";
+const string appName = "unittests-lock-app";
 const string groupName = "lock-group";
 
 class ClusterlibLock : public MPITestFixture {

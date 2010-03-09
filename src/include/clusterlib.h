@@ -25,10 +25,12 @@
 #include "forwarddecls.h"
 
 #include "clusterlibexceptions.h"
+#include "jsonexceptions.h"
 #include "blockingqueue.h"
 #include "mutex.h"
 #include "thread.h"
 #include "timerservice.h"
+#include "processthreadservice.h"
 #include "healthchecker.h"
 
 #include "json.h"

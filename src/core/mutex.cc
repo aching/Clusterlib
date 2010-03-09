@@ -48,7 +48,7 @@ Cond::waitUsecs(Mutex &mutex, int64_t usecTimeout)
     int64_t usecs = now.tv_sec * 1000000LL + now.tv_usec;
     usecs += usecTimeout;
     abstime.tv_sec = usecs / 1000000LL;
-    abstime.tv_nsec = usecs % 1000000LL;
+    abstime.tv_nsec = (usecs % 1000000LL) * 1000;
     if (pthread_cond_timedwait(&m_cond, &mutex.mutex, &abstime) == 
         ETIMEDOUT)
     {
@@ -158,4 +158,12 @@ PredMutexCond::predWaitUsecs(int64_t usecTimeout)
     return true;
 }
 
-};
+bool
+PredMutexCond::predWaitMsecs(int64_t msecTimeout)
+{
+    TRACE(CL_LOG, "predWaitMsecs");
+
+    return predWaitUsecs(msecTimeout * 1000);
+}
+
+}

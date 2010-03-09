@@ -4,11 +4,17 @@
 @SOURCE_PATH@/src/cli	         		/include
 - *.h
 
+@SOURCE_PATH@/src/activenode        		/include
+- *.h
+
 @BUILD_PATH@/src/core				/lib
 - libcluster.a
 
 @BUILD_PATH@/src/cli				/lib
 - libcli.a
+
+@BUILD_PATH@/src/activenode			/lib
+- libactivenode.a
 
 @BUILD_PATH@/src/cli				/bin
 - cli

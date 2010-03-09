@@ -39,7 +39,7 @@ ClusterlibRPCRequest::prepareRequest(const JSONValue::JSONArray &paramArr)
 {
     TRACE(CL_LOG, "prepareRequest");
 
-    if (!checkParams(paramArr)) {
+    if (!checkInitParams(paramArr, false)) {
         LOG_ERROR(CL_LOG, "prepareRequest: checkParams failed");
         throw JSONRPCInvocationException("prepareRequest: checkParams failed");
     }
@@ -66,7 +66,7 @@ ClusterlibRPCRequest::sendRequest(const void *destination)
     else {
         /* Ready the response */
         stringstream idSs;
-        idSs << Factory::getHostnamePidTid() 
+        idSs << ProcessThreadService::getHostnamePidTid() 
              << m_client->fetchAndIncrRequestCounter();
         m_id = idSs.str();
         m_client->getOps()->getResponseSignalMap()->addRefPredMutexCond(m_id);

@@ -97,7 +97,7 @@ QueueImpl::takeWaitMsecs(int64_t msecTimeout,
     int64_t curUsecTimeout = 0;
     int64_t maxUsecs = 0;
     if (msecTimeout != 0) {
-        maxUsecs = TimerService::getCurrentTimeUsecs() + msecTimeout * 1000;
+        maxUsecs = TimerService::getCurrentTimeUsecs() + (msecTimeout * 1000);
     }
     
     /*

@@ -8,7 +8,7 @@ extern TestParams globalTestParams;
 using namespace clusterlib;
 using namespace std;
 
-const string appName = "queue-app";
+const string appName = "unittests-queue-app";
 
 class ClusterlibQueue : public MPITestFixture {
     CPPUNIT_TEST_SUITE(ClusterlibQueue);

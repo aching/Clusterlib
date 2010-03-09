@@ -22,7 +22,8 @@ MethodAdaptor::getName()
 }
 
 bool
-MethodAdaptor::checkParams(const JSONValue::JSONArray &paramArr)
+MethodAdaptor::checkInitParams(const JSONValue::JSONArray &paramArr,
+                               bool initialize)
 {
     try {
         string encodedString = JSONCodec::encode(paramArr);
@@ -450,17 +451,29 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableAttributesFromKey(
         }
         else if (dynamic_cast<Node *>(notifyable)) {
             Node *node = dynamic_cast<Node *>(notifyable);
-            attributes[idNodeState] = node->getClientState();
-            attributes[idNodeStateSetTime] = node->getClientStateTime();
+            int64_t clientStateTime = -1;
+            string clientState, clientStateDesc;
+            stringstream timeSs;
+            node->getClientState(&clientStateTime,
+                                 &clientState, 
+                                 &clientStateDesc);
+            timeSs << clientStateTime << " (" 
+                   << TimerService::getMsecsTimeString(clientStateTime) 
+                   << ")";
+            attributes[idNodeStateSetTime] = timeSs.str();
+            attributes[idNodeState] = clientState;
+            attributes[idNodeStateDesc] = clientStateDesc;
             string connectedId;
             int64_t connectionTime = -1;
             bool connected = node->isConnected(&connectedId, &connectionTime);
             attributes[idNodeConnected] = connected ? "true" : "false";
             if (connected) {
-                cerr << "connectedid=" << connectedId << ",connectiontime="
-                     << connectionTime << endl;
+                timeSs.str("");
+                timeSs << connectionTime << " (" 
+                       << TimerService::getMsecsTimeString(connectionTime) 
+                       << ")";
                 attributes[idNodeConnectedId] = connectedId;
-                attributes[idNodeConnectedTime] = connectionTime;
+                attributes[idNodeConnectedTime] = timeSs.str();
             }
             attributes[idNodeHealth] = 
                 node->isHealthy() ? "healthy" : "unhealthy";
@@ -498,7 +511,9 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableAttributesFromKey(
             attributes[idProcessSlotCurrentProcessState] = 
                 ProcessSlot::getProcessStateAsString(
                     processSlot->getCurrentProcessState());
-            
+            attributes[idProcessSlotReservationName] = 
+                processSlot->getReservationName();
+
             attributes[idPropertyListSummary] = 
                 getPropertyListStatus(childObj["propertyLists"].
                                       get<JSONValue::JSONArray>()); 
@@ -1250,15 +1265,22 @@ JSONValue::JSONObject MethodAdaptor::getNode(
     const JSONValue::JSONObject &name) {
     try {
         Node *node = dynamic_cast<Node*>(getNotifyable(name, idTypeNode));
-            
+        int64_t clientStateTime = -1;
+        string clientState, clientStateDesc;
+        node->getClientState(&clientStateTime,
+                             &clientState, 
+                             &clientStateDesc);
+        string connectedId;
+        int64_t connectionTime = -1;
+        bool connected = node->isConnected(&connectedId, &connectionTime);
         JSONValue::JSONObject result;
         result["isHealthy"] = node->isHealthy();
-        result["isConnected"] = node->isConnected();
-        result["lastStateTime"] = node->getClientStateTime();
+        result["isConnected"] = connected;
+        result["lastStateTime"] = clientStateTime;
         result["lastMasterStateTime"] = node->getMasterSetStateTime();
-        result["lastConnectionTime"] = node->getConnectionTime();
+        result["lastConnectionTime"] = connectionTime;
         result["masterState"] = node->getMasterSetState();
-        result["state"] = node->getClientState();
+        result["state"] = clientState;
         result["parent"] = getNotifyableId(node->getMyParent());
         result["status"] = getOneNodeStatus(node);
         result["properties"] = getPropertyList(node->getPropertyList());
@@ -1580,11 +1602,7 @@ JSONValue::JSONArray MethodAdaptor::getApplicationStatus(
                 getOneApplicationStatus(
                     dynamic_cast<Application*>(
                         getNotifyable(id, idTypeApplication))));
-        } catch (const JSONValueException &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
         } catch (const ::clusterlib::Exception &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
-        } catch (const JSONRPCInvocationException &ex) {
             LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
         }
     }
@@ -1603,11 +1621,7 @@ JSONValue::JSONArray MethodAdaptor::getNodeStatus(
             status.push_back(
                 getOneNodeStatus(dynamic_cast<Node*>(
                                      getNotifyable(id, idTypeNode))));
-        } catch (const JSONValueException &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
         } catch (const ::clusterlib::Exception &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
-        } catch (const JSONRPCInvocationException &ex) {
             LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
         }
     }
@@ -1627,11 +1641,7 @@ JSONValue::JSONArray MethodAdaptor::getProcessSlotStatus(
                 getOneProcessSlotStatus(
                     dynamic_cast<ProcessSlot*>(
                         getNotifyable(id, idTypeProcessSlot))));
-        } catch (const JSONValueException &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
         } catch (const ::clusterlib::Exception &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
-        } catch (const JSONRPCInvocationException &ex) {
             LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
         }
     }
@@ -1650,11 +1660,7 @@ JSONValue::JSONArray MethodAdaptor::getGroupStatus(
             status.push_back(
                 getOneGroupStatus(dynamic_cast<Group*>(
                                       getNotifyable(id, idTypeGroup))));
-        } catch (const JSONValueException &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
         } catch (const ::clusterlib::Exception &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
-        } catch (const JSONRPCInvocationException &ex) {
             LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
         }
     }
@@ -1674,11 +1680,7 @@ JSONValue::JSONArray MethodAdaptor::getDataDistributionStatus(
                 getOneDataDistributionStatus(
                     dynamic_cast<DataDistribution*>(
                         getNotifyable(id, idTypeDataDistribution))));
-        } catch (const JSONValueException &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
         } catch (const ::clusterlib::Exception &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
-        } catch (const JSONRPCInvocationException &ex) {
             LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
         }
     }
@@ -1698,11 +1700,7 @@ JSONValue::JSONArray MethodAdaptor::getPropertyListStatus(
                 getOnePropertyListStatus(
                     dynamic_cast<PropertyList*>(
                         getNotifyable(id, idTypePropertyList))));
-        } catch (const JSONValueException &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
         } catch (const ::clusterlib::Exception &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
-        } catch (const JSONRPCInvocationException &ex) {
             LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
         }
     }
@@ -1722,11 +1720,7 @@ JSONValue::JSONArray MethodAdaptor::getQueueStatus(
                 getOneQueueStatus(
                     dynamic_cast<Queue*>(
                         getNotifyable(id, idTypeQueue))));
-        } catch (const JSONValueException &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
         } catch (const ::clusterlib::Exception &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
-        } catch (const JSONRPCInvocationException &ex) {
             LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
         }
     }
@@ -1742,11 +1736,7 @@ JSONValue::JSONArray MethodAdaptor::getShardStatus(
          it++) {
         try {
             status.push_back(getOneShardStatus(*it));
-        } catch (const JSONValueException &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid shard (" << ex.what() << ")");
         } catch (const ::clusterlib::Exception &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid shard (" << ex.what() << ")");
-        } catch (const JSONRPCInvocationException &ex) {
             LOG4CXX_WARN(m_logger, "Invalid shard (" << ex.what() << ")");
         }
     }

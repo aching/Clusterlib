@@ -35,7 +35,8 @@ class StartProcessRPC : public virtual ::json::rpc::JSONRPC {
      * @param paramArr an array with one element (the map of key-value pairs)
      * @return true if sucess, false if failure
      */    
-    virtual bool checkParams(const ::json::JSONValue::JSONArray &paramArr);
+    virtual bool checkInitParams(const ::json::JSONValue::JSONArray &paramArr,
+                                 bool initialize);
 };
 
 /**

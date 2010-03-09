@@ -14,7 +14,8 @@ class MockMethod : public JSONRPCMethod {
         return "MockMethod"; 
     }
     
-    virtual bool checkParams(const ::json::JSONValue::JSONArray &paramArr)
+    virtual bool checkInitParams(const ::json::JSONValue::JSONArray &paramArr,
+                                 bool initialize)
     {
         try {
             string encodedString = JSONCodec::encode(paramArr);
@@ -43,7 +44,8 @@ class MockErrorMethod : public JSONRPCMethod {
         return "MockErrorMethod"; 
     }
     
-    virtual bool checkParams(const ::json::JSONValue::JSONArray &paramArr)
+    virtual bool checkInitParams(const ::json::JSONValue::JSONArray &paramArr,
+                                 bool initialize)
     {
         try {
             string encodedString = JSONCodec::encode(paramArr);

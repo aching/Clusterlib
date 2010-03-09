@@ -68,7 +68,9 @@ JSONRPCMethodHandler::handleUserEvent(Event e)
               m_completedQueue->getKey().c_str());
     m_rpcManager->invokeAndResp(request,
                                 m_root,
-                                m_completedQueue);
+                                m_completedQueue,
+                                m_completedQueueMaxSize,
+                                m_methodStatusPropertyList);
 }
 
 }

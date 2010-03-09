@@ -46,13 +46,35 @@ namespace clusterlib
     LOG_DEBUG(CL_LOG, "...disarming the bomb");  \
 }
 
+void
+NodeImpl::getClientState(int64_t *msecs,
+                         std::string *clientState,
+                         std::string *clientStateDesc)
+{
+    TRACE(CL_LOG, "getClientState");
+
+    Locker l1(getStateMutex());
+    if (msecs != NULL) {
+        *msecs = m_clientStateTime;
+    }
+    if (clientState != NULL) {
+        *clientState = m_clientState;
+    }
+    if (clientStateDesc != NULL) {
+        *clientStateDesc = m_clientStateDesc;
+    }
+}
+
 bool
 NodeImpl::isConnected(string *id, int64_t *msecs) 
 {
     TRACE(CL_LOG, "isConnected");
 
     Locker l(getStateMutex());
-    LOG_DEBUG(CL_LOG, "isConnected: id=%s,msecs=%Ld", m_connectedId.c_str(), m_connectionTime);
+    LOG_DEBUG(CL_LOG, 
+              "isConnected: id=%s,msecs=%Ld", 
+              m_connectedId.c_str(), 
+              m_connectionTime);
     if (m_connected) {
         if (id) {
             *id = m_connectedId;
@@ -73,11 +95,12 @@ NodeImpl::initializeConnection(bool force)
     if (force) {
         getOps()->removeConnected(getKey());
     }
-    bool ret = getOps()->createConnected(getKey(), 
-                                         Factory::getHostnamePidTid());
+    bool ret = getOps()->createConnected(
+        getKey(), 
+        ProcessThreadService::getHostnamePidTid());
     if (ret) {
         m_connected = true;
-        m_connectedId = Factory::getHostnamePidTid();
+        m_connectedId = ProcessThreadService::getHostnamePidTid();
     }
 
     return ret;
@@ -100,12 +123,12 @@ NodeImpl::registerHealthChecker(HealthChecker *healthChecker)
             "registerHealthChecker: Must be connected to this node prior "
             "to registering a health checker!");
     }
-    if (m_connectedId != Factory::getHostnamePidTid()) {
+    if (m_connectedId != ProcessThreadService::getHostnamePidTid()) {
             throw AlreadyConnectedException(
                 getKey() +
                 ": registerHealthChecker: Node already connected for thread " +
                 m_connectedId + " cannot connect with " +
-                Factory::getHostnamePidTid());
+                ProcessThreadService::getHostnamePidTid());
     }
 
     if (healthChecker == NULL) {
@@ -332,10 +355,10 @@ NodeImpl::doHealthChecks(void *param)
     /*
      * Initialize these to the starting values.
      */
-    int64_t lastPeriod = mp_healthChecker->getMsecsPerCheckIfHealthy();
-    int64_t curPeriod = mp_healthChecker->getMsecsPerCheckIfUnhealthy();
+    int64_t lastPeriodMsecs = mp_healthChecker->getMsecsPerCheckIfHealthy();
+    int64_t curPeriodMsecs = mp_healthChecker->getMsecsPerCheckIfUnhealthy();
 
-    if ((lastPeriod <= 0) || (curPeriod <= 0)) {
+    if ((lastPeriodMsecs <= 0) || (curPeriodMsecs <= 0)) {
         throw InvalidMethodException(
             "doHealthChecks: Impossible <= 0 healthy or unhealthy period");
     }
@@ -376,34 +399,44 @@ NodeImpl::doHealthChecks(void *param)
         }
             
         /*
-         * Set the health in the repository
+         * Set the health in the repository as a JSON array.  The
+         * first element is the time, the second is the state, and the
+         * third is the state description.
          */
-        string value =
+        string state =
             (report.getHealthState() == HealthReport::HS_HEALTHY)
             ? ClusterlibStrings::HEALTHY
-            : ClusterlibStrings::UNHEALTHY; 
-        getOps()->updateNodeClientState(getKey(), value);
-        getOps()->updateNodeClientStateDesc(getKey(), 
-                                            report.getStateDescription());
+            : ClusterlibStrings::UNHEALTHY;
+        JSONValue::JSONArray clientStateJsonArr;
+        JSONValue::JSONInteger curMsecsJsonInt(
+            TimerService::getCurrentTimeMsecs());
+        clientStateJsonArr.push_back(curMsecsJsonInt);
+        clientStateJsonArr.push_back(state);
+        clientStateJsonArr.push_back(report.getStateDescription());
+        string encodedClientStateJsonArr = 
+            JSONCodec::encode(clientStateJsonArr);
+        getOps()->updateNodeClientState(getKey(), encodedClientStateJsonArr);
+//        getOps()->updateNodeClientStateDesc(getKey(), 
+//                                            report.getStateDescription());
         
         /*
          * Decide whether to use the CLUSTER_HEARTBEAT_HEALTHY or
          * CLUSTER_HEARTBEAT_UNHEALTHY heartbeat frequency.
          */
-        lastPeriod = curPeriod;
+        lastPeriodMsecs = curPeriodMsecs;
         if (report.getHealthState() == HealthReport::HS_HEALTHY) {
-            curPeriod = mp_healthChecker->getMsecsPerCheckIfHealthy();
+            curPeriodMsecs = mp_healthChecker->getMsecsPerCheckIfHealthy();
         }
         else {
-            curPeriod = mp_healthChecker->getMsecsPerCheckIfUnhealthy();
+            curPeriodMsecs = mp_healthChecker->getMsecsPerCheckIfUnhealthy();
         }
 
         getHealthMutex()->acquire();
         LOG_DEBUG(CL_LOG,
                   "About to wait %lld msec before next health check...",
-                  curPeriod);
-        getHealthCond()->waitUsecs(*getHealthMutex(), 
-                                   static_cast<uint64_t>(curPeriod) * 1000);
+                  curPeriodMsecs);
+        getHealthCond()->waitMsecs(*getHealthMutex(), 
+                                   static_cast<uint64_t>(curPeriodMsecs));
         LOG_DEBUG(CL_LOG, "...awoken!");
 
         getHealthMutex()->release();
@@ -454,8 +487,10 @@ NodeImpl::initializeCachedRepresentation()
     if (connected) {
         setConnectedAndTime(connected, connectedId, connectionTime);
     }
-    m_clientState = getOps()->getNodeClientState(
-        getKey());
+    getOps()->getNodeClientState(getKey(), 
+                                 m_clientStateTime,
+                                 m_clientState,
+                                 m_clientStateDesc);
     m_masterSetState = getOps()->getNodeMasterSetState(
         getKey());
 }

@@ -34,18 +34,16 @@ unittests_SOURCES = \
 	clusterlibprocessslot.cc \
 	clusterlibintervaltree.cc \
 	clusterlibendevent.cc \
-	clusterlibcache.cc \
 	clusterlibclient.cc \
 	clusterlibpropertylist.cc \
-	clusterlibremove.cc \
 	clusterlibuserevents.cc \
 	clusterlibnotifyablekeymanipulator.cc \
 	clusterlibdatadistribution.cc \
 	clusterlibleader.cc \
 	clusterlibtimer.cc \
 	clusterlibhealthcheck.cc \
-	clusterlibreleaseref.cc
-
+	clusterlibreleaseref.cc \
+	clusterlibremove.cc
 CXXFLAGS = @BASE_CXXFLAGS@ -DMPICH_IGNORE_CXX_SEEK 
 
 @makefile_inc@

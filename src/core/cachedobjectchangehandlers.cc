@@ -1062,26 +1062,35 @@ CachedObjectChangeHandlers::handleClientStateChange(NotifyableImpl *ntp,
     /*
      * Get the current client state and re-establish watch.
      */
-    string ns = getOps()->getNodeClientState(np->getKey());
+    int64_t msecs;
+    string clientState, clientStateDesc;
+    getOps()->getNodeClientState(np->getKey(), 
+                                 msecs, 
+                                 clientState, 
+                                 clientStateDesc);
 
     LOG_DEBUG(CL_LOG,
               "handleClientStateChange: %s on notifyable: (%s) with key (%s)"
-              " with new client state (%s)",
+              " with new client state (%lld, %s, %s)",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
               ntp->getKey().c_str(),
               key.c_str(),
-              ns.c_str());
+              msecs,
+              clientState.c_str(),
+              clientStateDesc.c_str());
+
+    np->setClientState(msecs, clientState, clientStateDesc);
 
     /*
      * Update the cache and cause a user-level event if
      * the new value is different from the currently
      * cached value.
      */
-    if (ns == np->getClientState()) {
+    string curClientState;
+    np->getClientState(NULL, &curClientState, NULL);
+    if (clientState == curClientState) {
         return EN_NOEVENT;
     }
-
-    np->setClientStateAndTime(ns, TimerService::getCurrentTimeMsecs());
 
     return EN_CLIENTSTATECHANGE;
 }

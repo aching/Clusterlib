@@ -25,63 +25,6 @@
  */
 namespace json 
 {
-
-/**
- * Defines the base exception class of all JSON errors.
- */
-class JSONException : public virtual std::exception {
-  public:
-    /**
-     * Creates an instance of JSONException with error message.
-     *
-     * @param message the error message.
-     */
-    explicit JSONException(const std::string &message);
-
-    /**
-     * Gets the error message of this exception.
-     *
-     * @return the error message.
-     */
-    virtual const char *what() const throw();
-
-    /**
-     * Destroys the instance of JSONException.
-     */
-    virtual ~JSONException() throw();
-  private:
-    /**
-     * Represents the error message.
-     */
-    std::string message;
-};
-
-/**
- * Defines the exception of a JSON parsing error.
- */
- class JSONParseException : public virtual JSONException {
-   public:
-     /**
-      * Creates an instance of JSONParseException with error message.
-      *
-      * @param message the error message.
-      */
-     explicit JSONParseException(const std::string &message);
- };
- 
- /**
-  * Defines the exception of a JSON value error. For example, the
-  * value is not compatible with its type.
-  */
- class JSONValueException : public virtual JSONException {
-    public:
-        /**
-         * Creates an instance of JSONParseException with error message.
-         *
-         * @param message the error message.
-         */
-     explicit JSONValueException(const std::string &message);
- };
     
 /**
  * Defines the value in JSON. The value can be a number (integer

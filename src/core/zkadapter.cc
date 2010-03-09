@@ -281,7 +281,10 @@ void ZooKeeperAdapter::throwErrorCode(const string &msg,
             errorCodeMsg.append(" (ZBADVERSION)");
             throw BadVersionException(errorCodeMsg, errorCode, connected);
         case ZBADARGUMENTS:
-            errorCodeMsg.append(" (ZBADVERSION)");
+            errorCodeMsg.append(" (ZBADARGUMENTS)");
+            break;
+        case ZMARSHALLINGERROR:
+            errorCodeMsg.append(" (ZMARSHALLINGERROR)");
             break;
         default:
             errorCodeMsg.append(" (unknown)");

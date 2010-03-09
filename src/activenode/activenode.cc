@@ -1,7 +1,7 @@
 /*
  * activenode.cc --
  *
- * Implementation of the activenode process
+ * Implementation of the activenode object.
  *
  * ============================================================================
  * $Header$
@@ -15,19 +15,20 @@
 #include <sys/wait.h>
 #include "clusterlibinternal.h"
 #include "activenodeparams.h"
-
-#define LOG_LEVEL LOG_WARN
-#define MODULE_NAME "ClusterLib"
+#include "activenode.h"
 
 using namespace std;
 using namespace clusterlib;
 using namespace json;
 using namespace json::rpc;
 
+namespace activenode {
+
 static const size_t hostnameSize = 255;
-/* Wait 2 seconds for a queue element */
-static const uint64_t commandQueueTimeOut = 2000;
-volatile bool shutdown = false;
+/** 
+ * Wait 1 seconds for a queue element 
+ */
+static const uint64_t commandQueueTimeOut = 1000;
 
 /**
  * Start/stop process handler 
@@ -118,36 +119,23 @@ class NodeHealthChecker : public HealthChecker {
     Node *m_node;
 };
 
-int main(int argc, char* argv[]) 
+ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
+    : m_params(params), 
+      m_factory(factory) 
 {
-    ActiveNodeParams params;
-    params.parseArgs(argc, argv);
 
-    auto_ptr<JSONRPCManager> rpcManager(new JSONRPCManager());
-    auto_ptr<Factory> factory(new Factory(params.getZkServerPortList()));
-    Client *client = factory->createClient();
-    Root *root = client->getRoot();
-
-    /* Create and register available methods. */
-    auto_ptr<StartProcessMethod> startProcessMethod(
-        new StartProcessMethod(client));
-    rpcManager->registerMethod(startProcessMethod->getName(),
-                               startProcessMethod.get());
-    auto_ptr<StopProcessMethod> stopProcessMethod(
-        new StopProcessMethod(client));
-    rpcManager->registerMethod(stopProcessMethod->getName(),
-                               stopProcessMethod.get());
-
-    vector<string> groupVec = params.getGroupsVec();
+    vector<string> groupVec = m_params.getGroupsVec();
     if (groupVec.size() <= 0) {
         LOG_FATAL(CL_LOG, "No groups found in the group vector");
-        return -1;
+        return;
     }
 
     /* Go to the group to add the node */
-    Group *group = root->getApplication(groupVec[0], true);
-    for (size_t i = 1; i < params.getGroupsVec().size(); i++) {
-        group = group->getGroup(groupVec[i], true);
+    m_client = m_factory->createClient();
+    Root *root = m_client->getRoot();
+    m_activeNodeGroup = root->getApplication(groupVec[0], true);
+    for (size_t i = 1; i < m_params.getGroupsVec().size(); i++) {
+        m_activeNodeGroup = m_activeNodeGroup->getGroup(groupVec[i], true);
     }
 
     struct utsname uts;
@@ -155,70 +143,94 @@ int main(int argc, char* argv[])
     if (ret == -1) {
         LOG_FATAL(CL_LOG, "Couldn't get hostname: %s",
                   strerror(errno));
-        return -1;
     }
     string hostnameString(uts.nodename);
 
     /* Setup all the event handlers to start processes or shutdown and
      * activate the node */
     Mutex activeNodeMutex;
-    Node *activeNode = group->getNode(hostnameString, true);
-    activeNode->initializeConnection(true);
-    NodeHealthChecker nodeHealthChecker(activeNode);
-    activeNode->registerHealthChecker(&nodeHealthChecker);
+    m_activeNode = m_activeNodeGroup->getNode(hostnameString, true);
+    m_activeNodePropertyList = m_activeNode->getPropertyList(
+        ClusterlibStrings::DEFAULTPROPERTYLIST, true);
+    m_activeNode->initializeConnection(true);
+    NodeHealthChecker nodeHealthChecker(m_activeNode);
+    m_activeNode->registerHealthChecker(&nodeHealthChecker);
     
     /* Get rid of all the previous processes */
-    NameList nl = activeNode->getProcessSlotNames();
+    NameList nl = m_activeNode->getProcessSlotNames();
     ProcessSlot *processSlot = NULL;
     for (size_t i = 0; i < nl.size(); i++) {
-        processSlot =  activeNode->getProcessSlot(nl[i]);
+        processSlot =  m_activeNode->getProcessSlot(nl[i]);
         if (processSlot != NULL) {
             processSlot->remove();
         }
     }
-    activeNode->setMaxProcessSlots(params.getNumProcs());
+    m_activeNode->setMaxProcessSlots(m_params.getNumProcs());
 
-    vector<UserEventHandler *> handlerVec;
     stringstream ss;
-    for (int32_t i = 0; i < params.getNumProcs(); i++) {
+    for (int32_t i = 0; i < m_params.getNumProcs(); i++) {
         ss.str("");
         ss << "slot_" << i;
-        processSlot = activeNode->getProcessSlot(ss.str(), true);
+        processSlot = m_activeNode->getProcessSlot(ss.str(), true);
         UserEventHandler *handler = new ProcessHandler(
             processSlot, 
             EN_PROCESSSLOTDESIREDSTATECHANGE, 
             NULL, 
             &activeNodeMutex);
-        handlerVec.push_back(handler);
+        m_handlerVec.push_back(handler);
         /* Start the handler */
         processSlot->getDesiredProcessState();
-        client->registerHandler(handler);
+        m_client->registerHandler(handler);
     }
 
     /* Setup the receiving queue and associated handler */
-    Queue *recvQueue =
-        activeNode->getQueue(ClusterlibStrings::DEFAULT_RECV_QUEUE, 
+     m_recvQueue =
+        m_activeNode->getQueue(ClusterlibStrings::DEFAULT_RECV_QUEUE, 
                              true);
-    Queue *completedQueue =
-        activeNode->getQueue(ClusterlibStrings::DEFAULT_COMPLETED_QUEUE, 
-                             true);
-    factory->createJSONRPCMethodClient(recvQueue,
-                                       completedQueue,
-                                       rpcManager.get());
-    activeNode->setUseProcessSlots(true);
+     m_completedQueue =
+        m_activeNode->getQueue(ClusterlibStrings::DEFAULT_COMPLETED_QUEUE, 
+                             true);    
+}
+
+Node *
+ActiveNode::getActiveNode()
+{
+    TRACE(CL_LOG, "getActiveNode");
+    
+    return m_activeNode;
+}
+
+int32_t 
+ActiveNode::run(vector<JSONRPCManager *> &rpcManagerVec)
+{
+    TRACE(CL_LOG, "run");
+    /* Setup a RPC method client for each rpcManager */
+    vector<JSONRPCManager *>::const_iterator rpcManagerVecIt;
+    for (rpcManagerVecIt = rpcManagerVec.begin(); 
+         rpcManagerVecIt != rpcManagerVec.end(); 
+         ++rpcManagerVecIt) {
+        m_factory->createJSONRPCMethodClient(m_recvQueue,
+                                             m_completedQueue,
+                                             m_completedQueueSize,
+                                             m_activeNodePropertyList,
+                                             *rpcManagerVecIt);
+    }
+    m_activeNode->setUseProcessSlots(true);
 
     /* Check if process clean up is needed every so many seconds and
      * update process state. */
     int stat_loc;
     pid_t pid = -1;
     ProcessSlotImpl *processSlotImpl = NULL;
-    while (shutdown == false) {
+    bool shutdown = false;
+    NameList nl;
+    do {
         pid = waitpid(-1, &stat_loc, WNOHANG);
         if (pid != -1) {
-            nl = activeNode->getProcessSlotNames();
+            nl = m_activeNode->getProcessSlotNames();
             for (size_t i = 0; i < nl.size(); i++) {
                 processSlotImpl = dynamic_cast<ProcessSlotImpl *>(
-                    activeNode->getProcessSlot(nl[i]));
+                    m_activeNode->getProcessSlot(nl[i]));
                 if (processSlotImpl != NULL) {
                     if (processSlotImpl->getPID() == pid) {
                         processSlotImpl->setCurrentProcessState(
@@ -228,19 +240,21 @@ int main(int argc, char* argv[])
                 }
             }
         }
-        ::sleep(2);
-        LOG_DEBUG(CL_LOG, "waited 2 seconds...");
-    }
+        shutdown = m_predMutexCond.predWaitMsecs(1000);
+    } while (shutdown == false);
 
     /* Clean up */
-    activeNode->unregisterHealthChecker();
+    LOG_DEBUG(CL_LOG, "run: Cleaning up...");
+    m_activeNode->unregisterHealthChecker();
     vector<UserEventHandler *>::iterator handlerVecIt;
-    for (handlerVecIt = handlerVec.begin(); 
-         handlerVecIt != handlerVec.end();
+    for (handlerVecIt = m_handlerVec.begin(); 
+         handlerVecIt != m_handlerVec.end();
          handlerVecIt++) {
-        client->cancelHandler(*handlerVecIt);
+        m_client->cancelHandler(*handlerVecIt);
         delete *handlerVecIt;
     }
-
+    
     return 0;
+}
+
 }

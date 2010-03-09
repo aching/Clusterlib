@@ -5,6 +5,10 @@ INCLUDES = \
 	-I@BOOST_INCLUDES@ \
 	-I@ZOOKEEPER_INCLUDES@
 METASOURCES = AUTO
+lib_LIBRARIES = libactivenode.a
+libactivenode_a_SOURCES = \
+	activenode.cc \
+	activenodeparams.cc
 bin_PROGRAMS = activenode
 activenode_LDADD = \
         $(top_builddir)/src/core/libcluster.a \
@@ -16,7 +20,8 @@ activenode_LDADD = \
 	@LIB_THREAD_OS@
 activenode_SOURCES = \
 	activenode.cc \
-	activenodeparams.cc 
+	activenodeparams.cc \
+	main.cc
 
 CXXFLAGS = @BASE_CXXFLAGS@
 

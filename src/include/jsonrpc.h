@@ -27,7 +27,9 @@ namespace json { namespace rpc {
 /**
  * Defines the exception class which can be thrown by RPC methods.
  */
-class JSONRPCInvocationException : public virtual JSONException {
+class JSONRPCInvocationException 
+    : public ::json::Exception 
+{
   public:
     /**
      * Creates an instance of JSONRPCInvocationException with error 
@@ -35,7 +37,8 @@ class JSONRPCInvocationException : public virtual JSONException {
      *
      * @param message the error message.
      */
-    explicit JSONRPCInvocationException(const std::string &message);
+    explicit JSONRPCInvocationException(const std::string &msg) 
+        : ::json::Exception(msg) {}
 };
 
 /**
@@ -77,12 +80,15 @@ class JSONRPC {
     virtual std::string getName() = 0;
 
     /**
-     * Check parameters of this JSON-RPC
+     * Check and possibly initialize the parameters of this JSON-RPC
      *
      * @param paramArr the parameters of this object
+     * @param initialize if true, parse the paramArr into the object members,
+     *        else, only check
      * @return true if success, false if failure
      */
-    virtual bool checkParams(const JSONValue::JSONArray &paramArr) = 0;
+    virtual bool checkInitParams(const JSONValue::JSONArray &paramArr, 
+                                 bool initialize) = 0;
 };
  
 /**
@@ -233,6 +239,8 @@ class JSONRPCManager {
         const std::string &rpcInvocation,
         clusterlib::Root *root,
         clusterlib::Queue *defaultCompletedQueue,
+        int32_t defaultCompletedQueueMaxSize,
+        clusterlib::PropertyList *methodStatusPropertyList,
         StatePersistence *persistence = NULL) const;
     
     /**
@@ -270,6 +278,7 @@ class JSONRPCManager {
     static JSONValue generateResponse(const JSONValue &ret, 
                                       const JSONValue &id);    
 };
+
 }}
 
 #endif

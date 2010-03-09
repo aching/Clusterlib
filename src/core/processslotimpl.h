@@ -89,18 +89,6 @@ class ProcessSlotImpl
     void setCurrentProcessState(ProcessState processState);
     
     /**
-     * Starts up a process 
-     * 
-     * @param addEnv the additional environment variables
-     * @param path the path to execute the command from
-     * @param cmd the command to execute
-     * @return the process id of the newly created process
-     */
-    pid_t forkExec(const std::vector<std::string> &addEnv, 
-                   const std::string &path, 
-                   const std::string &cmd);
-
-    /**
      * Start up the process with the user-defined args on this server
      *
      * @return the pid of the new process

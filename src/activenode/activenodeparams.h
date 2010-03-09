@@ -9,12 +9,14 @@
  * $Date$
  */
 
-#ifndef	_ACTIVENODEPARAMS_H_
-#define _ACTIVENODEPARAMS_H_
+#ifndef	_CL_ACTIVENODEPARAMS_H_
+#define _CL_ACTIVENODEPARAMS_H_
 
 #include <iostream>
 #include <vector>
 #include <getopt.h>
+
+namespace activenode {
 
 /**
  * Active node test parameters
@@ -115,4 +117,6 @@ class ActiveNodeParams {
     OutputType m_outputType;
 };
 
-#endif	/* !_ACTIVENODEPARAMS_H__H_ */
+}
+
+#endif	/* !_CL_ACTIVENODEPARAMS_H__H_ */

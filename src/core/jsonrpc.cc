@@ -8,10 +8,6 @@ DEFINE_LOGGER(JRPC_LOG, "json.rpc");
 
 namespace json { namespace rpc {
 
-JSONRPCInvocationException::JSONRPCInvocationException(
-    const string &message) : JSONException(message) {
-}
-
 JSONRPCManager::~JSONRPCManager() 
 {
 }
@@ -109,13 +105,15 @@ JSONRPCManager::invoke(const JSONValue &rpcInvocation,
     LOG_INFO(JRPC_LOG, "Invoking JSON-RPC method (%s)", method.c_str());
 
     try {
-        // Call the method
+        /* Check and get the expected params */
+        methodIter->second->checkInitParams(params, true);
+        /* Call the appropriate method */
         return generateResponse(
             methodIter->second->invoke(method, params, persistence), id);
         LOG_INFO(JRPC_LOG,
                  "JSON-PRC invocation succeeded (%s)"
                  ,method.c_str());
-    } catch (JSONException &ex) {
+    } catch (Exception &ex) {
         // Error occurred when invoking the method
         return generateErrorResponse(
             string("Error occurred when invoking the method.\n") + ex.what(),
@@ -127,6 +125,8 @@ void
 JSONRPCManager::invokeAndResp(const string &rpcInvocation,
                               Root *root,
                               Queue *defaultCompletedQueue,
+                              int32_t defaultCompletedQueueMaxSize,
+                              PropertyList *methodStatusPropertyList,
                               StatePersistence *persistence) const
 {
     TRACE(JRPC_LOG, "invokeAndResp");
@@ -165,6 +165,13 @@ JSONRPCManager::invokeAndResp(const string &rpcInvocation,
                 root->getNotifyableFromKey(respQueueKey));
             if (respQueue != NULL) {
                 respQueue->put(result);
+                /*
+                 * Also add to the completed queue if the
+                 * defaultCompletedQueue if > 0
+                 */
+                if (defaultCompletedQueueMaxSize > 0) {
+                    defaultCompletedQueue->put(result);
+                }
             }
             else {
                 LOG_WARN(JRPC_LOG,
@@ -179,8 +186,31 @@ JSONRPCManager::invokeAndResp(const string &rpcInvocation,
         else {
             defaultCompletedQueue->put(result);
         }
+
+        /* 
+         * Try to make sure that the defaultCompletedQueue size is not
+         * exceeded 
+         */
+        const int32_t maxRetries = 3;
+        int32_t retriesUsed = 0;
+        string tmpElement;
+        while (retriesUsed < maxRetries) {
+            if (defaultCompletedQueue->acquireLockWaitMsecs(100)) {
+                while (defaultCompletedQueue->size() > 
+                       defaultCompletedQueueMaxSize) {
+                    defaultCompletedQueue->take(tmpElement);
+                }
+                break;
+            }
+            LOG_WARN(JRPC_LOG,
+                     "invokeAndResp: Failed to get the lock with retriesUsed ="
+                     " %d (max %d)",
+                     retriesUsed,
+                     maxRetries);
+            ++retriesUsed;
+        }
     }
-    catch (const JSONException &ex) {
+    catch (const Exception &ex) {
         JSONValue::JSONObject jsonObject;
         string queueElement = JSONCodec::encode(jsonObject);
         LOG_WARN(CL_LOG,
