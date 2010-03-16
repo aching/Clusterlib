@@ -50,6 +50,7 @@ class ClusterlibStrings
     static const std::string LASTCONNECTED;
     static const std::string CLIENTVERSION;
     static const std::string CONNECTED;
+    static const std::string QUEUE_PARENT;
     static const std::string BOUNCY;
     static const std::string READY;
     static const std::string ALIVE;
@@ -88,6 +89,9 @@ class ClusterlibStrings
     static const std::string PLV_STATE_PREPARING;
     static const std::string PLV_STATE_READY;
     static const std::string PLV_STATE_STOPPED;
+
+    static const std::string PLK_RPCMANAGER_REQ_POSTFIX;
+    static const std::string PLK_RPCMANAGER_REQ_STATUS_POSTFIX;
 
     /** 
      * Default recv queue a notifyable 

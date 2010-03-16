@@ -148,6 +148,36 @@ class AddQueue : public CliCommand
 };
 
 /**
+ * Get raw zookeeper node data
+ */
+class GetZnode : public CliCommand
+{
+  public:
+    GetZnode(Factory *factory, Client *client);
+    virtual void action();
+    virtual std::string helpMessage();
+    virtual ~GetZnode();
+
+  private:
+    Factory *m_factory;
+};
+
+/**
+ * Get raw zookeeper node children
+ */
+class GetZnodeChildren : public CliCommand
+{
+  public:
+    GetZnodeChildren(Factory *factory, Client *client);
+    virtual void action();
+    virtual std::string helpMessage();
+    virtual ~GetZnodeChildren();
+
+  private:
+    Factory *m_factory;
+};
+
+/**
  * Get commands and arguments.
  */
 class Help : public CliCommand

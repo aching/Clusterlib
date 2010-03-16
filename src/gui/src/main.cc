@@ -185,9 +185,12 @@ namespace zookeeper { namespace ui {
         rpcManager.reset(new JSONRPCManager());
         adaptor.reset(new HttpServerAdaptor(httpd.get(), rpcManager.get()));
         clusterFactory.reset(new clusterlib::Factory(config["zookeeper.servers"]));
-        clusterRpcMethod.reset(new clusterlib::rpc::json::MethodAdaptor(clusterFactory->createClient()));
-        zookeeperRpcMethod.reset(new zookeeper::rpc::json::MethodAdaptor(config["zookeeper.servers"]));
-
+        clusterRpcMethod.reset(
+            new clusterlib::rpc::json::MethodAdaptor(
+                clusterFactory->createClient()));
+        zookeeperRpcMethod.reset(
+            new zookeeper::rpc::json::MethodAdaptor(
+                config["zookeeper.servers"]));
         configurator::Configuration::const_iterator configIter = config.find("httpd.contenttypes");
 
         // Set content type

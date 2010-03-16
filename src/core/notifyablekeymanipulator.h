@@ -65,6 +65,8 @@ class NotifyableKeyManipulator
         const std::string &notifyableKey);
     static std::string createQueuePrefixKey(
         const std::string &notifyableKey);
+    static std::string createQueueParentKey(
+        const std::string &queueKey);
 
     /**
      * Create a sync event key that will be used to figure out which

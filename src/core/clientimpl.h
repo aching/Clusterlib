@@ -36,11 +36,7 @@ class ClientImpl
     virtual bool cancelJSONRPCResponseHandler();
 
     virtual void registerJSONRPCMethodHandler(
-        Queue *recvQueue,
-        Queue *completedQueue,
-        int32_t completedQueueMaxSize,
-        PropertyList *rpcMethodHandlerPropertyList,
-        ::json::rpc::JSONRPCManager *rpcManager);
+        ClusterlibRPCManager *rpcManager);
 
     virtual bool cancelJSONRPCMethodHandler();
 
@@ -174,6 +170,11 @@ class ClientImpl
      * JSONRPCMethodHandler pointer
      */
     JSONRPCMethodHandler *m_jsonRPCMethodHandler;
+
+    /**
+     * Clean up time?
+     */
+    PredMutexCond m_predMutexCond;
 };
 
 };	/* End of 'namespace clusterlib' */

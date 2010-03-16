@@ -17,20 +17,25 @@ class TestMsgRPC
     : public virtual JSONRPC 
 {
   public:
-    virtual string getName() { return "testMsg"; }
+    TestMsgRPC() : name("testMsg") {}
 
-    virtual bool checkInitParams(const JSONValue::JSONArray &paramArr,
-                                 bool initialize)
+    virtual const string &getName() const
     {
-        if (paramArr.size() == 1) {
-            return true;
-        }
-        return false;
+        return name;
     }
+
+    virtual void checkParams(const JSONValue::JSONArray &paramArr)
+    {
+        if (paramArr.size() != 1) {
+            throw clusterlib::Exception("checkParams failed");
+        }
+    }
+
+    string name;
 };
 
 class TestMsgMethod 
-    : public virtual JSONRPCMethod,
+    : public virtual ClusterlibRPCMethod,
       public virtual TestMsgRPC 
 {
   public:
@@ -41,6 +46,8 @@ class TestMsgMethod
     {
         return JSONValue::JSONString(testMsgSuccess);
     }
+
+    virtual void unmarshalParams(const JSONValue::JSONArray &paramArr) {}
 };
 
 class TestMsgRequest 
@@ -49,6 +56,14 @@ class TestMsgRequest
 {
   public:
     TestMsgRequest(Client *client) : ClusterlibRPCRequest(client) {}
+
+    virtual JSONValue::JSONArray marshalParams() 
+    { 
+        JSONValue::JSONArray jsonArr;
+        JSONValue::JSONObject jsonObj;
+        jsonArr.push_back(jsonObj);
+        return jsonArr;
+    }
 };
 
 const string respQueuePrefix = "respQueue";
@@ -121,8 +136,9 @@ class ClusterlibJSONRPC : public MPITestFixture {
         MPI_CPPUNIT_ASSERT(compRespQueue);
         ss.str("");
 
-        _factory->createJSONRPCResponseClient(respQueue,
-                                              compRespQueue);
+        Client *respClient = _factory->createJSONRPCResponseClient(
+            respQueue,
+            compRespQueue);
         
         ss << recvQueuePrefix << "_id_" << getRank();
         Queue *recvQueue = _app0->getQueue(ss.str(), true);
@@ -135,13 +151,16 @@ class ClusterlibJSONRPC : public MPITestFixture {
         MPI_CPPUNIT_ASSERT(compRecvQueue);
         ss.str("");
 
-        JSONRPCManager rpcManager;
+        ClusterlibRPCManager rpcManager(_root,
+                                        recvQueue,
+                                        compRecvQueue,
+                                        -1,
+                                        NULL);
 
-        _factory->createJSONRPCMethodClient(recvQueue,
-                                            compRecvQueue,
-                                            -1,
-                                            NULL,
-                                            &rpcManager);
+        Client *methodClient = 
+            _factory->createJSONRPCMethodClient(&rpcManager);
+        MPI_CPPUNIT_ASSERT(_factory->removeClient(respClient));
+        MPI_CPPUNIT_ASSERT(_factory->removeClient(methodClient));
     }
 
     /* 
@@ -168,8 +187,9 @@ class ClusterlibJSONRPC : public MPITestFixture {
         MPI_CPPUNIT_ASSERT(compRespQueue);
         ss.str("");
 
-        _factory->createJSONRPCResponseClient(respQueue,
-                                              compRespQueue);
+        Client *rpcResponseClient  =
+            _factory->createJSONRPCResponseClient(respQueue,
+                                                  compRespQueue);
         
         ss << recvQueuePrefix << "_id_" << getRank();
         Queue *recvQueue = _app0->getQueue(ss.str(), true);
@@ -182,15 +202,18 @@ class ClusterlibJSONRPC : public MPITestFixture {
         MPI_CPPUNIT_ASSERT(compRecvQueue);
         ss.str("");
 
-        auto_ptr<JSONRPCManager> rpcManager(new JSONRPCManager());
+        auto_ptr<ClusterlibRPCManager> rpcManager(
+            new ClusterlibRPCManager(_root,
+                                     recvQueue,
+                                     compRecvQueue,
+                                     -1,
+                                     NULL));
+
         auto_ptr<TestMsgMethod> testMsgMethod(new TestMsgMethod());
         rpcManager->registerMethod(testMsgMethod->getName(),
                                   testMsgMethod.get());
-        _factory->createJSONRPCMethodClient(recvQueue,
-                                            compRecvQueue,
-                                            -1,
-                                            NULL,
-                                            rpcManager.get());
+        Client *rpcMethodClient = 
+            _factory->createJSONRPCMethodClient(rpcManager.get());
 
         /* Find who to send the message to */
         int myDestRank = getRank() + 1;
@@ -206,15 +229,10 @@ class ClusterlibJSONRPC : public MPITestFixture {
          * response.
          */
         TestMsgRequest testMsgRequest(_client0);
-        JSONValue::JSONArray paramArr;
-        JSONValue::JSONObject obj;
-        obj[ClusterlibStrings::JSONOBJECTKEY_RESPQUEUEKEY] = 
-            respQueue->getKey();
-        paramArr.push_back(obj);
+        testMsgRequest.setRespQueueKey(respQueue->getKey());
         cerr << "JSONRPC2: Process " << getRank() << " sending "
-             << JSONCodec::encode(paramArr) << " to " << destQueue->getKey() 
-             << endl;
-        testMsgRequest.prepareRequest(paramArr);
+             << JSONCodec::encode(testMsgRequest.marshalParams()) << " to "
+             << destQueue->getKey() << endl;
         testMsgRequest.sendRequest(destQueue->getKey().c_str());
         testMsgRequest.waitResponse();
         JSONValue::JSONObject respObj = testMsgRequest.getResponse();
@@ -230,14 +248,8 @@ class ClusterlibJSONRPC : public MPITestFixture {
          * processing the other process's messages!
          */
         barrier(_factory, true);
-        finishedClTest(_factory);        
-
-        /* 
-         * Have to delete the factory prior to the auto_ptrs going out
-         * scope or else there could be segmentation faults.
-         */
-        delete _factory;
-        _factory = NULL;
+        MPI_CPPUNIT_ASSERT(_factory->removeClient(rpcResponseClient));
+        MPI_CPPUNIT_ASSERT(_factory->removeClient(rpcMethodClient));
     }
 
   private:

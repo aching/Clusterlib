@@ -28,13 +28,13 @@ JSONRPCMethodHandler::handleUserEvent(Event e)
 {
     TRACE(CL_LOG, "handleUserEvent");
         
-    if (m_recvQueue == NULL) {
+    if (m_rpcManager->getRecvQueue() == NULL) {
         throw InconsistentInternalStateException(
             "handleUserEvent: No receiving queue exists!!!");
         return;
     }
     
-    if (m_recvQueue->empty()) {
+    if (m_rpcManager->getRecvQueue()->empty()) {
         LOG_DEBUG(CL_LOG, 
                   "handleUserEvent: Empty receiving queue on event %u",
                   e);
@@ -42,7 +42,8 @@ JSONRPCMethodHandler::handleUserEvent(Event e)
     }
     
     string request;
-    bool found = m_recvQueue->takeWaitMsecs(recvQueueMsecTimeOut, request);
+    bool found = m_rpcManager->getRecvQueue()->takeWaitMsecs(
+        recvQueueMsecTimeOut, request);
     if (!found) {
         LOG_DEBUG(CL_LOG, 
                   "handleUserEvent: Waited %llu msecs and "
@@ -64,13 +65,9 @@ JSONRPCMethodHandler::handleUserEvent(Event e)
               "handleUserEvent: Got request (%s) and invoking on root"
               " (%s), with completed queue (%s)", 
               request.c_str(),
-              m_root->getKey().c_str(),
-              m_completedQueue->getKey().c_str());
-    m_rpcManager->invokeAndResp(request,
-                                m_root,
-                                m_completedQueue,
-                                m_completedQueueMaxSize,
-                                m_methodStatusPropertyList);
+              m_rpcManager->getRoot()->getKey().c_str(),
+              m_rpcManager->getCompletedQueue()->getKey().c_str());
+    m_rpcManager->invokeAndResp(request);
 }
 
 }

@@ -46,6 +46,14 @@ Factory::createClient()
     return getOps()->createClient();
 }
 
+bool
+Factory::removeClient(Client *client)
+{
+    TRACE(CL_LOG, "removeClient");
+
+    return getOps()->removeClient(dynamic_cast<ClientImpl *>(client));
+}
+
 Client *
 Factory::createJSONRPCResponseClient(Queue *responseQueue,
                                      Queue *completedQueue)
@@ -56,19 +64,10 @@ Factory::createJSONRPCResponseClient(Queue *responseQueue,
 
 Client *
 Factory::createJSONRPCMethodClient(
-    Queue *recvQueue,
-    Queue *completedQueue,
-    int32_t completedQueueMaxSize,
-    PropertyList *rpcMethodHandlerPropertyList,
-    ::json::rpc::JSONRPCManager *rpcManager)
+    ClusterlibRPCManager *rpcManager)
 {
-    return getOps()->createJSONRPCMethodClient(recvQueue,
-                                               completedQueue,
-                                               completedQueueMaxSize,
-                                               rpcMethodHandlerPropertyList,
-                                               rpcManager);
+    return getOps()->createJSONRPCMethodClient(rpcManager);
 }
-
 
 bool
 Factory::isConnected()

@@ -51,6 +51,8 @@ class CallbackAndContextManager;
 class Client;
 class ClientImpl;
 class ClusterlibRPCRequest;
+class ClusterlibRPCManager;
+class ClusterlibRPCMethod;
 class DataDistribution;
 class DataDistributionImpl;
 class DistributedLocks;

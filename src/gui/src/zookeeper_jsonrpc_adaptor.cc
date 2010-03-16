@@ -11,26 +11,22 @@ namespace zookeeper { namespace rpc { namespace json {
     LoggerPtr MethodAdaptor::logger(
         Logger::getLogger("zookeeper.rpc.json.MethodAdaptor"));
 
-std::string 
-MethodAdaptor::getName() 
+const std::string &
+MethodAdaptor::getName() const
 {
-    return "zookeeper::rpc::json::MethodAdaptor"; 
+    return name;
 }
 
-bool
-MethodAdaptor::checkInitParams(const JSONValue::JSONArray &paramArr,
-                               bool initialize)
+void
+MethodAdaptor::checkParams(const JSONValue::JSONArray &paramArr)
 {
-    try {
-        string encodedString = JSONCodec::encode(paramArr);
-        return true;
-    }
-    catch (const JSONRPCInvocationException &ex) {
-        return false;
-    }
+    JSONCodec::encode(paramArr);
 }
 
-MethodAdaptor::MethodAdaptor(const string &s) : servers(s) {
+MethodAdaptor::MethodAdaptor(const string &s) 
+    : servers(s),
+      name("zookeeper::rpc::json::MethodAdaptor")
+{
     if (pthread_cond_init(&cond, NULL)) {
         throw JSONRPCInvocationException("Cannot create a condition signal.");
     }

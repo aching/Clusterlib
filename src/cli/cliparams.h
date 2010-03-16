@@ -216,7 +216,7 @@ class CliParams {
      */
     ~CliParams() 
     {
-        if (!m_factory) {
+        if (m_factory) {
             delete m_factory;
             m_factory = NULL;
         }

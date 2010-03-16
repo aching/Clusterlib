@@ -1,5 +1,6 @@
 #include <clusterlib.h>
 #include "clusterlib_jsonrpc_adaptor.h"
+#include <iomanip>
 
 using namespace json;
 using namespace json::rpc;
@@ -11,28 +12,27 @@ namespace clusterlib { namespace rpc { namespace json {
 LoggerPtr MethodAdaptor::m_logger(
     Logger::getLogger("clusterlib.rpc.json.MethodAdaptor"));
 
-MethodAdaptor::MethodAdaptor(clusterlib::Client *f) : m_client(f) {
+MethodAdaptor::MethodAdaptor(clusterlib::Client *f) 
+    : m_client(f),
+      m_name("clusterlib::rpc::json::MethodAdaptor")
+{
     m_root = m_client->getRoot();
 }
 
-std::string 
-MethodAdaptor::getName() 
+const std::string &
+MethodAdaptor::getName() const
 {
-    return "clusterlib::rpc::json::MethodAdaptor"; 
+    return m_name;
 }
 
-bool
-MethodAdaptor::checkInitParams(const JSONValue::JSONArray &paramArr,
-                               bool initialize)
+void
+MethodAdaptor::checkParams(const JSONValue::JSONArray &paramArr)
 {
-    try {
-        string encodedString = JSONCodec::encode(paramArr);
-        return true;
-    }
-    catch (const JSONRPCInvocationException &ex) {
-        return false;
-    }
+    JSONCodec::encode(paramArr);
 }
+
+/** Wait up to 5 seconds to try and operation */
+static const int32_t maxLockWaitMsecs = 5000;
 
 JSONValue 
 MethodAdaptor::invoke(const std::string &name, 
@@ -551,7 +551,8 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableAttributesFromKey(
                  idElementMapIt != idElementMap.end();
                  idElementMapIt++) {
                 ss.str("");
-                ss << idQueueElementPrefix << " " << idElementMapIt->first;
+                ss << idQueueElementPrefix << " " << setw(3) 
+                   << idElementMapIt->first;
                     attributes[idPrefixDeletable + idPrefixDelim +
                                ss.str()] = idElementMapIt->second;
             }
@@ -568,6 +569,7 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableAttributesFromKey(
 
 JSONValue::JSONString MethodAdaptor::setNotifyableAttributesFromKey(
     const JSONValue::JSONArray &arr) {
+    ostringstream oss;
     try {
         if (arr.size() < 1) {
             throw JSONRPCInvocationException(
@@ -670,7 +672,15 @@ JSONValue::JSONString MethodAdaptor::setNotifyableAttributesFromKey(
                             idPropertyListProperty.size(), 
                             idPropertyListProperty) ||
                 !op.compare(addProperty)) {
-                propertyList->acquireLock();
+                bool gotLock = propertyList->acquireLockWaitMsecs(
+                    maxLockWaitMsecs);
+                if (!gotLock) {
+                    oss.str("");
+                    oss << "Failed to set property " << property 
+                        << " with value " << value << " within "
+                        << maxLockWaitMsecs << " msecs";
+                    throw JSONRPCInvocationException(oss.str());
+                }
                 propertyList->setProperty(property, value);
                 propertyList->publish();
                 propertyList->releaseLock();
@@ -707,6 +717,7 @@ JSONValue::JSONString MethodAdaptor::removeNotifyableAttributesFromKey(
     const JSONValue::JSONString &key,
     const JSONValue::JSONString &op,
     const JSONValue::JSONString &attribute) {
+    ostringstream oss;
     try {
         Notifyable *notifyable = m_root->getNotifyableFromKey(key);
         if (notifyable == NULL) {
@@ -742,7 +753,14 @@ JSONValue::JSONString MethodAdaptor::removeNotifyableAttributesFromKey(
             PropertyList *propertyList = 
                 dynamic_cast<PropertyList *>(notifyable);
             if (!op.compare(idPropertyListProperty)) {
-                propertyList->acquireLock();
+                bool gotLock = propertyList->acquireLockWaitMsecs(
+                    maxLockWaitMsecs);
+                if (!gotLock) {
+                    oss.str("");
+                    oss << "Failed to delete property " << attribute
+                        << " within " << maxLockWaitMsecs << " msecs";
+                    throw JSONRPCInvocationException(oss.str());
+                }
                 propertyList->deleteProperty(attribute);
                 propertyList->publish();
                 propertyList->releaseLock();

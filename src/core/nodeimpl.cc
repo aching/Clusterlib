@@ -352,6 +352,12 @@ NodeImpl::doHealthChecks(void *param)
 {
     TRACE(CL_LOG, "doHealthChecks");
     
+    if (mp_healthChecker == NULL) {
+        throw InconsistentInternalStateException(
+            "doHealthChecks: Impossible that the doHealthChecks is called "
+            "without a valid mp_healthChecker");
+    }
+
     /*
      * Initialize these to the starting values.
      */

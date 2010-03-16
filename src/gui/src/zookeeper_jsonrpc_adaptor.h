@@ -16,10 +16,9 @@ class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod {
   public:        
     MethodAdaptor(const std::string &servers);
     
-    virtual std::string getName();
+    virtual const std::string &getName() const;
     
-    virtual bool checkInitParams(const ::json::JSONValue::JSONArray &paramArr,
-                                 bool initialize);
+    virtual void checkParams(const ::json::JSONValue::JSONArray &paramArr);
     
     ::json::JSONValue invoke(const std::string &name, 
                              const ::json::JSONValue::JSONArray &param, 
@@ -48,6 +47,8 @@ class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod {
     static log4cxx::LoggerPtr logger;
 
     std::string servers;
+
+    std::string name;
 
     zhandle_t *zkHandle;
 

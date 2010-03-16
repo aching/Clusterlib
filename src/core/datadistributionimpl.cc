@@ -278,7 +278,7 @@ DataDistributionImpl::getAllShards(const Notifyable *ntp, int32_t priority)
     IntervalTree<HashRange, ShardTreeData>::iterator treeIt;
 
     Locker l(getSyncLock());
-    for (treeIt = m_shardTree.begin(); treeIt != m_shardTree.end(); treeIt++) {
+    for (treeIt = m_shardTree.begin(); treeIt != m_shardTree.end(); ++treeIt) {
         res.push_back(Shard(treeIt->getStartRange(),
                             treeIt->getEndRange(),
                             treeIt->getData().getNotifyable(),

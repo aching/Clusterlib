@@ -40,6 +40,7 @@ ClientImpl::~ClientImpl()
     /*
      * Wait till all events have been handled.
      */
+    m_predMutexCond.predSignal();
     m_eventThread.Join();
 
     /*
@@ -61,6 +62,11 @@ ClientImpl::fetchAndIncrRequestCounter()
     return m_jsonRPCRequestCounter++;
 }
 
+/**
+ * Wait up to one second.
+ */
+static const int64_t eventMsecTimeout = 1000;
+
 /*
  * The following method runs in the event handling thread,
  * invoking handlers for user events as they come in.
@@ -80,7 +86,7 @@ ClientImpl::consumeUserEvents(void *param)
 
     bool endEventReceived = false;
     string rootKey = NotifyableKeyManipulator::createRootKey();
-    while (endEventReceived != true) {
+    while (!m_predMutexCond.predWaitMsecs(0) && (endEventReceived != true)) {
         /*
          * Run all the handlers that have initialRun true and then
          * move them into the regular user event multimap.
@@ -102,9 +108,12 @@ ClientImpl::consumeUserEvents(void *param)
         }
 
         LOG_DEBUG(CL_LOG,
-                  "consumeUserEvents: Waiting to take "
-                  "from the event queue...");
-	m_queue.take(uepp);
+                  "consumeUserEvents: Waiting for %lld msecs to take "
+                  "from the event queue...",
+                  eventMsecTimeout);
+	if (!m_queue.takeWaitMsecs(eventMsecTimeout, uepp)) {
+            continue;
+        }
 
         /*
          * Exit on NULL user event payload, this is a signal from
@@ -353,11 +362,7 @@ ClientImpl::cancelJSONRPCResponseHandler()
 
 void
 ClientImpl::registerJSONRPCMethodHandler(
-        Queue *recvQueue,
-        Queue *completedQueue,
-        int32_t completedQueueMaxSize,
-        PropertyList *rpcMethodHandlerPropertyList,
-        ::json::rpc::JSONRPCManager *rpcManager)
+    ClusterlibRPCManager *rpcManager)
 {
     TRACE(CL_LOG, "registerJSONRPCMethodHandler");
 
@@ -365,13 +370,7 @@ ClientImpl::registerJSONRPCMethodHandler(
         throw InvalidMethodException(
             "registerJSONRPCMethodHandler: Already registered!");
     }
-    m_jsonRPCMethodHandler = new JSONRPCMethodHandler(
-        recvQueue,
-        completedQueue,
-        completedQueueMaxSize,
-        rpcMethodHandlerPropertyList,
-        getRoot(),
-        rpcManager);
+    m_jsonRPCMethodHandler = new JSONRPCMethodHandler(rpcManager);
 
     registerHandler(m_jsonRPCMethodHandler);
 }

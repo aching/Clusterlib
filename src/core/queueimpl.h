@@ -77,6 +77,18 @@ class QueueImpl
             "Someone called the QueueImpl "
             "default constructor!");
     }
+
+    /**
+     * Get the queue parent key
+     *
+     * @return a const reference to the queue parent key
+     */
+    const std::string &getQueueParentKey() { return m_queueParentKey; }
+
+    /**
+     * Key for the queue parent
+     */
+    std::string m_queueParentKey;
 };
 
 };	/* End of 'namespace clusterlib' */

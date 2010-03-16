@@ -175,16 +175,9 @@ FactoryOps::createClient()
     /*
      * Create the new client and add it to the registry.
      */
-    try {
-        ClientImpl *cp = new ClientImpl(this);
-        addClient(cp);
-        return cp;
-    } catch (Exception &e) {
-	LOG_WARN(CL_LOG, 
-                 "Couldn't create client because: %s", 
-                 e.what());
-        return NULL;
-    }
+    ClientImpl *cp = new ClientImpl(this);
+    addClient(cp);
+    return cp;
 }
 
 Client *
@@ -194,7 +187,10 @@ FactoryOps::createJSONRPCResponseClient(Queue *responseQueue,
     TRACE(CL_LOG, "createJSONRPCResponseClient");
 
     ClientImpl *client = dynamic_cast<ClientImpl *>(createClient());
-    assert(client);
+    if (client == NULL) {
+        throw InconsistentInternalStateException(
+            "createJSONRPCResponseClient: Failed to create client");
+    }
     client->registerJSONRPCResponseHandler(responseQueue,
                                            completedQueue);
     return client;
@@ -202,24 +198,18 @@ FactoryOps::createJSONRPCResponseClient(Queue *responseQueue,
 
 Client *
 FactoryOps::createJSONRPCMethodClient(
-    Queue *recvQueue,
-    Queue *completedQueue,
-    int32_t completedQueueMaxSize,
-    PropertyList *rpcMethodHandlerPropertyList,
-    ::json::rpc::JSONRPCManager *rpcManager)
+    ClusterlibRPCManager *rpcManager)
 {
     TRACE(CL_LOG, "createJSONRPCMethodClient");
 
     ClientImpl *client = dynamic_cast<ClientImpl *>(createClient());
-    assert(client);
-    client->registerJSONRPCMethodHandler(recvQueue,
-                                         completedQueue,
-                                         completedQueueMaxSize,
-                                         rpcMethodHandlerPropertyList,
-                                         rpcManager);
+    if (client == NULL) {
+        throw InconsistentInternalStateException(
+            "createJSONRPCMethodClient: Failed to create client");
+    }
+    client->registerJSONRPCMethodHandler(rpcManager);
     return client;
 }
-
 
 bool
 FactoryOps::isConnected() const
@@ -323,7 +313,7 @@ FactoryOps::addClient(ClientImpl *clp)
     m_clients.push_back(clp);
 }
 
-void
+bool
 FactoryOps::removeClient(ClientImpl *clp)
 {
     TRACE(CL_LOG, "removeClient");
@@ -334,9 +324,13 @@ FactoryOps::removeClient(ClientImpl *clp)
                                          clp);
 
     if (clIt == m_clients.end()) {
-        return;
+        return false;
     }
-    m_clients.erase(clIt);
+    else {
+        m_clients.erase(clIt);
+        delete clp;
+        return true;
+    }
 }
 
 void
@@ -348,7 +342,7 @@ FactoryOps::discardAllClients()
     ClientImplList::iterator clIt;
     for (clIt  = m_clients.begin();
          clIt != m_clients.end();
-         clIt++) {
+         ++clIt) {
 	delete *clIt;
     }
     m_clients.clear();
@@ -367,7 +361,7 @@ FactoryOps::discardAllDataDistributions()
 
     for (distIt = m_dists.begin();
          distIt != m_dists.end();
-         distIt++) {
+         ++distIt) {
         LOG_DEBUG(CL_LOG, 
                   "discardAllDataDistributions: Removed key (%s) with %d refs",
                   distIt->second->getKey().c_str(),
@@ -807,6 +801,8 @@ FactoryOps::dispatchEndEvent()
     UserEventPayload *uepp = NULL;
     UserEventPayload uep(NotifyableKeyManipulator::createRootKey(), 
                          EN_ENDEVENT);
+
+    Locker l(getClientsLock());
     for (clIt = m_clients.begin();
          clIt != m_clients.end();
          clIt++) {
@@ -3052,9 +3048,17 @@ FactoryOps::createQueue(const string &queueName,
 {
     TRACE(CL_LOG, "createQueue");
 
+    string queueParent = 
+        NotifyableKeyManipulator::createQueueParentKey(queueKey);
+
     SAFE_CALL_ZK(m_zk.createNode(queueKey, "", 0),
                  "Could not create key %s: %s",
                  queueKey.c_str(),
+                 true,
+                 true);
+    SAFE_CALL_ZK(m_zk.createNode(queueParent, "", 0),
+                 "Could not create key %s: %s",
+                 queueParent.c_str(),
                  true,
                  true);
     
@@ -4085,6 +4089,9 @@ FactoryOps::getChildren(Notifyable *ntp)
      * be checked for here.
      */
     NotifyableList ntList;
+    NameList nameList;
+    NameList::iterator nameListIt;
+    Notifyable *tempNtp = NULL;
     
     PropertyList *propList = dynamic_cast<PropertyList *>(ntp);
     if (propList != NULL) {
@@ -4099,15 +4106,26 @@ FactoryOps::getChildren(Notifyable *ntp)
      * PropertyList child
      */
     try {
-        propList = ntp->getPropertyList();
-        if (propList != NULL) {
-            LOG_DEBUG(CL_LOG, 
-                      "getChildren: found PropertyList %s for %s", 
-                      propList->getKey().c_str(),
-                      ntp->getKey().c_str());
-            ntList.push_back(propList);
+        nameList = ntp->getPropertyListNames();
+        for (nameListIt = nameList.begin();
+             nameListIt != nameList.end(); 
+             nameListIt++) {
+            tempNtp = ntp->getPropertyList(*nameListIt);
+            if (tempNtp == NULL) {
+                LOG_WARN(CL_LOG,
+                         "getChildren: Shouldn't get NULL property list for %s"
+                         " if I have the lock",
+                         nameListIt->c_str());
+            }
+            else {
+                LOG_DEBUG(CL_LOG, 
+                          "getChildren: found PropertyList %s for %s", 
+                          tempNtp->getKey().c_str(),
+                          ntp->getKey().c_str());
+                ntList.push_back(tempNtp);
+            }
         }
-    } 
+    }
     catch (InvalidMethodException &e) {
         /*
          * If this is not a root object then throw an exception.
@@ -4143,12 +4161,10 @@ FactoryOps::getChildren(Notifyable *ntp)
         return ntList;
     }
 
-    NameList::iterator nameListIt;
-    Notifyable *tempNtp = NULL;
     Node *node = dynamic_cast<Node *>(ntp);
     if (node != NULL) {
         LOG_DEBUG(CL_LOG, "getChildren: %s is a Node", ntp->getKey().c_str());
-        NameList nameList = node->getQueueNames();
+        nameList = node->getQueueNames();
         for (nameListIt = nameList.begin();
              nameListIt != nameList.end(); 
              nameListIt++) {

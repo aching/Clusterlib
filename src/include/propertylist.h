@@ -91,10 +91,9 @@ class PropertyList
     virtual void publish() = 0;
 
     /**
-     * \brief Resets the property list to empty (acquires/releases lock).
-     *
+     * Clears the property list (acquires/releases local lock).
      */
-    virtual void reset() = 0;
+    virtual void clear() = 0;
 
     /**
      * Get the current version of the property list (useful for out-of-band

@@ -29,6 +29,21 @@ ProcessThreadService::forkExec(const vector<string> &addEnv,
 {
     TRACE(CL_LOG, "forkExec");
     
+    /* 
+     * Debugging - note: Do not put any log4cxx messages between the
+     * fork and exec as this can cause problems.
+     */
+    LOG_DEBUG(CL_LOG, 
+              "ForkExec: running from PATH=%s\nCMD=%s\n"
+              "added ENV:",
+              path.c_str(),
+              cmd.c_str());
+    for (vector<string>::const_iterator it = addEnv.begin(); 
+         it != addEnv.end();
+         ++it) {
+        LOG_DEBUG(CL_LOG, "env: %s", it->c_str());
+    }
+    
     pid_t pid = fork();
 
     /* I am the child */
@@ -38,19 +53,6 @@ ProcessThreadService::forkExec(const vector<string> &addEnv,
 	/* Change path if specified */
 	if (path.size() != 0) {
 	    chdir(path.c_str());
-	}
-
-	/* Debugging */
-	LOG_DEBUG(CL_LOG, 
-                  "Child process (%d):\nrunning from PATH=%s\nCMD=%s\n"
-                  "added ENV:",
-                  pid,
-                  path.c_str(),
-                  cmd.c_str());
-	for (vector<string>::const_iterator it = addEnv.begin(); 
-	     it != addEnv.end();
-	     it++) {
-	    LOG_DEBUG(CL_LOG, "%s", it->c_str());
 	}
 	
 	/* Execute */
@@ -86,15 +88,24 @@ ProcessThreadService::forkExec(const vector<string> &addEnv,
 	else {
 	    ret = execl("/bin/sh", "/bin/sh", "-c", cmd.c_str(), NULL);
 	}
+
+        LOG_DEBUG(CL_LOG, 
+                  "ForkExec: Finished execl(e) with ret=%d for command %s", 
+                  ret,
+                  cmd.c_str());
 	if (ret == -1) {
-            stringstream ss;
-            ss << "ForkExec: execl failed with error " << errno << " " 
-               << strerror(errno);
-            throw SystemFailureException(ss.str());
+            ostringstream oss;
+            oss << "ForkExec: execl failed with error " << errno << " " 
+                << strerror(errno);
+            LOG_FATAL(CL_LOG, oss.str().c_str());
+            throw SystemFailureException(oss.str());
 	}
     }
     else { /* I am the parent */
 	if (pid == -1) {
+            LOG_FATAL(CL_LOG, 
+                      "ForkExec: Failed with pid == -1 for cmd=%s",
+                      cmd.c_str());
 	    throw SystemFailureException("ForkExec: fork failed");
 	}
 
@@ -108,17 +119,21 @@ bool
 ProcessThreadService::waitPid(pid_t processId, int32_t &returnCode)
 {
     TRACE(CL_LOG, "waitPid");
+    ostringstream oss;
 
     if (processId <= 0) {
-        stringstream ss;
-        ss << "waitPid: Cannot have processId <= 0 (" << processId << ")";
-        throw InvalidArgumentsException(ss.str());
+        oss.str("");
+        oss << "waitPid: Cannot have processId <= 0 (" << processId << ")";
+        throw InvalidArgumentsException(oss.str());
     }
 
     int statVal;
     pid_t curId = -1;
     returnCode = -1;
     while (curId != processId) {
+        oss.str("");
+        oss << "waitPid: Waiting for processId " << processId;
+        LOG_DEBUG(CL_LOG, oss.str().c_str());
         curId = ::wait(&statVal);
         if (curId == -1) {
             if (errno == ECHILD) {
@@ -129,9 +144,10 @@ ProcessThreadService::waitPid(pid_t processId, int32_t &returnCode)
             }
         }
 
-        LOG_DEBUG(CL_LOG,
-                  "waitPid: Got curId %d instead of %d", 
-                  curId, processId);
+        oss.str();
+        oss << "waitPid: Got curId " << curId
+            << " (looking for " << processId << ")"; 
+        LOG_DEBUG(CL_LOG, oss.str().c_str());
     }
     if (WIFEXITED(statVal)) {
         returnCode = WEXITSTATUS(statVal);

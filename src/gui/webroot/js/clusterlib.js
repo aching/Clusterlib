@@ -7,6 +7,11 @@ var remainingRefreshTimer = 30;
 var timeSinceRefreshTimer = 0;
 var statusColumnsPerRow = 10;
 
+function debug(msg) {
+    if (window.console && window.console.log)
+        window.console.log('debug(cl): ' + msg);
+}
+
 // Escape and unescape <, &, ", and > for html
 function htmlEscape(htmlString, escape) {
     if (escape) {
@@ -27,7 +32,7 @@ function htmlEscape(htmlString, escape) {
 
 // Keep the timer running 
 function updateTimer() {
-    $("#timer").text(Date());
+    $("#timer").text((new Date()).toUTCString());
 }
 
 // Keep the remaining time running
@@ -420,6 +425,7 @@ function showContent() {
 
     var addAttributeHtml = '';
     var buttons = {};
+    var divContent = {};
     for (var key in content) {
 	if (key == "id" || key == "name" || key == "type" ||
 	    key == "applicationSummary" || key == "groupSummary" || 
@@ -561,11 +567,15 @@ function showContent() {
 	// if they are edittable or deletable, the key is the last part
 	var editDeleteKeyArr = key.split(";");
 	if (editDeleteKeyArr.length == 1) {
-            html += '<tr><td><strong>' + htmlEscape(key, true) + '</strong></td><td>' + htmlEscape(JSON.stringify(content[key], true)) + '</td></tr>';
+            html += '<tr><td><strong>' + htmlEscape(key, true) + '</strong></td><td><div id="' + htmlEscape(key, true) + '"/></td></tr>';
+            debug('key1:' + key);
+            debug('key2:' + htmlEscape(key), true);
+            divContent[htmlEscape(key, true)] = content[key];
 	}
 	else {
             html += '<tr><td><strong>' + 
-		htmlEscape(editDeleteKeyArr[editDeleteKeyArr.length - 1], true) + '</strong></td><td>' + htmlEscape(JSON.stringify(content[key]), true);
+		htmlEscape(editDeleteKeyArr[editDeleteKeyArr.length - 1], true) + '</strong></td><td><div id="' + htmlEscape(editDeleteKeyArr[editDeleteKeyArr.length - 1], true) + '"/>';
+            divContent[htmlEscape(editDeleteKeyArr[editDeleteKeyArr.length - 1], true)] = content[key];
 	    for (var i = 0; i < editDeleteKeyArr.length - 1; i++) {
 		html += '<a class="' + htmlEscape(editDeleteKeyArr[i], true) +
 		    'Attribute"><img src="../images/' + 
@@ -597,6 +607,21 @@ function showContent() {
 
     // Put the html into the dialogObjectInfo
     $("#dialogObjectInfo").html(html);
+
+    // Set up all jsonviewers (some are encoded JSON objects, some are native)
+    for (var key in divContent) {
+        var jsonObj;
+        try {
+            jsonObj = JSON.parse(divContent[key]);
+        } 
+        catch (x) {
+            // Some of the objects to be shown are not basic JSON objects
+            jsonObj = divContent[key];
+        }
+        $('div[id=' + key + ']').jsonviewer({
+            json_name: key, json_data: jsonObj
+        });
+    }
 
     // Based on the type, fill in the appropriate div
     var type = content.type;
@@ -770,7 +795,7 @@ function showContent() {
     // Handle the clicks of "editAttribute" events
     $(".editAttribute").click(function() {
 	$("#dialogNewValue").dialog('option', 'title', 
-				    unescape($(this).parent().prev().text()));
+				    unescape($(this).parent().attr('id')));
 	var inputBoxHtml = '<form><fieldset style="border:0;"><label for="newValue">New Value</label><textarea style="width:100%;" name="newValue" id="newValue" class="text ui-widget-content ui-corner-all" ></textarea></fieldset></form>';
         $("#dialogNewValue").html(inputBoxHtml);
         $("#newValue").text($(this).parent().text());
@@ -826,7 +851,7 @@ function showContent() {
     // Handle the clicks of "deleteAttribute" events
     $(".deleteAttribute").click(function() {
 	$("#dialogNewValue").dialog('option', 'title', 
-				    unescape($(this).parent().prev().text()));
+				    unescape($(this).parent().attr('id')));
 	var inputBoxHtml = 'Are you sure you want to delete?';
         $("#dialogNewValue").html(inputBoxHtml);
 	$("#dialogNewValue").dialog('open');
@@ -866,3 +891,4 @@ function showContent() {
     $("#dialogObjectInfo").dialog("option", "buttons", buttons);
     $("#dialogObjectInfo").dialog('open');	
 }
+

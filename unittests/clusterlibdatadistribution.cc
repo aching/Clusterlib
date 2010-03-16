@@ -16,6 +16,7 @@ class ClusterlibDataDistribution : public MPITestFixture {
     CPPUNIT_TEST(testDataDistribution3);
     CPPUNIT_TEST(testDataDistribution4);
     CPPUNIT_TEST(testDataDistribution5);
+    CPPUNIT_TEST(testDataDistribution6);
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -270,6 +271,69 @@ class ClusterlibDataDistribution : public MPITestFixture {
             dist->publish();
             dist->releaseLock();
         }
+    }
+
+    /** 
+     * Create a DataDistribution in one node and check it on another.
+    */
+    void testDataDistribution6()
+    {
+        initializeAndBarrierMPITest(2, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testDataDistribution6");
+        
+        if (isMyRank(0)) {
+            DataDistribution *dist = _app0->getDataDistribution("dd0");
+            if (dist != NULL) {
+                dist->remove();
+            }
+            dist = _app0->getDataDistribution(
+                "dd0", true);
+            dist->acquireLock();
+
+            MPI_CPPUNIT_ASSERT(dist);
+            Node *n0 = _app0->getNode("n0", true);
+            MPI_CPPUNIT_ASSERT(n0);
+            Node *n1 = _app0->getNode("n1", true);
+            MPI_CPPUNIT_ASSERT(n1);
+            Node *n2 = _app0->getNode("n2", true);
+            MPI_CPPUNIT_ASSERT(n2);
+
+            dist->clear();
+            dist->insertShard(0, 6719722671305337462LL, n0);
+            dist->insertShard(6719722671305337462LL, 6719722671305399999LL, 
+                              n1);
+            dist->insertShard(6719722671305337450LL, 6719722671305399999LL,
+                              n2);
+            dist->publish();
+            dist->releaseLock();
+            barrier(_factory, true);
+        }
+        else {
+            barrier(_factory, true);
+            DataDistribution *dist = _app0->getDataDistribution(
+                "dd0", true);
+            dist->acquireLock();
+            vector<Shard> shardVec = dist->getAllShards();
+            MPI_CPPUNIT_ASSERT(shardVec.size() == 3);
+            for (vector<Shard>::iterator shardVecIt = shardVec.begin();
+                 shardVecIt != shardVec.end(); ++shardVecIt) {
+                Node *node = dynamic_cast<Node *>(shardVecIt->getNotifyable());
+                MPI_CPPUNIT_ASSERT(node);
+                cerr << "parent = " 
+                     << node->getMyParent()->getName()
+                     << ",appname = "
+                     << appName << endl;
+                MPI_CPPUNIT_ASSERT(node->getMyParent()->getName() == appName);
+            }
+            dist->releaseLock();
+        }
+
+
+        
+        
     }
 
   private:

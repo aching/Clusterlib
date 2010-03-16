@@ -289,10 +289,21 @@ string
 NotifyableKeyManipulator::createQueuePrefixKey(
     const string &notifyableKey)
 {
-    string res(notifyableKey);
+    string res = NotifyableKeyManipulator::createQueueParentKey(notifyableKey);
     res.append(ClusterlibStrings::KEYSEPARATOR);
     res.append(ClusterlibStrings::QUEUEELEMENTPREFIX);
 
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createQueueParentKey(
+    const string &queueKey)
+{
+    string res(queueKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::QUEUE_PARENT);
+   
     return res;
 }
 

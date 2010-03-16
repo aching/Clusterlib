@@ -33,11 +33,23 @@ class ActiveNode {
                clusterlib::Factory *factory);
 
     /**
+     * Destructor.
+     */
+    ~ActiveNode();
+
+    /**
      * Get the active node pointer.
      *
      * @return the pointer to the active node
      */
     clusterlib::Node *getActiveNode();
+
+    /**
+     * Get the root pointer.
+     *
+     * @return the pointer to the root
+     */
+    clusterlib::Root *getRoot();
 
     /**
      * Start the loop of running the active node with the number of
@@ -47,7 +59,8 @@ class ActiveNode {
      *        used for each thread).
      * @return 0 if returned normally, -1 if returned with a problem.
      */
-    int32_t run(std::vector<json::rpc::JSONRPCManager *> &rpcManagerVec);
+    int32_t run(
+        ::std::vector< ::clusterlib::ClusterlibRPCManager *> &rpcManagerVec);
 
   private:
     /**
@@ -55,6 +68,11 @@ class ActiveNode {
      */
     ActiveNodeParams m_params;
 
+    /**
+     * Health checker for the active node.
+     */
+    std::auto_ptr<clusterlib::HealthChecker> m_nodeHealthChecker;
+    
     /**
      * The clusterlib factory
      */
@@ -66,15 +84,14 @@ class ActiveNode {
     clusterlib::Client *m_client;
 
     /**
+     * The clusterlib root
+     */
+    clusterlib::Root *m_root;
+
+    /**
      * The group that has the active node
      */
     clusterlib::Group *m_activeNodeGroup;
-
-    /**
-     * The property list of the active node that has the the current
-     * request and status.
-     */
-    clusterlib::PropertyList *m_activeNodePropertyList;
 
     /**
      * The clusterlib node that represents this physical node
@@ -85,22 +102,6 @@ class ActiveNode {
      * The vectory of all the handler pointers
      */
     std::vector<clusterlib::UserEventHandler *> m_handlerVec;
-
-    /**
-     * The queue that gets the RPC requests
-     */
-    clusterlib::Queue *m_recvQueue;
-
-    /**
-     * The queue that has the completed requests if no one picks them up
-     */
-    clusterlib::Queue *m_completedQueue;
-
-    /**
-     * The maximum number of elements in the m_completedQueue (-1 for
-     * infinite, 0 for none).
-     */
-    int32_t m_completedQueueSize;
 
     /**
      * When the signal is sent, the shutdown will begin.

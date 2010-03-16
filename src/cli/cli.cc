@@ -66,8 +66,9 @@ int main(int argc, char* argv[])
         ProcessThreadService::getHostnamePidTid() + 
         ClusterlibStrings::DEFAULT_COMPLETED_QUEUE, true);
     string completedQueueKey = completedQueue->getKey();    
-    params->getFactory()->createJSONRPCResponseClient(respQueue,
-                                                      completedQueue);
+    Client *jsonRPCResponseClient = 
+        params->getFactory()->createJSONRPCResponseClient(respQueue,
+                                                          completedQueue);
 
     /* Register the commands after connecting */
     params->registerCommand(setLogLevelCommand);
@@ -81,6 +82,10 @@ int main(int argc, char* argv[])
     params->registerCommand(new AddNode(params->getClient()));
     params->registerCommand(new AddPropertyList(params->getClient()));
     params->registerCommand(new AddQueue(params->getClient()));
+    params->registerCommand(new GetZnode(params->getFactory(),
+                                         params->getClient()));
+    params->registerCommand(new GetZnodeChildren(params->getFactory(), 
+                                                 params->getClient()));
     params->registerCommand(new JSONRPCCommand(params->getClient(), 
                                                respQueue));
     params->registerCommand(new Help(params));
@@ -98,36 +103,15 @@ int main(int argc, char* argv[])
     }
     
     /* Clean up */
+    params->getFactory()->removeClient(jsonRPCResponseClient);
     map<string, CliCommand *>::iterator it;
     for (it = params->getCommandMap()->begin(); 
          it != params->getCommandMap()->end();
          ++it) {
         delete it->second;
     }
-
-    /* Clean up the Factory to clear out all the events and clients */
-    delete params->getFactory();
-
-    /* Initialize the factory again to clean up our objects */
-    params->initFactoryAndClient();
-    root = params->getClient()->getRoot();
-    respQueue = dynamic_cast<Queue *>(
-        root->getNotifyableFromKey(respQueueKey));
-    if (respQueue != NULL) {
-        respQueue->remove();
-    }
-    else {
-        cerr << "Couldn't find response queue: " << respQueueKey << endl;
-    }
-    completedQueue = dynamic_cast<Queue *>(
-        root->getNotifyableFromKey(completedQueueKey));
-    if (completedQueue != NULL) {
-        completedQueue->remove();
-    }
-    else {
-        cerr << "Couldn't find completed queue: " << completedQueueKey << endl;
-    }
-    delete params->getFactory();
+    respQueue->remove();
+    completedQueue->remove();
 
     return 0;
 }

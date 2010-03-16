@@ -44,8 +44,8 @@ DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
     }
 
     /* 
-     * Locking operations are serialized for each thread on a lock
-     * granular basis.
+     * Acquiring locks is serialized for each thread on a lock
+     * granular basis.  Releasing can happen in parallel and is safe.
      */
     Locker l(castedNtp->getSyncDistLock());
 
@@ -358,12 +358,6 @@ DistributedLocks::release(Notifyable *ntp, const string &lockName)
     if (castedNtp == NULL) {
         throw InvalidArgumentsException("release: Notifyable is NULL");
     }
-
-    /* 
-     * Locking operations are serialized for each thread on a lock
-     * granular basis. 
-     */
-    Locker l(castedNtp->getSyncDistLock());
 
     string lockNode = 
         NotifyableKeyManipulator::createLockNodeKey(

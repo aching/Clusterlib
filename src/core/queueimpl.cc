@@ -35,7 +35,8 @@ QueueImpl::QueueImpl(FactoryOps *fp,
                      const string &key,
                      const string &name,
                      NotifyableImpl *parent)
-    : NotifyableImpl(fp, key, name, parent)
+    : NotifyableImpl(fp, key, name, parent), 
+      m_queueParentKey(NotifyableKeyManipulator::createQueueParentKey(key))
 {
     TRACE(CL_LOG, "QueueImpl");
 }
@@ -51,7 +52,7 @@ QueueImpl::put(const string &element)
     int64_t myBid = -1;
     string createdPath;
     SAFE_CALL_ZK((myBid = getOps()->getRepository()->createSequence(
-                      queuePrefix, 
+                      queuePrefix,
                       element,
                       0, 
                       false, 
@@ -91,8 +92,6 @@ QueueImpl::takeWaitMsecs(int64_t msecTimeout,
 {
     TRACE(CL_LOG, "takeWaitMsecs");
 
-    const string &queueParent = getKey();
-
     bool signaled;
     int64_t curUsecTimeout = 0;
     int64_t maxUsecs = 0;
@@ -114,17 +113,17 @@ QueueImpl::takeWaitMsecs(int64_t msecTimeout,
     bool deletedNode = false;
     do {
         SAFE_CALL_ZK(getOps()->getRepository()->getNodeChildren(
-                         queueParent,
+                         getQueueParentKey(),
                          childList),
                      "Getting children for node %s failed: %s",
-                     queueParent.c_str(),
+                     getQueueParentKey().c_str(),
                      false,
                      true);
 
         LOG_DEBUG(CL_LOG, 
                   "take: Found %d child for parent %s", 
                   childList.size(), 
-                  queueParent.c_str());
+                  getQueueParentKey().c_str());
         if (childList.size() > 0) {
             SAFE_CALL_ZK((found = getOps()->getRepository()->getNodeData(
                               childList.front(),
@@ -161,19 +160,19 @@ QueueImpl::takeWaitMsecs(int64_t msecTimeout,
          * Set up the waiting for the handler function on the parent.
          */
         getOps()->getQueueEventSignalMap()->addRefPredMutexCond(
-            queueParent);
+            getQueueParentKey());
         CachedObjectEventHandler *handler = 
             getOps()->getCachedObjectChangeHandlers()->
             getChangeHandler(
                 CachedObjectChangeHandlers::QUEUE_CHILD_CHANGE);
         SAFE_CALL_ZK(
             getOps()->getRepository()->getNodeChildren(
-                queueParent,
+                getQueueParentKey(),
                 childList,
                 getOps()->getZooKeeperEventAdapter(),
                 handler),
             "Checking for number of children on %s failed: %s",
-            queueParent.c_str(),
+            getQueueParentKey().c_str(),
             false,
             true);
         
@@ -187,7 +186,7 @@ QueueImpl::takeWaitMsecs(int64_t msecTimeout,
         if (childList.size() == 0) {
             if (msecTimeout == -1) {
                 getOps()->getQueueEventSignalMap()->waitUsecsPredMutexCond(
-                    queueParent, msecTimeout);
+                    getQueueParentKey(), msecTimeout);
             }
             else {
                 /* Don't let curUsecTimeout go negative. */
@@ -195,7 +194,7 @@ QueueImpl::takeWaitMsecs(int64_t msecTimeout,
                     maxUsecs - TimerService::getCurrentTimeUsecs(), 0LL);
                 signaled = 
                     getOps()->getQueueEventSignalMap()->waitUsecsPredMutexCond(
-                        queueParent, curUsecTimeout);
+                        getQueueParentKey(), curUsecTimeout);
                 if ((!signaled) || 
                     (TimerService::compareTimeUsecs(maxUsecs) >= 0)) {
                     break;
@@ -209,12 +208,12 @@ QueueImpl::takeWaitMsecs(int64_t msecTimeout,
          * count).
          */
         getOps()->getQueueEventSignalMap()->removeRefPredMutexCond(
-            queueParent);
+            getQueueParentKey());
     } while (1);
 
     /* Escaping the loop means that timeout passed. */
     getOps()->getQueueEventSignalMap()->removeRefPredMutexCond(
-        queueParent);
+        getQueueParentKey());
     return false;
 }
 
@@ -223,14 +222,13 @@ QueueImpl::front(string &element)
 {
     TRACE(CL_LOG, "front");
 
-    const string &queueParent = getKey();
     NameList childList;
     bool found = false;
     SAFE_CALL_ZK(getOps()->getRepository()->getNodeChildren(
-                     queueParent,
+                     getQueueParentKey(),
                      childList),
                  "Getting children for node %s failed: %s",
-                 queueParent.c_str(),
+                 getQueueParentKey().c_str(),
                  false,
                  true);
     if (childList.size() > 0) {
@@ -253,14 +251,12 @@ QueueImpl::size()
 {
     TRACE(CL_LOG, "size");
     
-    const string &queueParent = getKey();
-
     NameList childList;
     SAFE_CALL_ZK(getOps()->getRepository()->getNodeChildren(
-                     queueParent,
+                     getQueueParentKey(),
                      childList),
                  "Getting children for node %s failed: %s",
-                 queueParent.c_str(),
+                 getQueueParentKey().c_str(),
                  false,
                  true);
     return childList.size();
@@ -279,13 +275,12 @@ QueueImpl::clear()
 {
     TRACE(CL_LOG, "clear");
 
-    const string &queueParent = getKey();
     NameList childList;
     SAFE_CALL_ZK(getOps()->getRepository()->getNodeChildren(
-                     queueParent,
+                     getQueueParentKey(),
                      childList),
                  "Getting children for node %s failed: %s",
-                 queueParent.c_str(),
+                 getQueueParentKey().c_str(),
                  false,
                  true);
     NameList::iterator childListIt;
@@ -308,13 +303,12 @@ QueueImpl::removeElement(int64_t id)
 {
     TRACE(CL_LOG, "removeElement");
 
-    const string &queueParent = getKey();
     NameList childList;
     SAFE_CALL_ZK(getOps()->getRepository()->getNodeChildren(
-                     queueParent,
+                     getQueueParentKey(),
                      childList),
                  "Getting children for node %s failed: %s",
-                 queueParent.c_str(),
+                 getQueueParentKey().c_str(),
                  false,
                  true);
     NameList::iterator childListIt;
@@ -353,13 +347,12 @@ QueueImpl::getAllElements()
 
     map<int64_t, string> idElementMap;
     map<int64_t, string>::iterator idElementMapIt;
-    const string &queueParent = getKey();
     NameList childList;
     SAFE_CALL_ZK(getOps()->getRepository()->getNodeChildren(
-                     queueParent,
+                     getQueueParentKey(),
                      childList),
                  "Getting children for node %s failed: %s",
-                 queueParent.c_str(),
+                 getQueueParentKey().c_str(),
                  false,
                  true);
     NameList::iterator childListIt;
@@ -422,20 +415,19 @@ QueueImpl::establishQueueWatch()
 {
     TRACE(CL_LOG, "establishQueueWatch");
 
-    const string &queueParent = getKey();
     NameList childList;
     SAFE_CALLBACK_ZK(
         getOps()->getRepository()->getNodeChildren(
-            queueParent,
+            getQueueParentKey(),
             childList,
             getOps()->getZooKeeperEventAdapter(), 
             getOps()->getCachedObjectChangeHandlers()->
             getChangeHandler(CachedObjectChangeHandlers::QUEUE_CHILD_CHANGE)),
         ,
         CachedObjectChangeHandlers::QUEUE_CHILD_CHANGE,
-        queueParent,
+        getQueueParentKey(),
         "Reestablishing watch on value of %s failed: %s",
-        queueParent.c_str(),
+        getQueueParentKey().c_str(),
         true,
         true);
 }

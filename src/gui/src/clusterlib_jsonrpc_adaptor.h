@@ -112,10 +112,9 @@ class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod {
   public:
     MethodAdaptor(clusterlib::Client *client);
 
-    virtual std::string getName();
+    virtual const std::string &getName() const;
     
-    virtual bool checkInitParams(const ::json::JSONValue::JSONArray &paramArr,
-                                 bool initialize);
+    virtual void checkParams(const ::json::JSONValue::JSONArray &paramArr);
 
     ::json::JSONValue invoke(const std::string &name, 
                              const ::json::JSONValue::JSONArray &param, 
@@ -235,6 +234,8 @@ class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod {
     clusterlib::Client *m_client;
 
     clusterlib::Root *m_root;
+
+    std::string m_name;
 };
 }}}
 #endif

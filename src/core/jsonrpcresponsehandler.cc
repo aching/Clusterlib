@@ -27,7 +27,7 @@ void
 JSONRPCResponseHandler::handleUserEvent(Event e)
 {
     TRACE(CL_LOG, "handleUserEvent");
-        
+
     if (m_respQueue == NULL) {
         throw InconsistentInternalStateException(
             "handleUserEvent: No response queue exists!!!");

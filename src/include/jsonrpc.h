@@ -75,20 +75,17 @@ class JSONRPC {
     virtual ~JSONRPC() {}
 
     /**
-     * Get the name of this JSON-RPC
+     * Get the name of this JSON-RPC (used as the JSON-RPC method).
      */
-    virtual std::string getName() = 0;
+    virtual const std::string &getName() const = 0;
 
     /**
-     * Check and possibly initialize the parameters of this JSON-RPC
+     * Check the parameters of this JSON-RPC
      *
      * @param paramArr the parameters of this object
-     * @param initialize if true, parse the paramArr into the object members,
-     *        else, only check
-     * @return true if success, false if failure
+     * @throws if there is a problem
      */
-    virtual bool checkInitParams(const JSONValue::JSONArray &paramArr, 
-                                 bool initialize) = 0;
+    virtual void checkParams(const JSONValue::JSONArray &paramArr) = 0;
 };
  
 /**
@@ -128,14 +125,6 @@ class JSONRPCRequest
 {
   public:
     /**
-     * Prepares the RPC request for submission.  The request is
-     * checked as well.  Must be called prior to sendRequest.
-     *
-     * @param paramObj the params that will be used for the next request
-     */
-    virtual void prepareRequest(const JSONValue::JSONArray &paramArr) = 0;
-    
-    /**
      * Send the request to the destination.
      *
      * @param destination implementation-dependent destination
@@ -157,11 +146,36 @@ class JSONRPCRequest
     virtual bool waitMsecsResponse(int64_t msecsTimeout) = 0;
 
     /**
-     * Get response after waitResponse() has succeeded.
+     * Get the JSON response result (only after getting a response).
      *
-     * @return the JSONValue for this RPC.
+     * @return a reference to the JSONValue::JSONNull if there was an
+     *         error, else get the user-defined result.
      */
-    virtual const JSONValue::JSONObject &getResponse() = 0;
+    virtual const json::JSONValue &getResponseResult() const = 0;
+
+    /**
+     * Get the JSON response error (only after getting a response).
+     *
+     * @return a reference to the JSONValue::JSONNull if no error, else
+     *         get the user-defined error.
+     */
+    virtual const json::JSONValue &getResponseError() const = 0;
+
+    /**
+     * Get the JSON response id (only after getting a response).
+     *
+     * @return a reference to the JSONValue that is used to match the
+     *          request with the response.
+     */
+    virtual const json::JSONValue &getResponseId() const = 0;
+
+    /**
+     * Get the full response object - result, error, and id (only
+     * after getting a response).
+     *
+     * @return a reference to the JSONObject that is the response
+     */
+    virtual const json::JSONValue::JSONObject &getResponse() const = 0;
 
     /**
      * Get the user-defined data associated with the request.
@@ -193,6 +207,7 @@ class JSONRPCManager {
      */
     virtual bool registerMethod(const std::string &name, 
                                 JSONRPCMethod *method);
+
     /**
      * Unregisters the RPC method. Each RPC method should have unique 
      * name. Unregistration will fail if the name does not exist.
@@ -221,44 +236,14 @@ class JSONRPCManager {
      * @return the encoded JSON-RPC result object.
      */
     virtual JSONValue invoke(const JSONValue &rpcInvocation, 
-                             StatePersistence *persistence = NULL) const;
+                             StatePersistence *persistence = NULL);
 
-    /**
-     * Invoke() is used for real RPC.  For clusterlib JSON-RPC, the
-     * following method will invoked the registered method and put the
-     * result on the DEFAULT_RESP_QUEUE if valid.  Otherwise, it will
-     * put the result on the DEFAULT_COMPLETED_QUEUE.
-     *
-     * @param rpcInvocation the JSON encoded JSON-RPC string
-     * @param root the clusterlib root pointer
-     * @param defaultCompletedQueue the queue to put the result in if no resp
-     *        queue is in the rpcInvocation
-     * @param persistence the persistence used to store a persistable state
-     */
-    virtual void invokeAndResp(
-        const std::string &rpcInvocation,
-        clusterlib::Root *root,
-        clusterlib::Queue *defaultCompletedQueue,
-        int32_t defaultCompletedQueueMaxSize,
-        clusterlib::PropertyList *methodStatusPropertyList,
-        StatePersistence *persistence = NULL) const;
-    
     /**
      * Destroys the RPC manager instance.
      */
     virtual ~JSONRPCManager();
 
   private:
-    /**
-     * Defines the map type to store RPC methods.
-     */
-    typedef std::map<std::string, JSONRPCMethod *> RPCMethodMap;
-    
-    /**
-     * Represents the registered RPC methods. Keys are names.
-     */
-    RPCMethodMap rpcMethods;
-    
     /**
      * Generates the error JSON-RPC response.
      * @param message the error message.
@@ -277,6 +262,27 @@ class JSONRPCManager {
      */
     static JSONValue generateResponse(const JSONValue &ret, 
                                       const JSONValue &id);    
+
+    /**
+     * Get the lock
+     */
+    clusterlib::Mutex *getLock();
+
+  private:
+    /**
+     * Make this class thread-safe
+     */
+    clusterlib::Mutex m_lock;
+
+    /**
+     * Defines the map type to store RPC methods.
+     */
+    typedef std::map<std::string, JSONRPCMethod *> RPCMethodMap;
+    
+    /**
+     * Represents the registered RPC methods. Keys are names.
+     */
+    RPCMethodMap m_rpcMethods;    
 };
 
 }}

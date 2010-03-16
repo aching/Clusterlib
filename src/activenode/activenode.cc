@@ -25,6 +25,7 @@ using namespace json::rpc;
 namespace activenode {
 
 static const size_t hostnameSize = 255;
+
 /** 
  * Wait 1 seconds for a queue element 
  */
@@ -115,6 +116,8 @@ class NodeHealthChecker : public HealthChecker {
         }
     }
 
+    virtual ~NodeHealthChecker() {}
+
   private:
     Node *m_node;
 };
@@ -132,8 +135,8 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
 
     /* Go to the group to add the node */
     m_client = m_factory->createClient();
-    Root *root = m_client->getRoot();
-    m_activeNodeGroup = root->getApplication(groupVec[0], true);
+    m_root = m_client->getRoot();
+    m_activeNodeGroup = m_root->getApplication(groupVec[0], true);
     for (size_t i = 1; i < m_params.getGroupsVec().size(); i++) {
         m_activeNodeGroup = m_activeNodeGroup->getGroup(groupVec[i], true);
     }
@@ -150,11 +153,9 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
      * activate the node */
     Mutex activeNodeMutex;
     m_activeNode = m_activeNodeGroup->getNode(hostnameString, true);
-    m_activeNodePropertyList = m_activeNode->getPropertyList(
-        ClusterlibStrings::DEFAULTPROPERTYLIST, true);
     m_activeNode->initializeConnection(true);
-    NodeHealthChecker nodeHealthChecker(m_activeNode);
-    m_activeNode->registerHealthChecker(&nodeHealthChecker);
+    m_nodeHealthChecker.reset(new NodeHealthChecker(m_activeNode));
+    m_activeNode->registerHealthChecker(&(*(m_nodeHealthChecker.get())));
     
     /* Get rid of all the previous processes */
     NameList nl = m_activeNode->getProcessSlotNames();
@@ -182,14 +183,10 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
         processSlot->getDesiredProcessState();
         m_client->registerHandler(handler);
     }
+}
 
-    /* Setup the receiving queue and associated handler */
-     m_recvQueue =
-        m_activeNode->getQueue(ClusterlibStrings::DEFAULT_RECV_QUEUE, 
-                             true);
-     m_completedQueue =
-        m_activeNode->getQueue(ClusterlibStrings::DEFAULT_COMPLETED_QUEUE, 
-                             true);    
+ActiveNode::~ActiveNode()
+{    
 }
 
 Node *
@@ -200,20 +197,27 @@ ActiveNode::getActiveNode()
     return m_activeNode;
 }
 
+Root *
+ActiveNode::getRoot()
+{
+    TRACE(CL_LOG, "getRoot");
+
+    return m_root;
+}
+
 int32_t 
-ActiveNode::run(vector<JSONRPCManager *> &rpcManagerVec)
+ActiveNode::run(vector<ClusterlibRPCManager *> &rpcManagerVec)
 {
     TRACE(CL_LOG, "run");
+
     /* Setup a RPC method client for each rpcManager */
-    vector<JSONRPCManager *>::const_iterator rpcManagerVecIt;
+    vector<Client *> rpcClientVec;
+    vector<ClusterlibRPCManager *>::const_iterator rpcManagerVecIt;    
     for (rpcManagerVecIt = rpcManagerVec.begin(); 
          rpcManagerVecIt != rpcManagerVec.end(); 
          ++rpcManagerVecIt) {
-        m_factory->createJSONRPCMethodClient(m_recvQueue,
-                                             m_completedQueue,
-                                             m_completedQueueSize,
-                                             m_activeNodePropertyList,
-                                             *rpcManagerVecIt);
+        rpcClientVec.push_back(
+            m_factory->createJSONRPCMethodClient(*rpcManagerVecIt));
     }
     m_activeNode->setUseProcessSlots(true);
 
@@ -246,6 +250,12 @@ ActiveNode::run(vector<JSONRPCManager *> &rpcManagerVec)
     /* Clean up */
     LOG_DEBUG(CL_LOG, "run: Cleaning up...");
     m_activeNode->unregisterHealthChecker();
+    vector<Client *>::iterator rpcClientVecIt;
+    for (rpcClientVecIt = rpcClientVec.begin(); 
+         rpcClientVecIt != rpcClientVec.end(); 
+         ++rpcClientVecIt) {
+        m_factory->removeClient(*rpcClientVecIt);
+    }
     vector<UserEventHandler *>::iterator handlerVecIt;
     for (handlerVecIt = m_handlerVec.begin(); 
          handlerVecIt != m_handlerVec.end();

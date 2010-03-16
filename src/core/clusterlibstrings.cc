@@ -47,6 +47,8 @@ const string ClusterlibStrings::LASTCONNECTED = "_lastConnected";
 const string ClusterlibStrings::CLIENTVERSION = "_clientVersion";
 const string ClusterlibStrings::CONNECTED = "_connected";
 
+const string ClusterlibStrings::QUEUE_PARENT = "_queueParent";
+
 const string ClusterlibStrings::BOUNCY = "_bouncy";
 const string ClusterlibStrings::READY = "_ready";
 const string ClusterlibStrings::ALIVE = "_alive";
@@ -87,6 +89,10 @@ const string ClusterlibStrings::PLV_STATE_INITIAL = "_initial";
 const string ClusterlibStrings::PLV_STATE_PREPARING = "_preparing";
 const string ClusterlibStrings::PLV_STATE_READY = "_ready";
 const string ClusterlibStrings::PLV_STATE_STOPPED = "_stopped";
+const string ClusterlibStrings::PLK_RPCMANAGER_REQ_POSTFIX = 
+    " current request";
+const string ClusterlibStrings::PLK_RPCMANAGER_REQ_STATUS_POSTFIX =
+    " current request status";
 
 const string ClusterlibStrings::DEFAULT_RECV_QUEUE = "_defaultRecvQueue";
 const string ClusterlibStrings::DEFAULT_RESP_QUEUE = "_defaultRespQueue";

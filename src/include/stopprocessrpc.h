@@ -16,10 +16,10 @@ namespace clusterlib {
 
 class StopProcessRPC : public virtual ::json::rpc::JSONRPC {
   public:
-    virtual std::string getName();
+    virtual const std::string &getName() const;
 
     /** 
-     * Stop a process.
+     * Check the params.
      *
      * jsonObj keys:
      * Required key: JSONOBJECTKEY_NOTIFYABLEKEY, val: JSONString
@@ -30,39 +30,46 @@ class StopProcessRPC : public virtual ::json::rpc::JSONRPC {
      * object.
      *
      * @param paramArr an array with one element (the map of key-value pairs)
-     * @return true if scuess, false if failure
      */
-    virtual bool checkInitParams(const ::json::JSONValue::JSONArray &paramArr,
-                                 bool initialize);
+    virtual void checkParams(const ::json::JSONValue::JSONArray &paramArr);
+
+    const json::JSONValue &getProcessSlotKey() const
+    {
+        return m_processSlotKey;
+    }
+
+    void setProcessSlotKey(const json::JSONValue::JSONString &processSlotKey)
+    {
+        m_processSlotKey = processSlotKey;
+    }
+
+  private:
+    /**
+     * jSON parameter process slot key (JSONString)
+     */
+    json::JSONValue m_processSlotKey;
 };
 
 /**
  * Definition of class StopProcessMethod for servers.
  */
 class StopProcessMethod
-    : public virtual ::json::rpc::JSONRPCMethod,
+    : public virtual ClusterlibRPCMethod,
       public virtual StopProcessRPC 
 {
   public:
     /**
      * Constructor.
      */
-    StopProcessMethod(clusterlib::Client *client);
+    StopProcessMethod() {}
 
     virtual ::json::JSONValue invoke(
         const std::string &name, 
         const ::json::JSONValue::JSONArray &param, 
         ::json::rpc::StatePersistence *persistence);
-  private:
-    /**
-     * The clusterlib client pointer
-     */
-    clusterlib::Client *m_client;
-    
-    /**
-     * The clusterlib root pointer
-     */
-    clusterlib::Root *m_root;
+
+    virtual void unmarshalParams(
+        const ::json::JSONValue::JSONArray &paramArr);
 };
 
 /**
@@ -77,6 +84,8 @@ class StopProcessRequest
      * Constructor.
      */
     StopProcessRequest(Client *client) : ClusterlibRPCRequest(client) {}
+
+    virtual ::json::JSONValue::JSONArray marshalParams();
 };
 
 }

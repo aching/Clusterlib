@@ -12,36 +12,67 @@ JSONRPCManager::~JSONRPCManager()
 {
 }
 
+Mutex *
+JSONRPCManager::getLock()
+{
+    TRACE(JRPC_LOG, "getLock");
+    
+    return &m_lock;
+}
+
 bool 
-JSONRPCManager::registerMethod(const string &name, JSONRPCMethod *method) {
-    if (rpcMethods.find(name) != rpcMethods.end()) {
+JSONRPCManager::registerMethod(const string &name, JSONRPCMethod *method) 
+{
+    Locker l(getLock());
+
+    if (m_rpcMethods.find(name) != m_rpcMethods.end()) {
         return false;
     }
-    
-    rpcMethods.insert(make_pair(name, method));
+
+    /* 
+     * If this is a ClusterlibRPCManager and the method is a
+     * ClusterlibRPCMethod, then make sure to set the rpc manager pointer.
+     */
+    ClusterlibRPCManager *clusterlibRpcManager = 
+        dynamic_cast<ClusterlibRPCManager *>(this);
+    ClusterlibRPCMethod *clusterlibRpcMethod = 
+        dynamic_cast<ClusterlibRPCMethod *>(method);
+    if (clusterlibRpcManager && clusterlibRpcMethod) {
+        clusterlibRpcMethod->setRPCManager(clusterlibRpcManager);
+    }
+
+    m_rpcMethods.insert(make_pair(name, method));
     return true;
 }
 
-bool JSONRPCManager::unregisterMethod(const string &name) {
-    if (rpcMethods.find(name) == rpcMethods.end()) {
+bool JSONRPCManager::unregisterMethod(const string &name) 
+{
+    Locker l(getLock());
+
+    if (m_rpcMethods.find(name) == m_rpcMethods.end()) {
         return false;
     }
     
-    rpcMethods.erase(name);
+    m_rpcMethods.erase(name);
     return true;
 }
 
 void 
-JSONRPCManager::clearMethods() {
-    rpcMethods.clear();
+JSONRPCManager::clearMethods() 
+{
+    Locker l(getLock());
+
+    m_rpcMethods.clear();
 }
 
 vector<string> 
-JSONRPCManager::getMethodNames() {
-    vector<string> methodNames;
-    
-    for (RPCMethodMap::const_iterator iter = rpcMethods.begin(); 
-         iter != rpcMethods.end(); 
+JSONRPCManager::getMethodNames() 
+{
+    Locker l(getLock());
+
+    vector<string> methodNames;    
+    for (RPCMethodMap::const_iterator iter = m_rpcMethods.begin(); 
+         iter != m_rpcMethods.end(); 
          ++iter) {
         methodNames.push_back(iter->first);
     }
@@ -51,7 +82,8 @@ JSONRPCManager::getMethodNames() {
 
 JSONValue 
 JSONRPCManager::generateErrorResponse(const string &message, 
-                                      const JSONValue &id) {
+                                      const JSONValue &id) 
+{
     JSONValue::JSONObject obj;
     obj["result"] = JSONValue::Null;
     obj["error"] = message;
@@ -61,7 +93,8 @@ JSONRPCManager::generateErrorResponse(const string &message,
 }
 
 JSONValue 
-JSONRPCManager::generateResponse(const JSONValue &ret, const JSONValue &id) {
+JSONRPCManager::generateResponse(const JSONValue &ret, const JSONValue &id) 
+{
     JSONValue::JSONObject obj;
     obj["result"] = ret;
     obj["error"] = JSONValue::Null;
@@ -71,7 +104,8 @@ JSONRPCManager::generateResponse(const JSONValue &ret, const JSONValue &id) {
 
 JSONValue 
 JSONRPCManager::invoke(const JSONValue &rpcInvocation, 
-                       StatePersistence *persistence) const {
+                       StatePersistence *persistence)
+{
     string method;
     JSONValue::JSONArray params;
     JSONValue id;
@@ -89,14 +123,17 @@ JSONRPCManager::invoke(const JSONValue &rpcInvocation,
         id = rpcObj["id"];
         method = rpcObj["method"].get<JSONValue::JSONString>();
         params = rpcObj["params"].get<JSONValue::JSONArray>();
-    } catch (JSONValueException &ex) {
+    } 
+    catch (JSONValueException &ex) {
         return generateErrorResponse(
             string("Invalid JSON-RPC object with unexpected type.\n") + 
             ex.what(), id);
     }
 
-    RPCMethodMap::const_iterator methodIter = rpcMethods.find(method);
-    if (methodIter == rpcMethods.end()) {
+    RPCMethodMap::const_iterator methodIter;
+    Locker l(getLock());
+    methodIter = m_rpcMethods.find(method);
+    if (methodIter == m_rpcMethods.end()) {
         // Method not found
         return generateErrorResponse(
             string("RPC method '") + method + "' is not found.", id);
@@ -105,120 +142,28 @@ JSONRPCManager::invoke(const JSONValue &rpcInvocation,
     LOG_INFO(JRPC_LOG, "Invoking JSON-RPC method (%s)", method.c_str());
 
     try {
-        /* Check and get the expected params */
-        methodIter->second->checkInitParams(params, true);
+        /* Check the expected params */
+        methodIter->second->checkParams(params);
+
+        /* Unmarshal if a ClusterlibRPCMethod */
+        ClusterlibRPCMethod *clusterlibRpcMethod = 
+            dynamic_cast<ClusterlibRPCMethod *>(methodIter->second);
+        if (clusterlibRpcMethod) {
+            clusterlibRpcMethod->unmarshalParams(params);
+        }
+
         /* Call the appropriate method */
         return generateResponse(
             methodIter->second->invoke(method, params, persistence), id);
         LOG_INFO(JRPC_LOG,
                  "JSON-PRC invocation succeeded (%s)"
                  ,method.c_str());
-    } catch (Exception &ex) {
-        // Error occurred when invoking the method
+    } 
+    catch (Exception &ex) {
+        /* Error occurred when invoking the method */
         return generateErrorResponse(
             string("Error occurred when invoking the method.\n") + ex.what(),
             id);
-    }
-}
-
-void
-JSONRPCManager::invokeAndResp(const string &rpcInvocation,
-                              Root *root,
-                              Queue *defaultCompletedQueue,
-                              int32_t defaultCompletedQueueMaxSize,
-                              PropertyList *methodStatusPropertyList,
-                              StatePersistence *persistence) const
-{
-    TRACE(JRPC_LOG, "invokeAndResp");
-    
-    JSONValue jsonInput, jsonResult;
-    JSONValue::JSONObject inputObj;
-    JSONValue::JSONObject::const_iterator jsonInputIt;
-    string result;
-    try {
-        jsonInput = JSONCodec::decode(rpcInvocation);
-        jsonResult = invoke(jsonInput, persistence);
-        result = JSONCodec::encode(jsonResult);
-        LOG_DEBUG(JRPC_LOG, 
-                  "invokeAndResp: Invoked on input (%s) and returned (%s)",
-                  rpcInvocation.c_str(),
-                  result.c_str());
-        inputObj = jsonInput.get<JSONValue::JSONObject>();
-        const JSONValue::JSONArray &paramArr = 
-            inputObj["params"].get<JSONValue::JSONArray>();
-        if (paramArr.size() == 0) {
-            LOG_WARN(JRPC_LOG, 
-                     "invokeAndResp: No params for the request, so putting "
-                     "result in default completed queue (%s)",
-                     defaultCompletedQueue->getKey().c_str());
-            defaultCompletedQueue->put(result);
-            return;
-        }
-        const JSONValue::JSONObject &paramObj = 
-            paramArr[0].get<JSONValue::JSONObject>();
-        jsonInputIt = paramObj.find(
-            ClusterlibStrings::JSONOBJECTKEY_RESPQUEUEKEY);
-        if (jsonInputIt != paramObj.end()) {
-            string respQueueKey = 
-            jsonInputIt->second.get<JSONValue::JSONString>();
-            Queue *respQueue = dynamic_cast<Queue *>(
-                root->getNotifyableFromKey(respQueueKey));
-            if (respQueue != NULL) {
-                respQueue->put(result);
-                /*
-                 * Also add to the completed queue if the
-                 * defaultCompletedQueue if > 0
-                 */
-                if (defaultCompletedQueueMaxSize > 0) {
-                    defaultCompletedQueue->put(result);
-                }
-            }
-            else {
-                LOG_WARN(JRPC_LOG,
-                         "invokeAndResp: Tried to put result in user "
-                         "selected queue (%s) and failed, so putting "
-                         "result in default completed queue (%s)",
-                         respQueueKey.c_str(),
-                         defaultCompletedQueue->getKey().c_str());
-                defaultCompletedQueue->put(result);
-            }
-        }
-        else {
-            defaultCompletedQueue->put(result);
-        }
-
-        /* 
-         * Try to make sure that the defaultCompletedQueue size is not
-         * exceeded 
-         */
-        const int32_t maxRetries = 3;
-        int32_t retriesUsed = 0;
-        string tmpElement;
-        while (retriesUsed < maxRetries) {
-            if (defaultCompletedQueue->acquireLockWaitMsecs(100)) {
-                while (defaultCompletedQueue->size() > 
-                       defaultCompletedQueueMaxSize) {
-                    defaultCompletedQueue->take(tmpElement);
-                }
-                break;
-            }
-            LOG_WARN(JRPC_LOG,
-                     "invokeAndResp: Failed to get the lock with retriesUsed ="
-                     " %d (max %d)",
-                     retriesUsed,
-                     maxRetries);
-            ++retriesUsed;
-        }
-    }
-    catch (const Exception &ex) {
-        JSONValue::JSONObject jsonObject;
-        string queueElement = JSONCodec::encode(jsonObject);
-        LOG_WARN(CL_LOG,
-                 "invokeAndResp: Couldn't parse or service command (%s) "
-                 "and adding element (%s) to the DEFAULT_COMPLETED_QUEUE",
-                  JSONCodec::encode(rpcInvocation).c_str(),
-                 queueElement.c_str());
-        defaultCompletedQueue->put(queueElement);
     }
 }
 

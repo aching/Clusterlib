@@ -16,16 +16,52 @@ namespace clusterlib {
 
 class GenericRPC : public virtual ::json::rpc::JSONRPC {
   public:
-    virtual std::string getName();
+    virtual const std::string &getName() const;
 
     /**
      * Only checks that this is one element that is a JSONObject.
      *
      * @param paramArr the JSONArray of parameters
-     * @return true if passes, false if fails
      */
-    virtual bool checkInitParams(const ::json::JSONValue::JSONArray &paramArr,
-                                 bool initialize);
+    virtual void checkParams(const ::json::JSONValue::JSONArray &paramArr);
+
+    /**
+     * Get the current request name.
+     */
+    const std::string &getRequestName() const
+    {
+        return m_requestName;
+    }
+
+    /**
+     * Set the request name so getName() gets this instead of a
+     * generic request.
+     */
+    void setRequestName(const std::string &requestName) 
+    {
+        m_requestName = requestName;
+    }
+
+    const json::JSONValue::JSONArray &getRPCParams() const
+    {
+        return m_RPCParams;
+    }
+
+    void setRPCParams(const json::JSONValue::JSONArray &rPCParams)
+    {
+        m_RPCParams = rPCParams;
+    }
+
+  private:
+    /** 
+     * Use this name for getName()
+     */
+    std::string m_requestName;
+
+    /**
+     * JSON parameter RPC params (JSONArray)
+     */
+    json::JSONValue::JSONArray m_RPCParams;
 };
 
 /**
@@ -46,21 +82,12 @@ class GenericRequest
     GenericRequest(Client *client, 
                    const std::string &requestName,
                    ClientData data = NULL) 
-        : ClusterlibRPCRequest(client, data),
-          m_requestName(requestName) {}
+        : ClusterlibRPCRequest(client, data)
+    {
+        GenericRPC::setRequestName(requestName);
+    }
 
-    /**
-     * Overload to use the requestName instead of getName()
-     *
-     * @param destination a const char * to the queue name
-     */
-    virtual void sendRequest(const void *destination);
-
-  private:
-    /** 
-     * Use this name instead of getName()
-     */
-    std::string m_requestName;
+    virtual ::json::JSONValue::JSONArray marshalParams();
 };
 
 }

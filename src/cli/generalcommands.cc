@@ -369,7 +369,6 @@ GetAttributes::helpMessage()
     return "Get more information about a notifyable.";
 }
 
-
 GetAttributes::~GetAttributes() {}
 
 AddApplication::AddApplication(Client *client) 
@@ -586,6 +585,81 @@ AddQueue::helpMessage()
  
 AddQueue::~AddQueue() {}
 
+GetZnode::GetZnode(Factory *factory, Client *client)
+    : CliCommand("getznode", NULL, 0), m_factory(factory) 
+{
+    vector<CliCommand::ArgType> argTypeVec;
+    argTypeVec.push_back(CliCommand::StringArg);
+    setArgTypeVec(argTypeVec);
+}
+
+void
+GetZnode::action() 
+{
+    string zkNodePath = getStringArg(0);
+    if (zkNodePath.empty()) {
+        throw Exception("action: Failed to get " + getNativeArg(0));
+    }
+    string zkNodeData;
+    bool found = 
+        m_factory->getRepository()->getNodeData(zkNodePath, zkNodeData);
+    if (!found) {
+        zkNodeData = "(not found)";
+    }
+    CliFormat::attributeOut("data", zkNodeData);
+}
+
+string
+GetZnode::helpMessage()
+{
+    return "Specify a znode (StringArg) to look up its value";
+}
+
+GetZnode::~GetZnode() {}
+
+GetZnodeChildren::GetZnodeChildren(Factory *factory, Client *client)
+    : CliCommand("getznodechildren", NULL, 0), m_factory(factory) 
+{
+    vector<CliCommand::ArgType> argTypeVec;
+    argTypeVec.push_back(CliCommand::StringArg);
+    setArgTypeVec(argTypeVec);
+}
+
+void
+GetZnodeChildren::action() 
+{
+    string zkNodePath = getStringArg(0);
+    if (zkNodePath.empty()) {
+        throw Exception("action: Failed to get " + getNativeArg(0));
+    }
+    vector<string> zkNodeChildren;
+    string attributePrefix = "child";
+    bool found = 
+        m_factory->getRepository()->getNodeChildren(zkNodePath, 
+                                                    zkNodeChildren);
+    if (!found) {
+        CliFormat::attributeOut(attributePrefix, "(none)");
+    }
+    else {
+        stringstream ss;
+        CliParams *params = CliParams::getInstance();
+        for (size_t i = 0; i <  zkNodeChildren.size(); ++i) {
+            ss.str("");
+            ss << attributePrefix << i;
+            CliFormat::attributeOut(ss.str(), zkNodeChildren[i]);
+            params->addToKeySet(zkNodeChildren[i]);
+        }
+    }
+}
+
+GetZnodeChildren::~GetZnodeChildren() {}
+
+string
+GetZnodeChildren::helpMessage()
+{
+    return "Specify a znode (StringArg) to look up its children";
+}
+
 Help::Help(CliParams *cliParams) 
     : CliCommand("?", NULL, 0),
       m_params(cliParams)
@@ -678,7 +752,6 @@ JSONRPCCommand::action()
             req.reset(new GenericRequest(getClient(), getNativeArg(1)));
         }
         
-        req->prepareRequest(paramArr);
         req->sendRequest(queueKey.c_str());
         req->waitResponse();
         respObj = req->getResponse();

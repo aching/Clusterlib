@@ -21,43 +21,26 @@ using namespace std;
 
 namespace clusterlib {
 
-string
-StopProcessRPC::getName()
+const string &
+StopProcessRPC::getName() const
 {
     return ClusterlibStrings::RPC_STOP_PROCESS;
 }
 
-bool
-StopProcessRPC::checkInitParams(const JSONValue::JSONArray &paramArr,
-                                bool initialize)
+void
+StopProcessRPC::checkParams(const JSONValue::JSONArray &paramArr)
 {
-    try {
-        if (paramArr.size() != 1) {
-            LOG_ERROR(CL_LOG,
-                      "checkParams: Expecting one array element, got %d",
-                      paramArr.size());
-            return false;
-        }
-        JSONValue::JSONObject paramObj = 
-            paramArr[0].get<JSONValue::JSONObject>();
-        JSONValue::JSONObject::const_iterator paramObjIt = paramObj.find(
-            ClusterlibStrings::JSONOBJECTKEY_NOTIFYABLEKEY);
-        if (paramObjIt == paramObj.end()) {
-            throw JSONRPCInvocationException("checkParams: No notifyable!");
-        }
-
-        return true;
+    if (paramArr.size() != 1) {
+        throw JSONRPCInvocationException(
+            "checkParams: Expecting one array element");
     }
-    catch (const JSONRPCInvocationException &ex) {
-        LOG_WARN(CL_LOG, "checkParams: Failed with %s", ex.what());
-        return false;
+    JSONValue::JSONObject paramObj = 
+        paramArr[0].get<JSONValue::JSONObject>();
+    JSONValue::JSONObject::const_iterator paramObjIt = paramObj.find(
+        ClusterlibStrings::JSONOBJECTKEY_NOTIFYABLEKEY);
+    if (paramObjIt == paramObj.end()) {
+        throw JSONRPCInvocationException("checkParams: No notifyable!");
     }
-}
-
-StopProcessMethod::StopProcessMethod(Client *client) 
-    : m_client(client) 
-{
-    m_root = m_client->getRoot();
 }
 
 JSONValue 
@@ -85,7 +68,7 @@ StopProcessMethod::invoke(const std::string &name,
                 " is not a string");
         }
         ProcessSlot *processSlot = dynamic_cast<ProcessSlot *>(
-            m_root->getNotifyableFromKey(
+            getRPCManager()->getRoot()->getNotifyableFromKey(
                 jsonObjIt->second.get<JSONValue::JSONString>()));  
         if (processSlot == NULL) {
             throw JSONRPCInvocationException(
@@ -112,6 +95,31 @@ StopProcessMethod::invoke(const std::string &name,
                  ex.what());
         throw JSONRPCInvocationException(ex.what());
     }
+}
+
+void
+StopProcessMethod::unmarshalParams(const JSONValue::JSONArray &paramArr)
+{
+    TRACE(CL_LOG, "unmarshalParams");
+
+    JSONValue::JSONObject paramObj = paramArr[0].get<JSONValue::JSONObject>();
+    JSONValue::JSONObject::const_iterator paramObjIt = paramObj.find(
+        ClusterlibStrings::JSONOBJECTKEY_NOTIFYABLEKEY);
+    setProcessSlotKey(paramObjIt->second.get<JSONValue::JSONString>());
+}
+
+JSONValue::JSONArray
+StopProcessRequest::marshalParams()
+{
+    TRACE(CL_LOG, "marshalParams");
+
+    JSONValue::JSONArray jsonArr;
+    JSONValue::JSONObject jsonObj;
+    jsonObj[ClusterlibStrings::JSONOBJECTKEY_NOTIFYABLEKEY] = 
+        getProcessSlotKey();
+    
+    jsonArr.push_back(jsonObj);
+    return jsonArr;
 }
 
 }

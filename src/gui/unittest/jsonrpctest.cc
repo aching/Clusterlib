@@ -9,21 +9,16 @@ using namespace json::rpc;
 
 class MockMethod : public JSONRPCMethod {
   public:
-    virtual std::string getName()
+    MockMethod() : name("MockMethod") {}
+
+    virtual const std::string &getName() const
     {
-        return "MockMethod"; 
+        return name;
     }
     
-    virtual bool checkInitParams(const ::json::JSONValue::JSONArray &paramArr,
-                                 bool initialize)
+    virtual void checkParams(const ::json::JSONValue::JSONArray &paramArr)
     {
-        try {
-            string encodedString = JSONCodec::encode(paramArr);
-            return true;
-        }
-        catch (const JSONRPCInvocationException &ex) {
-            return false;
-        }
+        JSONCodec::encode(paramArr);
     }
 
     virtual JSONValue invoke(const string &name, 
@@ -35,25 +30,22 @@ class MockMethod : public JSONRPCMethod {
         array.push_back(name);
         return array;
     }
+
+    string name;
 };
 
 class MockErrorMethod : public JSONRPCMethod {
   public:
-    virtual std::string getName()
+    MockErrorMethod() : name("MockErrorMethod") {}
+
+    virtual const std::string &getName() const
     {
-        return "MockErrorMethod"; 
+        return name;
     }
     
-    virtual bool checkInitParams(const ::json::JSONValue::JSONArray &paramArr,
-                                 bool initialize)
+    virtual void checkParams(const ::json::JSONValue::JSONArray &paramArr)
     {
-        try {
-            string encodedString = JSONCodec::encode(paramArr);
-            return true;
-        }
-        catch (const JSONRPCInvocationException &ex) {
-            return false;
-        }
+        JSONCodec::encode(paramArr);
     }
 
     virtual JSONValue invoke(const string &name, 
@@ -62,6 +54,8 @@ class MockErrorMethod : public JSONRPCMethod {
     {
         throw JSONRPCInvocationException("Something goes wrong");
     }
+
+    string name;
 };
     
 BOOST_AUTO_TEST_CASE(testInvokeNonObject) {

@@ -36,7 +36,7 @@ class PropertyListImpl
 
     virtual void publish();
 
-    virtual void reset() 
+    virtual void clear() 
     {
         Locker l1(getSyncLock());
 	m_keyValMap.clear();

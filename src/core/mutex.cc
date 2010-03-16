@@ -132,7 +132,7 @@ PredMutexCond::predWaitUsecs(int64_t usecTimeout)
     }
     mutex.acquire();
     while (pred == false) {
-        LOG_DEBUG(CL_LOG,
+        LOG_TRACE(CL_LOG,
                   "predWaitUsecs: About to wait for a maximum of %lld usecs", 
                   usecTimeout);
         if (usecTimeout == -1) {
@@ -142,7 +142,7 @@ PredMutexCond::predWaitUsecs(int64_t usecTimeout)
             /* Don't let curUsecTimeout go negative. */
             curUsecTimeout = max(
                 maxUsecs - TimerService::getCurrentTimeUsecs(), 0LL);
-            LOG_DEBUG(CL_LOG, 
+            LOG_TRACE(CL_LOG, 
                       "predWaitUsecs: Going to wait for %lld usecs (%lld "
                       "usecs originally)", 
                       curUsecTimeout,
