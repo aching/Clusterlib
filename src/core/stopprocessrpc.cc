@@ -48,6 +48,8 @@ StopProcessMethod::invoke(const std::string &name,
                           const JSONValue::JSONArray &param, 
                           StatePersistence *persistence) {        
     TRACE(CL_LOG, "invoke");
+    bool gotLock = false;
+    ProcessSlot *processSlot = NULL;
     if (param.size() != 1 || 
         param[0].type() != typeid(JSONValue::JSONObject)) {
         throw JSONRPCInvocationException(
@@ -67,7 +69,7 @@ StopProcessMethod::invoke(const std::string &name,
                 ClusterlibStrings::JSONOBJECTKEY_NOTIFYABLEKEY + 
                 " is not a string");
         }
-        ProcessSlot *processSlot = dynamic_cast<ProcessSlot *>(
+        processSlot = dynamic_cast<ProcessSlot *>(
             getRPCManager()->getRoot()->getNotifyableFromKey(
                 jsonObjIt->second.get<JSONValue::JSONString>()));  
         if (processSlot == NULL) {
@@ -77,12 +79,15 @@ StopProcessMethod::invoke(const std::string &name,
         }
         JSONValue::JSONObject::const_iterator signalIt;
         signalIt = jsonObj.find(ClusterlibStrings::JSONOBJECTKEY_SIGNAL);
+        processSlot->acquireLock();
+        gotLock = true;
         if (signalIt != jsonObj.end()) {
             processSlot->stop(signalIt->second.get<JSONValue::JSONInteger>());
         }
         else {
             processSlot->stop();
         }
+        processSlot->releaseLock();
 
         JSONValue::JSONObject retObj = jsonObj;
         retObj[ClusterlibStrings::JSONOBJECTKEY_METHOD] = 
@@ -90,6 +95,9 @@ StopProcessMethod::invoke(const std::string &name,
         return retObj;
     }
     catch (const ::clusterlib::Exception &ex) {
+        if (gotLock) {
+            processSlot->releaseLock();
+        }
         LOG_WARN(CL_LOG, 
                  "invoke: Failed to finish command with error: %s",
                  ex.what());

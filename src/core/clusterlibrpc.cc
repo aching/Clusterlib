@@ -389,19 +389,27 @@ ClusterlibRPCManager::invokeAndResp(const string &rpcInvocation,
     TRACE(CL_LOG, "invokeAndResp");
     
     JSONValue jsonInput, jsonResult;
+    JSONValue::JSONArray jsonResultArr;
     JSONValue::JSONObject inputObj;
     JSONValue::JSONObject::const_iterator jsonInputIt;
-    string result;
+    string encodedResult;
+    string encodedResultArr;
+    int64_t msecs;
     try {
         jsonInput = JSONCodec::decode(rpcInvocation);
         setBasicRequestStatus(jsonInput, true);
         jsonResult = invoke(jsonInput, persistence);
         setBasicRequestStatus(jsonInput, false);
-        result = JSONCodec::encode(jsonResult);
+        encodedResult = JSONCodec::encode(jsonResult);
+        jsonResultArr.push_back(jsonResult);
+        msecs = TimerService::getCurrentTimeMsecs();
+        jsonResultArr.push_back(msecs);
+        jsonResultArr.push_back(TimerService::getMsecsTimeString(msecs));
+        encodedResultArr = JSONCodec::encode(jsonResultArr);
         LOG_DEBUG(CL_LOG, 
                   "invokeAndResp: Invoked on input (%s) and returned (%s)",
                   rpcInvocation.c_str(),
-                  result.c_str());
+                  encodedResult.c_str());
         inputObj = jsonInput.get<JSONValue::JSONObject>();
         const JSONValue::JSONArray &paramArr = 
             inputObj["params"].get<JSONValue::JSONArray>();
@@ -410,7 +418,7 @@ ClusterlibRPCManager::invokeAndResp(const string &rpcInvocation,
                      "invokeAndResp: No params for the request, so putting "
                      "result in default completed queue (%s)",
                      m_completedQueue->getKey().c_str());
-            m_completedQueue->put(result);
+            m_completedQueue->put(encodedResultArr);
             return;
         }
         const JSONValue::JSONObject &paramObj = 
@@ -423,14 +431,14 @@ ClusterlibRPCManager::invokeAndResp(const string &rpcInvocation,
             Queue *respQueue = dynamic_cast<Queue *>(
                 m_root->getNotifyableFromKey(respQueueKey));
             if (respQueue != NULL) {
-                respQueue->put(result);
+                respQueue->put(encodedResult);
                 /*
                  * Also add to the completed queue if the
                  * defaultCompletedQueue if > 0 or -1
                  */
                 if ((m_completedQueueMaxSize == -1) ||
                     (m_completedQueueMaxSize > 0)) {
-                    m_completedQueue->put(result);
+                    m_completedQueue->put(encodedResultArr);
                 }
             }
             else {
@@ -440,11 +448,11 @@ ClusterlibRPCManager::invokeAndResp(const string &rpcInvocation,
                          "result in default completed queue (%s)",
                          respQueueKey.c_str(),
                          m_completedQueue->getKey().c_str());
-                m_completedQueue->put(result);
+                m_completedQueue->put(encodedResultArr);
             }
         }
         else {
-            m_completedQueue->put(result);
+            m_completedQueue->put(encodedResultArr);
         }
 
         /* 
@@ -458,8 +466,9 @@ ClusterlibRPCManager::invokeAndResp(const string &rpcInvocation,
         }
     }
     catch (const Exception &ex) {
-        JSONValue::JSONObject jsonObject;
-        string queueElement = JSONCodec::encode(jsonObject);
+        JSONValue::JSONString errorString = "Caught exception: ";
+        errorString.append(ex.what());
+        string queueElement = JSONCodec::encode(errorString);
         LOG_WARN(CL_LOG,
                  "invokeAndResp: Couldn't parse or service command (%s) "
                  "and adding element (%s) to the DEFAULT_COMPLETED_QUEUE",

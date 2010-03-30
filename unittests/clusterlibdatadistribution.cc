@@ -17,6 +17,7 @@ class ClusterlibDataDistribution : public MPITestFixture {
     CPPUNIT_TEST(testDataDistribution4);
     CPPUNIT_TEST(testDataDistribution5);
     CPPUNIT_TEST(testDataDistribution6);
+    CPPUNIT_TEST(testDataDistribution7);
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -330,10 +331,88 @@ class ClusterlibDataDistribution : public MPITestFixture {
             }
             dist->releaseLock();
         }
+    }
 
+    /** 
+     * Create a DataDistribution in one node and check it on another
+     * with getNotifyableFromKey().
+     */
+    void testDataDistribution7()
+    {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testDataDistribution7");
+        
+        string plk = "distkey";
 
-        
-        
+        if (isMyRank(0)) {
+            DataDistribution *dist = _app0->getDataDistribution("dd0");
+            if (dist != NULL) {
+                dist->remove();
+            }
+            dist = _app0->getDataDistribution(
+                "dd0", true);
+            dist->acquireLock();
+
+            MPI_CPPUNIT_ASSERT(dist);
+            Node *n0 = _app0->getNode("n0", true);
+            MPI_CPPUNIT_ASSERT(n0);
+            ProcessSlot *p0 = n0->getProcessSlot("s0", true);
+            MPI_CPPUNIT_ASSERT(p0);
+            Node *n1 = _app0->getNode("n1", true);
+            MPI_CPPUNIT_ASSERT(n1);
+            ProcessSlot *p1 = n1->getProcessSlot("s1", true);
+            MPI_CPPUNIT_ASSERT(p1);
+            Node *n2 = _app0->getNode("n2", true);
+            MPI_CPPUNIT_ASSERT(n2);
+            ProcessSlot *p2 = n2->getProcessSlot("s2", true);
+            MPI_CPPUNIT_ASSERT(p2);
+
+            dist->clear();
+            dist->insertShard(0, 6719722671305337462LL, p0);
+            dist->insertShard(6719722671305337462LL, 6719722671305399999LL, 
+                              p1);
+            dist->insertShard(6719722671305337450LL, 6719722671305399999LL,
+                              p2);
+            dist->publish();
+            dist->releaseLock();
+            PropertyList *pl = _app0->getPropertyList(
+                ClusterlibStrings::DEFAULTPROPERTYLIST, true);
+            pl->acquireLock();
+            pl->setProperty(plk, dist->getKey());
+            pl->publish();
+            pl->releaseLock();
+            barrier(_factory, true);
+        }
+        else {
+            barrier(_factory, true);
+            Root *root = _client0->getRoot();
+            MPI_CPPUNIT_ASSERT(root);
+            PropertyList *pl = _app0->getPropertyList();
+            MPI_CPPUNIT_ASSERT(pl);
+            pl->acquireLock();
+            plk = pl->getProperty(plk);
+            pl->releaseLock();
+            DataDistribution *dist = dynamic_cast<DataDistribution *>(
+                root->getNotifyableFromKey(plk));
+            MPI_CPPUNIT_ASSERT(dist);
+            dist->acquireLock();
+            vector<Shard> shardVec = dist->getAllShards();
+            MPI_CPPUNIT_ASSERT(shardVec.size() == 3);
+            for (vector<Shard>::iterator shardVecIt = shardVec.begin();
+                 shardVecIt != shardVec.end(); ++shardVecIt) {
+                ProcessSlot *ps = dynamic_cast<ProcessSlot *>(
+                    shardVecIt->getNotifyable());
+                MPI_CPPUNIT_ASSERT(ps);
+                cerr << "parent = " 
+                     << ps->getMyParent()->getName() << endl;
+                MPI_CPPUNIT_ASSERT(
+                    ps->getMyParent()->getMyParent()->getName() == appName);
+            }
+            dist->releaseLock();
+        }
     }
 
   private:

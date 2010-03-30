@@ -111,33 +111,6 @@ namespace json {
         return value.type();
     }
 
-    template<> JSONValue::JSONUInteger JSONValue::get() const {
-        /*
-         * Special case to allow conversion of JSONUInteger to
-         * JSONInteger if the value if positive or 0. 
-         */
-        try {
-            if (type() == typeid(JSONValue::JSONInteger)) {
-                if (boost::any_cast<JSONValue::JSONInteger>(value) >= 0) {
-                    return static_cast<JSONValue::JSONUInteger>(
-                        boost::any_cast<JSONValue::JSONInteger>(value));
-                }
-            }
-            return boost::any_cast<JSONValue::JSONUInteger>(value);
-        } catch (const std::bad_cast &ex) {
-            bool success;
-            std::string currentDemangledTypeName = 
-                clusterlib::Exception::demangleName(type().name(), success);
-            std::string newDemangledTypeName = 
-                clusterlib::Exception::demangleName(
-                    typeid(JSONValue::JSONUInteger).name(), success);
-            throw JSONValueException(
-                "get: Current type name (" + currentDemangledTypeName +
-                ") cannot be converted to desired type name (" + 
-                newDemangledTypeName + ")");
-        }
-    }
-
 /*JSONCodec--------------------------------------------------------------------------------------*/
     class JSONCodecHelper {
     public:
@@ -458,16 +431,17 @@ namespace json {
                         // else there will be problems with casting to
                         // types with less resolution
                         JSONValue::JSONUInteger value;
+                        iss >> value;
                         if (value > 
                             static_cast<JSONValue::JSONUInteger>(
                                 numeric_limits<JSONValue::JSONInteger>::
                                 max())) {
-                            iss >> value;
                             out->set(value);
                         }
                         else {
                             JSONValue::JSONInteger integerValue;
-                            iss >> integerValue;
+                            integerValue = static_cast<JSONValue::JSONInteger>(
+                                value);
                             out->set(integerValue);
                         }
                     }
@@ -536,7 +510,7 @@ namespace json {
         static void skipBlanks(istringstream *in) {
             istringstream &ss = *in;
             int nextCh;
-            while (nextCh = ss.peek()) {
+            while ((nextCh = ss.peek())) {
                 // Skip all blanks
                 if (nextCh != ' ' && nextCh != '\t' && nextCh != '\r' && nextCh != '\n') {
                     return;

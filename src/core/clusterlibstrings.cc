@@ -78,6 +78,10 @@ const string ClusterlibStrings::PROCESSSTATE_FINISHED = "_finished";
 const string ClusterlibStrings::PROCESSSTATE_FAILED = "_failed";
 const string ClusterlibStrings::PROCESSSTATE_INVALID = "_invalid";
 
+const string ClusterlibStrings::JSON_PROCESSSTATE_STATE_KEY = "_state";
+const string ClusterlibStrings::JSON_PROCESSSTATE_MSECS_KEY = "_msecs";
+const string ClusterlibStrings::JSON_PROCESSSTATE_DATE_KEY = "_date";
+
 const string ClusterlibStrings::ENABLED = "_enabled";
 const string ClusterlibStrings::DISABLED = "_disabled";
 
@@ -93,6 +97,8 @@ const string ClusterlibStrings::PLK_RPCMANAGER_REQ_POSTFIX =
     " current request";
 const string ClusterlibStrings::PLK_RPCMANAGER_REQ_STATUS_POSTFIX =
     " current request status";
+const string ClusterlibStrings::PLK_USED_PORT_JSON_ARRAY = 
+    "_usedPortJsonArray";
 
 const string ClusterlibStrings::DEFAULT_RECV_QUEUE = "_defaultRecvQueue";
 const string ClusterlibStrings::DEFAULT_RESP_QUEUE = "_defaultRespQueue";

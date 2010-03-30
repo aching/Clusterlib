@@ -61,6 +61,11 @@ class EventListener
      */
     virtual void eventReceived(const EventSource<E> &source, 
                                const E &e) = 0;
+
+    /**
+     * Virtual destructor
+     */
+    virtual ~EventListener() {}
 };  
 
 /**

@@ -145,11 +145,15 @@ JSONRPCManager::invoke(const JSONValue &rpcInvocation,
         /* Check the expected params */
         methodIter->second->checkParams(params);
 
-        /* Unmarshal if a ClusterlibRPCMethod */
+        /*
+         * Unmarshal if a ClusterlibRPCMethod and clear the
+         * user-defined status 
+         */
         ClusterlibRPCMethod *clusterlibRpcMethod = 
             dynamic_cast<ClusterlibRPCMethod *>(methodIter->second);
         if (clusterlibRpcMethod) {
             clusterlibRpcMethod->unmarshalParams(params);
+            clusterlibRpcMethod->setMethodStatus(string(), 0, 0);
         }
 
         /* Call the appropriate method */
@@ -165,6 +169,9 @@ JSONRPCManager::invoke(const JSONValue &rpcInvocation,
             string("Error occurred when invoking the method.\n") + ex.what(),
             id);
     }
+
+    /* Shouldn't reach here. */
+    return JSONValue();
 }
 
 }}

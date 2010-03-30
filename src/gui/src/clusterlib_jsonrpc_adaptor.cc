@@ -505,12 +505,10 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableAttributesFromKey(
                 processSlot->getJsonRunningExecArgs();
             attributes[idProcessSlotPID] = 
                 processSlot->getJsonPID();
-            attributes[idProcessSlotDesiredProcessState] = 
-                ProcessSlot::getProcessStateAsString(
-                    processSlot->getDesiredProcessState());
+            attributes[idProcessSlotDesiredProcessState] =
+                processSlot->getJsonDesiredProcessState(); 
             attributes[idProcessSlotCurrentProcessState] = 
-                ProcessSlot::getProcessStateAsString(
-                    processSlot->getCurrentProcessState());
+                processSlot->getJsonCurrentProcessState();
             attributes[idProcessSlotReservationName] = 
                 processSlot->getReservationName();
 
@@ -1411,8 +1409,8 @@ JSONValue::JSONObject MethodAdaptor::getOneProcessSlotStatus(
     jsonObj[idNameProperty] = processSlot->getName();
     jsonObj[idNotifyableStatus] = statusReady;
 
-    ProcessSlot::ProcessState currentState = 
-        processSlot->getCurrentProcessState();
+    ProcessSlot::ProcessState currentState;
+    processSlot->getCurrentProcessState(&currentState, NULL);
         
     if (currentState == ProcessSlot::UNUSED) {
         jsonObj[idNotifyableStatus] = statusInactive;

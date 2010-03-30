@@ -12,6 +12,7 @@ const string appName = "unittests-processSlot-app";
 class ClusterlibProcessSlot : public MPITestFixture {
     CPPUNIT_TEST_SUITE(ClusterlibProcessSlot);
     CPPUNIT_TEST(testProcessSlot1);
+    CPPUNIT_TEST(testProcessSlot2);
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -108,6 +109,50 @@ class ClusterlibProcessSlot : public MPITestFixture {
                 MPI_CPPUNIT_ASSERT(portVec[1] == 56);
             }
         }
+    }
+
+
+    /* 
+     * Simple test to see if processSlot can be found with the
+     * getNotifyableByKey() functions.
+     */
+    void testProcessSlot2()
+    {
+        initializeAndBarrierMPITest(2, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testProcessSlot2");
+
+        string processSlotName = "slot0";
+        string propKey = "slotKey";
+
+        if (isMyRank(0)) {
+            _processSlot0 = _node0->getProcessSlot(
+                processSlotName,
+                true);
+            MPI_CPPUNIT_ASSERT(_processSlot0);
+            PropertyList *propList = 
+                _app0->getPropertyList(ClusterlibStrings::DEFAULTPROPERTYLIST,
+                                       true);
+            propList->acquireLock();
+            propList->setProperty(propKey, _processSlot0->getKey());
+            propList->publish();
+            propList->releaseLock();            
+        }
+
+        barrier(_factory, true);
+
+        Root *root = _client0->getRoot();
+        PropertyList *propList = 
+            _app0->getPropertyList();
+        MPI_CPPUNIT_ASSERT(propList);
+        propList->acquireLock();
+        string slotKey = propList->getProperty(propKey);
+        propList->releaseLock();
+        ProcessSlot *processSlot = dynamic_cast<ProcessSlot *>(
+            root->getNotifyableFromKey(slotKey));
+        MPI_CPPUNIT_ASSERT(processSlot);
     }
 
   private:

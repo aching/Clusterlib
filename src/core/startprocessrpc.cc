@@ -127,7 +127,9 @@ StartProcessMethod::invoke(const std::string &name,
                 commandIt->second.get<JSONValue::JSONString>());
         }
 
+        processSlot->acquireLock();
         processSlot->start();
+        processSlot->releaseLock();
 
         JSONValue::JSONObject retObj = jsonObj;
         retObj[ClusterlibStrings::JSONOBJECTKEY_METHOD] = 

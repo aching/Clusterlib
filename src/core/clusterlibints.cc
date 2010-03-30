@@ -46,4 +46,8 @@ const int32_t ClusterlibInts::PROCESSSLOT_COMPONENTS_MIN_COUNT = 8;
 
 const size_t ClusterlibInts::SEQUENCE_NUMBER_SIZE = 10;
 
+const int32_t ClusterlibInts::INITIAL_ZK_VERSION = -3;
+const int32_t ClusterlibInts::DELETED_ZK_VERSION = -2;
+const int64_t ClusterlibInts::MSECS_NOT_AVAILABLE = -1;
+
 };	/* End of 'namespace clusterlib' */

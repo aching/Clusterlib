@@ -37,7 +37,7 @@ DataDistributionImpl::DataDistributionImpl(FactoryOps *fp,
                                            const string &name,
                                            GroupImpl *parentGroup)
     : NotifyableImpl(fp, key, name, parentGroup),
-      m_version(-2),
+      m_version(ClusterlibInts::INITIAL_ZK_VERSION),
       m_shardTreeCount(0)
 {
     TRACE(CL_LOG, "DataDistributionImpl");
@@ -45,7 +45,7 @@ DataDistributionImpl::DataDistributionImpl(FactoryOps *fp,
 
 /*
  * Unmarshall a stringified sequence of shards. The shards are stored
- * as a JSONArray of JSONArrays (begin, end,n otifyablekey, priority)
+ * as a JSONArray of JSONArrays (begin, end, notifyablekey, priority)
  */
 void
 DataDistributionImpl::unmarshall(const string &marshalledData)
@@ -57,6 +57,10 @@ DataDistributionImpl::unmarshall(const string &marshalledData)
     vector<string> components;
     vector<string> shardComponents;
     vector<string>::iterator sIt;
+
+    LOG_DEBUG(CL_LOG, 
+              "unmarshall: Got marshalledData string (%s)", 
+              marshalledData.c_str());
 
     Locker l(getSyncLock());
 
@@ -78,7 +82,7 @@ DataDistributionImpl::unmarshall(const string &marshalledData)
     Notifyable *ntp = NULL;
     for (shardArrIt = shardArr.begin(); 
          shardArrIt != shardArr.end(); 
-         shardArrIt++) {
+         ++shardArrIt) {
         shardMetadataArr.clear();
         shardMetadataArr = shardArrIt->get<JSONValue::JSONArray>();
         if (shardMetadataArr.size() != 4) {
@@ -98,7 +102,18 @@ DataDistributionImpl::unmarshall(const string &marshalledData)
             shardMetadataArr[1].get<JSONValue::JSONUInteger>(),
             ShardTreeData(shardMetadataArr[3].get<JSONValue::JSONInteger>(),
                           ntp));
-        m_shardTreeCount++;
+
+        LOG_DEBUG(CL_LOG,
+                  "unmarshall: Found shard: start=%llu (%s), end=%llu (%s), "
+                  "notifyable key=%s, priority=%lld",
+                  shardMetadataArr[0].get<JSONValue::JSONUInteger>(),
+                  JSONCodec::encode(shardMetadataArr[0]).c_str(),
+                  shardMetadataArr[1].get<JSONValue::JSONUInteger>(),
+                  JSONCodec::encode(shardMetadataArr[1]).c_str(),
+                  (ntp == NULL) ? "NULL" : ntp->getKey().c_str(),
+                  shardMetadataArr[3].get<JSONValue::JSONInteger>());
+
+        ++m_shardTreeCount;
     }
 }
 
@@ -398,7 +413,7 @@ DataDistributionImpl::insertShard(HashRange start,
     Locker l(getSyncLock());
 
     m_shardTree.insertNode(start, end, ShardTreeData(priority, ntp));
-    m_shardTreeCount++;
+    ++m_shardTreeCount;
 }
 
 

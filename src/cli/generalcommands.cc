@@ -326,14 +326,27 @@ GetAttributes::action()
             json::JSONCodec::encode(
                     processSlot->getJsonRunningExecArgs()));
         CliFormat::attributeOut("PID", processSlot->getPID());
+        ProcessSlot::ProcessState state;
+        int64_t msecs;
+
+        processSlot->getDesiredProcessState(&state, &msecs);
+        ostringstream oss;
+        oss << msecs << " msecs - " << TimerService::getMsecsTimeString(msecs);
         CliFormat::attributeOut(
             "desired process state", 
-            ProcessSlot::getProcessStateAsString(
-                processSlot->getDesiredProcessState()));
+            ProcessSlot::getProcessStateAsString(state));
+        CliFormat::attributeOut(
+            "desired process state set time", 
+            oss.str());
+        processSlot->getCurrentProcessState(&state, &msecs);
+        oss.str("");
+        oss << msecs << " msecs - " << TimerService::getMsecsTimeString(msecs);
         CliFormat::attributeOut(
             "current process state", 
-            ProcessSlot::getProcessStateAsString(
-                processSlot->getCurrentProcessState()));
+            ProcessSlot::getProcessStateAsString(state));
+        CliFormat::attributeOut(
+            "current process state set time", 
+            oss.str());
     }
     else if (dynamic_cast<PropertyList *>(ntp) != NULL) {
         CliFormat::attributeOut("type", "Property List");

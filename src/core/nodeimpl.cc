@@ -9,7 +9,6 @@
  * $Date$
  * ============================================================================
  */
-
 #include "clusterlibinternal.h"
 
 #define LOG_LEVEL LOG_WARN
@@ -471,6 +470,78 @@ NodeImpl::setConnectedAndTime(bool nc, const string &id, int64_t t)
     m_connectionTime = t; 
 }
 
+bool
+NodeImpl::updateConnected()
+{
+    int32_t version;
+    string encodedJsonObj;
+
+    Locker l(getSyncLock());
+    bool updated = false;
+    bool found = 
+        getOps()->loadNodeConnected(getKey(), encodedJsonObj, version);
+
+    LOG_DEBUG(CL_LOG, 
+              "updateConnected: Node key = %s, "
+              "new version = %d, old version = %d, encodedJsonObj = %s",
+              getKey().c_str(),
+              version,
+              m_connectionJsonMapVersion,
+              encodedJsonObj.c_str());
+
+    /*
+     * Only update if not found or is a newer version.
+     */
+    if (!found) {
+        m_connected = false;
+        m_connectedId.clear();
+        m_connectionTime = ClusterlibInts::MSECS_NOT_AVAILABLE;
+        m_connectionJsonMapVersion = ClusterlibInts::DELETED_ZK_VERSION;
+        updated = true;
+    }
+    else if (version > m_connectionJsonMapVersion) {
+        JSONValue jsonValue = JSONCodec::decode(encodedJsonObj);
+        JSONValue::JSONObject jsonObj = 
+            jsonValue.get<JSONValue::JSONObject>();
+        JSONValue::JSONObject::const_iterator jsonObjIt;
+        jsonObjIt = 
+            jsonObj.find(ClusterlibStrings::JSONOBJECTKEY_CONNECTEDID);
+        if (jsonObjIt != jsonObj.end()) {
+            m_connectedId = jsonObjIt->second.get<JSONValue::JSONString>();
+        }
+        else {
+            throw InconsistentInternalStateException(
+                string("updateConnected: Cannot find id in value ") + 
+                encodedJsonObj);
+        }
+        jsonObjIt = jsonObj.find(ClusterlibStrings::JSONOBJECTKEY_TIME);
+        if (jsonObjIt != jsonObj.end()) {
+            m_connectionTime = jsonObjIt->second.get<JSONValue::JSONInteger>();
+        }
+        else {
+            throw InconsistentInternalStateException(
+                string("isNodeConnected: Cannot find time in value ") + 
+                encodedJsonObj);
+        }
+        updated = true;
+     }
+    else if (version == m_connectionJsonMapVersion) {
+        LOG_DEBUG(CL_LOG,
+                  "updatePropertyListMap: Have a newer (or same) version (%d) "
+                  "than the repository (%d)",
+                  m_connectionJsonMapVersion,
+                  version);
+    }
+    else {
+        ostringstream oss;
+        oss << "updateConnected: Impossible that version " << version
+            << " received when current version is "
+            << m_connectionJsonMapVersion;
+        throw InconsistentInternalStateException(oss.str());
+    }
+
+    return updated;
+}
 
 /*
  * Initialize the cached representation of this node.
@@ -484,15 +555,8 @@ NodeImpl::initializeCachedRepresentation()
      * Ensure that the cache contains all the information
      * about this node, and that all watches are established.
      */
-    string connectedId;
-    int64_t connectionTime;
-        
     Locker l(getStateMutex());
-    bool connected = getOps()->isNodeConnected(
-        getKey(), connectedId, connectionTime);
-    if (connected) {
-        setConnectedAndTime(connected, connectedId, connectionTime);
-    }
+    updateConnected();
     getOps()->getNodeClientState(getKey(), 
                                  m_clientStateTime,
                                  m_clientState,

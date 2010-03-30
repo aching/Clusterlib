@@ -60,7 +60,7 @@ ProcessThreadService::forkExec(const vector<string> &addEnv,
 	    /* Get the size of the current environment */
 	    int envCount = 0;
 	    while (environ[envCount]) { 
-                envCount++;
+                ++envCount;
             }
 	    
 	    int newEnvCount = envCount + addEnv.size();
@@ -72,18 +72,19 @@ ProcessThreadService::forkExec(const vector<string> &addEnv,
 		    strcpy(newEnvArr[i], environ[i]);
 		}
 		else {
-		    newEnvArr[i] = new char[addEnv[i - envCount].size()];
-		    strncpy(newEnvArr[i], addEnv[i - envCount].c_str(), 
-			    addEnv[i - envCount].size());
+		    newEnvArr[i] = new char[addEnv[i - envCount].size() + 1];
+		    strncpy(newEnvArr[i], 
+                            addEnv[i - envCount].c_str(), 
+			    addEnv[i - envCount].size() + 1);
 		}
 	    }
 	    newEnvArr[newEnvCount] = NULL;
 	    ret = execle("/bin/sh", "/bin/sh", "-c", cmd.c_str(), NULL, 
 			 newEnvArr);
-	    for (int i = 0; i < newEnvCount; i++) {
-		delete newEnvArr[i];
+	    for (int i = envCount; i < newEnvCount; ++i) {
+		delete [] newEnvArr[i];
 	    }
-	    delete newEnvArr;
+	    delete [] newEnvArr;
 	}
 	else {
 	    ret = execl("/bin/sh", "/bin/sh", "-c", cmd.c_str(), NULL);

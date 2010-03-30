@@ -65,7 +65,7 @@ class PropertyListImpl
                      const std::string &name,
                      NotifyableImpl *parent)
         : NotifyableImpl(fp, key, name, parent),
-          m_keyValMapVersion(-2),
+          m_keyValMapVersion(ClusterlibInts::INITIAL_ZK_VERSION),
           m_valueChangeTime(0) {}
     
     virtual void initializeCachedRepresentation();

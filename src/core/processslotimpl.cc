@@ -55,7 +55,6 @@ ProcessSlotImpl::getJsonPortVec()
         processSlotPortVecKey.c_str(),
         false,
         true);        
-    vector<int32_t> portVec;
     if (encodedJsonValue.empty()) {
         return JSONValue();
     }
@@ -65,10 +64,12 @@ vector<int32_t>
 ProcessSlotImpl::getPortVec()
 {
     TRACE(CL_LOG, "getPortVec");
-
-    JSONValue jsonValue = getJsonPortVec();
-    JSONValue::JSONArray jsonArr = jsonValue.get<JSONValue::JSONArray>();
     vector<int32_t> portVec;
+    JSONValue jsonValue = getJsonPortVec();
+    if (jsonValue.type() == typeid(JSONValue::JSONNull)) {
+        return portVec;
+    }
+    JSONValue::JSONArray jsonArr = jsonValue.get<JSONValue::JSONArray>();
     portVec.reserve(jsonArr.size());
     for (size_t i = 0; i < jsonArr.size(); i++) {
         portVec.push_back(
@@ -121,17 +122,19 @@ ProcessSlotImpl::start()
         NotifyableKeyManipulator::createProcessSlotDesiredStateKey(getKey());
 
     JSONValue::JSONArray jsonArr;
-    JSONValue::JSONString jsonValue = ClusterlibStrings::PROCESSSTATE_RUNNING;
-    jsonArr.push_back(jsonValue);
-    acquireLock();
+    int64_t msecs = TimerService::getCurrentTimeMsecs();
+    jsonArr.push_back(ClusterlibStrings::PROCESSSTATE_RUNNING);
+    jsonArr.push_back(msecs);
+    jsonArr.push_back(TimerService::getMsecsTimeString(msecs));
+
+    string encodedJsonValue = JSONCodec::encode(jsonArr);
     SAFE_CALL_ZK(getOps()->getRepository()->setNodeData(
                      processSlotDesiredStateKey,
-                     JSONCodec::encode(jsonArr)),
+                     encodedJsonValue),
                  "Setting of %s failed: %s",
                  processSlotDesiredStateKey.c_str(),
                  true,
                  false);
-    releaseLock();
 }
 
 pid_t
@@ -438,11 +441,13 @@ ProcessSlotImpl::stop(int32_t sig)
         NotifyableKeyManipulator::createProcessSlotDesiredStateKey(getKey());
     
     JSONValue::JSONArray jsonArr;
+    int64_t msecs = TimerService::getCurrentTimeMsecs();
     jsonArr.push_back(ClusterlibStrings::PROCESSSTATE_STOPPED);
+    jsonArr.push_back(msecs);
+    jsonArr.push_back(TimerService::getMsecsTimeString(msecs));
     jsonArr.push_back(static_cast<int64_t>(sig));
 
     string encodedJsonValue = JSONCodec::encode(jsonArr);
-    acquireLock();
     SAFE_CALL_ZK(getOps()->getRepository()->setNodeData(
                      processSlotDesiredStateKey,
                      encodedJsonValue),
@@ -450,7 +455,6 @@ ProcessSlotImpl::stop(int32_t sig)
                  processSlotDesiredStateKey.c_str(),
                  true,
                  false);
-    releaseLock();
 }
 
 void 
@@ -532,10 +536,11 @@ ProcessSlotImpl::createDefaultExecArgs()
     return JSONCodec::encode(jsonObj);
 }
 
-ProcessSlot::ProcessState 
-ProcessSlotImpl::getDesiredProcessState()
+
+JSONValue
+ProcessSlotImpl::getJsonDesiredProcessState()
 {
-    TRACE(CL_LOG, "getDesiredProcessState");
+    TRACE(CL_LOG, "getJsonDesiredProcessState");
 
     string processSlotDesiredStateKey = 
         NotifyableKeyManipulator::createProcessSlotDesiredStateKey(getKey());
@@ -559,25 +564,45 @@ ProcessSlotImpl::getDesiredProcessState()
         false,
         true);
     if (encodedJsonValue.empty()) {
-        return ProcessSlot::UNUSED;
+        return JSONValue();
+    }
+    return JSONCodec::decode(encodedJsonValue);
+}
+
+void
+ProcessSlotImpl::getDesiredProcessState(
+    ProcessSlot::ProcessState *processState,
+    int64_t *msecs)
+{
+    JSONValue jsonValue = getJsonDesiredProcessState();
+    if (jsonValue.type() == typeid(JSONValue::JSONNull)) {
+        if (processState) {
+            *processState = ProcessSlot::UNUSED;
+        }
+        if (msecs) {
+            *msecs = TimerService::getCurrentTimeMsecs();
+        }
     }
     else {        
-        JSONValue::JSONArray jsonArray = 
-            JSONCodec::decode(encodedJsonValue).get<JSONValue::JSONArray>();
-        JSONValue::JSONString jsonString = 
-            jsonArray[0].get<JSONValue::JSONString>();
-        return ProcessSlot::getProcessStateFromString(jsonString);
+        JSONValue::JSONArray jsonArray = jsonValue.get<JSONValue::JSONArray>();
+        if (processState) {
+            *processState = ProcessSlot::getProcessStateFromString(
+                jsonArray[0].get<JSONValue::JSONString>());
+        }
+        if (msecs) {
+            *msecs = jsonArray[1].get<JSONValue::JSONInteger>();
+        }
     }
 }
 
-ProcessSlot::ProcessState 
-ProcessSlotImpl::getCurrentProcessState()
+JSONValue
+ProcessSlotImpl::getJsonCurrentProcessState()
 {
-    TRACE(CL_LOG, "getCurrentProcessState");
+    TRACE(CL_LOG, "getJsonCurrentProcessState");
 
     string processSlotCurrentStateKey = 
         NotifyableKeyManipulator::createProcessSlotCurrentStateKey(getKey());
-
+    
     string encodedJsonValue;
     SAFE_CALLBACK_ZK(
         getOps()->getRepository()->getNodeData(
@@ -597,12 +622,34 @@ ProcessSlotImpl::getCurrentProcessState()
         false,
         true);
     if (encodedJsonValue.empty()) {
-        return ProcessSlot::UNUSED;
+        return JSONValue();
+    }
+    return JSONCodec::decode(encodedJsonValue);
+}
+
+void
+ProcessSlotImpl::getCurrentProcessState(
+    ProcessSlot::ProcessState *processState,
+    int64_t *msecs)
+{
+    JSONValue jsonValue = getJsonCurrentProcessState();
+    if (jsonValue.type() == typeid(JSONValue::JSONNull)) {
+        if (processState) {
+            *processState = ProcessSlot::UNUSED;
+        }
+        if (msecs) {
+            *msecs = TimerService::getCurrentTimeMsecs();
+        }
     }
     else {        
-        string processStateString = 
-            JSONCodec::decode(encodedJsonValue).get<JSONValue::JSONString>();
-        return ProcessSlot::getProcessStateFromString(processStateString);
+        JSONValue::JSONArray jsonArray = jsonValue.get<JSONValue::JSONArray>();
+        if (processState) {
+            *processState = ProcessSlot::getProcessStateFromString(
+                jsonArray[0].get<JSONValue::JSONString>());
+        }
+        if (msecs) {
+            *msecs = jsonArray[1].get<JSONValue::JSONInteger>();
+        }
     }
 }
 
@@ -614,9 +661,13 @@ ProcessSlotImpl::setCurrentProcessState(ProcessState processState)
     string processSlotCurrentStateKey = 
         NotifyableKeyManipulator::createProcessSlotCurrentStateKey(getKey());
 
-    JSONValue::JSONString jsonString = 
-        ProcessSlot::getProcessStateAsString(processState);
-    string encodedJsonValue = JSONCodec::encode(jsonString);
+    JSONValue::JSONArray jsonArr;
+    int64_t msecs = TimerService::getCurrentTimeMsecs();
+    jsonArr.push_back(ProcessSlot::getProcessStateAsString(processState));
+    jsonArr.push_back(msecs);
+    jsonArr.push_back(TimerService::getMsecsTimeString(msecs));
+    
+    string encodedJsonValue = JSONCodec::encode(jsonArr);
     SAFE_CALL_ZK(getOps()->getRepository()->setNodeData(
                      processSlotCurrentStateKey,
                      encodedJsonValue),

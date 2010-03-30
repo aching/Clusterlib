@@ -135,8 +135,8 @@ class JSONValue {
      * @param value the pointer where the copy of the value is stored.
      * @return the value.
      * @throws JSONValueException if the value is not compatible with the 
-         *         return type.
-         */
+     *         return type.
+     */
     template<class T> T &get(T *value) const {
         *value = get<T>();
         return *value;
@@ -188,6 +188,37 @@ class JSONValue {
      */
     boost::any value;
 };
+
+template<> 
+inline JSONValue::JSONUInteger JSONValue::get<JSONValue::JSONUInteger>() const
+{
+    /*
+     * Template specialization to allow conversion of JSONUInteger to
+     * JSONInteger if the value if positive or 0. 
+     */
+    try {
+        if (type() == typeid(JSONValue::JSONInteger)) {
+            if (boost::any_cast<JSONValue::JSONInteger>(value) >= 0) {
+                return static_cast<JSONValue::JSONUInteger>(
+                    boost::any_cast<JSONValue::JSONInteger>(value));
+            }
+        }
+        return boost::any_cast<JSONValue::JSONUInteger>(value);
+    } 
+    catch (const std::bad_cast &ex) {
+        bool success;
+        std::string currentDemangledTypeName = 
+            clusterlib::Exception::demangleName(type().name(), success);
+        std::string newDemangledTypeName = 
+            clusterlib::Exception::demangleName(
+                typeid(JSONValue::JSONUInteger).name(), success);
+        throw JSONValueException(
+            "get<JSONValue::JSONUInteger>: Current type name (" + 
+            currentDemangledTypeName +
+            ") cannot be converted to desired type name (" + 
+            newDemangledTypeName + ")");
+    }
+}
     
 /**
  * Defines the utility class of JSON parser and composer. This is

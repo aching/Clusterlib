@@ -93,6 +93,7 @@ class NodeImpl
           m_masterSetStateTime(0),
           m_connected(false),
           m_connectionTime(0),
+          m_connectionJsonMapVersion(ClusterlibInts::INITIAL_ZK_VERSION),
           mp_healthChecker(NULL),
           m_terminateDoHealthChecks(false) {}
 
@@ -133,6 +134,11 @@ class NodeImpl
         m_masterSetState = ns; 
         m_masterSetStateTime = t; 
     }
+
+    /**
+     * Update the connected state of the node.
+     */
+    bool updateConnected();
 
     /*
      * Set the connected state and connected time of this node.
@@ -205,6 +211,7 @@ class NodeImpl
     bool m_connected;
     std::string m_connectedId;
     int64_t m_connectionTime;
+    int32_t m_connectionJsonMapVersion;
 
     /**
      * Protects healthChecker thread variables 

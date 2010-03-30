@@ -51,9 +51,15 @@ class ProcessSlotImpl
 
     virtual void stop(int32_t sig = 15);
 
-    virtual ProcessState getDesiredProcessState();
+    virtual void getDesiredProcessState(ProcessState *processState,
+                                        int64_t *msecs);
 
-    virtual ProcessState getCurrentProcessState();
+    virtual json::JSONValue getJsonDesiredProcessState();
+
+    virtual void getCurrentProcessState(ProcessState *processState, 
+                                        int64_t *msecs);
+
+    virtual json::JSONValue getJsonCurrentProcessState();
 
     virtual std::string getReservationName();
 

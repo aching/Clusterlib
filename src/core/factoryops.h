@@ -640,6 +640,17 @@ class FactoryOps {
     std::string loadKeyValMap(const std::string &key, int32_t &version);
 
     /*
+     * Retrieve Node connected state.
+     *
+     * @param key the key of the node to check
+     * @param data the repository data returned
+     * @return true if found
+     */
+    bool loadNodeConnected(const std::string &key, 
+                           std::string &data,
+                           int32_t &version);
+
+    /*
      * Create entities in ZooKeeper.
      */
     ApplicationImpl *createApplication(const std::string &appName, 
@@ -681,18 +692,6 @@ class FactoryOps {
      * m_removedNotifyables (dead pool) that will be cleaned up later.
      */
     void removeNotifyableFromCacheByKey(const std::string &key);
-
-    /*
-     * Retrieve Node connected state.
-     *
-     * @param key the key of the node to check
-     * @param id filled in if connected (who connected)
-     * @param msecs filled in if connected (when connected)
-     * @return true if connected, false otherwise
-     */
-    bool isNodeConnected(const std::string &key, 
-                         std::string &id, 
-                         int64_t &msecs);
 
     /**
      * Get the client state fields from the repository.

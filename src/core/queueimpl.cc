@@ -161,16 +161,10 @@ QueueImpl::takeWaitMsecs(int64_t msecTimeout,
          */
         getOps()->getQueueEventSignalMap()->addRefPredMutexCond(
             getQueueParentKey());
-        CachedObjectEventHandler *handler = 
-            getOps()->getCachedObjectChangeHandlers()->
-            getChangeHandler(
-                CachedObjectChangeHandlers::QUEUE_CHILD_CHANGE);
         SAFE_CALL_ZK(
             getOps()->getRepository()->getNodeChildren(
                 getQueueParentKey(),
-                childList,
-                getOps()->getZooKeeperEventAdapter(),
-                handler),
+                childList),
             "Checking for number of children on %s failed: %s",
             getQueueParentKey().c_str(),
             false,

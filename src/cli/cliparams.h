@@ -9,8 +9,8 @@
  * $Date$
  */
 
-#ifndef	_CLIPARAMS_H_
-#define _CLIPARAMS_H_
+#ifndef	_CL_CLIPARAMS_H_
+#define _CL_CLIPARAMS_H_
 
 #include <iostream>
 #include <getopt.h>
@@ -297,4 +297,4 @@ class CliParams {
     static CliParams *m_params;
 };
 
-#endif	/* !_CLIPARAMS_H__H_ */
+#endif	/* !_CL_CLIPARAMS_H_ */

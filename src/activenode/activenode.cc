@@ -56,15 +56,17 @@ class ProcessHandler : public UserEventHandler
             return;
         }
            
-        ProcessSlot::ProcessState desiredProcessState = 
-            processSlot->getDesiredProcessState();
-        ProcessSlot::ProcessState currentProcessState = 
-            processSlot->getCurrentProcessState();
-        
+        ProcessSlot::ProcessState desiredProcessState;
+        ProcessSlot::ProcessState currentProcessState; 
+        processSlot->acquireLock();
+        processSlot->getDesiredProcessState(&desiredProcessState, NULL);
+        processSlot->getCurrentProcessState(&currentProcessState, NULL);
+        processSlot->releaseLock();
+
         if (desiredProcessState == ProcessSlot::RUNNING) {
             if ((currentProcessState == ProcessSlot::RUNNING) ||
                 (currentProcessState == ProcessSlot::STARTED)) {
-                LOG_WARN(CL_LOG, "handleUserEvent: Already running");
+                LOG_WARN(CL_LOG, "handleUserEvent: Already started running");
                 return;
             }
 
@@ -163,7 +165,7 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
     for (size_t i = 0; i < nl.size(); i++) {
         processSlot =  m_activeNode->getProcessSlot(nl[i]);
         if (processSlot != NULL) {
-            processSlot->remove();
+            processSlot->remove(true);
         }
     }
     m_activeNode->setMaxProcessSlots(m_params.getNumProcs());
@@ -180,7 +182,7 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
             &activeNodeMutex);
         m_handlerVec.push_back(handler);
         /* Start the handler */
-        processSlot->getDesiredProcessState();
+        processSlot->getDesiredProcessState(NULL, NULL);
         m_client->registerHandler(handler);
     }
 }
@@ -221,8 +223,10 @@ ActiveNode::run(vector<ClusterlibRPCManager *> &rpcManagerVec)
     }
     m_activeNode->setUseProcessSlots(true);
 
-    /* Check if process clean up is needed every so many seconds and
-     * update process state. */
+    /*
+     * Check if process clean up is needed every so many seconds and
+     * update process state. 
+     */
     int stat_loc;
     pid_t pid = -1;
     ProcessSlotImpl *processSlotImpl = NULL;
@@ -240,6 +244,29 @@ ActiveNode::run(vector<ClusterlibRPCManager *> &rpcManagerVec)
                         processSlotImpl->setCurrentProcessState(
                             ProcessSlot::FINISHED);
                         processSlotImpl->setPID(-1);
+                        /* 
+                         * If the desired state is RUNNING, then
+                         * restart it if it stopped
+                         */
+                        ProcessSlot::ProcessState desiredState;
+                        processSlotImpl->acquireLock();
+                        processSlotImpl->getDesiredProcessState(
+                            &desiredState, NULL);
+                        LOG_INFO(CL_LOG,
+                                 "run: PID %d died, desired state = %s",
+                                 pid,
+                                 ProcessSlot::getProcessStateAsString(
+                                     desiredState).c_str());
+                        if (desiredState == ProcessSlot::RUNNING) {
+                            processSlotImpl->start();
+                        }
+                        LOG_INFO(
+                            CL_LOG,
+                            "run: Restarting the process with "
+                            "exec args %s",
+                            JSONCodec::encode(
+                                processSlotImpl->getJsonExecArgs()).c_str());
+                        processSlotImpl->releaseLock();
                     }
                 }
             }

@@ -8,8 +8,8 @@
  * $Date$
  */
 
-#ifndef	_CLIFORMAT_H_
-#define _CLIFORMAT_H_
+#ifndef	_CL_CLIFORMAT_H_
+#define _CL_CLIFORMAT_H_
 
 /**
  * CliFormat class.
@@ -60,4 +60,4 @@ class CliFormat {
     CliFormat();
 };
 
-#endif	/* !_CLIFORMAT_H__H_ */
+#endif	/* !_CL_CLIFORMAT_H_ */

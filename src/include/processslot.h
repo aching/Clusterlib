@@ -221,18 +221,40 @@ class ProcessSlot
     virtual void stop(int32_t sig = 15) = 0;
 
     /**
-     * Get the user desired state of the ProcessSlot.
+     * Get the user desired state of the ProcessSlot and the time it was set.
      *
-     * @return the desired process state
+     * @param processState if not NULL, will return the desired process state
+     * @param msecs if not NULL, will return the number of msecs since
+     *        the epoch when processState  was set
      */
-    virtual ProcessState getDesiredProcessState() = 0;
+    virtual void getDesiredProcessState(ProcessState *processState,
+                                        int64_t *msecs) = 0;
 
     /**
-     * Get the current state of the ProcessSlot.
+     * Get the user desired state of the ProcessSlot and the time it
+     * was set as a JSONValue.
      *
-     * @return the current process state
+     * @return the JSONValue or JSONNulll if there is no valid state
      */
-    virtual ProcessState getCurrentProcessState() = 0;
+    virtual json::JSONValue getJsonDesiredProcessState() = 0;
+
+    /**
+     * Get the current state of the ProcessSlot and time it was set.
+     *
+     * @param processState if not NULL, will return the current process state
+     * @param msecs if not NULL, will return the number of msecs since
+     *        the epoch when processState  was set
+     */
+    virtual void getCurrentProcessState(ProcessState *processState, 
+                                        int64_t *msecs) = 0;
+
+    /**
+     * Get the user current state of the ProcessSlot and the time it
+     * was set as a JSONValue.
+     *
+     * @return the JSONValue or JSONNulll if there is no valid state
+     */
+    virtual json::JSONValue getJsonCurrentProcessState() = 0;
 
     /**
      * Get the reservation slot name (informational).

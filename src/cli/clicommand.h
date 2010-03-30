@@ -9,8 +9,8 @@
  * $Date$
  */
 
-#ifndef	_CLICOMMAND_H_
-#define _CLICOMMAND_H_
+#ifndef	_CL_CLICOMMAND_H_
+#define _CL_CLICOMMAND_H_
 
 #include <vector>
 #include <getopt.h>
@@ -298,4 +298,4 @@ class CliCommand {
     int32_t m_minArgCount;
 };
 
-#endif	/* !_CLIPARAMS_H__H_ */
+#endif	/* !_CL_CLICOMMAND_H_ */

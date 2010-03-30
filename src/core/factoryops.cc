@@ -122,6 +122,7 @@ FactoryOps::~FactoryOps()
     discardAllApplications();
     discardAllGroups();
     discardAllNodes();
+    discardAllProcessSlots();
     discardAllRemovedNotifyables();
     delete mp_root;
 
@@ -467,6 +468,25 @@ FactoryOps::discardAllNodes()
 	delete nIt->second;
     }
     m_nodes.clear();
+}
+void
+FactoryOps::discardAllProcessSlots()
+{
+    TRACE(CL_LOG, "discardAllProcessSlots");
+
+    Locker l(getProcessSlotsLock());
+    NotifyableImplMap::iterator nIt;
+
+    for (nIt = m_processSlots.begin();
+         nIt != m_processSlots.end();
+         nIt++) {
+        LOG_DEBUG(CL_LOG, 
+                  "discardAllProcessSlots: Removed key (%s) with %d refs",
+                  nIt->second->getKey().c_str(),
+                  nIt->second->getRefCount());
+	delete nIt->second;
+    }
+    m_processSlots.clear();
 }
 void
 FactoryOps::discardAllRemovedNotifyables()
@@ -2473,9 +2493,21 @@ FactoryOps::loadQueue(const string &queueName,
      * Make sure that all the Zookeeper nodes exist that are part of
      * this object.
      */
+    string queueParent = 
+        NotifyableKeyManipulator::createQueueParentKey(queueKey);
+
     SAFE_CALL_ZK((exists = m_zk.nodeExists(queueKey)),
                  "Could not determine whether key %s exists: %s",
                  queueKey.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        return NULL;
+    }
+    SAFE_CALL_ZK((exists = m_zk.nodeExists(queueParent)),
+                 "loadQueue: Queue with key %s is not fully constructed "
+                 "(%s missing)",
+                 queueParent.c_str(),
                  false,
                  true);
     if (!exists) {
@@ -3448,15 +3480,16 @@ FactoryOps::removeNotifyableFromCacheByKey(const string &key)
 }
 
 bool
-FactoryOps::isNodeConnected(const string &nodeKey, string &id, int64_t &msecs)
+FactoryOps::loadNodeConnected(const string &nodeKey, 
+                              string &data, 
+                              int32_t &version)
 {
-    TRACE(CL_LOG, "isNodeConnected");
+    TRACE(CL_LOG, "loadNodeConnected");
 
     string ckey =
         nodeKey +
         ClusterlibStrings::KEYSEPARATOR +
         ClusterlibStrings::CONNECTED;
-    string encodedJsonObj;
     bool exists = false;
 
     /* 
@@ -3478,37 +3511,19 @@ FactoryOps::isNodeConnected(const string &nodeKey, string &id, int64_t &msecs)
         false,
         true);
     if (exists) {
+        Stat stat;
         SAFE_CALL_ZK((exists = m_zk.getNodeData(
                           ckey,
-                          encodedJsonObj)),
+                          data,
+                          NULL,
+                          NULL,
+                          &stat)),
                      "Could not determine whether key %s is connected: %s",
                      ckey.c_str(),
                      false,
                      true);
         if (exists) {
-            JSONValue jsonValue = JSONCodec::decode(encodedJsonObj);
-            JSONValue::JSONObject jsonObj = 
-                jsonValue.get<JSONValue::JSONObject>();
-            JSONValue::JSONObject::const_iterator jsonObjIt;
-            jsonObjIt = 
-                jsonObj.find(ClusterlibStrings::JSONOBJECTKEY_CONNECTEDID);
-            if (jsonObjIt != jsonObj.end()) {
-                id = jsonObjIt->second.get<JSONValue::JSONString>();
-            }
-            else {
-                throw InconsistentInternalStateException(
-                    string("isNodeConnected: Cannot find id in value ") + 
-                    encodedJsonObj);
-            }
-            jsonObjIt = jsonObj.find(ClusterlibStrings::JSONOBJECTKEY_TIME);
-            if (jsonObjIt != jsonObj.end()) {
-                msecs = jsonObjIt->second.get<JSONValue::JSONInteger>();
-            }
-            else {
-                throw InconsistentInternalStateException(
-                    string("isNodeConnected: Cannot find time in value ") + 
-                    encodedJsonObj);
-            }
+            version = stat.version;
         }
     }
 

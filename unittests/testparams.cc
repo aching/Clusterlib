@@ -88,23 +88,26 @@ TestParams::rootParseArgs(int argc, char **argv)
                 }
                 break;
             case 't':
-                /* Get the top level suite from the registry. */
-                CppUnit::Test *suite = 
-                    CppUnit::TestFactoryRegistry::getRegistry().makeTest();
-                found = false;
-                for (int32_t i = 0; i < suite->getChildTestCount(); i++) {
-                    if (suite->getChildTestAt(i)->getName().compare(
-                            optarg) == 0) {
-                        found = true;
-                        break;
+                {
+                    /* Get the top level suite from the registry. */
+                    CppUnit::Test *suite = 
+                        CppUnit::TestFactoryRegistry::getRegistry().makeTest();
+                    found = false;
+                    for (int32_t i = 0; i < suite->getChildTestCount(); i++) {
+                        if (suite->getChildTestAt(i)->getName().compare(
+                                optarg) == 0) {
+                            found = true;
+                            break;
+                        }
                     }
-                }
-                if (found == true) {
-                    m_testFixtureName = optarg;
-                }
-                else {
-                    cout << optarg << " is an unknown test fixture" << endl;
-                    ret = -1;
+                    if (found == true) {
+                        m_testFixtureName = optarg;
+                    }
+                    else {
+                        cout << optarg << " is an unknown test fixture" 
+                             << endl;
+                        ret = -1;
+                    }
                 }
                 break;
             case 'o':

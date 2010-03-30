@@ -75,6 +75,10 @@ class ClusterlibStrings
     static const std::string PROCESSSTATE_FAILED;
     static const std::string PROCESSSTATE_INVALID;
 
+    static const std::string JSON_PROCESSSTATE_STATE_KEY;
+    static const std::string JSON_PROCESSSTATE_MSECS_KEY;
+    static const std::string JSON_PROCESSSTATE_DATE_KEY;
+
     static const std::string ENABLED;
     static const std::string DISABLED;
 
@@ -92,6 +96,7 @@ class ClusterlibStrings
 
     static const std::string PLK_RPCMANAGER_REQ_POSTFIX;
     static const std::string PLK_RPCMANAGER_REQ_STATUS_POSTFIX;
+    static const std::string PLK_USED_PORT_JSON_ARRAY;
 
     /** 
      * Default recv queue a notifyable 

@@ -733,7 +733,7 @@ CachedObjectChangeHandlers::handleProcessSlotDesiredStateChange(
      * Data not required, only using this function to set the watch
      * again.
      */
-    processSlot->getDesiredProcessState();
+    processSlot->getDesiredProcessState(NULL, NULL);
 
     return event;
 }
@@ -791,7 +791,7 @@ CachedObjectChangeHandlers::handleProcessSlotCurrentStateChange(
      * Data not required, only using this function to set the watch
      * again.
      */
-    processSlot->getCurrentProcessState();
+    processSlot->getCurrentProcessState(NULL, NULL);
 
     return event;
 }
@@ -854,12 +854,6 @@ CachedObjectChangeHandlers::handleProcessSlotReservationChange(
 
     return event;
 }
-
-
-
-
-
-
 
 Event
 CachedObjectChangeHandlers::handlePropertyListsChange(NotifyableImpl *ntp,
@@ -1198,18 +1192,10 @@ CachedObjectChangeHandlers::handleNodeConnectionChange(NotifyableImpl *ntp,
               ntp->getKey().c_str());
 
     /*
-     * Get the current value and re-establish watch.
+     * If there was no change, return EN_NOEVENT
      */
-    string id;
-    int64_t msecs;
-    bool connected = getOps()->isNodeConnected(node->getKey(), id, msecs);
-
-    if (connected) {
-        node->setConnectedAndTime(connected, id, msecs);
-    }
-    else {
-        node->setConnectedAndTime(
-            false, "", TimerService::getCurrentTimeMsecs());
+    if (!node->updateConnected()) {
+        return EN_NOEVENT;
     }
 
     return EN_CONNECTEDCHANGE;
@@ -1384,13 +1370,12 @@ CachedObjectChangeHandlers::setHandlerCallbackReady(
         map<string, bool>::iterator keyIt = changeIt->second.find(key);
         if (keyIt != changeIt->second.end()) {
             if (keyIt->second == true) {
-                LOG_FATAL(CL_LOG,
-                          "setHandlerCallbackReady: "
-                          "change %d, key %s, True!",
-                          change,
-                          key.c_str());
-                throw InconsistentInternalStateException(
-                    "setHandlerCallbackReady: True.");
+                ostringstream oss;
+                oss << "setHandlerCallbackReady: change=" 
+                    << getCachedObjectChangeString(change)
+                    << " with key=" << key;
+                LOG_FATAL(CL_LOG, "%s", oss.str().c_str());
+                throw InconsistentInternalStateException(oss.str());
             }
         }
     }
@@ -1411,37 +1396,32 @@ CachedObjectChangeHandlers::unsetHandlerCallbackReady(
 {
     TRACE(CL_LOG, "unsetHandlerCallbackReady");
 
+    ostringstream oss;
     Locker l1(getLock());
     map<CachedObjectChange, map<string, bool> >::iterator changeIt = 
         m_handlerKeyCallbackCount.find(change);
     if (changeIt == m_handlerKeyCallbackCount.end()) {
-        LOG_FATAL(CL_LOG,
-                  "unsetHandlerCallbackReady: change %s, key %s, "
-                  "change not defined.",
-                  getCachedObjectChangeString(change).c_str(),
-                  key.c_str());
-        throw InconsistentInternalStateException("unsetHandlerCallbackReady: "
-                                                 "Change not initialized.");
+        oss << "unsetHandlerCallbackReady: Key " << key << " with change "
+            << getCachedObjectChangeString(change) << " is not found";
+        LOG_FATAL(CL_LOG, "%s", oss.str().c_str());
+        throw InconsistentInternalStateException(oss.str());
     }
+
     map<string, bool>::iterator keyIt = 
         changeIt->second.find(key);
     if (keyIt == changeIt->second.end()) {
-        LOG_FATAL(CL_LOG,
-                  "unsetHandlerCallbackReady: change %s, key %s, "
-                  "key not defined.",
-                  getCachedObjectChangeString(change).c_str(),
-                  key.c_str());
-        throw InconsistentInternalStateException("unsetHandlerCallbackReady: "
-                                                 "Key not initialized.");
+        oss << "unsetHandlerCallbackReady: Key " << key << "not initialized"
+            << " for event " << getCachedObjectChangeString(change);
+        LOG_FATAL(CL_LOG, "%s", oss.str().c_str());
+        throw InconsistentInternalStateException(oss.str());
     }
 
     if (keyIt->second != true) {
-        LOG_FATAL(CL_LOG,
-                  "unsetHandlerCallbackReady: change %s, key %s, Not true!",
-                  getCachedObjectChangeString(change).c_str(),
-                  key.c_str());
-        throw InconsistentInternalStateException("unsetHandlerCallbackReady: "
-                                                 "Not true.");
+        oss << "unsetHandlerCallbackReady: Key " << key 
+            << " didn't have the handler callback set for event " 
+            << getCachedObjectChangeString(change);
+        LOG_FATAL(CL_LOG, "%s", oss.str().c_str());
+        throw InconsistentInternalStateException(oss.str());
     }
 
     LOG_DEBUG(CL_LOG,
