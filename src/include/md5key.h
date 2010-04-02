@@ -24,12 +24,11 @@ namespace clusterlib
 class Md5Key : public Key
 {
   public:
-    Md5Key(std::string key) 
-        : m_key(key) {}
+    Md5Key(const std::string &key);
 
     virtual HashRange hashKey() const;
 
-    virtual ~Md5Key() {}
+    virtual ~Md5Key();
 
   private:
     /** The string key */

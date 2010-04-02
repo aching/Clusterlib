@@ -172,9 +172,9 @@ ProcessThreadService::forkExecWait(const vector<string> &addEnv,
 }
 
 string 
-ProcessThreadService::getHostnamePidTid()
+ProcessThreadService::getHostname()
 {
-    TRACE(CL_LOG, "getHostnamePidTid");
+    TRACE(CL_LOG, "getHostname");
     
     const int32_t bufLen = 256;
     char tmp[bufLen + 1];
@@ -183,12 +183,20 @@ ProcessThreadService::getHostnamePidTid()
         throw SystemFailureException("getHostnamePidTid: gethostname failed");
     }
 
+    return tmp;
+}
+
+string 
+ProcessThreadService::getHostnamePidTid()
+{
+    TRACE(CL_LOG, "getHostnamePidTid");
+    
     /*
      * Get the hostname, pid, and tid of the calling
      * thread.
      */
     stringstream ss;
-    ss << tmp << ".pid." << getpid() 
+    ss << getHostname() << ".pid." << getpid() 
        << ".tid." << gettid();
     return ss.str();
 }

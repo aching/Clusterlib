@@ -143,18 +143,23 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
         m_activeNodeGroup = m_activeNodeGroup->getGroup(groupVec[i], true);
     }
 
-    struct utsname uts;
-    int ret = uname(&uts);
-    if (ret == -1) {
-        LOG_FATAL(CL_LOG, "Couldn't get hostname: %s",
+    string nodeName = m_params.getNodeName();
+    if (nodeName.empty()) {
+        struct utsname uts;
+        int ret = uname(&uts);
+        if (ret == -1) {
+            LOG_FATAL(CL_LOG, "Couldn't get hostname: %s",
                   strerror(errno));
+        }
+        nodeName = uts.nodename;
     }
-    string hostnameString(uts.nodename);
 
-    /* Setup all the event handlers to start processes or shutdown and
-     * activate the node */
+    /* 
+     * Setup all the event handlers to start processes or shutdown and
+     * activate the node 
+     */
     Mutex activeNodeMutex;
-    m_activeNode = m_activeNodeGroup->getNode(hostnameString, true);
+    m_activeNode = m_activeNodeGroup->getNode(nodeName, true);
     m_activeNode->initializeConnection(true);
     m_nodeHealthChecker.reset(new NodeHealthChecker(m_activeNode));
     m_activeNode->registerHealthChecker(&(*(m_nodeHealthChecker.get())));

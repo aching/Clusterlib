@@ -9,11 +9,14 @@ using namespace std;
 namespace clusterlib
 {
 
+Md5Key::Md5Key(const string &key)
+    : m_key(key) {}
+
 HashRange
 Md5Key::hashKey() const
 {
     MD5 context;
-    /**
+    /*
      * Hacky, but update() requires an unsigned char *.
      */
     context.update(reinterpret_cast<unsigned char *>(
@@ -21,8 +24,10 @@ Md5Key::hashKey() const
                    m_key.size());
     context.finalize();
     
-    /* Since HashRange is only 8 bytes instead of 16, only use the top
-     * 8 bytes */
+    /* 
+     * Since HashRange is only 8 bytes instead of 16, only use the top
+     * 8 bytes 
+     */
     char *hexOutput = context.hex_digest();
     hexOutput[16] = '\0';
     HashRange res = ::strtoll(hexOutput, NULL, 16);
@@ -30,5 +35,7 @@ Md5Key::hashKey() const
 
     return res;
 }
+
+Md5Key::~Md5Key() {}
 
 };	/* End of 'namespace clusterlib' */

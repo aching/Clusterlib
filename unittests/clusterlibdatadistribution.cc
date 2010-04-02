@@ -235,7 +235,7 @@ class ClusterlibDataDistribution : public MPITestFixture {
             Md5Key key("hello");
             cerr << "hashrange of hello is " << key.hashKey() << endl;
             MPI_CPPUNIT_ASSERT(key.hashKey() == 6719722671305337462LL);
-            vector<const Notifyable *> ntpVec = dist->getNotifyables(key);
+            vector<Notifyable *> ntpVec = dist->getNotifyables(key);
             MPI_CPPUNIT_ASSERT(ntpVec.size() == 0);
 
             dist->insertShard(0, 6719722671305337462LL, n0);

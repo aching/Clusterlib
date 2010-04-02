@@ -663,8 +663,7 @@ JSONValue::JSONString MethodAdaptor::setNotifyableAttributesFromKey(
             string property = 
                 arr[setAttributeKeyIdx + 2].get<JSONValue::JSONString>();
             string value = 
-                arr[setAttributeKeyIdx + 3].
-                get<JSONValue::JSONString>();
+                JSONCodec::encode(arr[setAttributeKeyIdx + 3]);
                 
             if (!op.compare(0, 
                             idPropertyListProperty.size(), 

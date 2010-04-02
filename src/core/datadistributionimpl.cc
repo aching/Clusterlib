@@ -227,7 +227,7 @@ static bool shardPriorityCompare(Shard a, Shard b)
     }
 }
 
-vector<const Notifyable *> 
+vector<Notifyable *> 
 DataDistributionImpl::getNotifyables(const Key &key)
 {
     TRACE(CL_LOG, "getNotifyables");
@@ -240,7 +240,7 @@ DataDistributionImpl::getNotifyables(const Key &key)
     sort(shardVec.begin(), shardVec.end(), shardPriorityCompare);
 
     vector<Shard>::iterator shardVecIt;
-    vector<const Notifyable *> ntpVec;
+    vector<Notifyable *> ntpVec;
     for (shardVecIt = shardVec.begin(); 
          shardVecIt != shardVec.end(); 
          shardVecIt++) {
@@ -253,7 +253,7 @@ DataDistributionImpl::getNotifyables(const Key &key)
     return ntpVec;
 }
 
-vector<const Notifyable *> 
+vector<Notifyable *> 
 DataDistributionImpl::getNotifyables(HashRange hashedKey)
 {
     TRACE(CL_LOG, "getNotifyables");
@@ -266,7 +266,7 @@ DataDistributionImpl::getNotifyables(HashRange hashedKey)
     sort(shardVec.begin(), shardVec.end(), shardPriorityCompare);
 
     vector<Shard>::iterator shardVecIt;
-    vector<const Notifyable *> ntpVec;
+    vector<Notifyable *> ntpVec;
     for (shardVecIt = shardVec.begin(); shardVecIt != shardVec.end(); 
          shardVecIt++) {
         if ((shardVecIt->getStartRange() <= hashedKey) &&

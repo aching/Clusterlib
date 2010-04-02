@@ -17,6 +17,7 @@
 #include <boost/any.hpp>
 #include "clusterlibexceptions.h"
 #include <typeinfo>
+#include <limits>
 
 /**
  * Defines the namespace of JSON encoder and decoder. The utility
@@ -193,8 +194,8 @@ template<>
 inline JSONValue::JSONUInteger JSONValue::get<JSONValue::JSONUInteger>() const
 {
     /*
-     * Template specialization to allow conversion of JSONUInteger to
-     * JSONInteger if the value if positive or 0. 
+     * Template specialization to allow conversion of JSONInteger to
+     * JSONUInteger if the value if positive or 0. 
      */
     try {
         if (type() == typeid(JSONValue::JSONInteger)) {
@@ -212,14 +213,51 @@ inline JSONValue::JSONUInteger JSONValue::get<JSONValue::JSONUInteger>() const
         std::string newDemangledTypeName = 
             clusterlib::Exception::demangleName(
                 typeid(JSONValue::JSONUInteger).name(), success);
-        throw JSONValueException(
-            "get<JSONValue::JSONUInteger>: Current type name (" + 
-            currentDemangledTypeName +
-            ") cannot be converted to desired type name (" + 
-            newDemangledTypeName + ")");
+        std::ostringstream oss;
+        oss << "get<JSONValue::JSONUInteger>: Current type name (" 
+            << currentDemangledTypeName 
+            << ") cannot be converted to desired type name (" 
+            << newDemangledTypeName << ") with value "  
+            << boost::any_cast<JSONValue::JSONUInteger>(value);
+        throw JSONValueException(oss.str());
     }
 }
-    
+
+template<> 
+inline JSONValue::JSONInteger JSONValue::get<JSONValue::JSONInteger>() const
+{
+    /*
+     * Template specialization to allow conversion of JSONUInteger to
+     * JSONInteger if the value does not exceed the maximum JSONInteger.
+     */
+    try {
+        if (type() == typeid(JSONValue::JSONUInteger)) {
+            if (boost::any_cast<JSONValue::JSONUInteger>(value) <= 
+                static_cast<JSONValue::JSONUInteger>(
+                    std::numeric_limits<JSONValue::JSONInteger>::max())) {
+                return static_cast<JSONValue::JSONInteger>(
+                    boost::any_cast<JSONValue::JSONUInteger>(value));
+            }
+        }
+        return boost::any_cast<JSONValue::JSONInteger>(value);
+    } 
+    catch (const std::bad_cast &ex) {
+        bool success;
+        std::string currentDemangledTypeName = 
+            clusterlib::Exception::demangleName(type().name(), success);
+        std::string newDemangledTypeName = 
+            clusterlib::Exception::demangleName(
+                typeid(JSONValue::JSONInteger).name(), success);
+        std::ostringstream oss;
+        oss << "get<JSONValue::JSONInteger>: Current type name (" 
+            << currentDemangledTypeName 
+            << ") cannot be converted to desired type name (" 
+            << newDemangledTypeName << ") with value " 
+            << boost::any_cast<JSONValue::JSONUInteger>(value);
+        throw JSONValueException(oss.str());
+    }
+}
+
 /**
  * Defines the utility class of JSON parser and composer. This is
  * the single entry of the namespace.

@@ -20,6 +20,7 @@ ActiveNodeParams::printUsage(char *exec) const
 " -z  --zk_server_port  Zookeeper server port list \n"
 "                       (i.e. wm301:2181,wm302:2181)\n"
 " -p  --num_processes   The number of processes to manage\n"
+" -N  --node_name       If not set, the node name defaults to the hostname\n"
 " -o  --output_type     Choose the output type.\n"
 "                       console - console output\n"
 "                       file - file output (default)\n";
@@ -34,6 +35,7 @@ ActiveNodeParams::parseArgs(int argc, char **argv)
         {"node_location", 1, NULL, 'n'},
         {"zk_server_port_list", 1, NULL, 'z'},
         {"num_processes", 1, NULL, 'p'},
+        {"node_name", 1, NULL, 'N'},
         {"output_type", 1, NULL, 'o'},
         {0,0,0,0}
     };
@@ -42,7 +44,7 @@ ActiveNodeParams::parseArgs(int argc, char **argv)
     int32_t option_index = 0;
     int32_t err = -1;
     int32_t ret = 0;
-    const char *optstring = ":hn:z:p:o:";
+    const char *optstring = ":hn:z:p:N:o:";
 
     /* Parse all standard command line arguments */
     while (1) {
@@ -68,6 +70,9 @@ ActiveNodeParams::parseArgs(int argc, char **argv)
                 break;
             case 'p':
                 m_numProcs = ::atoi(optarg);
+                break;
+            case 'N':
+                m_nodeName = optarg;
                 break;
             case 'o':
                 {

@@ -476,7 +476,7 @@ NodeImpl::updateConnected()
     int32_t version;
     string encodedJsonObj;
 
-    Locker l(getSyncLock());
+    Locker l(getStateMutex());
     bool updated = false;
     bool found = 
         getOps()->loadNodeConnected(getKey(), encodedJsonObj, version);
@@ -524,6 +524,8 @@ NodeImpl::updateConnected()
                 encodedJsonObj);
         }
         updated = true;
+        m_connected = true;
+        m_connectionJsonMapVersion = version;
      }
     else if (version == m_connectionJsonMapVersion) {
         LOG_DEBUG(CL_LOG,

@@ -30,7 +30,7 @@ class DataDistribution
      * @param key the key to find.
      * @return the vector of notifyable pointer that have this key
      */
-    virtual std::vector<const Notifyable *> getNotifyables(const Key &key) = 0;
+    virtual std::vector<Notifyable *> getNotifyables(const Key &key) = 0;
 
     /**
      * Find the Notifyables that the hashedKey maps to.  Sorted by priority
@@ -39,7 +39,7 @@ class DataDistribution
      * @param hashedKey the hashed key to find
      * @return the vector of notifyable pointer that have this hashed key
      */
-    virtual std::vector<const Notifyable *> getNotifyables(
+    virtual std::vector<Notifyable *> getNotifyables(
         HashRange hashedKey) = 0;
     
     /**

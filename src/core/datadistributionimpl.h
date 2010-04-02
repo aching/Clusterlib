@@ -60,9 +60,9 @@ class DataDistributionImpl
       public virtual NotifyableImpl
 {
   public:
-    virtual std::vector<const Notifyable *> getNotifyables(const Key &key);
+    virtual std::vector<Notifyable *> getNotifyables(const Key &key);
 
-    virtual std::vector<const Notifyable *> getNotifyables(HashRange hashedKey);
+    virtual std::vector<Notifyable *> getNotifyables(HashRange hashedKey);
 
     virtual uint32_t getShardCount();
 

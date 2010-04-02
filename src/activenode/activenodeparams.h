@@ -94,7 +94,18 @@ class ActiveNodeParams {
      */
     OutputType getOutputType() const { return m_outputType; }
 
+    /**
+     * Get the node name used.
+     */
+    const std::string &getNodeName() const { return m_nodeName; }
+
   private:
+    /**
+     * The name of the node (either defaulting to the hostname or a
+     * user-specified name).
+     */
+    std::string m_nodeName;
+
     /**
      * The number of processes to run this test with
      */
