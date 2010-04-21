@@ -112,19 +112,28 @@ PropertyListImpl::deleteProperty(const string &name)
 }
 
 void
-PropertyListImpl::publish()
+PropertyListImpl::publishProperties(bool unconditional)
 {
-    TRACE(CL_LOG, "publish");
+    TRACE(CL_LOG, "publishProperties");
+
+    throwIfRemoved();
 
     Locker l(getSyncLock());
     string marshalledKeyValMap = marshall();
     int32_t finalVersion;
 	
+    LOG_INFO(CL_LOG,
+             "Tried to set properties for notifyable %s to %s "
+             "with version %d, unconditional %d\n",
+             getKey().c_str(), 
+             marshalledKeyValMap.c_str(),
+             getVersion(),
+             unconditional);
+
     try {
-        getOps()->updatePropertyList(getKey(),
-                                     marshalledKeyValMap,
-                                     getKeyValVersion(),
-                                     finalVersion);
+        updateKeyVals(marshalledKeyValMap,
+                      ((unconditional == false) ? getVersion() : -1),
+                      finalVersion);
     } catch (const zk::BadVersionException &e) {
         throw PublishVersionException(e.what());
     }
@@ -135,6 +144,56 @@ PropertyListImpl::publish()
      * try to push this change again.  
      */
     setKeyValVersion(finalVersion);
+}
+
+void
+PropertyListImpl::updateKeyVals(const string &encodedKeyVals,
+                                int32_t version,
+                                int32_t &finalVersion)
+{
+    TRACE(CL_LOG, "updateKeyVals");
+
+    string keyValsKey = NotifyableKeyManipulator::createKeyValsKey(getKey());
+    Stat stat;
+    bool exists = false;
+
+    SAFE_CALL_ZK((exists = getOps()->getRepository()->nodeExists(keyValsKey)),
+                 "Could not determine whether key %s exists: %s",
+                 keyValsKey.c_str(),
+                 true,
+                 true);
+    if (!exists) {
+        SAFE_CALL_ZK(getOps()->getRepository()->createNode(
+                         keyValsKey, encodedKeyVals, 0),
+                     "Creation of %s failed: %s",
+                     keyValsKey.c_str(),
+                     true,
+                     true);
+    }
+    SAFE_CALL_ZK(getOps()->getRepository()->setNodeData(keyValsKey,
+                                                        encodedKeyVals, 
+                                                        version, 
+                                                        &stat),
+                 "Setting of %s failed: %s",
+                 keyValsKey.c_str(),
+                 false,
+                 true);
+    SAFE_CALLBACK_ZK(
+        getOps()->getRepository()->nodeExists(
+            keyValsKey,
+            getOps()->getZooKeeperEventAdapter(),
+            getOps()->getCachedObjectChangeHandlers()->
+            getChangeHandler(
+                CachedObjectChangeHandlers::PROPERTYLIST_VALUES_CHANGE)),
+        ,
+        CachedObjectChangeHandlers::PROPERTYLIST_VALUES_CHANGE,
+        keyValsKey,
+        "Reestablishing watch on value of %s failed: %s",
+        keyValsKey.c_str(),
+        false,
+        true);  
+    
+    finalVersion = stat.version;
 }
 
 vector<string>

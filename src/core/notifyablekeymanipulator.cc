@@ -158,6 +158,17 @@ NotifyableKeyManipulator::createDataDistributionKey(const string &groupKey,
 }
 
 string
+NotifyableKeyManipulator::createShardsKey(const string &distKey)
+{
+    string res;
+    res.append(distKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::SHARDS);
+
+    return res;
+}
+
+string
 NotifyableKeyManipulator::createPropertyListKey(const string &notifyableKey,
                                                 const string &propListName)
 {
@@ -167,6 +178,17 @@ NotifyableKeyManipulator::createPropertyListKey(const string &notifyableKey,
     res.append(ClusterlibStrings::PROPERTYLISTS);
     res.append(ClusterlibStrings::KEYSEPARATOR);
     res.append(propListName);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createKeyValsKey(const string &propListKey)
+{
+    string res;
+    res.append(propListKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::KEYVAL);
 
     return res;
 }

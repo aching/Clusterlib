@@ -84,7 +84,7 @@ main(int ac, char **av)
         dst->insertShard(0, 99, s0);
         dst->insertShard(100, 199, s1);        
         dst->insertShard(200, 299, s2);
-	dst->publish();
+	dst->publishShards();
 	dst->releaseLock();
 
         clusterlib::Application *app1 = dst->getMyApplication();
@@ -116,7 +116,7 @@ main(int ac, char **av)
 
 	propList0->setProperty("test", "passed");
 	propList0->setProperty("weird", "yessir");
-	propList0->publish();
+	propList0->publishProperties();
 	propList0->releaseLock();
 
 	string test2 = propList0->getProperty("test", true);
@@ -131,7 +131,7 @@ main(int ac, char **av)
 	propList0->acquireLock();
 	propList0->setProperty("avery", "ching");
 	propList0->setProperty("test", "good");
-	propList0->publish();
+	propList0->publishProperties();
 	propList0->releaseLock();
 
 	test3 = propList1->getProperty("test", true);
@@ -150,7 +150,7 @@ main(int ac, char **av)
 
 	propList2->acquireLock();
 	propList2->setProperty("test", "node");
-	propList2->publish();
+	propList2->publishProperties();
 	propList2->releaseLock();
 
 	test3 = propList2->getProperty("test", true);

@@ -190,13 +190,17 @@ class JSONValue {
     boost::any value;
 };
 
+/**
+ * Template specialization to allow conversion of JSONInteger to
+ * JSONUInteger if the value if positive or 0.  If the conversion is
+ * not possible without loss of precision, throws a
+ * JSONValueException().
+ *
+ * @return a valid JSONUInteger
+ */
 template<> 
 inline JSONValue::JSONUInteger JSONValue::get<JSONValue::JSONUInteger>() const
 {
-    /*
-     * Template specialization to allow conversion of JSONInteger to
-     * JSONUInteger if the value if positive or 0. 
-     */
     try {
         if (type() == typeid(JSONValue::JSONInteger)) {
             if (boost::any_cast<JSONValue::JSONInteger>(value) >= 0) {
@@ -223,13 +227,17 @@ inline JSONValue::JSONUInteger JSONValue::get<JSONValue::JSONUInteger>() const
     }
 }
 
+/**
+ * Template specialization to allow conversion of JSONUInteger to
+ * JSONInteger if the value does not exceed the maximum JSONInteger.
+ * If the conversion is not possible without loss of precision, throws
+ * a JSONValueException().
+ *
+ * @return a valid JSONInteger
+ */
 template<> 
 inline JSONValue::JSONInteger JSONValue::get<JSONValue::JSONInteger>() const
 {
-    /*
-     * Template specialization to allow conversion of JSONUInteger to
-     * JSONInteger if the value does not exceed the maximum JSONInteger.
-     */
     try {
         if (type() == typeid(JSONValue::JSONUInteger)) {
             if (boost::any_cast<JSONValue::JSONUInteger>(value) <= 

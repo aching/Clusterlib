@@ -47,7 +47,7 @@ int main(int argc, char* argv[])
     bool gotLock = rpcMethodHandlerPropertylist->acquireLockWaitMsecs(500);
     if (gotLock) {
         rpcMethodHandlerPropertylist->clear();
-        rpcMethodHandlerPropertylist->publish();
+        rpcMethodHandlerPropertylist->publishProperties();
         rpcMethodHandlerPropertylist->releaseLock();
     }
 

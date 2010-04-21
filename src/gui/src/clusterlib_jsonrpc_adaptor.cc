@@ -679,7 +679,7 @@ JSONValue::JSONString MethodAdaptor::setNotifyableAttributesFromKey(
                     throw JSONRPCInvocationException(oss.str());
                 }
                 propertyList->setProperty(property, value);
-                propertyList->publish();
+                propertyList->publishProperties();
                 propertyList->releaseLock();
             }
             else {
@@ -759,7 +759,7 @@ JSONValue::JSONString MethodAdaptor::removeNotifyableAttributesFromKey(
                     throw JSONRPCInvocationException(oss.str());
                 }
                 propertyList->deleteProperty(attribute);
-                propertyList->publish();
+                propertyList->publishProperties();
                 propertyList->releaseLock();
             }
             else {

@@ -81,7 +81,7 @@ class DataDistribution
      *
      * @param start the start of the range (inclusive)
      * @param end the end of the range (inclusive)
-     * @param notifyable the notifyable that will handle this range
+     * @param ntp the notifyable that will handle this range
      * @param priority the priority of this shard (-1 is reserved, do not use)
      */
     virtual void insertShard(HashRange start,
@@ -90,20 +90,24 @@ class DataDistribution
                              int32_t priority = 0) = 0;
     
     /**
-     *  Publish any changes to the clusterlib repository.  An
-     *  exception will be thrown if any of the Shards have NULL
-     *  notifyables.  PublishVersionException will be thrown if the
-     *  versions do not match.  In that case, the user should catch
-     *  the exception, unlock the DataDistribution and try again.
+     * Publish any shard changes to the clusterlib repository.  An
+     * exception will be thrown if any of the Shards have NULL
+     * notifyables.  PublishVersionException will be thrown if the
+     * versions do not match and <code>unconditional == false</code>.
+     * In that case, the user should catch the exception, unlock the
+     * DataDistribution and try again.
+     *
+     * @param unconditional if true, publish the data from this object even 
+     *        if it is not the latest version
      */
-    virtual void publish() = 0;
+    virtual void publishShards(bool unconditional = false) = 0;
 
     /**
      * Get all the shards in this data distribution ordered by the
      * start range that match the correct notifyable and/or priority if
      * specified.
      *
-     * @param notifyable the notifyable to filter on (NULL turns off filter)
+     * @param ntp the notifyable to filter on (NULL turns off filter)
      * @param priority the priority filter (-1 turns off filter)
      * @return a vector of shards in the distribution
      */

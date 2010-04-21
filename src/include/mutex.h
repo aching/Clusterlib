@@ -171,7 +171,6 @@ class Lock
     /**
      * Wait for the conditional to be signaled.
      * 
-     * @param mutex the mutex to wait on
      * @param usecTimeout the amount of usecs to wait until giving up, 
      *        -1 means wait forever, 0 means return immediately
      * return true if the conditional was signaled, false if timed out
@@ -184,7 +183,6 @@ class Lock
     /**
      * Wait for the conditional to be signaled.
      * 
-     * @param mutex the mutex to wait on
      * @param msecTimeout the amount of usecs to wait until giving up, 
      *        -1 means wait forever, 0 means return immediately
      * return true if the conditional was signaled, false if timed out

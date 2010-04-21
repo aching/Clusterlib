@@ -35,7 +35,7 @@ class JSONParseException
     /**
      * Creates an instance of JSONParseException with error message.
      *
-     * @param message the error message.
+     * @param msg the error message.
      */
     explicit JSONParseException(const std::string &msg) throw()
         : Exception(msg) {}

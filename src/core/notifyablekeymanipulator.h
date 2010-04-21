@@ -41,8 +41,10 @@ class NotifyableKeyManipulator
     static std::string createRootKey();
     static std::string createDataDistributionKey(const std::string &groupKey,
                                                  const std::string &distName);
+    static std::string createShardsKey(const std::string &distKey);
     static std::string createPropertyListKey(const std::string &notifyableKey,
                                              const std::string &propListName);
+    static std::string createKeyValsKey(const std::string &propListkey);
     static std::string createQueueKey(const std::string &notifyableKey,
                                       const std::string &queueName);
     static std::string createProcessSlotsUsageKey(

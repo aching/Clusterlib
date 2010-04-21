@@ -64,7 +64,7 @@ class DistributedLocks
      */
     void release(Notifyable *ntp, const std::string &lockName);
 
-    /*
+    /**
      * Does this thread have a lock on this Notifyable?
      *
      * @param ntp the Notifyable that is being checked

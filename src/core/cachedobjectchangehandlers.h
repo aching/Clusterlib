@@ -65,6 +65,11 @@ class CachedObjectChangeHandlers
 
     /**
      * Handle state changes on notifyables.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleNotifyableStateChange(NotifyableImpl *ntp,
                                       int32_t etype,
@@ -72,6 +77,11 @@ class CachedObjectChangeHandlers
 
     /**
      * Handle changes in the set of applications.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleApplicationsChange(NotifyableImpl *ntp,
                                    int32_t etype,
@@ -80,6 +90,11 @@ class CachedObjectChangeHandlers
     /**
      * Handle changes in the set of groups in
      * a group.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleGroupsChange(NotifyableImpl *ntp,
                              int32_t etype,
@@ -88,6 +103,11 @@ class CachedObjectChangeHandlers
     /**
      * Handle changes in the set of data distributions
      * in a group.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleDataDistributionsChange(NotifyableImpl *ntp,
                                         int32_t etype,
@@ -95,6 +115,11 @@ class CachedObjectChangeHandlers
 
     /**
      * Handle changes in the set of nodes in a group.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleNodesChange(NotifyableImpl *ntp,
                             int32_t etype,
@@ -102,6 +127,11 @@ class CachedObjectChangeHandlers
 
     /**
      * Handle changes in the set of process slots in a node.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleProcessSlotsChange(NotifyableImpl *ntp,
                                    int32_t etype,
@@ -109,6 +139,11 @@ class CachedObjectChangeHandlers
 
     /**
      * Handle changes in the usage of process slots in a node.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleProcessSlotsUsageChange(NotifyableImpl *ntp,
                                         int32_t etype,
@@ -116,6 +151,11 @@ class CachedObjectChangeHandlers
 
     /**
      * Handle changes in the port vector of a process slot.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleProcessSlotPortVecChange(NotifyableImpl *ntp,
                                          int32_t etype,
@@ -123,6 +163,11 @@ class CachedObjectChangeHandlers
 
     /**
      * Handle changes in the executable arguments of a process slot.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleProcessSlotExecArgsChange(NotifyableImpl *ntp,
                                           int32_t etype,
@@ -131,6 +176,11 @@ class CachedObjectChangeHandlers
     /**
      * Handle changes in the running executable arguments of a process
      * slot.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleProcessSlotRunningExecArgsChange(NotifyableImpl *ntp,
                                                  int32_t etype,
@@ -138,6 +188,11 @@ class CachedObjectChangeHandlers
 
     /**
      * Handle changes in the PID of a process slot.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleProcessSlotPIDChange(NotifyableImpl *ntp,
                                      int32_t etype,
@@ -145,6 +200,11 @@ class CachedObjectChangeHandlers
 
     /**
      * Handle changes in the desired state of a process slot.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleProcessSlotDesiredStateChange(NotifyableImpl *ntp,
                                               int32_t etype,
@@ -152,6 +212,11 @@ class CachedObjectChangeHandlers
 
     /**
      * Handle changes in the current state of a process slot.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleProcessSlotCurrentStateChange(NotifyableImpl *ntp,
                                               int32_t etype,
@@ -159,6 +224,11 @@ class CachedObjectChangeHandlers
 
     /**
      * Handle changes in the reservation of a process slot.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleProcessSlotReservationChange(NotifyableImpl *ntp,
                                              int32_t etype,
@@ -166,6 +236,11 @@ class CachedObjectChangeHandlers
 
     /**
      * Handle changes in the set of property lists in a notifyable.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handlePropertyListsChange(NotifyableImpl *ntp,
                                  int32_t etype,
@@ -173,6 +248,11 @@ class CachedObjectChangeHandlers
 
     /**
      * Handle changes in a property list value.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handlePropertyListValueChange(NotifyableImpl *ntp,
                                       int32_t etype,
@@ -180,6 +260,11 @@ class CachedObjectChangeHandlers
 
     /**
      * Handle changes in shards of a distribution.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleDataDistributionShardsChange(NotifyableImpl *ntp,
                                              int32_t etype,
@@ -188,6 +273,11 @@ class CachedObjectChangeHandlers
     /**
      * Handle changes in client-reported state for
      * a node.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleClientStateChange(NotifyableImpl *ntp,
                                   int32_t etype,
@@ -196,6 +286,11 @@ class CachedObjectChangeHandlers
     /**
      * Handle changes in master-set desired state
      * for a node.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleMasterSetStateChange(NotifyableImpl *ntp,
                                      int32_t etype,
@@ -204,6 +299,11 @@ class CachedObjectChangeHandlers
     /**
      * Handle a change in the connected state for
      * a node.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleNodeConnectionChange(NotifyableImpl *ntp,
                                      int32_t etype,
@@ -211,6 +311,11 @@ class CachedObjectChangeHandlers
 
     /**
      * Handle changes in synchronization of a zookeeper key.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleSynchronizeChange(NotifyableImpl *ntp,
                                   int32_t etype,
@@ -218,6 +323,11 @@ class CachedObjectChangeHandlers
 
     /**
      * Handle change of a preceding lock node exists event.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handlePrecLockNodeExistsChange(NotifyableImpl *ntp,
                                          int32_t etype,
@@ -225,6 +335,11 @@ class CachedObjectChangeHandlers
 
     /**
      * Handle child change of a queue parent.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
      */
     Event handleQueueChildChange(NotifyableImpl *ntp,
                                  int32_t etype,
@@ -233,6 +348,7 @@ class CachedObjectChangeHandlers
     /**
      * Get the CachedObjectEventHandler for the appropriate change event
      *
+     * @param change the change that gets the appropriate handler
      * @return a pointer to the desired event handler
      */
     CachedObjectEventHandler *getChangeHandler(CachedObjectChange change);
@@ -246,7 +362,7 @@ class CachedObjectChangeHandlers
      *
      * @param change the change handler
      * @param key the path of the node
-     * @return if key and handler are set for callback
+     * @return true if key and handler are set for callback
      */
     bool isHandlerCallbackReady(CachedObjectChange change, 
                                 const std::string &key);
@@ -269,8 +385,10 @@ class CachedObjectChangeHandlers
     void unsetHandlerCallbackReady(CachedObjectChange change,
                                    const std::string &key);
 
-    /*
+    /**
      * Constructor used by FactoryOps.
+     * 
+     * @param factoryOps the factory ops pointer
      */
     CachedObjectChangeHandlers(FactoryOps *factoryOps) 
         : mp_ops(factoryOps),

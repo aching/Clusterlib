@@ -75,7 +75,7 @@ class DataDistributionImpl
                              Notifyable *ntp,
                              int32_t priority = 0);
 
-    virtual void publish();
+    virtual void publishShards(bool unconditional = false);
 
     virtual std::vector<Shard> getAllShards(
         const Notifyable *ntp = NULL,
@@ -110,7 +110,6 @@ class DataDistributionImpl
 
     virtual void removeRepositoryEntries();
 
-
     /**
      * Set the version of this object
      *
@@ -141,6 +140,17 @@ class DataDistributionImpl
             "Someone called the DataDistributionImpl "
             "default constructor!");
     }
+    
+    /**
+     * Helper function to set the shard data in the repository.
+     *
+     * @param encodedShards the JSON encoded shards
+     * @param version the previous version (or -1 for unconditional)
+     * @param finalVersion the finalVersion written
+     */
+    void updateShards(const std::string &encodedShards,
+                      int32_t version,
+                      int32_t &finalVersion);
 
   private:
     /**

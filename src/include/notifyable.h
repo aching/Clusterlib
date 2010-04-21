@@ -265,7 +265,7 @@ class Notifyable
     /*
      * Destructor.
      */
-    virtual ~Notifyable() {}
+    virtual ~Notifyable() {};
 };
 
 };	/* End of 'namespace clusterlib' */

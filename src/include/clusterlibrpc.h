@@ -166,7 +166,7 @@ class ClusterlibRPCMethod
      * each member variables.  It is also called after checkParams(),
      * so the implementor need not worry whether all the params exist.
      *
-     * @param params the params from the request
+     * @param paramArr the param array from the request
      */
     virtual void unmarshalParams(
         const ::json::JSONValue::JSONArray &paramArr) = 0;
@@ -234,8 +234,8 @@ class ClusterlibRPCManager
      *        errors for JSON-RPC requests if no destination is specified.
      * @param completedQueueMaxSize the maximum number of elements in the 
      *        completedQueue, -1 for infinite, 0 for none.
-     * @param rPCMethodHandlerPropertyList if set, the rpcManager will update
-     *        rPCMethodHandlerPropertyList with the current request and status
+     * @param rpcMethodHandlerPropertyList if set, the rpcManager will update
+     *        rpcMethodHandlerPropertyList with the current request and status
      *        information
      */
     ClusterlibRPCManager(
@@ -243,7 +243,7 @@ class ClusterlibRPCManager
         Queue *recvQueue,
         Queue *completedQueue,
         int32_t completedQueueMaxSize,
-        PropertyList *rpcMethodHandlerPropertylist);
+        PropertyList *rpcMethodHandlerPropertyList);
 
     /**
      * Destructor.
@@ -257,9 +257,6 @@ class ClusterlibRPCManager
      * put the result on the DEFAULT_COMPLETED_QUEUE.
      *
      * @param rpcInvocation the JSON encoded JSON-RPC string
-     * @param root the clusterlib root pointer
-     * @param defaultCompletedQueue the queue to put the result in if no resp
-     *        queue is in the rpcInvocation
      * @param persistence the persistence used to store a persistable state
      */
     virtual void invokeAndResp(

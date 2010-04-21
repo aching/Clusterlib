@@ -77,7 +77,7 @@ class ClusterlibPropertyList : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
             _propertyList0->setProperty("test", "v1");
-            _propertyList0->publish();
+            _propertyList0->publishProperties();
             _propertyList0->releaseLock();
         }
 
@@ -91,7 +91,7 @@ class ClusterlibPropertyList : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(val == "v1");
             cerr << "Got correct test = v1" << endl;
             _propertyList0->setProperty("test", "v2");
-            _propertyList0->publish();
+            _propertyList0->publishProperties();
             _propertyList0->releaseLock();
         }
 
@@ -128,7 +128,7 @@ class ClusterlibPropertyList : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
             _propertyList0->setProperty("test", "v3");
-            _propertyList0->publish();
+            _propertyList0->publishProperties();
             _propertyList0->releaseLock();
             _propertyList0 = _node0->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST,
@@ -136,7 +136,7 @@ class ClusterlibPropertyList : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
             _propertyList0->setProperty("test", "v4");
-            _propertyList0->publish();
+            _propertyList0->publishProperties();
             _propertyList0->releaseLock();
         }
 
@@ -159,7 +159,7 @@ class ClusterlibPropertyList : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(val == "v4");
             cerr << "Got correct test = v4" << endl;
             _propertyList0->deleteProperty("test");
-            _propertyList0->publish();
+            _propertyList0->publishProperties();
             _propertyList0->releaseLock();
             
             _propertyList0 = _app0->getPropertyList(
@@ -169,7 +169,7 @@ class ClusterlibPropertyList : public MPITestFixture {
             _propertyList0->acquireLock();
             val = _propertyList0->getProperty("test");
             _propertyList0->setProperty("test", "v5");
-            _propertyList0->publish();
+            _propertyList0->publishProperties();
             _propertyList0->releaseLock();
         }
 
@@ -209,7 +209,7 @@ class ClusterlibPropertyList : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
             _propertyList0->deleteProperty("test");
-            _propertyList0->publish();
+            _propertyList0->publishProperties();
             _propertyList0->releaseLock();
         }
             
@@ -250,7 +250,7 @@ class ClusterlibPropertyList : public MPITestFixture {
                 true);
             _propertyList0->acquireLock();
             _propertyList0->deleteProperty(prop);
-            _propertyList0->publish();
+            _propertyList0->publishProperties();
             _propertyList0->releaseLock();
         }
 
@@ -262,7 +262,7 @@ class ClusterlibPropertyList : public MPITestFixture {
             _propertyList0->setProperty(prop, newValue);
             MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop)
                                == newValue);
-            _propertyList0->publish();
+            _propertyList0->publishProperties();
             MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop) 
                                == newValue);
             _propertyList0->releaseLock();
@@ -305,7 +305,7 @@ class ClusterlibPropertyList : public MPITestFixture {
                 true);
             _propertyList0->acquireLock();
             _propertyList0->deleteProperty(prop);
-            _propertyList0->publish();
+            _propertyList0->publishProperties();
             _propertyList0->releaseLock();
         }
 
@@ -319,7 +319,7 @@ class ClusterlibPropertyList : public MPITestFixture {
             _propertyList0->acquireLock();
             _propertyList0->setProperty(prop, "new value");
             MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop) == "new value");
-            _propertyList0->publish();
+            _propertyList0->publishProperties();
             if (_propertyList0->getProperty(prop) == "new value") {
                 matchedVal = true;
             }
@@ -368,7 +368,7 @@ class ClusterlibPropertyList : public MPITestFixture {
                 true);
             _propertyList0->acquireLock();
             _propertyList0->deleteProperty(prop);
-            _propertyList0->publish();
+            _propertyList0->publishProperties();
             _propertyList0->releaseLock();
         }
 
@@ -387,7 +387,7 @@ class ClusterlibPropertyList : public MPITestFixture {
             _propertyList0->getProperty(prop);
             _propertyList0->setProperty(prop, "no");
             try {
-                _propertyList0->publish();
+                _propertyList0->publishProperties();
                 cerr << "testGetPropertyList5: Published successfully" << endl;
             }
             catch (Exception e) {
@@ -425,12 +425,12 @@ class ClusterlibPropertyList : public MPITestFixture {
 
             toolkitProp->acquireLock();
             toolkitProp->setProperty("clusterlib", "1.1");
-            toolkitProp->publish();
+            toolkitProp->publishProperties();
             toolkitProp->releaseLock();
             
             kernelProp->acquireLock();
             kernelProp->setProperty("linux", "2.4");
-            kernelProp->publish();
+            kernelProp->publishProperties();
             kernelProp->releaseLock();
             
             kernelProp->acquireLock();
@@ -462,7 +462,7 @@ class ClusterlibPropertyList : public MPITestFixture {
                 true);
             _propertyList0->acquireLock();
             _propertyList0->deleteProperty(prop);
-            _propertyList0->publish();
+            _propertyList0->publishProperties();
             _propertyList0->releaseLock();
         }
 
@@ -477,7 +477,7 @@ class ClusterlibPropertyList : public MPITestFixture {
         usleep(100000);
         MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop)
                            == ss.str());
-        _propertyList0->publish();
+        _propertyList0->publishProperties();
         MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop)
                            == ss.str());
         _propertyList0->releaseLock();
@@ -522,11 +522,11 @@ class ClusterlibPropertyList : public MPITestFixture {
             propList3 = _node0->getPropertyList(propList2Name, true);
             _node0->acquireLock();
             propList1->deleteProperty(prop);
-            propList1->publish();
+            propList1->publishProperties();
             propList2->deleteProperty(prop);
-            propList2->publish();
+            propList2->publishProperties();
             propList3->deleteProperty(prop);
-            propList3->publish();
+            propList3->publishProperties();
             _node0->releaseLock();
         }
 
@@ -550,9 +550,9 @@ class ClusterlibPropertyList : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(propList3->getProperty(prop)
                                == newValue);
             /* Publish backward to make the error case the most likely */
-            propList3->publish();    
-            propList2->publish();
-            propList1->publish();     
+            propList3->publishProperties();    
+            propList2->publishProperties();
+            propList1->publishProperties();     
             _node0->releaseLock();
             barrier(NULL, false);
             MPI_CPPUNIT_ASSERT(propList1->getProperty(prop)

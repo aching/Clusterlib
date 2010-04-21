@@ -148,7 +148,7 @@ class MPITestFixture : public CppUnit::TestFixture {
                         value.append(" ");
                         value.append(genPropertyListId());
                         propList->setProperty(genTestKey(), value);
-                        propList->publish();
+                        propList->publishProperties();
                         done = true;
                         propList->releaseLock();  
                     }
@@ -182,7 +182,7 @@ class MPITestFixture : public CppUnit::TestFixture {
             ss << " " << m_rank << ":" << m_hostname;
             bool done = false;
             /* 
-             * publish() can fail if another process publishes at
+             * publishProperties() can fail if another process publishes at
              * the same time.
              */
             while (!done) {
@@ -194,7 +194,7 @@ class MPITestFixture : public CppUnit::TestFixture {
                         value.erase(index, genPropertyListId().size());
                     }
                     propList->setProperty(genTestKey(), value);
-                    propList->publish();
+                    propList->publishProperties();
                     done = true;
                     propList->releaseLock();
                 }

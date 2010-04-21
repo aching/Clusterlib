@@ -82,13 +82,17 @@ class PropertyList
      * Changes made through setProperty are not seen by other clients
      * unless they are published.  It is possible that an exception
      * from clusterlib may be thrown if the versions don't match
-     * (PublishVersionException).  In this case, the user should catch
-     * the exception, release the lock and wait until the PropertyList
-     * is updated (either through polling or waiting on events).
-     * Then they should try to set their properties again under a lock
-     * and publish again.
+     * (PublishVersionException) and <code>unconditional==
+     * false</code>.  In this case, the user should catch the
+     * exception, release the lock and wait until the PropertyList is
+     * updated (either through polling or waiting on events).  Then
+     * they should try to set their properties again under a lock and
+     * publish again.
+     *
+     * @param unconditional if true, publish the data from this object
+     *        even if it is not the latest version
      */
-    virtual void publish() = 0;
+    virtual void publishProperties(bool unconditional = false) = 0;
 
     /**
      * Clears the property list (acquires/releases local lock).

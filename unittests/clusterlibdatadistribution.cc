@@ -99,7 +99,7 @@ class ClusterlibDataDistribution : public MPITestFixture {
             dist->clear();
             dist->insertShard(2000, 2999, NULL);
             MPI_CPPUNIT_ASSERT(dist->getShardCount() == 1);
-            dist->publish();
+            dist->publishShards();
             dist->releaseLock();
         }
     }
@@ -128,10 +128,10 @@ class ClusterlibDataDistribution : public MPITestFixture {
             dist->insertShard(0, 999, NULL);
             dist->insertShard(1000, 1999, NULL);
             dist->insertShard(2000, 2999, NULL);
-            dist->publish();
+            dist->publishShards();
             MPI_CPPUNIT_ASSERT(dist->isCovered() == false);
             dist->insertShard(3000, numeric_limits<uint64_t>::max(), NULL);
-            dist->publish();
+            dist->publishShards();
             MPI_CPPUNIT_ASSERT(dist->getShardCount() == 4);
             MPI_CPPUNIT_ASSERT(dist->isCovered() == true);
             dist->releaseLock();
@@ -269,7 +269,7 @@ class ClusterlibDataDistribution : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(ntpVec[0]->getName().compare("n2") == 0);
             MPI_CPPUNIT_ASSERT(ntpVec[1]->getName().compare("n1") == 0);
 
-            dist->publish();
+            dist->publishShards();
             dist->releaseLock();
         }
     }
@@ -308,7 +308,7 @@ class ClusterlibDataDistribution : public MPITestFixture {
                               n1);
             dist->insertShard(6719722671305337450LL, 6719722671305399999LL,
                               n2);
-            dist->publish();
+            dist->publishShards();
             dist->releaseLock();
             barrier(_factory, true);
         }
@@ -376,13 +376,13 @@ class ClusterlibDataDistribution : public MPITestFixture {
                               p1);
             dist->insertShard(6719722671305337450LL, 6719722671305399999LL,
                               p2);
-            dist->publish();
+            dist->publishShards();
             dist->releaseLock();
             PropertyList *pl = _app0->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST, true);
             pl->acquireLock();
             pl->setProperty(plk, dist->getKey());
-            pl->publish();
+            pl->publishProperties();
             pl->releaseLock();
             barrier(_factory, true);
         }

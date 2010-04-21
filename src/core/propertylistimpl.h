@@ -34,7 +34,7 @@ class PropertyListImpl
 
     virtual void deleteProperty(const std::string &name);
 
-    virtual void publish();
+    virtual void publishProperties(bool unconditional = false);
 
     virtual void clear() 
     {
@@ -119,6 +119,16 @@ class PropertyListImpl
                                        "default constructor!");
     }
 
+    /**
+     * Helper function to set the properties in the repository.
+     *
+     * @param encodedKeyVals the JSON encoded key values
+     * @param version the previous version (or -1 for unconditional)
+     * @param finalVersion the finalVersion written
+     */
+    void updateKeyVals(const std::string &encodedKeyVals,
+                       int32_t version,
+                       int32_t &finalVersion);
 
   private:
     /**             

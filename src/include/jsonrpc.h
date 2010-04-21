@@ -17,12 +17,14 @@
 #include <map>
 #include <utility>
 
+namespace json { 
+
 /**
  * Defines the namespace of JSON-RPC manager. JSON-RPC manager is
  * responsible to unwrap parameters and wrap results according to
  * JSON-RPC specification 1.0.
  */
-namespace json { namespace rpc {
+namespace rpc {
 
 /**
  * Defines the exception class which can be thrown by RPC methods.
@@ -35,7 +37,7 @@ class JSONRPCInvocationException
      * Creates an instance of JSONRPCInvocationException with error 
      * message.
      *
-     * @param message the error message.
+     * @param msg the error message.
      */
     explicit JSONRPCInvocationException(const std::string &msg) 
         : ::json::Exception(msg) {}
@@ -59,8 +61,27 @@ class PersistableState {
 class StatePersistence {
   public:
     virtual ~StatePersistence() {}
+    /**
+     * Get the persistable state.
+     *
+     * @param name the name of the object
+     * @return the persistable state
+     */
     virtual PersistableState *get(const std::string &name) = 0;
+    
+    /**
+     * Set the persitable state.
+     *
+     * @param name the name of the object
+     * @param state the new state
+     */
     virtual void set(const std::string &name, PersistableState *state) = 0;
+
+    /**
+     * Erase the state of the object.
+     *
+     * @param name the name of the object
+     */
     virtual void erase(const std::string &name) = 0;
 };
 
@@ -104,16 +125,18 @@ class JSONRPC {
     /**
      * Invokes the RPC method.
      *
-     * @param params the array of parameters of the method.
+     * @param name the name of the RPC method
+     * @param param the array of parameters of the method.
      * @param persistence the persistence used to store a persistable
      *        state.
      * @throws JSONRPCInvocationException if any error occurs during the
      *         invocation.
      * @return the return value of the method.
      */
-    virtual JSONValue invoke(const std::string &name, 
-                             const JSONValue::JSONArray &params, 
-                             StatePersistence *persistence) = 0;
+    virtual ::json::JSONValue invoke(
+        const std::string &name, 
+        const ::json::JSONValue::JSONArray &param, 
+        ::json::rpc::StatePersistence *persistence) = 0;
 };
 
 /**
@@ -139,7 +162,7 @@ class JSONRPCRequest
     /**
      * Wait for a number of milliseconds for the response.
      *
-     * @param msecTimeout the amount of msecs to wait until giving up, 
+     * @param msecsTimeout the amount of msecs to wait until giving up, 
      *        -1 means wait forever, 0 means return immediately
      * @return true if response exists
      */

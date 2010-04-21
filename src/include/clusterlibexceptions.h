@@ -170,7 +170,7 @@ class RepositoryInternalsFailureException
 };
 
 /**
- * System failure (i.e. gethostname, pthread_self, etc)
+ * System failure (i.e. gethostname, pthread_self, etc.).
  */
 class SystemFailureException
     : public Exception

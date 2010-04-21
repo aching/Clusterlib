@@ -333,7 +333,7 @@ ClusterlibRPCMethod::setMethodStatus(const string &status,
             propertyList->setProperty(statusKey, 
                                       JSONCodec::encode(allStatusArr));
             try {
-                propertyList->publish();
+                propertyList->publishProperties();
                 propertyList->releaseLock();
                 return true;
             }
@@ -521,7 +521,7 @@ ClusterlibRPCManager::setBasicRequestStatus(
                 basicStatusKey, 
                 JSONCodec::encode(jsonStatusObj));
             try {
-                propertyList->publish();
+                propertyList->publishProperties();
                 propertyList->releaseLock();
                 return true;
             }

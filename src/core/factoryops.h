@@ -389,14 +389,6 @@ class FactoryOps {
                         Notifyable *parent,
                         bool create = false);
 
-    void updateDataDistribution(const std::string &distKey,
-                                const std::string &shards,
-                                int32_t version,
-                                int32_t &finalVersion);
-    void updatePropertyList(const std::string &propListKey,
-			  const std::string &propListValue,
-			  int32_t version,
-                          int32_t &finalVersion);
     void updateNodeClientState(const std::string &nodeKey,
                                const std::string &cs);
     void updateNodeClientStateDesc(const std::string &nodeKey,

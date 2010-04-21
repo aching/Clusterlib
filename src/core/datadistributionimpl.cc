@@ -446,13 +446,10 @@ DataDistributionImpl::~DataDistributionImpl()
     m_shardTreeCount = 0;
 }
 
-/*
- * Publish the data distribution if there were changes.
- */
 void
-DataDistributionImpl::publish()
+DataDistributionImpl::publishShards(bool unconditional)
 {
-    TRACE(CL_LOG, "publish");
+    TRACE(CL_LOG, "publishShards");
 
     throwIfRemoved();
 
@@ -463,20 +460,80 @@ DataDistributionImpl::publish()
 
     LOG_INFO(CL_LOG,
              "Tried to set data distribution for notifyable %s to %s "
-             "with version %d\n",
+             "with version %d, unconditional %d\n",
              getKey().c_str(), 
              marshalledShards.c_str(),
-             getVersion());
+             getVersion(),
+             unconditional);
 
-    getOps()->updateDataDistribution(getKey(), 
-                                     marshalledShards,
-                                     getVersion(),
-                                     finalVersion);
+    try {
+        updateShards(marshalledShards,
+                     ((unconditional == false) ? getVersion() : -1),
+                     finalVersion);
+    }
+    catch (const zk::BadVersionException &e) {
+        throw PublishVersionException(e.what());
+    }
 
     /* Since we should have the lock, the data should be identical to
      * the zk data.  When the lock is released, clusterlib events will
      * try to push this change again.  */
     setVersion(finalVersion);
 }
+
+void
+DataDistributionImpl::updateShards(const string &encodedShards,
+                                   int32_t version,
+                                   int32_t &finalVersion)
+{
+    TRACE(CL_LOG, "updateShards");
+    
+    string shardsKey = NotifyableKeyManipulator::createShardsKey(getKey());
+    Stat stat;
+    bool exists = false;
+
+    /*
+     * Update the shards.
+     */
+    SAFE_CALL_ZK((exists = getOps()->getRepository()->nodeExists(shardsKey)),
+                 "Could not determine whether key %s exists: %s",
+                 shardsKey.c_str(),
+                 false,
+                 true);
+    if (!exists) {
+        SAFE_CALL_ZK(getOps()->getRepository()->createNode(
+                         shardsKey, encodedShards, 0),
+                     "Creation of %s failed: %s",
+                     shardsKey.c_str(),
+                     true,
+                     true);
+    }
+
+    SAFE_CALL_ZK(getOps()->getRepository()->setNodeData(shardsKey, 
+                                                        encodedShards, 
+                                                        version,
+                                                        &stat),
+                 "Setting of %s failed: %s",
+                 shardsKey.c_str(),
+                 false,
+                 true);
+
+    SAFE_CALLBACK_ZK(
+        getOps()->getRepository()->nodeExists(
+            shardsKey,
+            getOps()->getZooKeeperEventAdapter(),
+            getOps()->getCachedObjectChangeHandlers()->
+            getChangeHandler(CachedObjectChangeHandlers::SHARDS_CHANGE)),
+        ,
+        CachedObjectChangeHandlers::SHARDS_CHANGE,
+        shardsKey,
+        "Reestablishing watch on value of %s failed: %s",
+        shardsKey.c_str(),
+        true,
+        true);
+
+    finalVersion = stat.version;
+}
+
 
 };       /* End of 'namespace clusterlib' */

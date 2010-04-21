@@ -137,7 +137,7 @@ class ClusterlibProcessSlot : public MPITestFixture {
                                        true);
             propList->acquireLock();
             propList->setProperty(propKey, _processSlot0->getKey());
-            propList->publish();
+            propList->publishProperties();
             propList->releaseLock();            
         }
 

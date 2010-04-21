@@ -159,76 +159,74 @@ class ZooKeeperConfig
  */
 class ZKWatcherEvent
 {
-    public:
-        /**
-         * \brief The type representing the user's context.
-         */
-        typedef void *ContextType;
-        
-        /**
-         * \brief Constructor.
-         * 
-         * @param type the type of this event
-         * @param state the state of this event
-         * @param path the corresponding path, may be empty for some event 
-         *             types
-         * @param context the user specified context; possibly NULL
-         */
-        ZKWatcherEvent() : 
-            m_type(-1), m_state(-1), m_path(""), mp_context(NULL) {}
-                        
-        /**
-         * \brief Constructor.
-         * 
-         * @param type the type of this event
-         * @param state the state of this event
-         * @param path the corresponding path, may be empty for some event types
-         * @param context the user specified context; possibly NULL
-         */
-        ZKWatcherEvent(int32_t type,
-                       int32_t state,
-                       const std::string &path, 
-                       ContextType context = NULL) :
-            m_type(type), m_state(state), m_path(path), mp_context(context) {}
-        
-        int32_t getType() const { return m_type; }
-        int32_t getState() const { return m_state; }
-        std::string const &getPath() const { return m_path; }
-        ContextType getContext() const { return mp_context; }
-        
-        bool operator==(const ZKWatcherEvent &we) const {
-            return m_type == we.m_type && m_state == we.m_state 
-                    && m_path == we.m_path && mp_context == we.mp_context;
-        }
-        
-    private:
-        
-        /**
-         * The type of this event. It can be either CREATED_EVENT,
-         * DELETED_EVENT, CHANGED_EVENT, CHILD_EVENT, SESSION_EVENT or
-         * NOTWATCHING_EVENT.  See zookeeper.h for more details.
-         */
-        int32_t m_type;
-        
-        /**
-         * The state of ZK at the time of sending this event.
-         * It can be either CONNECTING_STATE, ASSOCIATING_STATE, 
-         * CONNECTED_STATE, EXPIRED_SESSION_STATE or AUTH_FAILED_STATE.
-         * See {@file zookeeper.h} for more details.
-         */
-        int32_t m_state;
-        
-        /**
-         * The corresponding path of the node in subject. It may be empty
-         * for some event types.
-         */
-        std::string m_path;
-        
-        /**
-         * The pointer to the user specified context, possibly NULL.
-         */
-        ContextType mp_context;
-        
+  public:
+    /**
+     * \brief The type representing the user's context.
+     */
+    typedef void *ContextType;
+    
+    /**
+     * \brief Constructor.
+     * 
+     * @param type the type of this event
+     * @param state the state of this event
+     * @param path the corresponding path, may be empty for some event 
+     *             types
+     * @param context the user specified context; possibly NULL
+     */
+    ZKWatcherEvent() : 
+        m_type(-1), m_state(-1), m_path(""), mp_context(NULL) {}
+    
+    /**
+     * \brief Constructor.
+     * 
+     * @param type the type of this event
+     * @param state the state of this event
+     * @param path the corresponding path, may be empty for some event types
+     * @param context the user specified context; possibly NULL
+     */
+    ZKWatcherEvent(int32_t type,
+                   int32_t state,
+                   const std::string &path, 
+                   ContextType context = NULL) :
+        m_type(type), m_state(state), m_path(path), mp_context(context) {}
+    
+    int32_t getType() const { return m_type; }
+    int32_t getState() const { return m_state; }
+    std::string const &getPath() const { return m_path; }
+    ContextType getContext() const { return mp_context; }
+    
+    bool operator==(const ZKWatcherEvent &we) const {
+        return m_type == we.m_type && m_state == we.m_state 
+            && m_path == we.m_path && mp_context == we.mp_context;
+    }
+    
+  private:        
+    /**
+     * The type of this event. It can be either CREATED_EVENT,
+     * DELETED_EVENT, CHANGED_EVENT, CHILD_EVENT, SESSION_EVENT or
+     * NOTWATCHING_EVENT.  See zookeeper.h for more details.
+     */
+    int32_t m_type;
+    
+    /**
+     * The state of ZK at the time of sending this event.
+     * It can be either CONNECTING_STATE, ASSOCIATING_STATE, 
+     * CONNECTED_STATE, EXPIRED_SESSION_STATE or AUTH_FAILED_STATE.
+     * See {@file zookeeper.h} for more details.
+     */
+    int32_t m_state;
+    
+    /**
+     * The corresponding path of the node in subject. It may be empty
+     * for some event types.
+     */
+    std::string m_path;
+    
+    /**
+     * The pointer to the user specified context, possibly NULL.
+     */
+    ContextType mp_context;
 };
 
 /**
