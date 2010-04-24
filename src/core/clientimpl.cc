@@ -80,9 +80,9 @@ ClientImpl::consumeUserEvents(void *param)
 
     LOG_INFO(CL_LOG,
              "Starting thread with ClientImpl::consumeUserEvents(), "
-             "this: 0x%x, thread: 0x%x",
-             (int32_t) this,
-             (uint32_t) pthread_self());
+             "this: %p, thread: %" PRIu32,
+             this,
+             static_cast<uint32_t>(pthread_self()));
 
     bool endEventReceived = false;
     string rootKey = NotifyableKeyManipulator::createRootKey();
@@ -108,7 +108,7 @@ ClientImpl::consumeUserEvents(void *param)
         }
 
         LOG_DEBUG(CL_LOG,
-                  "consumeUserEvents: Waiting for %lld msecs to take "
+                  "consumeUserEvents: Waiting for %" PRId64 " msecs to take "
                   "from the event queue...",
                   eventMsecTimeout);
 	if (!m_queue.takeWaitMsecs(eventMsecTimeout, uepp)) {
@@ -125,9 +125,9 @@ ClientImpl::consumeUserEvents(void *param)
 	}
 
 	LOG_DEBUG(CL_LOG,
-                  "ConsumeUserEvents: Received user event 0x%x with "
+                  "ConsumeUserEvents: Received user event %p with "
                   "path %s and Event %s",
-                  (int32_t) uepp,
+                  uepp,
                   uepp->getKey().c_str(),
                   UserEventHandler::getEventsString(uepp->getEvent()).c_str());
 
@@ -146,9 +146,9 @@ ClientImpl::consumeUserEvents(void *param)
 
     LOG_INFO(CL_LOG,
              "Ending thread with ClientImpl::consumeUserEvents(): "
-             "this = 0x%x, thread = 0x%x",
-             (int32_t) this,
-             (uint32_t) pthread_self());
+             "this = %p, thread = %" PRIu32,
+             this,
+             static_cast<uint32_t>(pthread_self()));
 }
 
 /*

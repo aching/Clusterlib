@@ -66,12 +66,13 @@ FactoryOps::FactoryOps(const string &registry, int64_t connectTimeout)
     try {
         m_zk.reconnect();
         LOG_INFO(CL_LOG, 
-                 "Waiting for connect event from ZooKeeper up to %Ld msecs",
+                 "Waiting for connect event from ZooKeeper up to %" PRId64 
+                 " msecs",
                  connectTimeout);
         if (m_firstConnect.predWaitUsecs(connectTimeout * 1000) == false) {
             LOG_ERROR(CL_LOG,
                       "FactoryOps: Did not receive connect event from %s in "
-                      "time (%Ld msecs), aborting",
+                      "time (%" PRId64 " msecs), aborting",
                       m_config.getHosts().c_str(),
                       connectTimeout);
 	    throw RepositoryConnectionFailureException(
@@ -274,7 +275,7 @@ FactoryOps::synchronize()
             &syncEventId);
 
     LOG_DEBUG(CL_LOG, 
-              "synchronize: Starting sync with event id (%lld)", 
+              "synchronize: Starting sync with event id (%" PRId64, 
               syncEventId);
     SAFE_CALL_ZK(m_zk.sync(
                      key, 
@@ -292,7 +293,9 @@ FactoryOps::synchronize()
     getSyncEventSignalMap()->waitUsecsPredMutexCond(syncEventKey, -1);
     getSyncEventSignalMap()->removeRefPredMutexCond(syncEventKey);
 
-    LOG_DEBUG(CL_LOG, "synchronize: event id (%lld) Complete", syncEventId);
+    LOG_DEBUG(CL_LOG, 
+              "synchronize: event id (%" PRId64 ") Complete", 
+              syncEventId);
 }
 
 
@@ -526,9 +529,9 @@ FactoryOps::dispatchExternalEvents(void *param)
     uint32_t eventSeqId = 0;
     LOG_DEBUG(CL_LOG,
               "Starting thread with FactoryOps::dispatchExternalEvents(), "
-              "this: 0x%x, thread: 0x%x",
-              (int32_t) this,
-              (uint32_t) pthread_self());
+              "this: %p, thread: %" PRIu32,
+              this,
+              static_cast<uint32_t>(pthread_self()));
 
     try {
         while (m_shutdown == false) { 
@@ -545,10 +548,10 @@ FactoryOps::dispatchExternalEvents(void *param)
             m_externalEventAdapter.getNextEvent(ge);
 
             LOG_DEBUG(CL_LOG,
-                      "[%d, 0x%x] dispatchExternalEvents() received "
+                      "[%" PRIu32 ", %p] dispatchExternalEvents() received "
                       "generic event of type: %s",
                       eventSeqId,
-                      (unsigned int) this,
+                      this,
                       GenericEvent::getTypeString(ge.getType()).c_str());
             
             switch (ge.getType()) {
@@ -562,9 +565,9 @@ FactoryOps::dispatchExternalEvents(void *param)
                             (ClusterlibTimerEvent *) ge.getEvent();
                         
                         LOG_DEBUG(CL_LOG,
-                                  "Dispatching timer event: 0x%x, id: "
-                                  "%d, alarm time: %lld",
-                                  (unsigned int) tp,
+                                  "Dispatching timer event: %p, id: "
+                                  "%d, alarm time: %" PRId64,
+                                  tp,
                                   tp->getID(),
                                   tp->getAlarmTime());
                         
@@ -578,11 +581,11 @@ FactoryOps::dispatchExternalEvents(void *param)
                         
                         LOG_DEBUG(CL_LOG,
                                   "Processing ZK event (type: %s, state: %d, "
-                                  "context: 0x%x, path: %s)",
+                                  "context: %p, path: %s)",
                                   zk::ZooKeeperAdapter::getEventString(
                                       zp->getType()).c_str(),
                                   zp->getState(),
-                                  (unsigned int) zp->getContext(),
+                                  zp->getContext(),
                                   zp->getPath().c_str());
                         
                         if ((zp->getType() == ZOO_SESSION_EVENT) &&
@@ -613,9 +616,9 @@ FactoryOps::dispatchExternalEvents(void *param)
 
         LOG_DEBUG(CL_LOG,
                   "Ending thread with FactoryOps::dispatchExternalEvents(): "
-                  "this: 0x%x, thread: 0x%x",
-                  (int32_t) this,
-                  (uint32_t) pthread_self());
+                  "this: %p, thread: %" PRIu32,
+                  this,
+                  static_cast<uint32_t>(pthread_self()));
     } catch (zk::ZooKeeperException &zke) {
         LOG_ERROR(CL_LOG, "ZooKeeperException: %s", zke.what());
         dispatchEndEvent();
@@ -697,9 +700,9 @@ FactoryOps::dispatchZKEvent(zk::ZKWatcherEvent *zp)
     uep = updateCachedObject(fehp, zp);
     LOG_DEBUG(CL_LOG, 
               "dispatchZKEvent: If NULL cluster event payload on key %s, "
-              "will not propogate to clients, payload is %u",
+              "will not propogate to clients, payload is %p",
               zp->getPath().c_str(),
-              (uint32_t) uep);
+              uep);
     if (uep == NULL) {
         return;
     }
@@ -717,10 +720,10 @@ FactoryOps::dispatchZKEvent(zk::ZKWatcherEvent *zp)
              clIt++) {
             uepp = new UserEventPayload(*uep);
             LOG_DEBUG(CL_LOG, 
-                      "dispatchZKEvent: Sending payload %u to client %u "
+                      "dispatchZKEvent: Sending payload %p to client %p "
                       "on key %s",
-                      (uint32_t) uep,
-                      (uint32_t) (*clIt),
+                      uep,
+                      *clIt,
                       zp->getPath().c_str());
             (*clIt)->sendEvent(uepp);
         }
@@ -846,9 +849,9 @@ FactoryOps::consumeTimerEvents(void *param)
 
     LOG_DEBUG(CL_LOG,
               "Starting thread with FactoryOps::consumeTimerEvents(), "
-              "this: 0x%x, thread: 0x%x",
-              (int32_t) this,
-              (uint32_t) ::pthread_self());
+              "this: %p, thread: %" PRIu32,
+              this,
+              static_cast<uint32_t>(pthread_self()));
 
     try {
         for (;;) {
@@ -874,10 +877,10 @@ FactoryOps::consumeTimerEvents(void *param)
             }
 
             LOG_INFO(CL_LOG,
-                     "Serviced timer %d, handler 0x%x, client data 0x%x",
+                     "Serviced timer %d, handler %p, client data %p",
                      tepp->getId(), 
-                     (int) tepp->getHandler(),
-                     (int) tepp->getData());
+                     tepp->getHandler(),
+                     tepp->getData());
 
             /*
              * Deallocate the payload object.
@@ -892,9 +895,9 @@ FactoryOps::consumeTimerEvents(void *param)
 
         LOG_DEBUG(CL_LOG,
                   "Ending thread with FactoryOps::consumeTimerEvents(): "
-                  "this: 0x%x, thread: 0x%x",
-                  (int32_t) this,
-                  (uint32_t) pthread_self());
+                  "this: %p, thread: %" PRIu32,
+                  this,
+                  static_cast<uint32_t>(pthread_self()));
     } catch (zk::ZooKeeperException &zke) {
         LOG_ERROR(CL_LOG, "ZooKeeperException: %s", zke.what());
         throw RepositoryInternalsFailureException(zke.what());
@@ -4286,9 +4289,9 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
     int32_t etype = ep->getType();
 
     LOG_INFO(CL_LOG,
-             "updateCachedObject: (0x%x, 0x%x, %s, %s)",
-             (int) fehp,
-             (int) ep,
+             "updateCachedObject: (%p, %p, %s, %s)",
+             fehp,
+             ep,
              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
              ep->getPath().c_str());
 

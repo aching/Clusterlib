@@ -169,10 +169,10 @@ DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
                                                     &tmpBid);
 
             LOG_DEBUG(CL_LOG, 
-                      "acquireWaitUsecs: thread 0x%x, this 0x%x "
-                      "got bid %s with bid %lld", 
+                      "acquireWaitUsecs: thread %" PRIu32 ", this %p "
+                      "got bid %s with bid %" PRId64, 
                       static_cast<uint32_t>(pthread_self()),
-                      reinterpret_cast<uint32_t>(this),
+                      this,
                       childListIt->c_str(),
                       tmpBid);
             if ((!tmpBidThread.compare(myBidThread)) &&
@@ -211,8 +211,9 @@ DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
                 ((tmpBid < myBid) && (tmpBid > lowerBid)) ||
                 ((tmpBid < myBid) && (myBid == lowerBid))) {
                 LOG_DEBUG(CL_LOG, 
-                          "acquireWaitUsecs: Replaced lowerBid %lld (from %s) "
-                          "with tmpBid %lld (from %s), myBid = %lld",
+                          "acquireWaitUsecs: Replaced lowerBid %" PRId64 
+                          " (from %s) with tmpBid %" PRId64 " (from %s), "
+                          "myBid = %" PRId64,
                           lowerBid,
                           lowerBidThread.c_str(),
                           tmpBid,
@@ -228,12 +229,12 @@ DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
             bool exists = false;
 
             LOG_DEBUG(CL_LOG,
-                      "acquireWaitUsecs: Waiting for lowerBid %lld (from %s) "
-                      "for mybid %lld for thread 0x%x",
+                      "acquireWaitUsecs: Waiting for lowerBid %" PRId64 
+                      " (from %s) for mybid %" PRId64 "for thread %" PRIu32,
                       lowerBid,
                       lowerBidThread.c_str(),
                       myBid,
-                      (uint32_t) pthread_self());
+                      static_cast<uint32_t>(pthread_self()));
 
             /*
              * No children indicates that they have been removed.  No
@@ -272,11 +273,12 @@ DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
                 if (curUsecTimeout != -1) {
                     /* Don't let curUsecTimeout go negative. */
                     curUsecTimeout = max(
-                        maxUsecs - TimerService::getCurrentTimeUsecs(), 0LL);
+                        maxUsecs - TimerService::getCurrentTimeUsecs(), 
+                        static_cast<int64_t>(0));
                 }
                 LOG_DEBUG(CL_LOG, 
-                          "acquireWaitUsecs: Going to wait for %lld "
-                          "usecs (%lld usecs originally)", 
+                          "acquireWaitUsecs: Going to wait for %" PRId64 
+                          " usecs (%" PRId64 " usecs originally)", 
                           curUsecTimeout,
                           usecTimeout);
                 getOps()->getLockEventSignalMap()->waitUsecsPredMutexCond(

@@ -1065,7 +1065,7 @@ CachedObjectChangeHandlers::handleClientStateChange(NotifyableImpl *ntp,
 
     LOG_DEBUG(CL_LOG,
               "handleClientStateChange: %s on notifyable: (%s) with key (%s)"
-              " with new client state (%lld, %s, %s)",
+              " with new client state (%" PRId64 ", %s, %s)",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
               ntp->getKey().c_str(),
               key.c_str(),

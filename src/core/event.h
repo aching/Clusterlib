@@ -333,10 +333,10 @@ class SynchronousEventAdapter
     {
         TRACE(EV_LOG, "eventReceived");
         LOG_DEBUG(EV_LOG, 
-                  "eventReceived: event 0x%x, instance 0x%x, thread 0x%x",
-                  (uint32_t) &e, 
-                  (uint32_t) this, 
-                  (uint32_t) pthread_self());
+                  "eventReceived: event %p, instance %p, thread %" PRIu32,
+                  &e, 
+                  this, 
+                  static_cast<uint32_t>(pthread_self()));
         
         m_queue.put(e);
     }
@@ -371,10 +371,11 @@ class SynchronousEventAdapter
         TRACE(EV_LOG, "getNextEventWaitMsecs");
 
         LOG_DEBUG(EV_LOG, 
-                  "getNextEvent: msecTimeout %lld, instance 0x%x, thread 0x%x",
+                  "getNextEvent: msecTimeout %" PRId64
+                  ", instance %p, thread %" PRIu32,
                   msecTimeout,
-                  (uint32_t) this, 
-                  (uint32_t) pthread_self());
+                  this, 
+                  static_cast<uint32_t>(pthread_self()));
         return m_queue.takeWaitMsecs(msecTimeout, e);
     }
         
@@ -417,11 +418,11 @@ template<typename E>
 void EventSource<E>::fireEvent(EventListener<E> *lp, const E &event)
 {
     LOG_DEBUG(EV_LOG,
-              "fireEvent: Sending event: event 0x%x, listener 0x%x, "
-              "thread 0x%x", 
-              (uint32_t) &event, 
-              (uint32_t) lp, 
-              (uint32_t) pthread_self());
+              "fireEvent: Sending event: event %p, listener %p, "
+              "thread %" PRIu32, 
+              &event, 
+              lp, 
+              static_cast<uint32_t>(pthread_self()));
 
     assert(lp);
     lp->eventReceived(*this, event);
@@ -618,10 +619,10 @@ class TimerEvent
           m_userData(userData) 
     {
         LOG_DEBUG(EV_LOG, 
-                  "Created timer event: instance 0x%x, "
-                  "id %d alarm time %lld", 
-                  (uint32_t) this, 
-                  (uint32_t) id, 
+                  "Created timer event: instance %p, "
+                  "id %d alarm time %" PRId64, 
+                  this, 
+                  id, 
                   alarmTime);
     }
 
@@ -775,9 +776,9 @@ class Timer
     {
         LOG_DEBUG(EV_LOG, 
                   "Starting thread with Timer::sendAlarms(), "
-                  "this: 0x%x, thread 0x%x",
-                  (uint32_t) this, 
-                  (uint32_t) pthread_self());
+                  "this: %p, thread %" PRIu32,
+                  this, 
+                  static_cast<uint32_t>(pthread_self()));
         
         //iterate until terminating
         while (!m_terminating) {
@@ -814,9 +815,9 @@ class Timer
 
         LOG_DEBUG(EV_LOG,
                   "Ending thread with Timer::sendAlarms(): "
-                  "this: 0x%x, thread: 0x%x",
-                  (int32_t) this,
-                  (uint32_t) pthread_self());
+                  "this: %p, thread: %" PRIu32,
+                  this,
+                  static_cast<uint32_t>(pthread_self()));
     }
         
   private:

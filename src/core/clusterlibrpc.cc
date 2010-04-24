@@ -246,7 +246,8 @@ ClusterlibRPCRequest::isValidJSONRPCRequest(
     if (rpcObj.size() != 3) {
         LOG_WARN(
             CL_LOG,
-            "isValidJSONRPCRequest: Should be exactly 3 keys and found %d",
+            "isValidJSONRPCRequest: Should be exactly 3 keys and found %" 
+            PRIuPTR,
             rpcObj.size());
         return false;
     }

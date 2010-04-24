@@ -163,7 +163,8 @@ bool BlockingQueue<E>::takeWaitMsecs(int64_t msecTimeout, E &e)
         if (curUsecTimeout != -1) {
             /* Don't let curUsecTimeout go negative if not already -1. */
             curUsecTimeout = std::max(
-                maxUsecs - TimerService::getCurrentTimeUsecs(), 0LL);
+                maxUsecs - TimerService::getCurrentTimeUsecs(), 
+                static_cast<int64_t>(0));
         }        
         if (!m_cond.waitUsecs(m_mutex, curUsecTimeout)) {
             hasResult = false;

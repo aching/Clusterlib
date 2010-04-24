@@ -67,7 +67,8 @@ QueueImpl::put(const string &element)
     }
 
     LOG_DEBUG(CL_LOG,
-              "put: Added new element with id (%Ld) value (%s) to queue (%s)",
+              "put: Added new element with id (%" PRId64 
+              ") value (%s) to queue (%s)",
               myBid,
               element.c_str(),
               queuePrefix.c_str());
@@ -121,7 +122,7 @@ QueueImpl::takeWaitMsecs(int64_t msecTimeout,
                      true);
 
         LOG_DEBUG(CL_LOG, 
-                  "take: Found %d child for parent %s", 
+                  "take: Found %" PRIuPTR " child for parent %s", 
                   childList.size(), 
                   getQueueParentKey().c_str());
         if (childList.size() > 0) {
@@ -175,7 +176,8 @@ QueueImpl::takeWaitMsecs(int64_t msecTimeout,
          * until remaining timeout)
          */
         LOG_DEBUG(CL_LOG, 
-                  "takeWaitMsecs: num chidren=%d, wait if 0, msecTimeout=%Ld", 
+                  "takeWaitMsecs: num chidren=%" PRIuPTR 
+                  ", wait if 0, msecTimeout=%" PRId64, 
                   childList.size(), msecTimeout);
         if (childList.size() == 0) {
             if (msecTimeout == -1) {
@@ -185,7 +187,8 @@ QueueImpl::takeWaitMsecs(int64_t msecTimeout,
             else {
                 /* Don't let curUsecTimeout go negative. */
                 curUsecTimeout = max(
-                    maxUsecs - TimerService::getCurrentTimeUsecs(), 0LL);
+                    maxUsecs - TimerService::getCurrentTimeUsecs(), 
+                    static_cast<int64_t>(0));
                 signaled = 
                     getOps()->getQueueEventSignalMap()->waitUsecsPredMutexCond(
                         getQueueParentKey(), curUsecTimeout);

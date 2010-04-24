@@ -7,7 +7,6 @@ INCLUDES = \
 	-I@MPICH_INCLUDES@ \
         -I@CPPUNIT_INCLUDES@
 METASOURCES = AUTO
-
 # Only build the unittests if MPICH and cppunit are present
 if HAVE_MPICH
 if HAVE_CPPUNIT
@@ -44,6 +43,6 @@ unittests_SOURCES = \
 	clusterlibhealthcheck.cc \
 	clusterlibreleaseref.cc \
 	clusterlibremove.cc
-CXXFLAGS = @BASE_CXXFLAGS@ -DMPICH_IGNORE_CXX_SEEK 
+CXXFLAGS = @BASE_CXXFLAGS@ -DMPICH_IGNORE_CXX_SEEK -Wno-non-virtual-dtor
 
 @makefile_inc@

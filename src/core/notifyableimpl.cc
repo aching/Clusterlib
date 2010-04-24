@@ -244,10 +244,12 @@ NotifyableImpl::acquireLockWaitMsecs(int64_t msecTimeout, bool acquireChildren)
         if (curUsecTimeout != -1) {
             /* Don't let curUsecTimeout go negative if not already -1. */
             curUsecTimeout = max(
-                maxUsecs - TimerService::getCurrentTimeUsecs(), 0LL);
+                maxUsecs - TimerService::getCurrentTimeUsecs(), 
+                static_cast<int64_t>(0));
         }
         LOG_DEBUG(CL_LOG, 
-                  "acquireLock: acquiring lock on %s with curUsecTimeout=%lld",
+                  "acquireLock: acquiring lock on %s with curUsecTimeout=%"
+                  PRId64,
                   ntList[ntListIndex]->getKey().c_str(),
                   curUsecTimeout);
         gotLock = getOps()->getDistributedLocks()->acquireWaitUsecs(
@@ -460,8 +462,8 @@ NotifyableImpl::remove(bool removeChildren)
             NotifyableList ntList = getOps()->getChildren(this);
             if (ntList.empty() == false) {
                 LOG_ERROR(CL_LOG,
-                          "remove: Tried to remove a single Notifyable with "
-                          "%u children",
+                          "remove: Tried to remove a single Notifyable with %"
+                          PRIuPTR " children",
                           ntList.size());
                 throw InvalidMethodException(
                     "remove: Tried to remove a Notifyable "

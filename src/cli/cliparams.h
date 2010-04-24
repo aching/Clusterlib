@@ -171,7 +171,7 @@ class CliParams {
      */
     void addToKeySet(const std::string &key)
     {
-        if (m_keySet.size() < m_keySetMaxSize) {
+        if (static_cast<int64_t>(m_keySet.size()) < m_keySetMaxSize) {
             m_keySet.insert(key);
         }
     }

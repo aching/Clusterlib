@@ -39,6 +39,15 @@ if test $os_type = "Linux"; then
     AC_SUBST(AR)
 fi
 
+RELTOOLS=
+RELINTERNAL=
+RELEXTERNAL=
+if test $os_type = "Linux" -a $os_version -ge 26; then
+        RELTOOLS="tools"
+        RELINTERNAL="internal"
+        RELEXTERNAL="external"
+fi
+
 #AC_DEFINE_UNQUOTED($os_type)
 #AC_DEFINE_UNQUOTED(OS_$osver)
 #AC_DEFINE_UNQUOTED(OS_TYPE, $os_type)
@@ -55,6 +64,12 @@ fi
 
 ### GCC ###
 
+with_usr_releng="/usr/releng"
+with_tool_root="${with_usr_releng}/${RELTOOLS}"
+if test ! -d "$with_tool_root"; then
+  AC_ERROR($with_tool_root: not found!)
+fi
+
 AC_MSG_CHECKING(whether to use gcc)
 AC_ARG_WITH(gcc,
   [  --with-gcc           Use gcc.],
@@ -63,38 +78,38 @@ AC_ARG_WITH(gcc,
         ;;
       yes)
         COMPILER="3.4.3"
-        CC="/usr/releng/${RELTOOLS}/gcc/${COMPILER}/bin/gcc"
-        CXX="/usr/releng/${RELTOOLS}/gcc/${COMPILER}/bin/g++"
+        CC="${with_tool_root}/gcc/${COMPILER}/bin/gcc"
+        CXX="${with_tool_root}/gcc/${COMPILER}/bin/g++"
         with_gcc="yes"
         compiler_version="_gcc343"
         ;;
       gcc34)
         COMPILER="3.4.3"
-        CC="/usr/releng/${RELTOOLS}/gcc/${COMPILER}/bin/gcc"
-        CXX="/usr/releng/${RELTOOLS}/gcc/${COMPILER}/bin/g++"
+        CC="${with_tool_root}/gcc/${COMPILER}/bin/gcc"
+        CXX="${with_tool_root}/gcc/${COMPILER}/bin/g++"
         with_gcc="yes"
         compiler_version="_gcc343"
         ;;
       gcc411)
         COMPILER="4.1.1"
-        CC="/usr/releng/${RELTOOLS}/gcc/${COMPILER}/bin/gcc"
-        CXX="/usr/releng/${RELTOOLS}/gcc/${COMPILER}/bin/g++"
+        CC="${with_tool_root}/gcc/${COMPILER}/bin/gcc"
+        CXX="${with_tool_root}/gcc/${COMPILER}/bin/g++"
         with_gcc="yes"
         compiler_version="_gcc411"
         ;;
       *)
-        COMPILER="3.4.3"
-        CC="/usr/releng/${RELTOOLS}/gcc/${COMPILER}/bin/gcc"
-        CXX="/usr/releng/${RELTOOLS}/gcc/${COMPILER}/bin/g++"
+        COMPILER="4.1.1"
+        CC="${with_tool_root}/gcc/${COMPILER}/bin/gcc"
+        CXX="${with_tool_root}/gcc/${COMPILER}/bin/g++"
         with_gcc="yes"
-        compiler_version="_gcc343"
+        compiler_version="_gcc411"
         ;;
     esac ],[
-        COMPILER="3.4.3"
-        CC="/usr/releng/${RELTOOLS}/gcc/${COMPILER}/bin/gcc"
-        CXX="/usr/releng/${RELTOOLS}/gcc/${COMPILER}/bin/g++"
+        COMPILER="4.1.1"
+        CC="${with_tool_root}/gcc/${COMPILER}/bin/gcc"
+        CXX="${with_tool_root}/gcc/${COMPILER}/bin/g++"
         with_gcc="yes"
-        compiler_version="_gcc343"
+        compiler_version="_gcc411"
     ]
 )
 AC_MSG_RESULT($with_gcc)
@@ -223,6 +238,7 @@ if test -z "${ZOOKEEPER}"; then
   AC_ERROR("... invalid zookeeper library!")
 fi
 
+AC_SUBST(ZOOKEEPER_VERSION)
 AC_SUBST(ZOOKEEPER)
 AC_SUBST(ZOOKEEPER_PATH)
 AC_SUBST(ZOOKEEPER_LIB_PATH)
@@ -352,9 +368,9 @@ AC_SUBST(EXPAT_LIB)
 ### Default CXXFLAGS ###
 
 if test -z "$enable_release"; then
-   BASE_CXXFLAGS="-Wall -Werror -O0 -g -rdynamic"
+   BASE_CXXFLAGS="-Wall -Werror -O0 -g -rdynamic -D__STDC_FORMAT_MACROS -fno-strict-aliasing"
 else
-   BASE_CXXFLAGS="-Wall -Werror -O3 -g -rdynamic"
+   BASE_CXXFLAGS="-Wall -Werror -O3 -g -rdynamic -D__STDC_FORMAT_MACROS -fno-strict-aliasing"
 fi
 AC_SUBST(BASE_CXXFLAGS)
 
@@ -381,10 +397,10 @@ LOG4CXX_LIB_PATH="$LOG4CXX_PATH/lib"
 LOG4CXX_INCLUDES="$LOG4CXX_PATH/include"
 LOG4CXX_LIB="$LOG4CXX_LIB_PATH/liblog4cxx.a"
 
-APR_LIB_PATH="/usr/releng/external/apr-1.2.12/lib"
-APR_UTIL_LIB_PATH="/usr/releng/external/apr-util-1.2.12/lib"
+APR_LIB_PATH="/usr/releng/external/apr/${APR_VERSION}/lib"
+APR_UTIL_LIB_PATH="/usr/releng/external/apr-util/${APR_VERSION}_${COMPILER}/lib"
 
-AC_CHECK_LIB(log4cxx, main, [LOG4CXX="-L${LOG4CXX_LIB_PATH} -Wl,--whole-archive,-llog4cxx,--no-whole-archive"],,["-L${LOG4CXX_LIB_PATH}"])
+AC_CHECK_LIB(log4cxx, main, [LOG4CXX="-L${LOG4CXX_LIB_PATH} -Wl,--whole-archive,-llog4cxx,--no-whole-archive"],,["-L${LOG4CXX_LIB_PATH} -L${APR_LIB_PATH} -L{APR_UTIL_LIB_PATH"}])
 if test -z "${LOG4CXX}"; then
   AC_ERROR("... invalid log4cxx library!")
 fi

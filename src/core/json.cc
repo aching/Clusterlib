@@ -582,7 +582,7 @@ namespace json {
         TRACE(J_LOG, "decode");
 
         LOG_DEBUG(J_LOG, 
-                  "decode: message (%s), pos (%d)", 
+                  "decode: message (%s), pos (%" PRIuPTR ")", 
                   message.c_str(), 
                   (pos != NULL) ? *pos : 0);
         istringstream ss(message);

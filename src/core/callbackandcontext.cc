@@ -18,9 +18,9 @@ CallbackAndContextManager::createCallbackAndContext(void *callback,
         m_callbackAndContextSet.find(callbackAndContext);
     if (it != m_callbackAndContextSet.end()) {
         LOG_ERROR(CL_LOG,
-                  "createCallbackAndContext: Impossible that context 0x%x"
+                  "createCallbackAndContext: Impossible that context %p"
                   " already exists in the set!",
-                  (uint32_t) context);
+                  context);
         throw InconsistentInternalStateException(
             "createCallbackAndContext: Unable to add CallbackAndContext to"
             " set since it already exists!");
@@ -41,9 +41,9 @@ CallbackAndContextManager::deleteCallbackAndContext(
         m_callbackAndContextSet.find(callbackAndContext);
     if (it == m_callbackAndContextSet.end()) {
         LOG_ERROR(CL_LOG,
-                  "deleteCallbackAndContext: Impossible that context 0x%x"
+                  "deleteCallbackAndContext: Impossible that context %p"
                   " doesn't exist in the set!",
-                  (uint32_t) callbackAndContext);
+                  callbackAndContext);
         throw InconsistentInternalStateException(
             "deleteCallbackAndContext: Unable to "
             "delete CallbackAndContext from set since it doesn't exist!");

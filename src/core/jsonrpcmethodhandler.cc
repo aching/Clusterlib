@@ -46,7 +46,7 @@ JSONRPCMethodHandler::handleUserEvent(Event e)
         recvQueueMsecTimeOut, request);
     if (!found) {
         LOG_DEBUG(CL_LOG, 
-                  "handleUserEvent: Waited %llu msecs and "
+                  "handleUserEvent: Waited %" PRIu64 " msecs and "
                   "couldn't find any elements",
                   recvQueueMsecTimeOut);
         return;

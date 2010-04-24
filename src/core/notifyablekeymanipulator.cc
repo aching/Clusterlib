@@ -369,7 +369,7 @@ NotifyableKeyManipulator::getNotifyableKeyFromKey(const string &key)
     if (NotifyableKeyManipulator::isNotifyableKey(components, 
                                                   components.size() -1)) {
         string res = key;
-        uint32_t keySeparator = res.rfind(ClusterlibStrings::KEYSEPARATOR);
+        size_t keySeparator = res.rfind(ClusterlibStrings::KEYSEPARATOR);
         if (keySeparator == string::npos) {
             LOG_ERROR(CL_LOG,
                       "getNotifyableKeyFromKey: Couldn't find key "
@@ -431,7 +431,8 @@ NotifyableKeyManipulator::isNotifyableKey(const vector<string> &components,
 
     if (elements > static_cast<int32_t>(components.size())) {
         LOG_FATAL(CL_LOG,
-                  "isNotifyableKey: elements %d > size of components %u",
+                  "isNotifyableKey: elements %" PRId32 
+                  " > size of components %" PRIuPTR,
                   elements,
                   components.size());
         throw InvalidArgumentsException("isNotifyableKey: elements > size of "
@@ -493,7 +494,8 @@ NotifyableKeyManipulator::isApplicationKey(const vector<string> &components,
 
     if (elements > static_cast<int32_t>(components.size())) {
         LOG_FATAL(CL_LOG,
-                  "isApplicationKey: elements %d > size of components %u",
+                  "isApplicationKey: elements %" PRId32 
+                  " > size of components %" PRIuPTR,
                   elements,
                   components.size());
         throw InvalidArgumentsException("isApplicationKey: elements > size of "
@@ -541,7 +543,8 @@ NotifyableKeyManipulator::isRootKey(const vector<string> &components,
 
     if (elements > static_cast<int32_t>(components.size())) {
         LOG_FATAL(CL_LOG,
-                  "isRootKey: elements %d > size of components %u",
+                  "isRootKey: elements %" PRId32 
+                  " > size of components %" PRIuPTR,
                   elements,
                   components.size());
         throw InvalidArgumentsException("isRootKey: elements > size of "
@@ -588,7 +591,8 @@ NotifyableKeyManipulator::isDataDistributionKey(
     
     if (elements > static_cast<int32_t>(components.size())) {
         LOG_FATAL(CL_LOG,
-                  "isDataDistributionKey: elements %d > size of components %u",
+                  "isDataDistributionKey: elements %" PRId32 
+                  " > size of components %" PRIuPTR,
                   elements,
                   components.size());
         throw InvalidArgumentsException(
@@ -649,7 +653,8 @@ NotifyableKeyManipulator::isGroupKey(const vector<string> &components,
 
     if (elements > static_cast<int32_t>(components.size())) {
         LOG_FATAL(CL_LOG,
-                  "isGroupKey: elements %d > size of components %u",
+                  "isGroupKey: elements %" PRId32 
+                  " > size of components %" PRIuPTR,
                   elements,
                   components.size());
         throw InvalidArgumentsException("isGroupKey: elements > size of "
@@ -725,7 +730,8 @@ NotifyableKeyManipulator::isPropertyListKey(const vector<string> &components,
 
     if (elements > static_cast<int32_t>(components.size())) {
         LOG_FATAL(CL_LOG,
-                  "isPropertyListKey: elements %d > size of components %u",
+                  "isPropertyListKey: elements %" PRId32
+                  " > size of components %" PRIuPTR,
                   elements,
                   components.size());
         throw InvalidArgumentsException(
@@ -790,7 +796,8 @@ NotifyableKeyManipulator::isQueueKey(const vector<string> &components,
 
     if (elements > static_cast<int32_t>(components.size())) {
         LOG_FATAL(CL_LOG,
-                  "isQueueKey: elements %d > size of components %u",
+                  "isQueueKey: elements %" PRId32
+                  " > size of components %" PRIuPTR,
                   elements,
                   components.size());
         throw InvalidArgumentsException(
@@ -855,7 +862,8 @@ NotifyableKeyManipulator::isNodeKey(const vector<string> &components,
 
     if (elements > static_cast<int32_t>(components.size())) {
         LOG_FATAL(CL_LOG,
-                  "isNodeKey: elements %d > size of components %u",
+                  "isNodeKey: elements % " PRId32
+                  " > size of components %" PRIuPTR,
                   elements,
                   components.size());
         throw InvalidArgumentsException("isNodeKey: elements > size of "
@@ -916,7 +924,8 @@ NotifyableKeyManipulator::isProcessSlotKey(const vector<string> &components,
 
     if (elements > static_cast<int32_t>(components.size())) {
         LOG_FATAL(CL_LOG,
-                  "isProcessSlotKey: elements %d > size of components %u",
+                  "isProcessSlotKey: elements %" PRId32
+                  " > size of components %" PRIuPTR,
                   elements,
                   components.size());
         throw InvalidArgumentsException("isProcessSlotKey: elements > size of "
@@ -982,8 +991,8 @@ NotifyableKeyManipulator::removeObjectFromKey(const string &key)
 
     string res = key;
     bool objectFound = false;
-    uint32_t beginKeySeparator = numeric_limits<uint32_t>::max();
-    uint32_t endKeySeparator = numeric_limits<uint32_t>::max();
+    size_t beginKeySeparator = string::npos;
+    size_t endKeySeparator = string::npos;
     while (objectFound == false) {
         /*
          * Get rid of the leaf node 
@@ -1121,7 +1130,7 @@ NotifyableKeyManipulator::removeObjectFromComponents(
 string
 NotifyableKeyManipulator::removeComponentFromKey(const string &key)
 {
-    uint32_t keySeparator = key.rfind(ClusterlibStrings::KEYSEPARATOR);
+    size_t keySeparator = key.rfind(ClusterlibStrings::KEYSEPARATOR);
     if (keySeparator == string::npos) {
         return string();
     }

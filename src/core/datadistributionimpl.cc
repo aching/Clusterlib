@@ -104,8 +104,8 @@ DataDistributionImpl::unmarshall(const string &marshalledData)
                           ntp));
 
         LOG_DEBUG(CL_LOG,
-                  "unmarshall: Found shard: start=%llu (%s), end=%llu (%s), "
-                  "notifyable key=%s, priority=%lld",
+                  "unmarshall: Found shard: start=%" PRIu64 " (%s), end=%"
+                  PRIu64 " (%s), notifyable key=%s, priority=%" PRId64,
                   shardMetadataArr[0].get<JSONValue::JSONUInteger>(),
                   JSONCodec::encode(shardMetadataArr[0]).c_str(),
                   shardMetadataArr[1].get<JSONValue::JSONUInteger>(),
@@ -367,7 +367,8 @@ DataDistributionImpl::isCovered()
     IntervalTree<HashRange, ShardTreeData>::iterator it;
     HashRange end = 0;
     for (it = m_shardTree.begin(); it != m_shardTree.end(); it++) {
-        LOG_DEBUG(CL_LOG, "*** %llu %llu %llu", 
+        LOG_DEBUG(CL_LOG, "isCovered: end=%" PRIu64 " sr=%" PRIu64 " er=%"
+                  PRIu64, 
                   end, it->getStartRange(), it->getEndRange());
         if (it->getStartRange() > end) {
             return false;

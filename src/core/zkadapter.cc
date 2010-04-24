@@ -114,12 +114,12 @@ void zkWatcher(zhandle_t *zhp,
 
     LOG_DEBUG(LOG,
               "zkWatcher: Received a ZK event - type: %s, state: %s, path: "
-              "'%s', context: '0x%x', watcherCtx: '0x%x'",
+              "'%s', context: '%p', watcherCtx: '%p'",
               zk::ZooKeeperAdapter::getEventString(type).c_str(), 
               zk::ZooKeeperAdapter::getStateString(state).c_str(), 
               path, 
-              (unsigned int) zoo_get_context(zhp),
-              (unsigned int) watcherCtx);
+              zoo_get_context(zhp),
+              watcherCtx);
 
     ZooKeeperAdapter *zkap = (ZooKeeperAdapter *)zoo_get_context(zhp);
     if (zkap != NULL) {
@@ -571,11 +571,11 @@ ZooKeeperAdapter::handleAsyncEvent(const ZKWatcherEvent &event)
     TRACE(LOG, "handleAsyncEvent");
 
     LOG_DEBUG(LOG, 
-              "handleAsyncEvent: type: %s, state %s, path: %s, context: 0x%x",
+              "handleAsyncEvent: type: %s, state %s, path: %s, context: %p",
               getEventString(event.getType()).c_str(),
               getStateString(event.getState()).c_str(),
               event.getPath().c_str(),
-              reinterpret_cast<uint32_t>(event.getContext()));
+              event.getContext());
 
     /* 
      * If there is a context, then it should be of type
@@ -668,9 +668,9 @@ ZooKeeperAdapter::processEvents(void *param)
 
     LOG_INFO(LOG,
              "Starting thread with ZooKeeperAdapter::processEvents(), "
-             "this: 0x%x, thread: 0x%x",
-             (int32_t) this,
-             (uint32_t) pthread_self());
+             "this: %p, thread: %" PRIu32,
+             this,
+             static_cast<uint32_t>(pthread_self()));
 
     while (1) {
         ZKWatcherEvent source;
@@ -728,9 +728,9 @@ ZooKeeperAdapter::processEvents(void *param)
 
     LOG_INFO(LOG,
              "Ending thread with ZooKeeperAdapter::processEvents(): "
-             "this: 0x%x, thread: 0x%x",
-             (int32_t) this,
-             (uint32_t) pthread_self());
+             "this: %p, thread: %" PRIu32,
+             this,
+             static_cast<uint32_t>(pthread_self()));
 }
 
 void
@@ -740,9 +740,9 @@ ZooKeeperAdapter::processUserEvents(void *param)
 
     LOG_INFO(LOG,
              "Starting thread with ZooKeeperAdapter::processUserEvents(), "
-             "this: 0x%x, thread: 0x%x",
-             (int32_t) this,
-             (uint32_t) pthread_self());
+             "this: %p, thread: %" PRIu32,
+             this,
+             static_cast<uint32_t>(pthread_self()));
 
     while (1) {
         ZKWatcherEvent source;
@@ -751,11 +751,11 @@ ZooKeeperAdapter::processUserEvents(void *param)
             try {
 		LOG_INFO(LOG,
                          "processUserEvents: processing event (type: %s, "
-                         "state: %s, path: %s, context 0x%x)",
+                         "state: %s, path: %s, context %p)",
                          getEventString(source.getType()).c_str(),
                          getStateString(source.getState()).c_str(),
                          source.getPath().c_str(),
-                         reinterpret_cast<uint32_t>(source.getContext()));
+                         source.getContext());
 		
                 handleAsyncEvent(source);
             } 
@@ -778,9 +778,9 @@ ZooKeeperAdapter::processUserEvents(void *param)
 
     LOG_INFO(LOG,
              "Ending thread with ZooKeeperAdapter::processUserEvents() "
-             "this: 0x%x, thread: 0x%x",
-             (int32_t) this,
-             (uint32_t) pthread_self());
+             "this: %p, thread: %" PRIu32,
+             this,
+             static_cast<uint32_t>(pthread_self()));
 }
 
 void 
@@ -814,7 +814,8 @@ ZooKeeperAdapter::waitUntilConnected()
     TRACE(LOG, "waitUntilConnected");    
     int64_t timeout = getRemainingConnectTimeout();
     LOG_INFO(LOG,
-             "Waiting up to %lld ms until a connection to ZK is established",
+             "Waiting up to %" PRId64
+             " ms until a connection to ZK is established",
              timeout);
     bool connected;
     if (timeout > 0) {
@@ -831,7 +832,7 @@ ZooKeeperAdapter::waitUntilConnected()
             gettimeofday(&now, NULL);
             int64_t milliSecs = -(now.tv_sec * 1000LL + now.tv_usec / 1000);
             LOG_TRACE(LOG, 
-                      "About to wait %lld ms", 
+                      "About to wait %" PRId64 " ms", 
                       toWait);
             m_stateLock.waitMsecs(toWait);
             gettimeofday(&now, NULL);
@@ -840,7 +841,7 @@ ZooKeeperAdapter::waitUntilConnected()
         }
         waitedForConnect(timeout - toWait);
         LOG_INFO(LOG, 
-                 "Waited %lld ms", 
+                 "Waited %" PRId64 " ms", 
                  timeout - toWait);
     }
     connected = (m_state == AS_CONNECTED);
@@ -1117,12 +1118,12 @@ ZooKeeperAdapter::nodeExists(const string &path,
     RetryHandler rh(m_zkConfig);
 
     LOG_DEBUG(LOG,
-              "nodeExists: path (%s), listener (0x%x), "
-              "context (0x%x), stat (0x%x)\n",
+              "nodeExists: path (%s), listener (%p), "
+              "context (%p), stat (%p)\n",
               path.c_str(),
-              reinterpret_cast<uint32_t>(listener),
-              reinterpret_cast<uint32_t>(context),
-              reinterpret_cast<uint32_t>(stat));
+              listener,
+              context,
+              stat);
 
     /*
      * Allocate the struct passed in as context for zoo_wexists().  It
@@ -1188,11 +1189,11 @@ ZooKeeperAdapter::getNodeChildren(const string &path,
     RetryHandler rh(m_zkConfig);
 
     LOG_DEBUG(LOG,
-              "getNodeChildren: path (%s), listener (0x%x), "
-              "context (0x%x)\n",
+              "getNodeChildren: path (%s), listener (%p), "
+              "context (%p)\n",
               path.c_str(),
-              reinterpret_cast<uint32_t>(listener),
-              reinterpret_cast<uint32_t>(context));
+              listener,
+              context);
 
     /*
      * Allocate the struct passed in as context for
@@ -1334,12 +1335,12 @@ ZooKeeperAdapter::getNodeData(const string &path,
     } 
 
     LOG_DEBUG(LOG,
-              "getNodeData: path (%s), listener (0x%x), "
-              "context (0x%x), stat (0x%x), data (%s)\n",
+              "getNodeData: path (%s), listener (%p), "
+              "context (%p), stat (%p), data (%s)\n",
               path.c_str(),
-              reinterpret_cast<uint32_t>(listener),
-              reinterpret_cast<uint32_t>(context),
-              reinterpret_cast<uint32_t>(stat),
+              listener,
+              context,
+              stat,
               buffer);
     
     if (listener == NULL) {

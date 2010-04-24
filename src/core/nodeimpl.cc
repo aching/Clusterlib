@@ -71,7 +71,7 @@ NodeImpl::isConnected(string *id, int64_t *msecs)
 
     Locker l(getStateMutex());
     LOG_DEBUG(CL_LOG, 
-              "isConnected: id=%s,msecs=%Ld", 
+              "isConnected: id=%s,msecs=%" PRId64, 
               m_connectedId.c_str(), 
               m_connectionTime);
     if (m_connected) {
@@ -151,8 +151,8 @@ NodeImpl::registerHealthChecker(HealthChecker *healthChecker)
     if (mp_healthChecker != NULL) {
         LOG_ERROR(CL_LOG,
                   "registerHealthChecker: Already registered healthChecker "
-                  "0x%x",
-                  reinterpret_cast<uint32_t>(healthChecker));
+                  "%p",
+                  healthChecker);
         throw InvalidMethodException(
             "registerHealthChecker: Already registered a health checker");
     }
@@ -370,9 +370,9 @@ NodeImpl::doHealthChecks(void *param)
 
     LOG_DEBUG(CL_LOG,
               "Starting thread with NodeImpl::doHealthChecks(), "
-              "this: 0x%x, thread: 0x%x",
-              (int32_t) this,
-              (uint32_t) pthread_self());
+              "this: %p, thread: %" PRIu32,
+              this,
+              static_cast<uint32_t>(pthread_self()));
 
     while (!m_terminateDoHealthChecks) {
         LOG_DEBUG(CL_LOG, "About to check health");
@@ -438,7 +438,7 @@ NodeImpl::doHealthChecks(void *param)
 
         getHealthMutex()->acquire();
         LOG_DEBUG(CL_LOG,
-                  "About to wait %lld msec before next health check...",
+                  "About to wait %" PRId64 " msec before next health check...",
                   curPeriodMsecs);
         getHealthCond()->waitMsecs(*getHealthMutex(), 
                                    static_cast<uint64_t>(curPeriodMsecs));
@@ -449,9 +449,9 @@ NodeImpl::doHealthChecks(void *param)
     
     LOG_DEBUG(CL_LOG,
               "Ending thread with NodeImpl::doHealthChecks(): "
-              "this: 0x%x, thread: 0x%x",
-              (int32_t) this,
-              (uint32_t) pthread_self());
+              "this: %p, thread: %" PRIu32,
+              this,
+              static_cast<uint32_t>(pthread_self()));
 }
 
 void 
@@ -460,7 +460,8 @@ NodeImpl::setConnectedAndTime(bool nc, const string &id, int64_t t)
     Locker l1(getStateMutex());
 
     LOG_DEBUG(CL_LOG,
-              "setConnectedAndTime: connected (%s), id (%s), time (%lld)",
+              "setConnectedAndTime: connected (%s), id (%s), time (%" PRId64 
+              ")",
               (nc ? "true" : "false"),
               id.c_str(),
               t);
