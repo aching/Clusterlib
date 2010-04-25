@@ -400,7 +400,7 @@ LOG4CXX_LIB="$LOG4CXX_LIB_PATH/liblog4cxx.a"
 APR_LIB_PATH="/usr/releng/external/apr/${APR_VERSION}/lib"
 APR_UTIL_LIB_PATH="/usr/releng/external/apr-util/${APR_VERSION}_${COMPILER}/lib"
 
-AC_CHECK_LIB(log4cxx, main, [LOG4CXX="-L${LOG4CXX_LIB_PATH} -Wl,--whole-archive,-llog4cxx,--no-whole-archive"],,["-L${LOG4CXX_LIB_PATH} -L${APR_LIB_PATH} -L{APR_UTIL_LIB_PATH"}])
+AC_CHECK_LIB(log4cxx, main, [LOG4CXX="-L${LOG4CXX_LIB_PATH} -Wl,--whole-archive,-llog4cxx,--no-whole-archive"],,["-L${LOG4CXX_LIB_PATH} -L${APR_LIB_PATH} -L{$APR_UTIL_LIB_PATH"}])
 if test -z "${LOG4CXX}"; then
   AC_ERROR("... invalid log4cxx library!")
 fi
