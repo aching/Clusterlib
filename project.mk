@@ -22,6 +22,8 @@ build_flavor:
 package:
 	rm -f $(BUILD_DIR)/*.tar.gz
 	$(MAKE) -C $(BUILD_DIR) tarball
+	new_fn=`ls -1 $(BUILD_DIR)/*.tar.gz | sed -e 's@.tar.gz@.$(ARCH).tar.gz@'`; \
+	mv -f $(BUILD_DIR)/*.tar.gz $$new_fn
 
 test:
 	ulimit -n 1024; $(MAKE) -C $(BUILD_DIR) TAP_PREFIX= test_tinderbox
