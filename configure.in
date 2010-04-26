@@ -21,6 +21,8 @@ AC_SUBST(SOURCE_PATH)
 os_type="`uname -s`"
 osver="`uname -a | sed 's/\.//g' | awk '{print $1$3}'`"
 
+hw_platform="`uname -m`"
+
 dnl Disable quoting so that the brackets are not stripped from the regex.
 changequote(, )dnl
 os_version="`uname -r | sed 's/[A-Za-z]//' | awk -F. '{printf("%d%d",$1,$2)}'`"
@@ -387,7 +389,7 @@ AC_ARG_WITH(log4cxx_root,
         ;;
     esac ],
   [
-      with_log4cxx_root="/usr/releng/external/log4cxx-$LOG4CXX_VERSION"
+      with_log4cxx_root="/usr/releng/external/log4cxx/${LOG4CXX_VERSION}${compiler_version}"
   ]
 )
 AC_MSG_RESULT($with_log4cxx_root)
@@ -397,10 +399,7 @@ LOG4CXX_LIB_PATH="$LOG4CXX_PATH/lib"
 LOG4CXX_INCLUDES="$LOG4CXX_PATH/include"
 LOG4CXX_LIB="$LOG4CXX_LIB_PATH/liblog4cxx.a"
 
-APR_LIB_PATH="/usr/releng/external/apr/${APR_VERSION}/lib"
-APR_UTIL_LIB_PATH="/usr/releng/external/apr-util/${APR_VERSION}_${COMPILER}/lib"
-
-AC_CHECK_LIB(log4cxx, main, [LOG4CXX="-L${LOG4CXX_LIB_PATH} -Wl,--whole-archive,-llog4cxx,--no-whole-archive"],,["-L${LOG4CXX_LIB_PATH} -L${APR_LIB_PATH} -L${APR_UTIL_LIB_PATH}"])
+AC_CHECK_LIB(log4cxx, main, [LOG4CXX="-L${LOG4CXX_LIB_PATH} -Wl,--whole-archive,-llog4cxx,--no-whole-archive"],,["-L${LOG4CXX_LIB_PATH}"])
 if test -z "${LOG4CXX}"; then
   AC_ERROR("... invalid log4cxx library!")
 fi
@@ -410,8 +409,6 @@ AC_SUBST(LOG4CXX_PATH)
 AC_SUBST(LOG4CXX_LIB_PATH)
 AC_SUBST(LOG4CXX_INCLUDES)
 AC_SUBST(LOG4CXX_LIB)
-AC_SUBST(APR_LIB_PATH)
-AC_SUBST(APR_UTIL_LIB_PATH)
 
 ### Cppunit ###
 
@@ -600,11 +597,35 @@ AC_SUBST(NEW_MAKE_BUILDSTAMP_SOURCE)
 AC_SUBST(NEW_MAKE_BUILDSTAMP_OBJECT)
 #AC_SUBST(NEW_MAKE_BUILDSTAMP_PICOBJECT)
 
-AC_CHECK_LIB(thread, thr_create, LIBTHREAD="-lthread")
-AC_SUBST(LIBTHREAD)
+#AC_CHECK_LIB(thread, thr_create, LIBTHREAD="-lthread")
+#AC_SUBST(LIBTHREAD)
 
 AC_CHECK_LIB(pthread, pthread_create, LIBPTHREAD="-lpthread")
 AC_SUBST(LIBPTHREAD)
+
+# Changes needed to support static version of stdc++ library
+if test $os_type = "Linux" ; then
+   if test ${compiler_version} = "_gcc2952"; then
+      LIBS="${LIBS} ${with_tool_root}/gcc/${COMPILER}/lib/gcc-lib/i686-pc-linux-gnu/${COMPILER}/libstdc++.a  -lm"
+   elif test $hw_platform = "x86_64"; then
+      LIBS="${LIBS} ${with_tool_root}/gcc/${COMPILER}/lib64/libstdc++.a -lm"
+   else
+      LIBS="${LIBS} ${with_tool_root}/gcc/${COMPILER}/lib/libstdc++.a -lm"
+   fi
+else
+   if test ${compiler_version} = "_gcc2952"; then
+      LIBS="${LIBS} ${with_tool_root}/gcc/${COMPILER}/lib/gcc-lib/sparc-sun-solaris2.7/${COMPILER}/libstdc++.a -lm"
+   else
+      LIBS="${LIBS} ${with_tool_root}/gcc/${COMPILER}/lib/libstdc++.a -lm"
+   fi
+fi
+# MV NEW special libs for those components that have a shared library as well as
+# general binaries. In these cases the .so cannot be built with the stdc++ library but the
+# binary needs it. The SP_LIBS to be added to _LDADD in the component Makefile.am file
+# and LIBS nulled in the same MAKEFILE.am
+SP_LIBS=${LIBS}
+AC_SUBST(LIBS)
+AC_SUBST(SP_LIBS)
 
 AC_MSG_CHECKING([Which thread package to link with])
 if test $os_type = "SunOS" ; then
