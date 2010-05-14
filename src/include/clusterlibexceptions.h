@@ -183,6 +183,20 @@ class SystemFailureException
         : Exception(msg) {}
 };
 
+/**
+ * Accessing the repository for a particular data is missing (not failure.
+ */
+class RepositoryDataMissingException
+    : public Exception
+{
+  public:
+   /**
+     * Constructor.
+     */
+    explicit RepositoryDataMissingException(const std::string &msg) throw() 
+        : Exception(msg) {}
+};
+
 }	/* End of 'namespace clusterlib' */
 
 #endif	/* _CLUSTERLIBEXCEPTION_H_ */

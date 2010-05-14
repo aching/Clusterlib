@@ -33,7 +33,8 @@ class ClusterlibHierarchy : public MPITestFixture {
 	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client = _factory->createClient();
 	MPI_CPPUNIT_ASSERT(_client != NULL);
-	_app = _client->getRoot()->getApplication(appName, true);
+	_app = _client->getRoot()->getApplication(appName, 
+                                                  CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_app != NULL);
     }
 
@@ -61,17 +62,18 @@ class ClusterlibHierarchy : public MPITestFixture {
                                     "testHierarchy1");
 
         if (isMyRank(0)) {
-            Group *group = _app->getGroup("hierarchy-group", true);
+            Group *group = _app->getGroup("hierarchy-group", 
+                                          CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(group);
 	    DataDistribution *dist = 
 		group->getDataDistribution("hierarchy-dist",
-					    true);
+					    CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(dist);
-	    Node *node = group->getNode("hierarchy-node", true);
+	    Node *node = group->getNode("hierarchy-node", CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(node);
 	    PropertyList *prop = node->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST, 
-                true);
+                CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(prop);
         }
 	
@@ -140,22 +142,23 @@ class ClusterlibHierarchy : public MPITestFixture {
                                     "testHierarchy2");
 
         if (isMyRank(0)) {
-	    Node *node1 = _app->getNode("node1", true);
+	    Node *node1 = _app->getNode("node1", CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(node1);
 
-	    Group *group1 = _app->getGroup("hier-group1", true);
+	    Group *group1 = _app->getGroup("hier-group1", CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(group1);
-	    Node *node2 = group1->getNode("node2", true);
+	    Node *node2 = group1->getNode("node2", CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(node2);
 
-	    Group *group2 = group1->getGroup("hier-group2", true);
+	    Group *group2 = group1->getGroup("hier-group2", 
+                                             CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(group2);
-	    Node *node3 = group2->getNode("node3", true);
+	    Node *node3 = group2->getNode("node3", CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(node3);
 
             PropertyList *prop = node3->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST, 
-                true);
+                CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(prop);
         }
 	
@@ -193,7 +196,7 @@ class ClusterlibHierarchy : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(group1->getMyGroup() == _app);
             MPI_CPPUNIT_ASSERT(group1->getMyApplication() == _app);
 
-	    Node *node2 = group1->getNode("node2", true);
+	    Node *node2 = group1->getNode("node2", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(node2->getMyParent() == group1);
             MPI_CPPUNIT_ASSERT(node2->getMyGroup() == group1);
             MPI_CPPUNIT_ASSERT(node2->getMyApplication() == _app);
@@ -257,7 +260,8 @@ class ClusterlibHierarchy : public MPITestFixture {
 
             string newkey = nl[index] + postfix;
             Application *app0 = 
-                _client->getRoot()->getApplication(newkey, true);
+                _client->getRoot()->getApplication(newkey, 
+                                                   CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(app0);
         }        
         

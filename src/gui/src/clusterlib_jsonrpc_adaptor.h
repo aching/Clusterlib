@@ -12,6 +12,12 @@ const ::json::JSONValue::JSONString idProperty = "id";
 const ::json::JSONValue::JSONString idNameProperty = "name";
 const ::json::JSONValue::JSONString idOptions = "options";
 const ::json::JSONValue::JSONString idBidArr = "lockBidArray";
+const ::json::JSONValue::JSONString idOwner = "owner";
+const ::json::JSONValue::JSONString idAcquiredOwnerTime = 
+    "acquiredOwnerTime";
+const ::json::JSONValue::JSONString idCurrentState = "currentState";
+const ::json::JSONValue::JSONString idDesiredState = "desiredState";
+
 const ::json::JSONValue::JSONString idAddAttribute = "addAttribute";
 const ::json::JSONValue::JSONString idNotifyableState = "state";
 const ::json::JSONValue::JSONString idNotifyableStatus = "status";
@@ -25,13 +31,11 @@ const ::json::JSONValue::JSONString idNodeStateSetTime =
 const ::json::JSONValue::JSONString idNodeState = "client state";
 const ::json::JSONValue::JSONString idNodeStateDesc = 
     "client state description";
-const ::json::JSONValue::JSONString idNodeConnected = "connected";
-const ::json::JSONValue::JSONString idNodeConnectedId = "connectedId";
-const ::json::JSONValue::JSONString idNodeConnectedTime = 
-    "connected time";
 const ::json::JSONValue::JSONString idNodeHealth = "health";
 const ::json::JSONValue::JSONString idNodeUseProcessSlots = 
     "useProcessSlots";
+const ::json::JSONValue::JSONString idNodeMaxProcessSlots = 
+    "maxProcessSlots";
 const ::json::JSONValue::JSONString idProcessSlotPortVec = "portVec";
 const ::json::JSONValue::JSONString idProcessSlotExecArgs = "execArgs";
 const ::json::JSONValue::JSONString idProcessSlotRunningExecArgs = 

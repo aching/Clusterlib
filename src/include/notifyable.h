@@ -51,22 +51,6 @@ class Notifyable
      */
     virtual const std::string &getKey() const = 0;
 
-#if TO_BE_IMPLEMENTED_IF_NECESSARY
-    /**
-     * Get the application name of this notifyable
-     *
-     * @return application this notifyable belongs to
-     */
-    virtual std::string getMyApplicationName() const = 0;
-
-    /**
-     * Get the group name of this notifyable
-     *
-     * @return group this notifyable belongs to
-     */
-    virtual std::string getMyGroupName() const = 0;
-#endif
-
     /**
      * Get the parent of this Notifyable (if it exists)
      *
@@ -100,7 +84,9 @@ class Notifyable
 
     /**
      * What state is this Notifyable in?  It is safe to call this even
-     * if the Notifyable was removed.
+     * if the Notifyable was removed but still has a valid reference
+     * to it.  The state will be READY or REMOVED.  It cannot
+     * transition from the REMOVED state to another state.
      *
      * @return the state of the Notifyable
      */
@@ -129,7 +115,7 @@ class Notifyable
     virtual PropertyList *getPropertyList(
         const std::string &name = 
         ClusterlibStrings::DEFAULTPROPERTYLIST, 
-        bool create = false) = 0;
+        AccessType accessType = LOAD_FROM_REPOSITORY) = 0;
 
     /**
      * Get a list of names of all queues.
@@ -149,7 +135,7 @@ class Notifyable
      * notifyable and create == false
      */
     virtual Queue *getQueue(const std::string &name,
-                            bool create = false) = 0;
+                            AccessType accessType = LOAD_FROM_REPOSITORY) = 0;
 
     /**
      * Get the reference count of this cachec representation of a
@@ -190,7 +176,6 @@ class Notifyable
      * @param acquireChildren lock the children as well?
      * @throw Exception if this Notifyable or its parent no
      * longer exist.
-     *
      */
     virtual void acquireLock(bool acquireChildren = 0) = 0;
 
@@ -235,19 +220,94 @@ class Notifyable
     /**
      * Do I have the lock?
      *
-     * @return true is I have the lock, false otherwise
+     * @return true if I have the lock, false otherwise
      */
     virtual bool hasLock() = 0;
 
     /**
-     * Helps with lock debugging.  It specifies the clients and their
+     * Get the current lock information.  This is mainly for
+     * debugging, since this information can change at any point.
+     *
+     * @param id if a valid pointer and a lock holder exists, the id of 
+     *        the lock holder
+     * @param msecs if a valid pointer and a lock holder exists, the msecs
+     *        since the epoch when the lock holder tried to get the lock
+     * @return true if there is a holder of the lock
+     */
+    virtual bool getLockInfo(std::string *id = NULL, 
+                             int64_t *msecs = NULL) = 0;
+
+    /**
+     * Helps with lock debugging only and should not be used in any
+     * appliation protocol.  It specifies the clients and their
      * respective bids that are waiting or own this Notifyable's lock.
      * If children is set, the bids will be searched in any Notifyable
-     * that is a child of this Notifyable.
+     * that is a child of this Notifyable.  Note that this operation
+     * bypasses getting locks to load notifyable information (or else
+     * would also run into problems getting lock data).  Therefore,
+     * this operation should only be used in a situatution where a
+     * deadlock has been reached.  Using it might cause the thread who
+     * called it to Crash if the notifyable being loaded is being
+     * created/deleted at the same time.
      * 
      * @return a list of the strings naming the clients and their bids
      */
-    virtual NameList getLockBids(bool children = false) = 0;
+    virtual NameList getLockBids(bool children) = 0;
+
+    /** 
+     * \brief Acquire the ownership for this Notifyable.
+     *
+     * This is a user-defined ownership.  It could represent a the
+     * physical node taking control of a clusterlib node or perhaps a
+     * process that is the "leader" of a group.
+     *
+     * @throw Exception if this Notifyable or its parent no
+     * longer exist.
+     */
+    virtual void acquireOwnership() = 0;
+
+    /** 
+     * \brief Acquire the ownership of this Notifyable within a number
+     * of msecs.
+     *
+     * This is a user-defined ownership.  It could represent a the
+     * physical node taking control of a clusterlib node or perhaps a
+     * process that is the "leader" of a group.
+     *
+     * @param msecTimeout the amount of usecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediately
+     * @return true if the lock was acquired or false if timed out
+     */
+    virtual bool acquireOwnershipWaitMsecs(int64_t msecTimeout) = 0;
+
+    /** 
+     * \brief Give up ownership of this Notifyable.
+     *
+     * This is a user-defined ownership.  It could represent a the
+     * physical node taking control of a clusterlib node or perhaps a
+     * process that is the "leader" of a group.
+     */
+    virtual void releaseOwnership() = 0;
+
+    /**
+     * Do I have ownership of this notifyable?
+     *
+     * @return true if I have ownership, false otherwise
+     */
+    virtual bool hasOwnership() = 0;
+
+    /**
+     * Get the current ownership information.  This is mainly for
+     * debugging, since this information can change at any point.
+     *
+     * @param id if a valid pointer and an owner exists, the id of 
+     *        the owner
+     * @param msecs if a valid pointer and an owner exists, the msecs
+     *        since the epoch when the owner tried to become the owner
+     * @return true if there is an owner
+     */
+    virtual bool getOwnershipInfo(std::string *id = NULL, 
+                                  int64_t *msecs = NULL) = 0;
 
     /**
      * Remove the this notifyable.  This causes the object to be
@@ -261,6 +321,20 @@ class Notifyable
      * Notifyable is not allowed to be removed (i.e. root).
      */
     virtual void remove(bool removeChildren = 0) = 0;
+
+    /**
+     * Access the cached current state of this notifyable
+     *
+     * @return A reference to the cached current state.
+     */
+    virtual CachedState &cachedCurrentState() = 0;    
+
+    /**
+     * Access the cached desired state of this notifyable
+     *
+     * @return A reference to the cached desired state.
+     */
+    virtual CachedState &cachedDesiredState() = 0;    
 
     /*
      * Destructor.

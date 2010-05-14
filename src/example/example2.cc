@@ -8,156 +8,156 @@
 #include "clusterlib.h"
 
 using namespace std;
-
-class MyHealthChecker : public clusterlib::HealthChecker {
-  public:
-    virtual clusterlib::HealthReport checkHealth() {
-	return clusterlib::HealthReport(
-            clusterlib::HealthReport::HS_HEALTHY, 
-            "No real check");
-    }
-  private:
-};
+using namespace clusterlib;
+using namespace json;
 
 int
 main(int ac, char **av)
 {
     try {
-        clusterlib::Factory *f = new clusterlib::Factory("localhost:2221");
+        bool found;
+        JSONValue jsonValue;
+        Factory *f = new Factory("localhost:2221");
         cerr << "factory = " << f << endl;
-        clusterlib::Client *c = f->createClient();
+        Client *c = f->createClient();
         cerr << "client = " << c << endl;
-        clusterlib::Application *
-            app0 = c->getRoot()->getApplication("app-foo", true);
+        Application *
+            app0 = c->getRoot()->getApplication("app-foo", 
+                                                CREATE_IF_NOT_FOUND);
         cerr << "app0 = " << app0 << endl;
-        c->getRoot()->getApplication("app-bar", true);
+        c->getRoot()->getApplication("app-bar", CREATE_IF_NOT_FOUND);
 
-        clusterlib::NameList appNames = c->getRoot()->getApplicationNames();
-        clusterlib::NameList::iterator appIt;
+        NameList appNames = c->getRoot()->getApplicationNames();
+        NameList::iterator appIt;
         for (appIt = appNames.begin(); appIt != appNames.end(); appIt++) {
             cerr << "app name: " << *appIt << endl;
                 
         }
 
-	clusterlib::Group *grp0 = app0->getGroup("bar-servers", true);
+	Group *grp0 = app0->getGroup("bar-servers", 
+                                                 CREATE_IF_NOT_FOUND);
 	cerr << "grp0 = " << grp0 << endl;
-	grp0 = app0->getGroup("bar-clients", true);
+	grp0 = app0->getGroup("bar-clients", CREATE_IF_NOT_FOUND);
 	cerr << "grp0 = " << grp0 << endl;
-	clusterlib::Group *grp1 = app0->getGroup("bar-clients");
+	Group *grp1 = app0->getGroup("bar-clients");
 	cerr << "grp1 = " << grp1 << endl;
 	
-	clusterlib::Node *node0 = grp0->getNode("zopc-0", true);
+	Node *node0 = grp0->getNode("zopc-0", 
+                                                CREATE_IF_NOT_FOUND);
 	cerr << "node0 = " << node0 << endl;
 
-        clusterlib::Node *node1 = grp0->getNode("zopc-0");
+        Node *node1 = grp0->getNode("zopc-0");
 	cerr << "node1 = " << node1 << endl;
 
-	MyHealthChecker check;
-	
-        
-	clusterlib::Node *s0 = grp0->getNode("zops-0",
-                                             true);
-        s0->registerHealthChecker(&check);
+	Node *s0 = grp0->getNode("zops-0",
+                                 CREATE_IF_NOT_FOUND);
         cerr << "server = " << s0 << endl;
 
-	clusterlib::Node *s1 = grp0->getNode("zops-1",
-                                             true);
-        s1->registerHealthChecker(&check);
+	Node *s1 = grp0->getNode("zops-1",
+                                 CREATE_IF_NOT_FOUND);
         cerr << "server = " << s1 << endl;
-
-	clusterlib::Node *s2 = grp0->getNode("zops-2",
-                                             true);
-        s2->registerHealthChecker(&check);
+        
+	Node *s2 = grp0->getNode("zops-2",
+                                 CREATE_IF_NOT_FOUND);
         cerr << "server = " << s2 << endl;
-
-	clusterlib::DataDistribution *dst = 
-	    app0->getDataDistribution("dist", true);
+        
+	DataDistribution *dst = 
+	    app0->getDataDistribution("dist", CREATE_IF_NOT_FOUND);
 	cerr << "dist name = " << dst->getName() << endl;
 	cerr << "dist key = " << dst->getKey() << endl;
 
-	vector<clusterlib::HashRange> shards;
+	vector<HashRange> shards;
 	shards.push_back(100);
 	shards.push_back(1000);
 	shards.push_back(10000);
 
 	dst->acquireLock();
-        dst->insertShard(0, 99, s0);
-        dst->insertShard(100, 199, s1);        
-        dst->insertShard(200, 299, s2);
-	dst->publishShards();
+        dst->cachedShards().insert(0, 99, s0);
+        dst->cachedShards().insert(100, 199, s1);        
+        dst->cachedShards().insert(200, 299, s2);
+	dst->cachedShards().publish();
 	dst->releaseLock();
 
-        clusterlib::Application *app1 = dst->getMyApplication();
+        Application *app1 = dst->getMyApplication();
         if (app0 != app1) {
-            throw
-                clusterlib::Exception("app->dist->app non-equivalence");
+            throw clusterlib::Exception(
+                "app->dist->app non-equivalence");
         }
 
-        clusterlib::Group *grp2 = node0->getMyGroup();
+        Group *grp2 = node0->getMyGroup();
         if (grp1 != grp2) {
-            throw
-                clusterlib::Exception(
-		    "group->node->group non-equivalence");
+            throw clusterlib::Exception(
+                "group->node->group non-equivalence");
         }
         app1 = grp0->getMyApplication();
         if (app0 != app1) {
-            throw
-               clusterlib::Exception("app->group->app non-equivalence");
+            throw clusterlib::Exception(
+                "app->group->app non-equivalence");
         }
 
-	clusterlib::PropertyList *propList0 = app1->getPropertyList(
-            clusterlib::ClusterlibStrings::DEFAULTPROPERTYLIST, true);
+	PropertyList *propList0 = app1->getPropertyList(
+            ClusterlibStrings::DEFAULTPROPERTYLIST, 
+            CREATE_IF_NOT_FOUND);
 	propList0->acquireLock();
-
-	string test = propList0->getProperty("test", true);
-	cerr << "(app1) test (test) = " << test
-	     << " and should be empty (if this is the first time running) "
+        
+        found = propList0->cachedKeyValues().get(
+            "test", jsonValue);
+	cerr << "(app1) test (test) = " 
+             << jsonValue.get<JSONValue::JSONString>()
+             << " and should be empty (if this is the first time running) "
 	     << endl;
 
-	propList0->setProperty("test", "passed");
-	propList0->setProperty("weird", "yessir");
-	propList0->publishProperties();
+	propList0->cachedKeyValues().set("test", "passed");
+	propList0->cachedKeyValues().set("weird", "yessir");
+	propList0->cachedKeyValues().publish();
 	propList0->releaseLock();
 
-	string test2 = propList0->getProperty("test", true);
-	cerr << "(app1) test2 (test) = " << test2
-	     << " and should be passed " << endl;
+        found = propList0->cachedKeyValues().get("test", jsonValue);
+	cerr << "(app1) test2 (test) = " 
+             << jsonValue.get<JSONValue::JSONString>()
+             << " and should be passed " << endl;
 
-	clusterlib::PropertyList *propList1 = app0->getPropertyList();
-	string test3 = propList1->getProperty("test", true);
+	PropertyList *propList1 = app0->getPropertyList();
+	propList1->cachedKeyValues().get("test", jsonValue);
+        string test3 = jsonValue.get<JSONValue::JSONString>();
 	cerr << "(app0) test3 (test) = " << test3
 	     << " and should be passed " << endl;
 	
 	propList0->acquireLock();
-	propList0->setProperty("avery", "ching");
-	propList0->setProperty("test", "good");
-	propList0->publishProperties();
+	propList0->cachedKeyValues().set("avery", "ching");
+	propList0->cachedKeyValues().set("test", "good");
+	propList0->cachedKeyValues().publish();
 	propList0->releaseLock();
 
-	test3 = propList1->getProperty("test", true);
+	propList1->cachedKeyValues().get("test", jsonValue);
+        test3 = jsonValue.get<JSONValue::JSONString>();
 	cerr << "(app0) test3 (test) = " << test3 
 	     << " and should be good " << endl;
-	test3 = propList1->getProperty("avery", true);
+	propList1->cachedKeyValues().get("avery", jsonValue);
+        test3 = jsonValue.get<JSONValue::JSONString>();
 	cerr << "(app0) test3 (avery) = " << test3 
 	     << " and should be ching " << endl;
 
-	clusterlib::PropertyList *propList2 = node0->getPropertyList(
-            clusterlib::ClusterlibStrings::DEFAULTPROPERTYLIST,
-            true);
-	test3 = propList2->getProperty("test", true);
+	PropertyList *propList2 = node0->getPropertyList(
+            ClusterlibStrings::DEFAULTPROPERTYLIST,
+            CREATE_IF_NOT_FOUND);
+	propList2->cachedKeyValues().get("test", jsonValue);
+        test3 = jsonValue.get<JSONValue::JSONString>();
 	cerr << "(node) test3 (test) = " << test3 
 	     << " and should be good " << endl;
 
 	propList2->acquireLock();
-	propList2->setProperty("test", "node");
-	propList2->publishProperties();
+	propList2->cachedKeyValues().set("test", "node");
+	propList2->cachedKeyValues().publish();
 	propList2->releaseLock();
 
-	test3 = propList2->getProperty("test", true);
+	propList2->cachedKeyValues().get("test", jsonValue);
+        test3 = jsonValue.get<JSONValue::JSONString>();
 	cerr << "(node) test3 (test) = " << test3 
 	     << " and should be node " << endl;
 
-	test3 = propList1->getProperty("test", true);
+	propList1->cachedKeyValues().get("test", jsonValue);
+        test3 = jsonValue.get<JSONValue::JSONString>();
 	cerr << "(app) test3 (test) = " << test3 
 	     << " and should be good " << endl;
 

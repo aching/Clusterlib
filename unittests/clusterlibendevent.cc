@@ -5,31 +5,9 @@ extern TestParams globalTestParams;
 
 using namespace std;
 using namespace clusterlib;
+using namespace json;
 
 const string appName = "unittests-endevent-app";
-
-class MyHealthChecker : public HealthChecker {
-  public:
-    MyHealthChecker() 
-        : m_healthy(true) {}
-    virtual clusterlib::HealthReport checkHealth() {
-        if (m_healthy) {
-            return clusterlib::HealthReport(
-                clusterlib::HealthReport::HS_HEALTHY, 
-                "set by member function");
-        }
-        else {
-            return clusterlib::HealthReport(
-                clusterlib::HealthReport::HS_UNHEALTHY,
-                "set by member function");
-        }
-    }
-    void setHealth(bool healthy) {
-        m_healthy = healthy;
-    }
-  private:
-    bool m_healthy;
-};
 
 class ClusterlibEndEvent : public MPITestFixture {
     CPPUNIT_TEST_SUITE(ClusterlibEndEvent);
@@ -37,6 +15,24 @@ class ClusterlibEndEvent : public MPITestFixture {
     CPPUNIT_TEST_SUITE_END();
 
   public:
+    class HealthUpdater : public Periodic {
+      public:
+        HealthUpdater(int64_t msecsFrequency, 
+                      Notifyable *notifyable, 
+                      ClientData *clientData)
+            : Periodic(msecsFrequency, notifyable, clientData) {}
+        
+        virtual void run() 
+        {
+            Notifyable *notifyable = getNotifyable();
+            
+            assert(notifyable != NULL);
+            
+            JSONValue jsonHealth;
+            notifyable->cachedCurrentState().get(Node::HEALTH_KEY, jsonHealth);
+        }    
+    };
+
     ClusterlibEndEvent() 
         : MPITestFixture(globalTestParams),
           _factory(NULL),
@@ -60,7 +56,7 @@ class ClusterlibEndEvent : public MPITestFixture {
             }
         }
         barrier(_factory, true);
-	_app = _client->getRoot()->getApplication(appName, true);
+	_app = _client->getRoot()->getApplication(appName, CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_app != NULL);
     }
 
@@ -90,27 +86,27 @@ class ClusterlibEndEvent : public MPITestFixture {
         stringstream ss;
         ss << "node" << getRank();
         
-        Node *myNode = _app->getNode(ss.str(), true);
+        Node *myNode = _app->getNode(ss.str(), CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(myNode != NULL);
-        _checker = new MyHealthChecker();
-        myNode->initializeConnection(true);
-        myNode->registerHealthChecker(_checker);
-        _checker->setMsecsPerCheckIfHealthy(1);
-        _checker->setMsecsPerCheckIfUnhealthy(1);
-        _checker->setMsecsAllowedPerHealthCheck(1);
+        myNode->acquireOwnership();
+        HealthUpdater updater(1, myNode, NULL);
+        _factory->registerPeriodicThread(updater);
+
+        /*
+         * Shouldn't be used this way, but will be in this case to
+         * test for the end event 
+         */
+        myNode->releaseOwnership();
         barrier(_factory, true);
         finishedClTest(_factory);
 	delete _factory;
-        delete _checker;
     }
 
   private:
     Factory *_factory;
     Client *_client;
     Application *_app;
-    MyHealthChecker *_checker;
 };
 
 /* Registers the fixture into the 'registry' */
 CPPUNIT_TEST_SUITE_REGISTRATION(ClusterlibEndEvent);
-

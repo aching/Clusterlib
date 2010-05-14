@@ -38,9 +38,10 @@ class ClusterlibQueue : public MPITestFixture {
 	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
 	MPI_CPPUNIT_ASSERT(_client0 != NULL);
-	_app0 = _client0->getRoot()->getApplication(appName, true);
+	_app0 = _client0->getRoot()->getApplication(
+            appName, CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_app0 != NULL);
-	_group0 = _app0->getGroup("queue-group", true);
+	_group0 = _app0->getGroup("queue-group", CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_group0 != NULL);
     }
 
@@ -64,9 +65,9 @@ class ClusterlibQueue : public MPITestFixture {
                                     "testQueue1");
         const string name = "queue1";
         if (isMyRank(0)) {
-            _queue0 = _group0->getQueue(name, true);
+            _queue0 = _group0->getQueue(name, CREATE_IF_NOT_FOUND);
             _queue0->remove();
-            _queue0 = _group0->getQueue(name, true);
+            _queue0 = _group0->getQueue(name, CREATE_IF_NOT_FOUND);
             const string data = "element1";
             MPI_CPPUNIT_ASSERT(_queue0);
             _queue0->put(data);
@@ -90,9 +91,9 @@ class ClusterlibQueue : public MPITestFixture {
                                     "testQueue2");
         const string name = "queue2";
         if (isMyRank(0)) {
-            _queue0 = _group0->getQueue(name, true);
+            _queue0 = _group0->getQueue(name, CREATE_IF_NOT_FOUND);
             _queue0->remove();
-            _queue0 = _group0->getQueue(name, true);
+            _queue0 = _group0->getQueue(name, CREATE_IF_NOT_FOUND);
             const string data = "element1";
             MPI_CPPUNIT_ASSERT(_queue0);
             MPI_CPPUNIT_ASSERT(_queue0->empty() == true);
@@ -119,9 +120,9 @@ class ClusterlibQueue : public MPITestFixture {
                                     "testQueue3");
         const string name = "queue3";
         if (isMyRank(0)) {
-            _queue0 = _group0->getQueue(name, true);
+            _queue0 = _group0->getQueue(name, CREATE_IF_NOT_FOUND);
             _queue0->remove();
-            _queue0 = _group0->getQueue(name, true);
+            _queue0 = _group0->getQueue(name, CREATE_IF_NOT_FOUND);
             const string data = "el";
             MPI_CPPUNIT_ASSERT(_queue0);
             MPI_CPPUNIT_ASSERT(_queue0->empty() == true);
@@ -158,9 +159,9 @@ class ClusterlibQueue : public MPITestFixture {
         const string name = "queue4";
         const string data = "el";
         if (isMyRank(0)) {
-            _queue0 = _group0->getQueue(name, true);
+            _queue0 = _group0->getQueue(name, CREATE_IF_NOT_FOUND);
             _queue0->remove();
-            _queue0 = _group0->getQueue(name, true);
+            _queue0 = _group0->getQueue(name, CREATE_IF_NOT_FOUND);
         }
 
         barrier(_factory, true);
@@ -199,9 +200,9 @@ class ClusterlibQueue : public MPITestFixture {
         const string data = "el";
 
         if (isMyRank(0)) {
-            _queue0 = _group0->getQueue(name, true);
+            _queue0 = _group0->getQueue(name, CREATE_IF_NOT_FOUND);
             _queue0->remove();
-            _queue0 = _group0->getQueue(name, true);
+            _queue0 = _group0->getQueue(name, CREATE_IF_NOT_FOUND);
         }
 
         barrier(_factory, true);
@@ -241,9 +242,9 @@ class ClusterlibQueue : public MPITestFixture {
         const string name = "queue6";
         const string data = "el";
         if (isMyRank(0)) {
-            _queue0 = _group0->getQueue(name, true);
+            _queue0 = _group0->getQueue(name, CREATE_IF_NOT_FOUND);
             _queue0->remove();
-            _queue0 = _group0->getQueue(name, true);
+            _queue0 = _group0->getQueue(name, CREATE_IF_NOT_FOUND);
         }
 
         barrier(_factory, true);
@@ -252,7 +253,7 @@ class ClusterlibQueue : public MPITestFixture {
         if (isMyRank(0)) {
             _queue0 = _group0->getQueue(name);
             MPI_CPPUNIT_ASSERT(_queue0);
-            // Shouldn't be found in 1 msecs
+            /* Shouldn't be found in 1 msecs */
             string newData;
             found = _queue0->takeWaitMsecs(1, newData);
             MPI_CPPUNIT_ASSERT(found == false);
@@ -270,7 +271,7 @@ class ClusterlibQueue : public MPITestFixture {
             _queue0->put(data);
         }
         if (isMyRank(0)) {
-            // Should be found in 5 secs
+            /* Should be found in 5 secs */
             string newData;
             found = _queue0->takeWaitMsecs(5000, newData);
             MPI_CPPUNIT_ASSERT(found == true);

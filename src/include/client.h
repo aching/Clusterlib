@@ -54,8 +54,8 @@ const int32_t EN_CREATED =			    (1<<0);
 /** Notifyable was deleted */
 const int32_t EN_DELETED =			    (1<<1);
 
-/** Notifyable state has changed */
-const int32_t EN_STATECHANGE =			    (1<<2);
+/** Notifyable current state has changed */
+const int32_t EN_CURRENT_STATE_CHANGE =		    (1<<2);
 
 /** Groups in this notifyable changed */
 const int32_t EN_GROUPSCHANGE =			    (1<<3);
@@ -72,8 +72,8 @@ const int32_t EN_LEADERSHIPCHANGE =		    (1<<6);
 /** This node's client state changed */
 const int32_t EN_CLIENTSTATECHANGE =		    (1<<7);
 
-/** This node's connectivity changed */
-const int32_t EN_CONNECTEDCHANGE =		    (1<<8);
+/** This node's process slot info changed */
+const int32_t EN_PROCESS_SLOT_INFO_CHANGE =         (1<<8);
 
 /** This node's master set state changed */
 const int32_t EN_MASTERSTATECHANGE =		    (1<<9);
@@ -84,8 +84,8 @@ const int32_t EN_PROCESSSLOTSUSAGECHANGE =	    (1<<10);
 /** Process slots in this notifyable changed */
 const int32_t EN_PROCESSSLOTSCHANGE =		    (1<<11);
 
-/** This process slot's port vector changed */
-const int32_t EN_PROCESSSLOTPORTVECCHANGE =	    (1<<12);
+/** This process slot's process info changed */
+const int32_t EN_PROCESSSLOTPROCESSINFOCHANGE =	    (1<<12);
 
 /** This process slot's executable arguments changed */
 const int32_t EN_PROCESSSLOTEXECARGSCHANGE =	    (1<<13);
@@ -120,11 +120,18 @@ const int32_t EN_APPSCHANGE =			    (1<<22);
 /** The lock on this notifyable changed */
 const int32_t EN_LOCKNODECHANGE =                   (1<<23);
 
+/** Queues in this notifyable changes */
+const int32_t EN_QUEUESCHANGE =                     (1<<24);
+
 /** The children of this queue changed */
-const int32_t EN_QUEUECHILDCHANGE =                 (1<<24);
+const int32_t EN_QUEUECHILDCHANGE =                 (1<<25);
 
 /** Clusterlib has been shutdown */
-const int32_t EN_ENDEVENT =                         (1<<25);
+const int32_t EN_ENDEVENT =                         (1<<26);
+
+/** Notifyable desired state has changed */
+const int32_t EN_DESIRED_STATE_CHANGE =		    (1<<27);
+
 
 /*
  * Interface for user event handler. Must be derived
@@ -175,8 +182,8 @@ class UserEventHandler
         if (event & EN_DELETED) { /* 1 */
             encodedEvents.append("EN_DELETED,");
         }
-        if (event & EN_STATECHANGE) { /* 2 */
-            encodedEvents.append("EN_STATECHANGE,");
+        if (event & EN_CURRENT_STATE_CHANGE) { /* 2 */
+            encodedEvents.append("EN_CURRENT_STATE_CHANGE,");
         }
         if (event & EN_GROUPSCHANGE) { /* 3 */
             encodedEvents.append("EN_GROUPSCHANGE,");
@@ -193,8 +200,8 @@ class UserEventHandler
         if (event & EN_CLIENTSTATECHANGE)  { /* 7 */
             encodedEvents.append("EN_CLIENTSTATECHANGE,");
         }
-        if (event & EN_CONNECTEDCHANGE) { /* 8 */
-            encodedEvents.append("EN_CONNECTEDCHANGE,");
+        if (event & EN_PROCESS_SLOT_INFO_CHANGE) { /* 8 */
+            encodedEvents.append("EN_PROCESS_SLOT_CHANGE,");
         }
         if (event & EN_MASTERSTATECHANGE) { /* 9 */
             encodedEvents.append("EN_MASTERSTATECHANGE,");
@@ -205,8 +212,8 @@ class UserEventHandler
         if (event & EN_PROCESSSLOTSCHANGE) { /* 11 */
             encodedEvents.append("EN_PROCESSSLOTSCHANGE,");
         }
-        if (event & EN_PROCESSSLOTPORTVECCHANGE) { /* 12 */
-            encodedEvents.append("EN_PROCESSSLOTPORTVECCHANGE,");
+        if (event & EN_PROCESSSLOTPROCESSINFOCHANGE) { /* 12 */
+            encodedEvents.append("EN_PROCESSSLOTPROCESSINFOCHANGE,");
         }
         if (event & EN_PROCESSSLOTEXECARGSCHANGE) { /* 13 */
             encodedEvents.append("EN_PROCESSSLOTEXECARGSCHANGE,");
@@ -241,10 +248,16 @@ class UserEventHandler
         if (event & EN_LOCKNODECHANGE) { /* 23 */
             encodedEvents.append("EN_LOCKNODECHANGE,");
         }
-        if (event & EN_QUEUECHILDCHANGE) { /* 24 */
+        if (event & EN_QUEUESCHANGE) { /* 24 */
             encodedEvents.append("EN_QUEUECHILDCHANGE,");
         }
-        if (event & EN_ENDEVENT) { /* 25 */
+        if (event & EN_QUEUECHILDCHANGE) { /* 25 */
+            encodedEvents.append("EN_QUEUECHILDCHANGE,");
+        }
+        if (event & EN_ENDEVENT) { /* 26 */
+            encodedEvents.append("EN_ENDEVENT,");
+        }
+        if (event & EN_DESIRED_STATE_CHANGE) { /* 27 */
             encodedEvents.append("EN_ENDEVENT,");
         }
 
@@ -330,7 +343,7 @@ class UserEventHandler
      * guarantee that conditions are checked with a consistent
      * ordering with respect to waitUntilCondition.
      */
-    void acquireLock() { m_waitMutex.lock(); }
+    void acquireLock() { m_waitMutex.acquire(); }
 
     /**
      * \brief Releases the lock acquired by acquireLock.
@@ -338,7 +351,7 @@ class UserEventHandler
      * Advisory lock. Must be held before waitUntilCondition is called,
      * and must be released via releaseLock after waitUntilCondition returns.
      */
-    void releaseLock() { m_waitMutex.unlock(); }
+    void releaseLock() { m_waitMutex.release(); }
 
   public:
     /**

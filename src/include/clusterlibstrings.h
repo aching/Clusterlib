@@ -44,18 +44,33 @@ class ClusterlibStrings
     static const std::string PROPERTYLISTS;
     static const std::string QUEUES;
 
+    /*
+     * Registered notifyable names
+     */
+    static const std::string REGISTERED_ROOT_NAME;
+    static const std::string REGISTERED_APPLICATION_NAME;
+    static const std::string REGISTERED_GROUP_NAME;
+    static const std::string REGISTERED_NODE_NAME;
+    static const std::string REGISTERED_PROCESSSLOT_NAME;
+    static const std::string REGISTERED_DATADISTRIBUTION_NAME;
+    static const std::string REGISTERED_PROPERTYLIST_NAME;
+    static const std::string REGISTERED_QUEUE_NAME;
+    
+    static const std::string NOTIFYABLESTATE_JSON_OBJECT;
+    static const std::string CURRENT_STATE_JSON_VALUE;
+    static const std::string DESIRED_STATE_JSON_VALUE;
     static const std::string CLIENTSTATE;
     static const std::string CLIENTSTATEDESC;
     static const std::string ADDRESS;
     static const std::string LASTCONNECTED;
     static const std::string CLIENTVERSION;
-    static const std::string CONNECTED;
     static const std::string QUEUE_PARENT;
     static const std::string BOUNCY;
     static const std::string READY;
     static const std::string ALIVE;
     static const std::string MASTERSETSTATE;
     static const std::string SUPPORTEDVERSIONS;
+    static const std::string PROCESSSLOT_INFO_JSON_OBJECT;
     static const std::string PROCESSSLOTSUSAGE;
     static const std::string PROCESSSLOTSMAX;
 
@@ -82,8 +97,11 @@ class ClusterlibStrings
     static const std::string ENABLED;
     static const std::string DISABLED;
 
+    static const std::string DEFAULT_JSON_OBJECT;
     static const std::string DEFAULTPROPERTYLIST;
     static const std::string KEYVAL;
+    static const std::string KEYVAL_JSON_OBJECT;
+    static const std::string PROCESSINFO_JSON_OBJECT;
 
     /**
      * Defined PropertyList keys (prefix PLK) and values (prefix PLV).
@@ -115,12 +133,13 @@ class ClusterlibStrings
     static const std::string QUEUEELEMENTPREFIX;
 
     static const std::string SHARDS;
+    static const std::string SHARD_JSON_OBJECT;
     static const std::string GOLDENSHARDS;
 
     static const std::string SEQUENCE_SPLIT;
 
     static const std::string NOTIFYABLELOCK;
-    static const std::string LEADERLOCK;
+    static const std::string OWNERSHIP_LOCK;
 
     static const std::string LOCKS;
     static const std::string BARRIERS;
@@ -168,11 +187,15 @@ class ClusterlibStrings
      */
     static const std::string DEFAULT_CLI_APPLICATION;
 
+    static const std::string STATE_SET_MSECS;
+    static const std::string STATE_SET_MSECS_AS_DATE;
+
     /*
      * Strings associated with clusterlib rpc methods
      */
     static const std::string RPC_START_PROCESS;
     static const std::string RPC_STOP_PROCESS;
+    static const std::string RPC_STOP_ACTIVENODE;
     static const std::string RPC_GENERIC;
 
     /*
@@ -185,7 +208,6 @@ class ClusterlibStrings
     static const std::string JSONOBJECTKEY_RESPQUEUEKEY;
     static const std::string JSONOBJECTKEY_NOTIFYABLEKEY;
     static const std::string JSONOBJECTKEY_SIGNAL;
-    static const std::string JSONOBJECTKEY_CONNECTEDID;
     static const std::string JSONOBJECTKEY_TIME;
 
   private:

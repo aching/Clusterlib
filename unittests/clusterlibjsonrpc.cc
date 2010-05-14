@@ -94,12 +94,12 @@ class ClusterlibJSONRPC : public MPITestFixture {
         _root = _client0->getRoot();
         MPI_CPPUNIT_ASSERT(_root != NULL);
         if (isMyRank(0)) {
-            _app0 = _root->getApplication(appName, true);
+            _app0 = _root->getApplication(appName, CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(_app0 != NULL);
             _app0->remove(true);
         }
         barrier(_factory, true);
-	_app0 = _root->getApplication(appName, true);
+	_app0 = _root->getApplication(appName, CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_app0 != NULL);
     }
 
@@ -126,13 +126,13 @@ class ClusterlibJSONRPC : public MPITestFixture {
         stringstream ss;
 
         ss << respQueuePrefix << "_id_" << getRank();
-        Queue *respQueue = _app0->getQueue(ss.str(), true);
+        Queue *respQueue = _app0->getQueue(ss.str(), CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(respQueue);
         ss.str("");
 
         ss << compQueuePrefix << "_resp_id_" 
            << getRank();
-        Queue *compRespQueue = _app0->getQueue(ss.str(), true);
+        Queue *compRespQueue = _app0->getQueue(ss.str(), CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(compRespQueue);
         ss.str("");
 
@@ -141,13 +141,13 @@ class ClusterlibJSONRPC : public MPITestFixture {
             compRespQueue);
         
         ss << recvQueuePrefix << "_id_" << getRank();
-        Queue *recvQueue = _app0->getQueue(ss.str(), true);
+        Queue *recvQueue = _app0->getQueue(ss.str(), CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(recvQueue);
         ss.str("");
 
         ss << compQueuePrefix << "_recv_id_" 
            << getRank();
-        Queue *compRecvQueue = _app0->getQueue(ss.str(), true);
+        Queue *compRecvQueue = _app0->getQueue(ss.str(), CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(compRecvQueue);
         ss.str("");
 
@@ -177,13 +177,13 @@ class ClusterlibJSONRPC : public MPITestFixture {
         stringstream ss;
 
         ss << respQueuePrefix << "_id_" << getRank();
-        Queue *respQueue = _app0->getQueue(ss.str(), true);
+        Queue *respQueue = _app0->getQueue(ss.str(), CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(respQueue);
         ss.str("");
 
         ss << compQueuePrefix << "_resp_id_" 
            << getRank();
-        Queue *compRespQueue = _app0->getQueue(ss.str(), true);
+        Queue *compRespQueue = _app0->getQueue(ss.str(), CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(compRespQueue);
         ss.str("");
 
@@ -192,13 +192,13 @@ class ClusterlibJSONRPC : public MPITestFixture {
                                                   compRespQueue);
         
         ss << recvQueuePrefix << "_id_" << getRank();
-        Queue *recvQueue = _app0->getQueue(ss.str(), true);
+        Queue *recvQueue = _app0->getQueue(ss.str(), CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(recvQueue);
         ss.str("");
 
         ss << compQueuePrefix << "_recv_id_" 
            << getRank();
-        Queue *compRecvQueue = _app0->getQueue(ss.str(), true);
+        Queue *compRecvQueue = _app0->getQueue(ss.str(), CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(compRecvQueue);
         ss.str("");
 
@@ -221,7 +221,7 @@ class ClusterlibJSONRPC : public MPITestFixture {
             myDestRank = 0;
         }
         ss << recvQueuePrefix << "_id_" << myDestRank;
-        Queue *destQueue = _app0->getQueue(ss.str(), true);
+        Queue *destQueue = _app0->getQueue(ss.str(), CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(destQueue);
 
         /* 

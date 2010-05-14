@@ -57,9 +57,9 @@ class QueueImpl
      */
     virtual ~QueueImpl();
 
-    virtual void initializeCachedRepresentation();
+    virtual NotifyableList getChildrenNotifyables();
 
-    virtual void removeRepositoryEntries();
+    virtual void initializeCachedRepresentation();
 
     /**
      * Establish the watch and handler for queue changes.

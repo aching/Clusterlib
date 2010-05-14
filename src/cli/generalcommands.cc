@@ -102,10 +102,10 @@ RemoveNotifyable::action()
     }
     
     string key = ntp->getKey();
-        string name = ntp->getName();
-        ntp->remove();
-        cout << "Removed notifyable with name (" 
-             << name << ") and key (" << key << ")" << endl;
+    string name = ntp->getName();
+    ntp->remove();
+    cout << "Removed notifyable with name (" 
+         << name << ") and key (" << key << ")" << endl;
 }
 
 string
@@ -219,7 +219,7 @@ GetAttributes::action()
             "GetAttributes: Failed to get notifyable for key " +
             getNativeArg(0));
     }
-    
+
     NameList names;
     NameList::const_iterator nameIt;
     CliParams *params = CliParams::getInstance();
@@ -232,7 +232,7 @@ GetAttributes::action()
                 params->addToKeySet(
                     root->getApplication(*nameIt)->getKey());
             }
-            CliFormat::attributeOut("applications", names);                
+            CliFormat::attributeOut("applications", names);
         }
     }
     else if (dynamic_cast<Group *>(ntp) != NULL) {
@@ -243,20 +243,6 @@ GetAttributes::action()
             CliFormat::attributeOut("type", "Group");
         }
         Group *group = dynamic_cast<Group *>(ntp);
-        int32_t healthyNodes = 0, unhealthyNodes = 0;
-        names = group->getNodeNames();
-        for (NameList::const_iterator iter = names.begin(); 
-             iter != names.end(); 
-             ++iter) {
-            if (group->getNode(*iter)->isHealthy()) {
-                healthyNodes++;
-            }
-            else {
-                unhealthyNodes++;
-            }
-        }
-        CliFormat::attributeOut("healthyNodes", healthyNodes);
-        CliFormat::attributeOut("unhealthyNodes", unhealthyNodes);
         names = group->getGroupNames();
         if (!names.empty()) {
             CliFormat::attributeOut("groups", names);
@@ -280,29 +266,25 @@ GetAttributes::action()
                 params->addToKeySet(
                     group->getNode(*nameIt)->getKey());
             }
-            }
+        }
     }
     else if (dynamic_cast<DataDistribution *>(ntp) != NULL) {
         CliFormat::attributeOut("type", "Data Distribution");
         DataDistribution *dataDistribution = 
             dynamic_cast<DataDistribution *>(ntp);
-        CliFormat::attributeOut("covered", dataDistribution->isCovered());
+        CliFormat::attributeOut("covered", 
+                                dataDistribution->cachedShards().isCovered());
     }
     else if (dynamic_cast<Node *>(ntp) != NULL) {
         CliFormat::attributeOut("type", "Node");
         Node *node = dynamic_cast<Node *>(ntp);
-        int64_t connectionTime = -1, clientStateTime = -1;
-        string clientState, clientStateDesc;
-        node->getClientState(&clientStateTime, &clientState, &clientStateDesc);
-        CliFormat::attributeOut("client state time", clientStateTime);
-        CliFormat::attributeOut("client state", clientState);
-        CliFormat::attributeOut("client state desc", clientStateDesc);
-        CliFormat::attributeOut("connected", 
-                                node->isConnected(NULL, &connectionTime));
-        CliFormat::attributeOut("connection time", connectionTime);
-        CliFormat::attributeOut("healthy", node->isHealthy());
-        CliFormat::attributeOut("use process slot", 
-                                node->getUseProcessSlots());
+        bool useProcessSlots = false;
+        int32_t maxProcessSlots = -1;
+        useProcessSlots = node->cachedProcessSlotInfo().getEnable();
+        maxProcessSlots = node->cachedProcessSlotInfo().getMaxProcessSlots();
+        CliFormat::attributeOut("use process slots", useProcessSlots);
+        CliFormat::attributeOut("max process slots", maxProcessSlots);
+
         names = node->getProcessSlotNames();
         if (!names.empty()) {
             for (nameIt = names.begin(); nameIt != names.end(); nameIt++) {
@@ -316,47 +298,31 @@ GetAttributes::action()
         CliFormat::attributeOut("type", "Process Slot");
         ProcessSlot *processSlot = dynamic_cast<ProcessSlot *>(ntp);
         CliFormat::attributeOut(
-            "port vec", 
-            json::JSONCodec::encode(processSlot->getJsonPortVec()));
-        CliFormat::attributeOut(
-            "exec args", 
-            json::JSONCodec::encode(processSlot->getJsonExecArgs()));
-        CliFormat::attributeOut(
-            "running exec args", 
+            "port arr", 
             json::JSONCodec::encode(
-                    processSlot->getJsonRunningExecArgs()));
-        CliFormat::attributeOut("PID", processSlot->getPID());
-        ProcessSlot::ProcessState state;
-        int64_t msecs;
-
-        processSlot->getDesiredProcessState(&state, &msecs);
-        ostringstream oss;
-        oss << msecs << " msecs - " << TimerService::getMsecsTimeString(msecs);
-        CliFormat::attributeOut(
-            "desired process state", 
-            ProcessSlot::getProcessStateAsString(state));
-        CliFormat::attributeOut(
-            "desired process state set time", 
-            oss.str());
-        processSlot->getCurrentProcessState(&state, &msecs);
-        oss.str("");
-        oss << msecs << " msecs - " << TimerService::getMsecsTimeString(msecs);
-        CliFormat::attributeOut(
-            "current process state", 
-            ProcessSlot::getProcessStateAsString(state));
-        CliFormat::attributeOut(
-            "current process state set time", 
-            oss.str());
+                processSlot->cachedProcessInfo().getPortArr()));
+    }
+    else if (dynamic_cast<Queue *>(ntp)) {
+        CliFormat::attributeOut("type", "Queue");
+        Queue *queue = dynamic_cast<Queue *>(ntp);
+        CliFormat::attributeOut("size", 
+                                json::JSONCodec::encode(queue->size()));
     }
     else if (dynamic_cast<PropertyList *>(ntp) != NULL) {
         CliFormat::attributeOut("type", "Property List");
         PropertyList *propertyList = 
             dynamic_cast<PropertyList *>(ntp);
-        vector<string> keyVec = propertyList->getPropertyListKeys();
-        for (vector<string>::iterator it = keyVec.begin();
+        vector<JSONValue::JSONString> keyVec = 
+            propertyList->cachedKeyValues().getKeys();
+        for (vector<JSONValue::JSONString>::const_iterator it = keyVec.begin();
              it != keyVec.end();
-             it++) {
-            CliFormat::attributeOut(*it, propertyList->getProperty(*it));
+             ++it) {
+            JSONValue jsonValue;
+            bool found = propertyList->cachedKeyValues().get(*it, jsonValue);
+            if (found) {
+                CliFormat::attributeOut(
+                    *it, jsonValue.get<JSONValue::JSONString>());
+            }
         }
     }
     
@@ -374,6 +340,22 @@ GetAttributes::action()
             CliFormat::attributeOut("property lists", names);
         }
     }
+
+    CliFormat::attributeOut(
+        "current state", 
+        JSONCodec::encode(ntp->cachedCurrentState().getHistoryArray()));
+    CliFormat::attributeOut(
+        "desired state", 
+        JSONCodec::encode(ntp->cachedDesiredState().getHistoryArray()));
+    string id;
+    int64_t msecs;
+    bool hasOwner = ntp->getOwnershipInfo(&id, &msecs);
+    CliFormat::attributeOut("has owner", hasOwner); 
+    if (hasOwner) {
+        CliFormat::attributeOut("owner id", id);
+        CliFormat::attributeOut(
+            "owner date connected", TimerService::getMsecsTimeString(msecs)); 
+    }
 }
 
 string
@@ -383,6 +365,84 @@ GetAttributes::helpMessage()
 }
 
 GetAttributes::~GetAttributes() {}
+
+SetCurrentState::SetCurrentState(Client *client) 
+    : CliCommand("setCurrentState", client) 
+{
+    vector<CliCommand::ArgType> argTypeVec;
+    argTypeVec.push_back(CliCommand::NotifyableArg);
+    argTypeVec.push_back(CliCommand::StringArg);
+    argTypeVec.push_back(CliCommand::StringArg);
+    setArgTypeVec(argTypeVec);
+}
+
+void
+SetCurrentState::action() 
+{
+    Notifyable *ntp = getNotifyableArg(0);
+    if (ntp == NULL) {
+        throw InvalidMethodException(
+            "SetCurrentState: Failed to get notifyable for key " +
+            getNativeArg(0));
+    }
+    
+    ntp->cachedCurrentState().set(getStringArg(1), 
+                                  JSONCodec::decode(getStringArg(2)));
+    ntp->cachedCurrentState().publish();
+
+    cout << "Set current state for notifyable with name= " 
+         << ntp->getName() << " key='" << getStringArg(1) << "',value='"
+         << getStringArg(2) << "'" << endl;
+}
+
+string
+SetCurrentState::helpMessage()
+{
+    return "Set the current state for a notifyable specified by the "
+        "NotifyableArg.  The first StringArg is the state key and the second"
+        " StringArg is the encoded JSONValue (i.e. \"value\").";
+}
+
+SetCurrentState::~SetCurrentState() {}
+
+SetDesiredState::SetDesiredState(Client *client) 
+    : CliCommand("setDesiredState", client) 
+{
+    vector<CliCommand::ArgType> argTypeVec;
+    argTypeVec.push_back(CliCommand::NotifyableArg);
+    argTypeVec.push_back(CliCommand::StringArg);
+    argTypeVec.push_back(CliCommand::StringArg);
+    setArgTypeVec(argTypeVec);
+}
+
+void
+SetDesiredState::action() 
+{
+    Notifyable *ntp = getNotifyableArg(0);
+    if (ntp == NULL) {
+        throw InvalidMethodException(
+            "SetDesiredState: Failed to get notifyable for key " +
+            getNativeArg(0));
+    }
+    
+    ntp->cachedDesiredState().set(getStringArg(1), 
+                                  JSONCodec::decode(getStringArg(2)));
+    ntp->cachedDesiredState().publish();
+
+    cout << "Set desired state for notifyable with name= " 
+         << ntp->getName() << " key='" << getStringArg(1) << "',value='"
+         << getStringArg(2) << "'" << endl;
+}
+
+string
+SetDesiredState::helpMessage()
+{
+    return "Set the desired state for a notifyable specified by the "
+        "NotifyableArg.  The first StringArg is the state key and the second"
+        " StringArg is the encoded JSONValue (i.e. \"value\").";
+}
+
+SetDesiredState::~SetDesiredState() {}
 
 AddApplication::AddApplication(Client *client) 
     : CliCommand("addapplication", client, 0) 
@@ -403,7 +463,7 @@ AddApplication::action()
     if (root == NULL) {
         throw Exception("AddApplication failed to get " + getNativeArg(0));
     }
-    Application *application = root->getApplication(getStringArg(1), true);
+    Application *application = root->getApplication(getStringArg(1), CREATE_IF_NOT_FOUND);
     if (application == NULL) {
         throw InvalidMethodException(
             "AddApplication: Failed to get application " + 
@@ -438,7 +498,7 @@ AddGroup::action()
     if (group == NULL) {
         throw Exception("AddGroup failed to get " + getNativeArg(0));
     }
-    group = group->getGroup(getStringArg(1), true);
+    group = group->getGroup(getStringArg(1), CREATE_IF_NOT_FOUND);
     if (group == NULL) {
         throw InvalidMethodException("AddGroup: Failed to get group " + 
                                      getStringArg(1));
@@ -474,7 +534,7 @@ AddDataDistribution::action()
                         getNativeArg(0));
     }
     DataDistribution *dataDistribution = 
-        group->getDataDistribution(getStringArg(1), true);
+        group->getDataDistribution(getStringArg(1), CREATE_IF_NOT_FOUND);
     if (dataDistribution == NULL) {
         throw InvalidMethodException(
             "AddDataDistribution: Failed to get data distribution " + 
@@ -509,7 +569,7 @@ AddNode::action()
     if (group == NULL) {
         throw Exception("AddNode failed to get " + getNativeArg(0));
     }
-    Node *node = group->getNode(getStringArg(1), true);
+    Node *node = group->getNode(getStringArg(1), CREATE_IF_NOT_FOUND);
     if (node == NULL) {
         throw InvalidMethodException("AddNode: Failed to get node " + 
                                      getStringArg(1));
@@ -544,7 +604,7 @@ AddPropertyList::action()
                         getNativeArg(0));
     }
     PropertyList *propertyList = 
-        ntp->getPropertyList(getStringArg(1), true);
+        ntp->getPropertyList(getStringArg(1), CREATE_IF_NOT_FOUND);
     if (propertyList == NULL) {
         throw InvalidMethodException(
             "AddPropertyList: Failed to get property list " + 
@@ -580,7 +640,7 @@ AddQueue::action()
                         getNativeArg(0));
     }
     Queue *queue = 
-        ntp->getQueue(getStringArg(1), true);
+        ntp->getQueue(getStringArg(1), CREATE_IF_NOT_FOUND);
     if (queue == NULL) {
         throw InvalidMethodException(
             "AddQueue: Failed to get queue " + 
@@ -752,18 +812,8 @@ JSONRPCCommand::action()
         paramArr.push_back(paramObj);
         string queueKey = getNativeArg(0);
         auto_ptr<json::rpc::JSONRPCRequest> req;
-        if (!getNativeArg(1).compare(
-                ClusterlibStrings::RPC_START_PROCESS)) {
-            req.reset(new StartProcessRequest(getClient()));
-        }
-        else if (!getNativeArg(1).compare(
-                     ClusterlibStrings::RPC_STOP_PROCESS)) {
-            req.reset(new StopProcessRequest(getClient()));
-        }
-        else {
-            /* Try the generic request if the method is not recognized. */
-            req.reset(new GenericRequest(getClient(), getNativeArg(1)));
-        }
+        /* Use the generic request. */
+        req.reset(new GenericRequest(getClient(), getNativeArg(1)));
         
         req->sendRequest(queueKey.c_str());
         req->waitResponse();
@@ -787,6 +837,130 @@ JSONRPCCommand::helpMessage()
 }
 
 JSONRPCCommand::~JSONRPCCommand() {}
+
+StartProcessSlot::StartProcessSlot(Client *client) 
+    : CliCommand("startprocessslot", client) 
+{
+    vector<CliCommand::ArgType> argTypeVec;
+    argTypeVec.push_back(CliCommand::NotifyableArg);
+    argTypeVec.push_back(CliCommand::BoolArg);
+    setArgTypeVec(argTypeVec);
+} 
+
+void
+StartProcessSlot::action() 
+{
+    ProcessSlot *processSlot = 
+        dynamic_cast<ProcessSlot * >(getNotifyableArg(0));
+    if (processSlot == NULL) {
+        throw Exception("StartProcessSlot failed to get " + 
+                        getNativeArg(0));
+    }
+
+    JSONValue::JSONString startState;
+    if (getBoolArg(1) == false) {
+        startState = ProcessSlot::PROCESS_STATE_RUN_ONCE_VALUE;
+    }
+    else {
+        startState = ProcessSlot::PROCESS_STATE_RUN_CONTINUOUSLY_VALUE;
+    }
+
+    processSlot->acquireLock();
+
+    processSlot->cachedDesiredState().set(
+        ProcessSlot::PROCESS_STATE_KEY,
+        startState);
+    processSlot->cachedDesiredState().set(
+        ProcessSlot::PROCESS_STATE_SET_MSECS_KEY,
+        TimerService::getCurrentTimeMsecs());
+    processSlot->cachedDesiredState().publish();
+
+    processSlot->releaseLock();
+}
+
+string
+StartProcessSlot::helpMessage()
+{
+    return "Set the desired state to start the process on a ProcessSlot.  "
+        "NotifyableArg is the ProcessSlot notifyable.  BoolArg if true sets"
+        " the state to ProcessSlot::PROCESS_STATE_RUN_CONTINUOUSLY_VALUE, otherwise"
+        " sets the state to ProcessSlot::PROCESS_STATE_RUN_ONCE_VALUE.";
+}
+ 
+StartProcessSlot::~StartProcessSlot() {}
+
+StopProcessSlot::StopProcessSlot(Client *client) 
+    : CliCommand("stopprocessslot", client) 
+{
+    vector<CliCommand::ArgType> argTypeVec;
+    argTypeVec.push_back(CliCommand::NotifyableArg);
+    setArgTypeVec(argTypeVec);
+} 
+
+void
+StopProcessSlot::action() 
+{
+    ProcessSlot *processSlot = 
+        dynamic_cast<ProcessSlot * >(getNotifyableArg(0));
+    if (processSlot == NULL) {
+        throw Exception("StopProcessSlot failed to get " + 
+                        getNativeArg(0));
+    }
+
+    processSlot->acquireLock();
+
+    processSlot->cachedDesiredState().set(ProcessSlot::PROCESS_STATE_KEY,
+                                   ProcessSlot::PROCESS_STATE_STOPPED_VALUE);
+    processSlot->cachedDesiredState().set(
+        ProcessSlot::PROCESS_STATE_SET_MSECS_KEY,
+        TimerService::getCurrentTimeMsecs());
+    processSlot->cachedDesiredState().publish();
+
+    processSlot->releaseLock();
+}
+
+string
+StopProcessSlot::helpMessage()
+{
+    return "Set the desired state to stop the process on a ProcessSlot.  "
+        "NotifyableArg is the ProcessSlot notifyable. ";
+}
+ 
+StopProcessSlot::~StopProcessSlot() {}
+
+
+StopActiveNode::StopActiveNode(Client *client) 
+    : CliCommand("stopactivenode", client) 
+{
+    vector<CliCommand::ArgType> argTypeVec;
+    argTypeVec.push_back(CliCommand::NotifyableArg);
+    setArgTypeVec(argTypeVec);
+} 
+
+void
+StopActiveNode::action() 
+{
+    Node *node = dynamic_cast<Node * >(getNotifyableArg(0));
+    if (node == NULL) {
+        throw Exception("StopActiveNode failed to get " + 
+                        getNativeArg(0));
+    }
+    node->acquireLock();
+
+    node->cachedDesiredState().set(Node::ACTIVENODE_SHUTDOWN,
+                                   true);
+    node->cachedDesiredState().publish();
+
+    node->releaseLock();
+}
+
+string
+StopActiveNode::helpMessage()
+{
+    return "Shutdown an ActiveNode.  NotifyableArg is the Node notifyable.";
+}
+ 
+StopActiveNode::~StopActiveNode() {}
 
 Quit::Quit(CliParams *cliParams) 
     : CliCommand("quit", NULL),

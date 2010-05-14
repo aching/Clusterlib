@@ -6,15 +6,16 @@
 #include "clusterlib.h"
 
 using namespace std;
+using namespace clusterlib;
 
 class MyTimerHandler
-    : public clusterlib::TimerEventHandler
+    : public TimerEventHandler
 {
   public:
     /*
      * Constructor.
      */
-    MyTimerHandler(clusterlib::Client *cp)
+    MyTimerHandler(Client *cp)
         : mp_cp(cp)
     {
     }
@@ -22,8 +23,8 @@ class MyTimerHandler
     /*
      * Handler.
      */
-    virtual void handleTimerEvent(clusterlib::TimerId id,
-                                  clusterlib::ClientData data)
+    virtual void handleTimerEvent(TimerId id,
+                                  ClientData data)
     {
         cerr << "Called handler for timer id: "
              << id
@@ -32,7 +33,7 @@ class MyTimerHandler
              << ", Client: "
              << mp_cp
              << ", now: "
-             << clusterlib::TimerService::getCurrentTimeMsecs()
+             << TimerService::getCurrentTimeMsecs()
              << endl;
     }
 
@@ -40,21 +41,21 @@ class MyTimerHandler
     /*
      * The client.
      */
-    clusterlib::Client *mp_cp;
+    Client *mp_cp;
 };
 
 int
 main(int ac, char **av)
 {
     try {
-        clusterlib::Factory *f = new clusterlib::Factory("localhost:2221");
+        Factory *f = new Factory("localhost:2221");
         cerr << "factory = " << f << endl;
-        clusterlib::Client *c = f->createClient();
+        Client *c = f->createClient();
         cerr << "client = " << c << endl;
 
         MyTimerHandler *tp = new MyTimerHandler(c);
-        clusterlib::TimerId id =
-            c->registerTimer(tp, 3000, (clusterlib::ClientData) f);
+        TimerId id =
+            c->registerTimer(tp, 3000, (ClientData) f);
         cerr << "Registered timer id: "
              << id
              << " with handler: "
@@ -62,10 +63,10 @@ main(int ac, char **av)
              << " and client data: "
              << f
              << " for 3000msec from now, now: "
-             << clusterlib::TimerService::getCurrentTimeMsecs()
+             << TimerService::getCurrentTimeMsecs()
              << endl;        
-        clusterlib::TimerId id1 =
-            c->registerTimer(tp, 2000, (clusterlib::ClientData) c);
+        TimerId id1 =
+            c->registerTimer(tp, 2000, (ClientData) c);
         cerr << "Registered timer id: "
              << id1
              << " with handler: "
@@ -73,41 +74,42 @@ main(int ac, char **av)
              << " and client data: "
              << c
              << " for 2000msec from now, now: "
-             << clusterlib::TimerService::getCurrentTimeMsecs()
+             << TimerService::getCurrentTimeMsecs()
              << endl;        
         
         sleep(3);
 
         cerr << "After sleep in main thread." << endl;
 
-        clusterlib::Application *app = 
-            c->getRoot()->getApplication("app", true);
+        Application *app = 
+            c->getRoot()->getApplication("app", CREATE_IF_NOT_FOUND);
         cerr << "app = " << app << endl;
-        clusterlib::Group *grp = app->getGroup("grp", true);
+        Group *grp = app->getGroup("grp", CREATE_IF_NOT_FOUND);
 
-        app = c->getRoot()->getApplication("foo", true);
+        app = c->getRoot()->getApplication("foo", CREATE_IF_NOT_FOUND);
         cerr << "app = " << app << endl;
 
-        grp = app->getGroup("bar", true);
-        clusterlib::Node *node = grp->getNode("zop", true);
-        clusterlib::DataDistribution *dst = app->getDataDistribution("dist",
-                                                                     true);
+        grp = app->getGroup("bar", CREATE_IF_NOT_FOUND);
+        Node *node = grp->getNode("zop", CREATE_IF_NOT_FOUND);
+        DataDistribution *dst = app->getDataDistribution(
+            "dist",
+            CREATE_IF_NOT_FOUND);
 
-        clusterlib::Application *app1 = dst->getMyApplication();
+        Application *app1 = dst->getMyApplication();
         if (app != app1) {
             throw
-                clusterlib::Exception("app->dist->app non-equivalence");
+                Exception("app->dist->app non-equivalence");
         }
-        clusterlib::Group *grp1 = node->getMyGroup();
+        Group *grp1 = node->getMyGroup();
         if (grp != grp1) {
             throw
-                clusterlib::Exception(
+                Exception(
 		    "group->node->group non-equivalence");
         }
         app1 = grp->getMyApplication();
         if (app != app1) {
             throw
-               clusterlib::Exception("app->group->app non-equivalence");
+               Exception("app->group->app non-equivalence");
         }
 
         delete f;

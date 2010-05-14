@@ -26,6 +26,7 @@ struct NameRef {
      * Number of references on this lockOwner
      */
     int refCount;
+
     /*
      * Who actually has the lock
      */
@@ -33,7 +34,8 @@ struct NameRef {
 };
 
 /**
- * Interface that must be derived by specific notifyable objects.
+ * Interface nad partial implementation that must be derived by
+ * specific Notifyable objects.
  */
 class NotifyableImpl
     : public virtual Notifyable
@@ -54,12 +56,6 @@ class NotifyableImpl
         return m_key; 
     }
 
-#if TO_BE_IMPLEMENTED_IF_NECESSARY
-    virtual std::string getMyApplicationName() const;
-
-    virtual std::string getMyGroupName() const;
-#endif
-
     virtual Notifyable *getMyParent() const;
     
     virtual NotifyableList getMyChildren();
@@ -72,13 +68,14 @@ class NotifyableImpl
     
     virtual NameList getPropertyListNames();
 
-    virtual PropertyList *getPropertyList(const std::string &name,
-                                          bool create = false);
+    virtual PropertyList *getPropertyList(
+        const std::string &name,
+        AccessType = LOAD_FROM_REPOSITORY);
 
     virtual NameList getQueueNames();
 
     virtual Queue *getQueue(const std::string &name,
-                            bool create = false);
+                            AccessType accessType = LOAD_FROM_REPOSITORY);
 
     virtual int32_t getRefCount()
     {
@@ -97,9 +94,27 @@ class NotifyableImpl
     
     virtual bool hasLock();
     
-    virtual NameList getLockBids(bool children = false);
+    virtual bool getLockInfo(std::string *id = NULL, 
+                             int64_t *msecs = NULL);
+
+    virtual NameList getLockBids(bool children);
+
+    virtual void acquireOwnership();
+
+    virtual bool acquireOwnershipWaitMsecs(int64_t msecTimeout);
+
+    virtual void releaseOwnership();
+
+    virtual bool hasOwnership();
+
+    virtual bool getOwnershipInfo(std::string *id = NULL, 
+                                  int64_t *msecs = NULL);
 
     virtual void remove(bool removeChildren = false);
+
+    virtual CachedState &cachedCurrentState();
+
+    virtual CachedState &cachedDesiredState();
 
     /*
      * Internal functions not used by outside clients
@@ -118,6 +133,12 @@ class NotifyableImpl
      * prevents the parent cached representation from being removed
      * from memory which this notifyable is in the cache.  Upon
      * destruction, release that reference to the parent.
+     *
+     * @param fp pointer to the FactoryOps
+     * @param key the key of this notifyable
+     * @param name the name of this notifyable
+     * @param parent the parent of this notifyable or NULL if this is the Root
+     * @param registeredName the name that this notifyable is registered under 
      */
     NotifyableImpl(FactoryOps *fp,
                    const std::string &key,
@@ -128,7 +149,10 @@ class NotifyableImpl
           m_name(name),
           mp_parent(parent),
           m_state(Notifyable::READY),
-          m_refCount(1) {}
+          m_refCount(1),
+          m_safeNotifyableMap(NULL),
+          m_cachedCurrentState(this, CachedStateImpl::CURRENT_STATE),
+          m_cachedDesiredState(this, CachedStateImpl::DESIRED_STATE) {}
 
     /**
      * Get the associated factory object.
@@ -142,6 +166,23 @@ class NotifyableImpl
     virtual ~NotifyableImpl() {}
 
     /**
+     * Get the children notifyables specific to this subclassed
+     * NotifyableImpl.  The children of NotifyableImpl (i.e. Queue and
+     * PropertyList) are not included here.  This is a snapshot and
+     * could change.
+     *
+     * @return A list of Notifyable * that are children specific to 
+     *         this Notifyable
+     */
+    virtual NotifyableList getChildrenNotifyables() = 0;
+
+    /**
+     * Calls the local initializeCachedRepresentation() and also
+     * initializes Notifyable cached data as well.
+     */
+    void initialize();
+
+    /**
      * Initialize the cached representation when the object is loaded
      * into clusterlib.  All subclass specific handlers must be setup
      * in this function.  The implementation must be provided by
@@ -152,7 +193,7 @@ class NotifyableImpl
     /**
      * Take all actions to remove all backend storage (i.e. Zookeeper data)
      */
-    virtual void removeRepositoryEntries() = 0;
+    virtual void removeRepositoryEntries();
 
     /**
      * Get the key of the distributed lock owner
@@ -250,11 +291,54 @@ class NotifyableImpl
      */
     void incrRefCount();
 
+    /**                                                                        
+     * Set the SafeNotifyableMap that contains this object.
+     *
+     * @param safeNotifyableMap The SafeNotifyableMap that has this object.
+     */
+    void setSafeNotifyableMap(SafeNotifyableMap &safeNotifyableMap)
+    {
+        Locker l(&m_syncLock);
+        m_safeNotifyableMap = &safeNotifyableMap;
+    }
+
+    /**                                                                        
+     * Get the SafeNotifyableMap that contains this object.
+     *
+     * @return a reference to the map that contains this object
+     */
+    SafeNotifyableMap *getSafeNotifyableMap()
+    {
+        Locker l(&m_syncLock);
+        return m_safeNotifyableMap;
+    }
+
+    /**
+     * Create the current state JSONValue key
+     *
+     * @param notifyableKey The notifyable key.
+     * @return the generated current state JSONValue key
+     */
+    static std::string createCurrentStateJSONValueKey(
+        const std::string &notifyableKey);
+
+    /**
+     * Create the state JSONValue key
+     *
+     * @param notifyableKey The notifyable key.
+     * @return the generated current state JSONValue key
+     */
+    static std::string createStateJSONArrayKey(
+        const std::string &notifyableKey, 
+        CachedStateImpl::StateType stateType);
+
   private:
     /*
      * Default constructor.
      */
     NotifyableImpl() 
+        : m_cachedCurrentState(this, CachedStateImpl::CURRENT_STATE),
+          m_cachedDesiredState(this, CachedStateImpl::DESIRED_STATE)
     {
         throw InvalidMethodException("Someone called the NotifyableImpl "
                                      "default constructor!");
@@ -282,18 +366,18 @@ class NotifyableImpl
     Mutex *getRefCountLock();
 
   private:
-    /*
+    /**
      * The associated factory delegate.
      */
     FactoryOps *mp_f;
 
-    /*
+    /**
      * The key to pass to the factory delegate for
      * operations on the represented cluster node.
      */
     const std::string m_key;
 
-    /*
+    /**
      * The name of the Notifyable.
      */
     const std::string m_name;
@@ -310,8 +394,8 @@ class NotifyableImpl
     State m_state;
     
     /** 
-     * All lock info (locks, their owners and their owner's reference counts are
-     * stored here.
+     * All lock info (locks, their owners and their owner's reference
+     * counts are stored here.
      */
     std::map<std::string, NameRef> m_distLockMap;
 
@@ -326,6 +410,12 @@ class NotifyableImpl
      */
     int32_t m_refCount;
 
+    /**                 
+     * This is the map that contains this object (and these types of
+     * objects).
+     */
+    SafeNotifyableMap *m_safeNotifyableMap;
+
     /**
      * Lock to synchronize the Notifyable with the clusterlib event
      * processing thread.  It is mutable since it is used by
@@ -337,6 +427,16 @@ class NotifyableImpl
      * Lock to synchronize all clusterlib distributed locks.
      */
     Mutex m_syncDistLock;
+
+    /**
+     * The cached current state
+     */
+    CachedStateImpl m_cachedCurrentState;
+
+    /**
+     * The cached desired state
+     */
+    CachedStateImpl m_cachedDesiredState;
 };
 
 };	/* End of 'namespace clusterlib' */

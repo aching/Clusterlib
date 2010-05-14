@@ -36,20 +36,39 @@ class MyUserEventHandler
              << ", client data "
              << getClientData()
              << endl;
+        Locker l(&m_lock);
         m_counter++;
     }
 
-    void reset() { m_counter = 0; }
-    int32_t getCounter() { return m_counter; }
+    void reset() 
+    {
+        Locker l(&m_lock);
+        m_counter = 0; 
+    }
+    int32_t getCounter() 
+    { 
+        Locker l(&m_lock);
+        return m_counter; 
+    }
 
     bool meetsCondition(Event e)
     {
+        Locker l(&m_lock);
         return (m_counter == m_targetCounter) ? true : false;
     }
 
-    void setTargetCounter(int32_t t) { m_targetCounter = t; }
+    void setTargetCounter(int32_t t) 
+    {
+        Locker l(&m_lock);
+        m_targetCounter = t;
+    }
 
   private:
+    /**
+     * Coordinating mutex
+     */
+    Mutex m_lock;
+
     /*
      * Counter for how many times the handler was
      * called.
@@ -60,48 +79,6 @@ class MyUserEventHandler
      * How many calls is the target (expected)?
      */
     int32_t m_targetCounter;
-};
-
-/*
- * Health checker.
- */
-class UEHealthChecker :
-    public HealthChecker
-{
-  public:
-    /*
-     * Constructor.
-     */
-    UEHealthChecker(Node *np, Client *cp)
-        : HealthChecker(),
-          mp_np(np),
-          mp_cp(cp) 
-    {
-        setMsecsPerCheckIfHealthy(500);
-        setMsecsPerCheckIfUnhealthy(500);
-    }
-
-    /*
-     * Check health and return a health report.
-     */
-    virtual HealthReport checkHealth()
-    {
-        HealthReport hr(HealthReport::HS_HEALTHY,
-                        mp_np->getName() + " is healthy!");
-
-        return hr;
-    }
-
-  private:
-    /*
-     * The node for which we're reporting health.
-     */
-    Node *mp_np;
-
-    /*
-     * The client for which we're reporting health.
-     */
-    Client *mp_cp;    
 };
 
 /*
@@ -128,8 +105,7 @@ class ClusterlibUserEvents
           _client0(NULL),
           _app0(NULL),
           _grp0(NULL),
-          _nod0(NULL),
-          _dist0(NULL),
+          _propList0(NULL),
           _zk(NULL)
     {
     }
@@ -145,14 +121,13 @@ class ClusterlibUserEvents
         MPI_CPPUNIT_ASSERT(_zk != NULL);
 	_client0 = _factory->createClient();
 	MPI_CPPUNIT_ASSERT(_client0 != NULL);
-        _app0 = _client0->getRoot()->getApplication(appName, true);
+        _app0 = _client0->getRoot()->getApplication(
+            appName, CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(_app0 != NULL);
-        _grp0 = _app0->getGroup("bar-group", true);
+        _grp0 = _app0->getGroup("bar-group", CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(_grp0 != NULL);
-        _nod0 = _grp0->getNode("nod3", true);
-        MPI_CPPUNIT_ASSERT(_nod0 != NULL);
-        _dist0 = _grp0->getDataDistribution("dist1", true);
-        MPI_CPPUNIT_ASSERT(_dist0 != NULL);
+        _propList0 = _grp0->getPropertyList("propList0", CREATE_IF_NOT_FOUND);
+        MPI_CPPUNIT_ASSERT(_propList0 != NULL);
     }
 
     /* Runs after each test */
@@ -170,8 +145,7 @@ class ClusterlibUserEvents
         _client0 = NULL;
         _app0 = NULL;
         _grp0 = NULL;
-        _nod0 = NULL;
-        _dist0 = NULL;
+        _propList0 = NULL;
     }
 
     /*
@@ -189,9 +163,10 @@ class ClusterlibUserEvents
         /*
          * Register & unregister once.
          */
-        MyUserEventHandler *uehp = new MyUserEventHandler(_nod0,
-                                                          EN_CONNECTEDCHANGE,
-                                                          (void *) 0x3333);
+        MyUserEventHandler *uehp = new MyUserEventHandler(
+            _propList0,
+            EN_PROPLISTVALUESCHANGE,
+            (void *) 0x3333);
         _client0->registerHandler(uehp);
 
         bool deregged = _client0->cancelHandler(uehp);
@@ -242,10 +217,9 @@ class ClusterlibUserEvents
              * My handler.
              */
             MyUserEventHandler *uehp =
-                new MyUserEventHandler(_nod0,
-                                       EN_CONNECTEDCHANGE,
+                new MyUserEventHandler(_propList0,
+                                       EN_PROPLISTVALUESCHANGE,
                                        (void *) 0x3333);
-            UEHealthChecker *hcp = new UEHealthChecker(_nod0, _client0);
 
             /*
              * Register 3 times.
@@ -257,12 +231,11 @@ class ClusterlibUserEvents
             _client0->registerHandler(uehp);
 
             /*
-             * Create a health checker, create the "connected" znode,
-             * and in the process, cause the EN_CONNECTED event
-             * to happen on the node.
+             * Writes data unconditionally to the property list and
+             * causes the EN_PROPLISTVALUESCHANGE event to happen.
              */
-            _nod0->initializeConnection(true);
-            _nod0->registerHealthChecker(hcp);
+            _propList0->cachedKeyValues().set("name", "test");
+            _propList0->cachedKeyValues().publish(true);
 
             /*
              * Wait for event propagation.
@@ -279,10 +252,11 @@ class ClusterlibUserEvents
             uehp->setTargetCounter(6);
 
             /*
-             * Unregister the handler, we should get 3 more event
-             * deliveries.
+             * Writes data unconditionally to the property list and
+             * causes the EN_PROPLISTVALUESCHANGE event to happen.
              */
-            _nod0->unregisterHealthChecker();
+            _propList0->cachedKeyValues().set("name", "test");
+            _propList0->cachedKeyValues().publish(true);
 
             /*
              * Wait for event propagation.
@@ -304,7 +278,6 @@ class ClusterlibUserEvents
              * Clean up.
              */
             delete uehp;
-            delete hcp;
         }
     }
     void testUserEvents3()
@@ -325,11 +298,10 @@ class ClusterlibUserEvents
              * My handler.
              */
             MyUserEventHandler *uehp =
-                new MyUserEventHandler(_nod0,
-                                       EN_CONNECTEDCHANGE,
+                new MyUserEventHandler(_propList0,
+                                       EN_PROPLISTVALUESCHANGE,
                                        (void *) 0x3333);
-            UEHealthChecker *hcp = new UEHealthChecker(_nod0, _client0);
-            
+
             /*
              * Register 3 times.
              */
@@ -339,14 +311,12 @@ class ClusterlibUserEvents
             _client0->registerHandler(uehp);
             _client0->registerHandler(uehp);
             
-            
             /*
-             * Create a health checker, create the "connected" znode,
-             * and in the process, cause the EN_CONNECTED event
-             * to happen on the node.
+             * Writes data unconditionally to the property list and
+             * causes the EN_PROPLISTVALUESCHANGE event to happen.
              */
-            _nod0->initializeConnection(true);
-            _nod0->registerHealthChecker(hcp);
+            _propList0->cachedKeyValues().set("name", "test");
+            _propList0->cachedKeyValues().publish(true);
             
             /*
              * Wait for event propagation.
@@ -367,12 +337,13 @@ class ClusterlibUserEvents
             bool cancelled = _client0->cancelHandler(uehp);
             MPI_CPPUNIT_ASSERT(cancelled == true);
             uehp->setTargetCounter(5);
-            
+
             /*
-             * Unregister the handler, we should get 2 more event
-             * deliveries.
+             * Writes data unconditionally to the property list and
+             * causes the EN_PROPLISTVALUESCHANGE event to happen.
              */
-            _nod0->unregisterHealthChecker();
+            _propList0->cachedKeyValues().set("name", "test");
+            _propList0->cachedKeyValues().publish(true);
             
             /*
              * Wait for event propagation.
@@ -390,7 +361,6 @@ class ClusterlibUserEvents
              */
             uehp->releaseLock();
             delete uehp;
-            delete hcp;
         }
     }
     void testUserEvents4()
@@ -417,30 +387,13 @@ class ClusterlibUserEvents
 
         MPI_CPPUNIT_ASSERT(ueh.getCounter() == 1);
     }
-    void testUserEvents5()
-    {
-        initializeAndBarrierMPITest(-1, 
-                                    true, 
-                                    _factory, 
-                                    true, 
-                                    "testUserEvents5");
-    }
-    void testUserEvents6()
-    {
-        initializeAndBarrierMPITest(-1, 
-                                    true, 
-                                    _factory, 
-                                    true, 
-                                    "testUserEvents6");
-    }
 
   private:
     Factory *_factory;
     Client *_client0;
     Application *_app0;
     Group *_grp0;
-    Node *_nod0;
-    DataDistribution *_dist0;
+    PropertyList *_propList0;
     zk::ZooKeeperAdapter *_zk;
 };
 

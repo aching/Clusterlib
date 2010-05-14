@@ -24,28 +24,23 @@ class CachedObjectChangeHandlers
      * Define an enum for the change handlers.
      */
     enum CachedObjectChange {
-        NOTIFYABLE_STATE_CHANGE,
+        NOTIFYABLE_REMOVED_CHANGE,
+        CURRENT_STATE_CHANGE,
+        DESIRED_STATE_CHANGE,
         APPLICATIONS_CHANGE,
         GROUPS_CHANGE,
         DATADISTRIBUTIONS_CHANGE,
         NODES_CHANGE,
         PROCESSSLOTS_CHANGE,
         PROCESSSLOTS_USAGE_CHANGE,
-        PROCESSSLOT_PORTVEC_CHANGE,
-        PROCESSSLOT_EXECARGS_CHANGE,
-        PROCESSSLOT_RUNNING_EXECARGS_CHANGE,
-        PROCESSSLOT_PID_CHANGE,
-        PROCESSSLOT_DESIRED_STATE_CHANGE,
-        PROCESSSLOT_CURRENT_STATE_CHANGE,
-        PROCESSSLOT_RESERVATION_CHANGE,
+        PROCESSSLOT_PROCESSINFO_CHANGE,
         PROPERTYLISTS_CHANGE,
         PROPERTYLIST_VALUES_CHANGE,
         SHARDS_CHANGE,
-        NODE_CLIENT_STATE_CHANGE,
-        NODE_MASTER_SET_STATE_CHANGE,
-        NODE_CONNECTION_CHANGE,
+        NODE_PROCESS_SLOT_INFO_CHANGE,
         SYNCHRONIZE_CHANGE,
         PREC_LOCK_NODE_EXISTS_CHANGE,
+        QUEUES_CHANGE,
         QUEUE_CHILD_CHANGE
     };
 
@@ -64,16 +59,40 @@ class CachedObjectChangeHandlers
     Mutex *getLock() { return &m_mutex; }
 
     /**
-     * Handle state changes on notifyables.
+     * Handle notifyable removed change.
      *
      * @param ntp the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleNotifyableStateChange(NotifyableImpl *ntp,
-                                      int32_t etype,
-                                      const std::string &key);
+    Event handleNotifyableRemovedChange(NotifyableImpl *ntp,
+                                        int32_t etype,
+                                        const std::string &key);
+
+    /**
+     * Handle current state changes on notifyables.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
+     */
+    Event handleCurrentStateChange(NotifyableImpl *ntp,
+                                   int32_t etype,
+                                   const std::string &key);
+
+    /**
+     * Handle desired state changes on notifyables.
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
+     */
+    Event handleDesiredStateChange(NotifyableImpl *ntp,
+                                   int32_t etype,
+                                   const std::string &key);
 
     /**
      * Handle changes in the set of applications.
@@ -157,82 +176,9 @@ class CachedObjectChangeHandlers
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleProcessSlotPortVecChange(NotifyableImpl *ntp,
+    Event handleProcessSlotProcessInfoChange(NotifyableImpl *ntp,
                                          int32_t etype,
                                          const std::string &key);
-
-    /**
-     * Handle changes in the executable arguments of a process slot.
-     *
-     * @param ntp the notifyable pointer
-     * @param etype the event mask on this notifyable
-     * @param key the actual key that the event was on
-     * @return the user-level event that will be processed by the user.
-     */
-    Event handleProcessSlotExecArgsChange(NotifyableImpl *ntp,
-                                          int32_t etype,
-                                          const std::string &key);
-
-    /**
-     * Handle changes in the running executable arguments of a process
-     * slot.
-     *
-     * @param ntp the notifyable pointer
-     * @param etype the event mask on this notifyable
-     * @param key the actual key that the event was on
-     * @return the user-level event that will be processed by the user.
-     */
-    Event handleProcessSlotRunningExecArgsChange(NotifyableImpl *ntp,
-                                                 int32_t etype,
-                                                 const std::string &key);
-
-    /**
-     * Handle changes in the PID of a process slot.
-     *
-     * @param ntp the notifyable pointer
-     * @param etype the event mask on this notifyable
-     * @param key the actual key that the event was on
-     * @return the user-level event that will be processed by the user.
-     */
-    Event handleProcessSlotPIDChange(NotifyableImpl *ntp,
-                                     int32_t etype,
-                                     const std::string &key);
-
-    /**
-     * Handle changes in the desired state of a process slot.
-     *
-     * @param ntp the notifyable pointer
-     * @param etype the event mask on this notifyable
-     * @param key the actual key that the event was on
-     * @return the user-level event that will be processed by the user.
-     */
-    Event handleProcessSlotDesiredStateChange(NotifyableImpl *ntp,
-                                              int32_t etype,
-                                              const std::string &key);
-
-    /**
-     * Handle changes in the current state of a process slot.
-     *
-     * @param ntp the notifyable pointer
-     * @param etype the event mask on this notifyable
-     * @param key the actual key that the event was on
-     * @return the user-level event that will be processed by the user.
-     */
-    Event handleProcessSlotCurrentStateChange(NotifyableImpl *ntp,
-                                              int32_t etype,
-                                              const std::string &key);
-
-    /**
-     * Handle changes in the reservation of a process slot.
-     *
-     * @param ntp the notifyable pointer
-     * @param etype the event mask on this notifyable
-     * @param key the actual key that the event was on
-     * @return the user-level event that will be processed by the user.
-     */
-    Event handleProcessSlotReservationChange(NotifyableImpl *ntp,
-                                             int32_t etype,
-                                             const std::string &key);
 
     /**
      * Handle changes in the set of property lists in a notifyable.
@@ -271,7 +217,7 @@ class CachedObjectChangeHandlers
                                              const std::string &key);
 
     /**
-     * Handle changes in client-reported state for
+     * Handle a change in the process slot information for
      * a node.
      *
      * @param ntp the notifyable pointer
@@ -279,35 +225,9 @@ class CachedObjectChangeHandlers
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleClientStateChange(NotifyableImpl *ntp,
-                                  int32_t etype,
-                                  const std::string &key);
-
-    /**
-     * Handle changes in master-set desired state
-     * for a node.
-     *
-     * @param ntp the notifyable pointer
-     * @param etype the event mask on this notifyable
-     * @param key the actual key that the event was on
-     * @return the user-level event that will be processed by the user.
-     */
-    Event handleMasterSetStateChange(NotifyableImpl *ntp,
-                                     int32_t etype,
-                                     const std::string &key);
-
-    /**
-     * Handle a change in the connected state for
-     * a node.
-     *
-     * @param ntp the notifyable pointer
-     * @param etype the event mask on this notifyable
-     * @param key the actual key that the event was on
-     * @return the user-level event that will be processed by the user.
-     */
-    Event handleNodeConnectionChange(NotifyableImpl *ntp,
-                                     int32_t etype,
-                                     const std::string &key);
+    Event handleNodeProcessSlotInfoChange(NotifyableImpl *ntp,
+                                          int32_t etype,
+                                          const std::string &key);
 
     /**
      * Handle changes in synchronization of a zookeeper key.
@@ -332,6 +252,18 @@ class CachedObjectChangeHandlers
     Event handlePrecLockNodeExistsChange(NotifyableImpl *ntp,
                                          int32_t etype,
                                          const std::string &key);
+
+    /**
+     * Handle changes in the set of queues in a notifyable
+     *
+     * @param ntp the notifyable pointer
+     * @param etype the event mask on this notifyable
+     * @param key the actual key that the event was on
+     * @return the user-level event that will be processed by the user.
+     */
+    Event handleQueuesChange(NotifyableImpl *ntp,
+                             int32_t etype,
+                             const std::string &key);
 
     /**
      * Handle child change of a queue parent.
@@ -392,76 +324,61 @@ class CachedObjectChangeHandlers
      */
     CachedObjectChangeHandlers(FactoryOps *factoryOps) 
         : mp_ops(factoryOps),
-        m_notifyableStateChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleNotifyableStateChange),
-        m_propertyListsChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handlePropertyListsChange),
-        m_propertyListValueChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handlePropertyListValueChange),
-        m_applicationsChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleApplicationsChange),
-        m_groupsChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleGroupsChange),
-        m_dataDistributionsChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleDataDistributionsChange),
-        m_dataDistributionShardsChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleDataDistributionShardsChange),
-        m_nodesChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleNodesChange),
-        m_processSlotsChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleProcessSlotsChange),
-        m_processSlotsUsageChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleProcessSlotsUsageChange),
-        m_processSlotPortVecChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleProcessSlotPortVecChange),
-        m_processSlotExecArgsChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleProcessSlotExecArgsChange),
-        m_processSlotRunningExecArgsChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleProcessSlotRunningExecArgsChange),
-        m_processSlotPIDChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleProcessSlotPIDChange),
-        m_processSlotDesiredStateChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleProcessSlotDesiredStateChange),
-        m_processSlotCurrentStateChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleProcessSlotCurrentStateChange),
-        m_processSlotReservationChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleProcessSlotReservationChange),
-        m_nodeClientStateChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleClientStateChange),
-        m_nodeMasterSetStateChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleMasterSetStateChange),
-        m_nodeConnectionChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleNodeConnectionChange),
-        m_synchronizeChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleSynchronizeChange),
-        m_precLockNodeExistsChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handlePrecLockNodeExistsChange),
-        m_queueChildChangeHandler(
-            this,
-            &CachedObjectChangeHandlers::handleQueueChildChange) {}
-
+          m_notifyableRemovedChangeHandler(
+              this,
+              &CachedObjectChangeHandlers::handleNotifyableRemovedChange),
+          m_currentStateChangeHandler(
+              this,
+              &CachedObjectChangeHandlers::handleCurrentStateChange),
+          m_desiredStateChangeHandler(
+              this,
+              &CachedObjectChangeHandlers::handleDesiredStateChange),
+          m_propertyListsChangeHandler(
+              this,
+              &CachedObjectChangeHandlers::handlePropertyListsChange),
+          m_propertyListValueChangeHandler(
+              this,
+              &CachedObjectChangeHandlers::handlePropertyListValueChange),
+          m_applicationsChangeHandler(
+              this,
+              &CachedObjectChangeHandlers::handleApplicationsChange),
+          m_groupsChangeHandler(
+              this,
+              &CachedObjectChangeHandlers::handleGroupsChange),
+          m_dataDistributionsChangeHandler(
+              this,
+              &CachedObjectChangeHandlers::handleDataDistributionsChange),
+          m_dataDistributionShardsChangeHandler(
+              this,
+              &CachedObjectChangeHandlers::handleDataDistributionShardsChange),
+          m_nodesChangeHandler(
+              this,
+              &CachedObjectChangeHandlers::handleNodesChange),
+          m_processSlotsChangeHandler(
+              this,
+              &CachedObjectChangeHandlers::handleProcessSlotsChange),
+          m_processSlotsUsageChangeHandler(
+              this,
+              &CachedObjectChangeHandlers::handleProcessSlotsUsageChange),
+          m_processSlotProcessInfoChangeHandler(
+              this,
+            &CachedObjectChangeHandlers::handleProcessSlotProcessInfoChange),
+          m_nodeProcessSlotInfoChangeHandler(
+              this,
+              &CachedObjectChangeHandlers::handleNodeProcessSlotInfoChange),
+          m_synchronizeChangeHandler(
+              this,
+              &CachedObjectChangeHandlers::handleSynchronizeChange),
+          m_precLockNodeExistsChangeHandler(
+              this,
+              &CachedObjectChangeHandlers::handlePrecLockNodeExistsChange),
+          m_queuesChangeHandler(
+              this,
+              &CachedObjectChangeHandlers::handleQueuesChange),
+          m_queueChildChangeHandler(
+              this,
+              &CachedObjectChangeHandlers::handleQueueChildChange) {}
+    
   private:
     /**
      * Private access to mp_ops
@@ -490,7 +407,9 @@ class CachedObjectChangeHandlers
     /*
      * Handlers for event delivery.
      */
-    CachedObjectEventHandler m_notifyableStateChangeHandler;
+    CachedObjectEventHandler m_notifyableRemovedChangeHandler;
+    CachedObjectEventHandler m_currentStateChangeHandler;
+    CachedObjectEventHandler m_desiredStateChangeHandler;
     CachedObjectEventHandler m_propertyListsChangeHandler;
     CachedObjectEventHandler m_propertyListValueChangeHandler;
     CachedObjectEventHandler m_applicationsChangeHandler;
@@ -499,21 +418,12 @@ class CachedObjectChangeHandlers
     CachedObjectEventHandler m_dataDistributionShardsChangeHandler;
     CachedObjectEventHandler m_nodesChangeHandler;
     CachedObjectEventHandler m_processSlotsChangeHandler;
-
     CachedObjectEventHandler m_processSlotsUsageChangeHandler;
-    CachedObjectEventHandler m_processSlotPortVecChangeHandler;
-    CachedObjectEventHandler m_processSlotExecArgsChangeHandler;
-    CachedObjectEventHandler m_processSlotRunningExecArgsChangeHandler;
-    CachedObjectEventHandler m_processSlotPIDChangeHandler;
-    CachedObjectEventHandler m_processSlotDesiredStateChangeHandler;
-    CachedObjectEventHandler m_processSlotCurrentStateChangeHandler;
-    CachedObjectEventHandler m_processSlotReservationChangeHandler;
-
-    CachedObjectEventHandler m_nodeClientStateChangeHandler;
-    CachedObjectEventHandler m_nodeMasterSetStateChangeHandler;
-    CachedObjectEventHandler m_nodeConnectionChangeHandler;
+    CachedObjectEventHandler m_processSlotProcessInfoChangeHandler;
+    CachedObjectEventHandler m_nodeProcessSlotInfoChangeHandler;
     CachedObjectEventHandler m_synchronizeChangeHandler;
     CachedObjectEventHandler m_precLockNodeExistsChangeHandler;
+    CachedObjectEventHandler m_queuesChangeHandler;
     CachedObjectEventHandler m_queueChildChangeHandler;
 };
 

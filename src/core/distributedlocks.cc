@@ -1,6 +1,7 @@
 #include "clusterlibinternal.h"
 
 using namespace std;
+using namespace json;
 
 namespace clusterlib {
 
@@ -119,9 +120,15 @@ DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
     int64_t myBid = -1;
     string myBidThread;
     string createdPath;
+
+    /*
+     * Put the time of trying to acquire the lock into the data
+     */
+    JSONValue::JSONInteger jsonInteger = TimerService::getCurrentTimeMsecs();
+    
     SAFE_CALL_ZK((myBid = getOps()->getRepository()->createSequence(
                       lockNode, 
-                      "", 
+                      JSONCodec::encode(jsonInteger),
                       ZOO_EPHEMERAL, 
                       false, 
                       createdPath)),
@@ -151,7 +158,7 @@ DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
         NameList childList;
         SAFE_CALL_ZK(getOps()->getRepository()->getNodeChildren(lockKey,
                                                                 childList),
-                     "Getting bids for group %s failed: %s",
+                     "Getting bids for lock %s failed: %s",
                      lockKey.c_str(),
                      false,
                      true);
@@ -171,7 +178,7 @@ DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
             LOG_DEBUG(CL_LOG, 
                       "acquireWaitUsecs: thread %" PRIu32 ", this %p "
                       "got bid %s with bid %" PRId64, 
-                      static_cast<uint32_t>(pthread_self()),
+                      ProcessThreadService::getTid(),
                       this,
                       childListIt->c_str(),
                       tmpBid);
@@ -230,11 +237,11 @@ DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
 
             LOG_DEBUG(CL_LOG,
                       "acquireWaitUsecs: Waiting for lowerBid %" PRId64 
-                      " (from %s) for mybid %" PRId64 "for thread %" PRIu32,
+                      " (from %s) for mybid %" PRId64 " for thread %" PRIu32,
                       lowerBid,
                       lowerBidThread.c_str(),
                       myBid,
-                      static_cast<uint32_t>(pthread_self()));
+                      ProcessThreadService::getTid());
 
             /*
              * No children indicates that they have been removed.  No
@@ -437,7 +444,7 @@ DistributedLocks::hasLock(Notifyable *ntp, const string &lockName)
     
     NotifyableImpl *castedNtp = dynamic_cast<NotifyableImpl *>(ntp);
     if (castedNtp == NULL) {
-        throw InvalidArgumentsException("release: Notifyable is NULL");
+        throw InvalidArgumentsException("hasLock: Notifyable is NULL");
     }
 
     /* 
@@ -465,6 +472,55 @@ DistributedLocks::hasLock(Notifyable *ntp, const string &lockName)
     }
 
     return false;
+}
+
+bool
+DistributedLocks::getInfo(
+    Notifyable *ntp, const string &lockName, string *id, int64_t *msecs)
+{
+    TRACE(CL_LOG, "getInfo");
+
+    NotifyableImpl *castedNtp = dynamic_cast<NotifyableImpl *>(ntp);
+    if (castedNtp == NULL) {
+        throw InvalidArgumentsException("release: Notifyable is NULL");
+    }
+
+    string lockKey = NotifyableKeyManipulator::createLockKey(
+        castedNtp->getKey(),
+        lockName);
+
+    NameList childList;
+    SAFE_CALL_ZK(getOps()->getRepository()->getNodeChildren(lockKey,
+                                                            childList),
+                 "Getting bids for lock %s failed: %s",
+                 lockKey.c_str(),
+                 false,
+                 true);
+    if (childList.empty()) {
+        return false;
+    }
+
+    if (id != NULL) {
+        *id = *(childList.begin());
+    }
+    if (msecs != NULL) {
+        bool exists = false;
+        string encodedJsonInteger;
+        SAFE_CALL_ZK(
+            (exists = getOps()->getRepository()->getNodeData(
+                *(childList.begin()),
+                encodedJsonInteger)),
+            "Checking for lock node %s failed: %s",
+            childList.begin()->c_str(),
+            false,
+            true);
+        if (exists) {
+            JSONValue jsonValue = JSONCodec::decode(encodedJsonInteger);
+            *msecs = jsonValue.get<JSONValue::JSONInteger>();
+        }
+        return exists;
+    }
+    return true;
 }
 
 };

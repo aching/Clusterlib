@@ -23,21 +23,6 @@ class Group
 {
   public:
     /**
-     * Become the leader of this group.
-     */
-    virtual void becomeLeader() = 0;
-
-    /**
-     * Relinquish leadership of this group.
-     */
-    virtual void abdicateLeader() = 0;
-
-    /**
-     * Check if I am the leader of this group
-     */
-    virtual bool isLeader() = 0;
-
-    /**
      * Get a list of names of all nodes.
      * 
      * @return a copy of the list of all nodes
@@ -54,7 +39,7 @@ class Group
      * @throw Exception only if tried to create and couldn't create
      */
     virtual Node *getNode(const std::string &name, 
-                          bool create = false) = 0;
+                          AccessType accessType = LOAD_FROM_REPOSITORY) = 0;
 
     /**
      * Get a list of names of all groups.
@@ -73,8 +58,7 @@ class Group
      * @throw Exception only if tried to create and couldn't create
      */
     virtual Group *getGroup(const std::string &name, 
-                            bool create = false) = 0;
-
+                            AccessType accessType = LOAD_FROM_REPOSITORY) = 0;
 
     /**
      * Get a list of names of all data distributions.
@@ -93,7 +77,7 @@ class Group
      */
     virtual DataDistribution *getDataDistribution(
         const std::string &name,
-        bool create = false) = 0;
+        AccessType accessType = LOAD_FROM_REPOSITORY) = 0;
 
     /*
      * Destructor.

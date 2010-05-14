@@ -32,11 +32,12 @@ class ClusterlibReleaseRef : public MPITestFixture {
 	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
 	MPI_CPPUNIT_ASSERT(_client0 != NULL);
-	_app0 = _client0->getRoot()->getApplication(appName, true);
+	_app0 = _client0->getRoot()->getApplication(
+            appName, CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_app0 != NULL);
-	_group0 = _app0->getGroup("servers", true);
+	_group0 = _app0->getGroup("servers", CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_group0 != NULL);
-	_node0 = _group0->getNode("server-0", true);
+	_node0 = _group0->getNode("server-0", CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_node0 != NULL);
     }
 

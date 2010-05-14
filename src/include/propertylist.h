@@ -21,105 +21,20 @@ namespace clusterlib
 class PropertyList
     : public virtual Notifyable
 {
-    public:
+  public:
     /**
-     * \brief Get the keys in the property list.
-     * 
-     * This function is safe to call without a lock as it acquires the
-     * lock while getting the property list keys and returns them as a
-     * vector.
+     * Access the cached key-values
      *
-     * @return the vector of property list keys
+     * @return A reference to the cached key-values.
      */
-    virtual std::vector<std::string> getPropertyListKeys() const = 0;
-         
-    /**
-     * \brief Gets a value associated with the given property.
-     * 
-     * In most cases, the calling process should hold the lock prior
-     * to calling this function to prevent another process or the
-     * internal clusterlib events sytem from modifying this object
-     * data while it is being accessed.  If the calling process is
-     * only reading, this procedure will implicitly hold the lock to
-     * provide consistent results to the user.
-     *
-     * @param name the property name
-     * @param searchParent try the parent for the property as well?
-     * @return the value of the given propery or an empty string
-     */
-    virtual std::string getProperty(const std::string &name, 
-                                    bool searchParent = false) = 0;
-        
-    /**
-     * \brief Sets value of the given property.
-     * 
-     * In most cases, the calling process should hold the lock prior
-     * to calling this function to prevent another process or the
-     * internal clusterlib events sytem from modifying this object
-     * data.
-     *
-     * @param name the property name for which to set value
-     * @param value the value to be set
-     */
-    virtual void setProperty(const std::string &name, 
-                             const std::string &value) = 0;
-
-    /**
-     * \brief Deletes the property name.
-     * 
-     * In most cases, the calling process should hold the lock prior
-     * to calling this function to prevent another process or the
-     * internal clusterlib events sytem from modifying this object
-     * data.  Until publish() is called, this change is only local.
-     *
-     * @param name the property name to be deleted
-     */
-    virtual void deleteProperty(const std::string &name) = 0;
-
-    /**
-     * \brief Push the key-value map to the storage.
-     * 
-     * Changes made through setProperty are not seen by other clients
-     * unless they are published.  It is possible that an exception
-     * from clusterlib may be thrown if the versions don't match
-     * (PublishVersionException) and <code>unconditional==
-     * false</code>.  In this case, the user should catch the
-     * exception, release the lock and wait until the PropertyList is
-     * updated (either through polling or waiting on events).  Then
-     * they should try to set their properties again under a lock and
-     * publish again.
-     *
-     * @param unconditional if true, publish the data from this object
-     *        even if it is not the latest version
-     */
-    virtual void publishProperties(bool unconditional = false) = 0;
-
-    /**
-     * Clears the property list (acquires/releases local lock).
-     */
-    virtual void clear() = 0;
-
-    /**
-     * Get the current version of the property list (useful for out-of-band
-     * communication with other clients)
-     *
-     * @return the version of the property list
-     */
-    virtual int32_t getVersion() = 0;
-
-    /**
-     * \brief Return the time at which the last value change happened.
-     *
-     * @return the int64 representing the time that the value changed.
-     */
-    virtual int64_t getValueChangeTime() = 0;
+    virtual CachedKeyValues &cachedKeyValues() = 0;
 
     /**
      * \brief Do not allow getPropertyList() on a Properties object (throw)
      */
     virtual PropertyList *getPropertyList(
         const std::string &name,
-        bool create = false) = 0;    
+        AccessType accessType = LOAD_FROM_REPOSITORY) = 0;    
 };
 
 };	/* End of 'namespace clusterlib' */

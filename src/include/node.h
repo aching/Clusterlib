@@ -23,86 +23,41 @@ class Node
 {
   public:
     /**
-     * Get the client-state of this node.
+     * Used to access the health of the current state.
+     */
+    static const std::string HEALTH_KEY;
+
+    /**
+     * Used to denote the health: good (current and desired state)
+     */
+    static const std::string HEALTH_GOOD_VALUE;
+
+    /**
+     * Used to denote the health: bad (current and desired state)
+     */
+    static const std::string HEALTH_BAD_VALUE;
+
+    /**
+     * Used to access the health set time of the current state.
+     */
+    static const std::string HEALTH_SET_MSECS_KEY;
+
+    /**
+     * Used to access the health set time as a date of the current state.
+     */
+    static const std::string HEALTH_SET_MSECS_AS_DATE_KEY;
+
+    /**
+     * Used to shutdown an active node by setting in a desired state.
+     */
+    static const std::string ACTIVENODE_SHUTDOWN;
+
+    /**
+     * Access the process slot info cached object
      *
+     * @return A reference to the cached process slot info.
      */
-    virtual void getClientState(int64_t *msecs,
-                                std::string *clientState,
-                                std::string *clentStateDesc) = 0;
-    
-    /**
-     * Get the master-set state of this node.
-     *
-     * @return an int32 value representing the state set by the
-     * master for this node.
-     */
-    virtual int32_t getMasterSetState() = 0;
-
-    /**
-     * Return the time at the master state was set.
-     */
-    virtual int64_t getMasterSetStateTime() = 0;
-
-    /**
-     * Is this node connected?
-     *
-     * @param id if a valid pointer, the id is set if connected
-     * @param msecs if a valid pointer, of when connected
-     * @return true if this node is connected.
-     */
-    virtual bool isConnected(std::string *id = NULL, 
-                             int64_t *msecs = NULL) = 0;
-
-    /**
-     * Try to make this node connected
-     *
-     * @param force if true, replace the old one if it exists.
-     */
-    virtual bool initializeConnection(bool force = false) = 0;
-
-    /**
-     * Is this node healthy?
-     * 
-     * @return true if healthy, false if not
-     */
-    virtual bool isHealthy() = 0;
-
-    /**
-     * \brief Registers a function that checks internal health of
-     * the caller application. 
-     *
-     * The given function will be called asynchronously by the cluster
-     * API and will provide feedback back to the cluster.  Can not be
-     * called if there is always a healthChecker that is running (will
-     * throw).  A thread is started with this health checker
-     * immediately.
-     * 
-     * @param healthChecker the callback to be used when checking for
-     *                      health; if <code>NULL</code> the health
-     *                      monitoring is disabled
-     * TODO: Add --> checkFrequency how often to execute the given 
-     *               callback in milliseconds
-     */
-    virtual void registerHealthChecker(HealthChecker *healthChecker) = 0;
-
-    /**
-     * Unregister the health checker.  This stops the health checker
-     * thread and allows any thread to register a health checker on
-     * this node again.
-     */
-    virtual void unregisterHealthChecker() = 0;
-
-    /**
-     * Set whether process slots are to be used (an active
-     * clusterlib node process is running).
-     */
-    virtual void setUseProcessSlots(bool use) = 0;
-    
-    /**
-     * Get whether process slots to be used (an active
-     * clusterlib node process is running).
-     */
-    virtual bool getUseProcessSlots() = 0;
+    virtual CachedProcessSlotInfo &cachedProcessSlotInfo() = 0;
 
     /** 
      * Get a list of names of all process slots
@@ -120,22 +75,9 @@ class Node
      * == false
      * @throw Exception only if tried to create and couldn't create
      */
-    virtual ProcessSlot *getProcessSlot(const std::string &name, 
-                                        bool create = false) = 0;
-
-    /**
-     * Get the maximum number of process slots on this node.
-     *
-     * @return the maximum number of process slots
-     */
-    virtual int32_t getMaxProcessSlots() = 0;
-
-    /**
-     * Set the maximum number of process slots on this node.
-     *
-     * @param maxProcessSlots the maximum number of process slots
-     */
-    virtual void setMaxProcessSlots(int32_t maxProcessSlots) = 0;
+    virtual ProcessSlot *getProcessSlot(
+        const std::string &name, 
+        AccessType accessType = LOAD_FROM_REPOSITORY) = 0;
 
     /**
      * Destructor.

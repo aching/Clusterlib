@@ -73,8 +73,7 @@ class BlockingQueue
          */
         void erase();
 
-    private:
-        
+    private:        
         /**
          * The queue of elements. Deque is used to provide O(1) time 
          * for head elements removal.
@@ -90,7 +89,6 @@ class BlockingQueue
          * The conditionial variable associated with the mutex above.
          */
         mutable Cond m_cond;
-        
 };
 
 template<class E>

@@ -247,26 +247,32 @@ class CliCommand {
     {
         if (m_minArgCount == -1) {
             if (m_argVec.size() != m_argTypeVec.size()) {
-                std::stringstream ss;
-                ss << "checkArgCount: Expected size = ";
-                ss << m_argTypeVec.size();
-                ss << " and actual size = ";
-                ss << m_argVec.size();
-                throw clusterlib::InconsistentInternalStateException(ss.str());
+                std::ostringstream oss;
+                oss << "checkArgCount: Expected size = ";
+                oss << m_argTypeVec.size();
+                oss << " and actual size = ";
+                oss << m_argVec.size() << " args = ";
+                std::vector<std::string>::const_iterator argVecIt;
+                for (argVecIt = m_argVec.begin(); 
+                     argVecIt != m_argVec.end(); 
+                     ++argVecIt) {
+                    oss << *argVecIt << ",";
+                }
+                throw clusterlib::InvalidArgumentsException(oss.str());
             }
         }
         else {
             if ((m_argVec.size() > m_argTypeVec.size()) ||
                 (static_cast<int32_t>(m_argVec.size()) 
                  < m_minArgCount)) {
-                std::stringstream ss;
-                ss << "checkArgCount: Expected size >= ";
-                ss << m_minArgCount;
-                ss << " and <= ";
-                ss << m_argTypeVec.size();
-                ss << " and actual size = ";
-                ss << m_argVec.size();
-                throw clusterlib::InconsistentInternalStateException(ss.str());
+                std::ostringstream oss;
+                oss << "checkArgCount: Expected size >= ";
+                oss << m_minArgCount;
+                oss << " and <= ";
+                oss << m_argTypeVec.size();
+                oss << " and actual size = ";
+                oss << m_argVec.size();
+                throw clusterlib::InvalidArgumentsException(oss.str());
             }
         }
     }

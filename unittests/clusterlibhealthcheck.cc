@@ -6,31 +6,9 @@ extern TestParams globalTestParams;
 
 using namespace std;
 using namespace clusterlib;
+using namespace json;
 
 const string appName = "unittests-healthCheck-app";
-
-class MyHealthChecker : public HealthChecker {
-  public:
-    MyHealthChecker() 
-        : m_healthy(true) {}
-    virtual clusterlib::HealthReport checkHealth() {
-        if (m_healthy) {
-            return clusterlib::HealthReport(
-                clusterlib::HealthReport::HS_HEALTHY, 
-                "set by member function");
-        }
-        else {
-            return clusterlib::HealthReport(
-                clusterlib::HealthReport::HS_UNHEALTHY,
-                "set by member function");
-        }
-    }
-    void setHealth(bool healthy) {
-        m_healthy = healthy;
-    }
-  private:
-    bool m_healthy;
-};
 
 class ClusterlibHealthCheck : public MPITestFixture {
     CPPUNIT_TEST_SUITE(ClusterlibHealthCheck);
@@ -40,26 +18,70 @@ class ClusterlibHealthCheck : public MPITestFixture {
     CPPUNIT_TEST_SUITE_END();
 
   public:
+    class HealthUpdater : public Periodic {
+      public:
+        HealthUpdater(int64_t msecsFrequency, 
+                      Notifyable *notifyable, 
+                      ClientData *clientData)
+            : Periodic(msecsFrequency, notifyable, clientData) {}
+        
+        virtual void run() 
+        {
+            Notifyable *notifyable = getNotifyable();
+            if (notifyable == NULL) {
+                return;
+            }
+            notifyable->acquireLock();
+             notifyable->cachedCurrentState().set(
+                Node::HEALTH_KEY, getHealth());
+            notifyable->cachedCurrentState().publish();
+            
+            notifyable->releaseLock();
+        }
+        
+        void setHealth(const string &health)
+        {
+            Locker l(&m_lock);
+            
+            m_health = health;
+        }
+        
+        string getHealth()
+        {
+            Locker l(&m_lock);
+            
+            return m_health;
+        }
+        
+        virtual ~HealthUpdater() {}
+        
+      private:
+        Mutex m_lock;
+        
+        string m_health;
+    };
+
     ClusterlibHealthCheck() 
         : MPITestFixture(globalTestParams),
-          _factory(NULL) {}
+          _factory(NULL),
+          _healthUpdater(10, NULL, NULL) {}
     
     /**
      * Runs prior to each test 
      */
     virtual void setUp() 
     {
-        _checker = new MyHealthChecker();
 	_factory = new Factory(
             globalTestParams.getZkServerPortList());
 	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
 	MPI_CPPUNIT_ASSERT(_client0 != NULL);
-	_app0 = _client0->getRoot()->getApplication(appName, true);
+	_app0 = _client0->getRoot()->getApplication(
+            appName, CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_app0 != NULL);
-	_group0 = _app0->getGroup("servers", true);
+	_group0 = _app0->getGroup("servers", CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_group0 != NULL);
-	_node0 = _group0->getNode("server-0", true);
+	_node0 = _group0->getNode("server-0", CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_node0 != NULL);
     }
 
@@ -71,8 +93,6 @@ class ClusterlibHealthCheck : public MPITestFixture {
         cleanAndBarrierMPITest(_factory, true);
 	delete _factory;
         _factory = NULL;
-        delete _checker;
-        _checker = NULL;
     }
 
     /** 
@@ -85,47 +105,43 @@ class ClusterlibHealthCheck : public MPITestFixture {
                                     _factory, 
                                     true, 
                                     "testHealthCheck1");
-        
+
         if (isMyRank(0)) {
             MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::READY);
             _node0->remove(true);
             MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
-            /*
-             * This synchronization is required since it is currently
-             * possible to have a removed event handler destroy a new
-             * Notifyable by accident.  This won't be possible when we
-             * fix the clusterlib event system to get the Notifyable *
-             * each zk event is linked to.
-             */
-            _factory->synchronize();
-            _node0 = _group0->getNode("server-0", true);
+            _node0 = _group0->getNode("server-0", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(_node0);
             MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::READY);
-            _checker->setMsecsPerCheckIfHealthy(10);
-            _checker->setMsecsPerCheckIfUnhealthy(10);
-            MPI_CPPUNIT_ASSERT(_node0->isHealthy() == false);
-            _node0->initializeConnection(true);
+            JSONValue jsonHealth;
+            bool found = _node0->cachedCurrentState().get(
+                Node::HEALTH_KEY, jsonHealth);
+            MPI_CPPUNIT_ASSERT(found == false);
+
             string id;
             int64_t time;
-            bool connected = _node0->isConnected(&id, &time);
-            MPI_CPPUNIT_ASSERT(connected == true);
-            cerr << "testHealthCheck1: connected=" << connected 
+            _node0->acquireOwnership();
+            bool hasOwner = _node0->getOwnershipInfo(&id, &time);
+            MPI_CPPUNIT_ASSERT(hasOwner == true);
+            cerr << "testHealthCheck1: hasOwner=" << hasOwner 
                  << ",id=" << id << ",time=" << time << endl << endl;
-            _node0->registerHealthChecker(_checker);
+
+            _healthUpdater.setNotifyable(_node0);
+            _healthUpdater.setHealth(Node::HEALTH_GOOD_VALUE);
+            _factory->registerPeriodicThread(_healthUpdater);
             sleep(1);
             /*
              * Since the time to check is 10 ms, 1 second should be
              * enough time to get the health updated in the cache.
-             */
-            
-            bool health = _node0->isHealthy();
-            string healthdesc;
-            _node0->getClientState(NULL, &healthdesc, NULL);
-            cerr << "testHealthCheck1: health = "
-                 << ((health == true) ? "good" : "bad")
-                 << " and description (" << healthdesc << ")" << endl;
-            MPI_CPPUNIT_ASSERT(health == true);
-            _node0->unregisterHealthChecker();
+             */            
+            found = _node0->cachedCurrentState().get(
+                Node::HEALTH_KEY, jsonHealth);
+            MPI_CPPUNIT_ASSERT(found == true);
+            MPI_CPPUNIT_ASSERT(jsonHealth.get<JSONValue::JSONString>() ==
+                               Node::HEALTH_GOOD_VALUE);
+
+            _factory->cancelPeriodicThread(_healthUpdater);
+            _node0->releaseOwnership();
         }
     }
 
@@ -139,20 +155,16 @@ class ClusterlibHealthCheck : public MPITestFixture {
                                     _factory, 
                                     true, 
                                     "testHealthCheck2");
-        if (isMyRank(0)) {
-            try {
-                _node0->unregisterHealthChecker();
-                MPI_CPPUNIT_ASSERT("Shouldn't have been successful" == 0);
-            }
-            catch (InvalidMethodException &e) {
-            }
-            _node0->initializeConnection(true);
-            _node0->registerHealthChecker(_checker);
-            /* Even though unregisterHealthChecker() is not called,
-             * things should be cleaned up wihtout any exceptions or
-             * memory leaks */
-        }
-        
+        bool cancelled = _factory->cancelPeriodicThread(_healthUpdater);
+        MPI_CPPUNIT_ASSERT(cancelled == false);
+        _node0->acquireOwnership();
+        /* Do nothing */
+        _healthUpdater.setNotifyable(NULL);
+        _factory->registerPeriodicThread(_healthUpdater);
+        _node0->releaseOwnership();
+        /* Even though cancelPeriodicThread() is not called,
+         * things should be cleaned up without any exceptions or
+         * memory leaks */
     }
 
     /** 
@@ -168,34 +180,34 @@ class ClusterlibHealthCheck : public MPITestFixture {
                                     true, 
                                     "testHealthCheck3");
 
-        
+        JSONValue jsonHealth;
+        bool found;
+
         if (isMyRank(0)) {
             MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::READY);
             _node0->remove(true);
             MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::REMOVED);
-            /*
-             * This synchronization is required since it is currently
-             * possible to have a removed event handler destroy a new
-             * Notifyable by accident.  This won't be possible when we
-             * fix the clusterlib event system to get the Notifyable *
-             * each zk event is linked to.
-             */
-            _factory->synchronize();
-            _node0 = _group0->getNode("server-0", true);
+            _node0 = _group0->getNode("server-0", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(_node0);
             MPI_CPPUNIT_ASSERT(_node0->getState() == Notifyable::READY);
-            _checker->setMsecsPerCheckIfHealthy(10);
-            _checker->setMsecsPerCheckIfUnhealthy(10);
-            MPI_CPPUNIT_ASSERT(_node0->isHealthy() == false);
-            _node0->initializeConnection(true);
-            _node0->registerHealthChecker(_checker);
+            found = _node0->cachedCurrentState().get(
+                Node::HEALTH_KEY, jsonHealth);
+            MPI_CPPUNIT_ASSERT(found == false);
+
+            _node0->acquireOwnership();
+            _healthUpdater.setNotifyable(_node0);
+            _healthUpdater.setHealth(Node::HEALTH_GOOD_VALUE);
+            _factory->registerPeriodicThread(_healthUpdater);
             sleep(1);
             /*
              * Since the time to check is 10 ms, 1 second should be
              * enough time to get the health updated in the cache.
              */
-            MPI_CPPUNIT_ASSERT(_node0->isHealthy() == true);
-
+            found = _node0->cachedCurrentState().get(
+                Node::HEALTH_KEY, jsonHealth);
+            MPI_CPPUNIT_ASSERT(found == true);
+            MPI_CPPUNIT_ASSERT(jsonHealth.get<JSONValue::JSONString>() ==
+                               Node::HEALTH_GOOD_VALUE);
         }
 
         waitsForOrder(0, 1, _factory, true);
@@ -203,25 +215,41 @@ class ClusterlibHealthCheck : public MPITestFixture {
         if (isMyRank(1)) {
             _node0 = _group0->getNode("server-0");
             MPI_CPPUNIT_ASSERT(_node0);
-            MPI_CPPUNIT_ASSERT(_node0->isHealthy() == true);
+
+            found = _node0->cachedCurrentState().get(
+                Node::HEALTH_KEY, jsonHealth);
+            MPI_CPPUNIT_ASSERT(found == true);
+            MPI_CPPUNIT_ASSERT(jsonHealth.get<JSONValue::JSONString>() ==
+                               Node::HEALTH_GOOD_VALUE);
         }
             
         waitsForOrder(1, 0, _factory, true);
             
         if (isMyRank(0)) {
-            _checker->setHealth(false);
+            _healthUpdater.setHealth(Node::HEALTH_BAD_VALUE);
             sleep(1);
-            MPI_CPPUNIT_ASSERT(_node0->isHealthy() == false);
+
+            found = _node0->cachedCurrentState().get(
+                Node::HEALTH_KEY, jsonHealth);
+            MPI_CPPUNIT_ASSERT(found == true);
+            MPI_CPPUNIT_ASSERT(jsonHealth.get<JSONValue::JSONString>() ==
+                               Node::HEALTH_BAD_VALUE);
         }
 
         waitsForOrder(0, 1, _factory, true);
 
         if (isMyRank(1)) {
-            MPI_CPPUNIT_ASSERT(_node0->isHealthy() == false);
+            found = _node0->cachedCurrentState().get(
+                Node::HEALTH_KEY, jsonHealth);
+            MPI_CPPUNIT_ASSERT(found == true);
+            MPI_CPPUNIT_ASSERT(jsonHealth.get<JSONValue::JSONString>() ==
+                               Node::HEALTH_BAD_VALUE);
+           
         }
 
         if (isMyRank(0)) {
-            _node0->unregisterHealthChecker();
+            _factory->cancelPeriodicThread(_healthUpdater);
+            _node0->releaseOwnership();
         }
    }
 
@@ -231,7 +259,7 @@ class ClusterlibHealthCheck : public MPITestFixture {
     Application *_app0;
     Group *_group0;
     Node *_node0;
-    MyHealthChecker *_checker;
+    HealthUpdater _healthUpdater;
 };
 
 /* Registers the fixture into the 'registry' */

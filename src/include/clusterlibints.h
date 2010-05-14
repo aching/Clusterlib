@@ -16,6 +16,17 @@
 namespace clusterlib
 {
 
+ /**
+  * How do you want to access the Notifyable?
+  */
+enum AccessType {
+    CACHED_ONLY = 0, ///< Only try to get the data in the cache, not repository
+    LOAD_FROM_REPOSITORY, ///< Only check the cache and the repository
+    CREATE_IF_NOT_FOUND, ///< Create if not found in the cache or repository
+};
+
+std::string getAccessTypeString(AccessType accessType);
+
 /**
  * Class containing static variables for all string constants.
  */

@@ -7,6 +7,7 @@ extern TestParams globalTestParams;
 
 using namespace clusterlib;
 using namespace std;
+using namespace json;
 
 const string appName = "unittests-propertylist-app";
 
@@ -41,11 +42,13 @@ class ClusterlibPropertyList : public MPITestFixture {
 	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
 	MPI_CPPUNIT_ASSERT(_client0 != NULL);
-	_app0 = _client0->getRoot()->getApplication(appName, true);
+	_app0 = _client0->getRoot()->getApplication(
+            appName, CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_app0 != NULL);
-	_group0 = _app0->getGroup("propertyList-group-servers", true);
+	_group0 = _app0->getGroup(
+            "propertyList-group-servers", CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_group0 != NULL);
-	_node0 = _group0->getNode("server-0", true);
+	_node0 = _group0->getNode("server-0", CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_node0 != NULL);
     }
 
@@ -69,15 +72,17 @@ class ClusterlibPropertyList : public MPITestFixture {
                                     _factory, 
                                     true, 
                                     "testGetPropertyList1");
+        JSONValue jsonValue;
+        bool found;
 
         if (isMyRank(0)) {
             _propertyList0 = _node0->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST,
-                true);
+                CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
-            _propertyList0->setProperty("test", "v1");
-            _propertyList0->publishProperties();
+            _propertyList0->cachedKeyValues().set("test", "v1");
+            _propertyList0->cachedKeyValues().publish();
             _propertyList0->releaseLock();
         }
 
@@ -87,11 +92,11 @@ class ClusterlibPropertyList : public MPITestFixture {
             _propertyList0 = _node0->getPropertyList();
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
-            string val = _propertyList0->getProperty("test");
-            MPI_CPPUNIT_ASSERT(val == "v1");
+            found = _propertyList0->cachedKeyValues().get("test", jsonValue);
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>() == "v1");
             cerr << "Got correct test = v1" << endl;
-            _propertyList0->setProperty("test", "v2");
-            _propertyList0->publishProperties();
+            _propertyList0->cachedKeyValues().set("test", "v2");
+            _propertyList0->cachedKeyValues().publish();
             _propertyList0->releaseLock();
         }
 
@@ -99,10 +104,11 @@ class ClusterlibPropertyList : public MPITestFixture {
 
         if (isMyRank(0)) {
             _propertyList0->acquireLock();
-            string val = _propertyList0->getProperty("test");
+            found = _propertyList0->cachedKeyValues().get("test", jsonValue);
             _propertyList0->releaseLock();
-            cerr << "Got value " << val << " (should be v2)" << endl;
-            MPI_CPPUNIT_ASSERT(val == "v2");
+            cerr << "Got value " << jsonValue.get<JSONValue::JSONString>() 
+                 << " (should be v2)" << endl;
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>() == "v2");
             cerr << "Got correct test = v2" << endl;
         }
     }
@@ -120,96 +126,101 @@ class ClusterlibPropertyList : public MPITestFixture {
                                     _factory, 
                                     true, 
                                     "testGetPropertyList2");
+        JSONValue jsonValue;
+        bool found;
 
         if (isMyRank(0)) { 
             _propertyList0 = _group0->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST,
-                true);
+                CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
-            _propertyList0->setProperty("test", "v3");
-            _propertyList0->publishProperties();
+            _propertyList0->cachedKeyValues().set("test", "v3");
+            _propertyList0->cachedKeyValues().publish();
             _propertyList0->releaseLock();
             _propertyList0 = _node0->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST,
-                true);
+                CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
-            _propertyList0->setProperty("test", "v4");
-            _propertyList0->publishProperties();
+            _propertyList0->cachedKeyValues().set("test", "v4");
+            _propertyList0->cachedKeyValues().publish();
             _propertyList0->releaseLock();
         }
 
         waitsForOrder(0, 1, _factory, true);
 
         if (isMyRank(1)) {
-            string val;
             _propertyList0 = _group0->getPropertyList();
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
-            val = _propertyList0->getProperty("test");
-            MPI_CPPUNIT_ASSERT(val == "v3");
+            found = _propertyList0->cachedKeyValues().get("test", jsonValue);
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>() == "v3");
             cerr << "Got correct test = v3" << endl;
             _propertyList0->releaseLock();
             
             _propertyList0 = _node0->getPropertyList();
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
-            val = _propertyList0->getProperty("test");
-            MPI_CPPUNIT_ASSERT(val == "v4");
+            found = _propertyList0->cachedKeyValues().get("test", jsonValue);
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>() == "v4");
             cerr << "Got correct test = v4" << endl;
-            _propertyList0->deleteProperty("test");
-            _propertyList0->publishProperties();
+            _propertyList0->cachedKeyValues().erase("test");
+            _propertyList0->cachedKeyValues().publish();
             _propertyList0->releaseLock();
             
             _propertyList0 = _app0->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST,
-                true);
+                CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
-            val = _propertyList0->getProperty("test");
-            _propertyList0->setProperty("test", "v5");
-            _propertyList0->publishProperties();
+            found =_propertyList0->cachedKeyValues().get("test", jsonValue);
+            _propertyList0->cachedKeyValues().set("test", "v5");
+            _propertyList0->cachedKeyValues().publish();
             _propertyList0->releaseLock();
         }
 
         waitsForOrder(1, 0, _factory, true);
         
         if (isMyRank(0)) {
-            string val;
             _propertyList0 = _group0->getPropertyList();
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
-            val = _propertyList0->getProperty("test");
+            found =_propertyList0->cachedKeyValues().get("test", jsonValue);
             _propertyList0->releaseLock();
             
-            cerr << "Got value " << val << " (should be v3)" << endl;
-            MPI_CPPUNIT_ASSERT(val == "v3");
+            cerr << "Got value " << jsonValue.get<JSONValue::JSONString>() 
+                 << " (should be v3)" << endl;
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>() == "v3");
             cerr << "Got correct test = v3" << endl;
             
             _propertyList0 = _node0->getPropertyList();
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
-            val = _propertyList0->getProperty("test", false);
+            found =_propertyList0->cachedKeyValues().get(
+                "test", jsonValue, false);
             _propertyList0->releaseLock();
             
-            cerr << "Got value " << val << " (should be empty)" << endl;
-            MPI_CPPUNIT_ASSERT(val == "");
+            cerr << "Found " << found
+                 << " (should be false)" << endl;
+            MPI_CPPUNIT_ASSERT(found == false);
             cerr << "Got correct test = empty" << endl;
             
             _propertyList0->acquireLock();
-            val = _propertyList0->getProperty("test", true);
+            found =_propertyList0->cachedKeyValues().get(
+                "test", jsonValue, true);
             _propertyList0->releaseLock();
             
-            cerr << "Got value " << val << " (should be v3)" << endl;
-            MPI_CPPUNIT_ASSERT(val == "v3");
+            cerr << "Got value " << jsonValue.get<JSONValue::JSONString>() 
+                 << " (should be v3)" << endl;
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>() == "v3");
             cerr << "Got correct test = v3" << endl;
             
             _propertyList0 = _group0->getPropertyList();
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
-            _propertyList0->deleteProperty("test");
-            _propertyList0->publishProperties();
+            _propertyList0->cachedKeyValues().erase("test");
+            _propertyList0->cachedKeyValues().publish();
             _propertyList0->releaseLock();
         }
             
@@ -220,11 +231,13 @@ class ClusterlibPropertyList : public MPITestFixture {
             _propertyList0 = _node0->getPropertyList();
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
-            val = _propertyList0->getProperty("test", true);
+            found =_propertyList0->cachedKeyValues().get(
+                "test", jsonValue, true);
             _propertyList0->releaseLock();
             
-            cerr << "Got value " << val << " (should be v5)" << endl;
-            MPI_CPPUNIT_ASSERT(val == "v5");
+            cerr << "Got value " << jsonValue.get<JSONValue::JSONString>() 
+                 << " (should be v5)" << endl;
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>() == "v5");
             cerr << "Got correct test = v5" << endl;
         }
     }
@@ -242,15 +255,17 @@ class ClusterlibPropertyList : public MPITestFixture {
                                     _factory, 
                                     true, 
                                     "testGetPropertyList3");
+        JSONValue jsonValue, jsonValue2;
+        bool found, found2;
         string prop = "prop3";
         string newValue = "prop3-newvalue";
         if (isMyRank(0)) {
             _propertyList0 = _node0->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST,
-                true);
+                CREATE_IF_NOT_FOUND);
             _propertyList0->acquireLock();
-            _propertyList0->deleteProperty(prop);
-            _propertyList0->publishProperties();
+            _propertyList0->cachedKeyValues().erase(prop);
+            _propertyList0->cachedKeyValues().publish();
             _propertyList0->releaseLock();
         }
 
@@ -259,29 +274,46 @@ class ClusterlibPropertyList : public MPITestFixture {
         _propertyList0 = _node0->getPropertyList();
         if (isMyRank(0)) {
             _propertyList0->acquireLock();
-            _propertyList0->setProperty(prop, newValue);
-            MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop)
+            _propertyList0->cachedKeyValues().set(prop, newValue);
+            _propertyList0->cachedKeyValues().get(prop, jsonValue);
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>()
                                == newValue);
-            _propertyList0->publishProperties();
-            MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop) 
+            _propertyList0->cachedKeyValues().publish();
+            _propertyList0->cachedKeyValues().get(prop, jsonValue);
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>()
                                == newValue);
+            _propertyList0->cachedKeyValues().get(prop, jsonValue);
             _propertyList0->releaseLock();
-            MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop)
+            _propertyList0->cachedKeyValues().get(prop, jsonValue);
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>()
                                == newValue);
         }
         else {
             _propertyList0->acquireLock();
-            string value = _propertyList0->getProperty(prop);
+            found =_propertyList0->cachedKeyValues().get(prop, jsonValue);
             usleep(500000);
-            string value2 = _propertyList0->getProperty(prop);
+            found2 = _propertyList0->cachedKeyValues().get(prop, jsonValue2);
             _propertyList0->releaseLock();
-            cerr << "testGetPropertyList3: value (" << value << "), value2 ("
-                 << value2 << ")" << endl;
-            MPI_CPPUNIT_ASSERT(value.compare(value2) == 0);
+            if (found) {
+                cerr << "testGetPropertyList3: value (" 
+                     << jsonValue.get<JSONValue::JSONString>() << endl;
+            }
+            if (found2) {
+                cerr << "testGetPropertyList3: value (" 
+                     << jsonValue2.get<JSONValue::JSONString>() << endl;
+            }
+            if (found == true && found2 == true) {
+                MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>() == 
+                                   jsonValue2.get<JSONValue::JSONString>());
+            }
+            MPI_CPPUNIT_ASSERT(found == found2);
         }
 
         barrier(_factory, true);
-        MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop) == newValue);
+
+        _propertyList0->cachedKeyValues().get(prop, jsonValue);
+        MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>()
+                           == newValue);
     }
 
     /* 
@@ -296,31 +328,36 @@ class ClusterlibPropertyList : public MPITestFixture {
                                     _factory, 
                                     true, 
                                     "testGetPropertyList4");
+        JSONValue jsonValue, jsonValue2;
+        bool found, found2;
         bool matchedVal = false;
         string prop = "prop4";
         /* Clean up the old propertyList */
         if (isMyRank(0)) {
             _propertyList0 = _node0->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST,
-                true);
+                CREATE_IF_NOT_FOUND);
             _propertyList0->acquireLock();
-            _propertyList0->deleteProperty(prop);
-            _propertyList0->publishProperties();
+            _propertyList0->cachedKeyValues().erase(prop);
+            _propertyList0->cachedKeyValues().publish();
             _propertyList0->releaseLock();
         }
 
         barrier(_factory, true);
         _propertyList0 = _node0->getPropertyList(
             ClusterlibStrings::DEFAULTPROPERTYLIST,
-            true);
+            CREATE_IF_NOT_FOUND);
 
         if (isMyRank(0)) {
             usleep(200000);
             _propertyList0->acquireLock();
-            _propertyList0->setProperty(prop, "new value");
-            MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop) == "new value");
-            _propertyList0->publishProperties();
-            if (_propertyList0->getProperty(prop) == "new value") {
+            _propertyList0->cachedKeyValues().set(prop, "new value");
+            found = _propertyList0->cachedKeyValues().get(prop, jsonValue);
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>()
+                               == "new value");
+            _propertyList0->cachedKeyValues().publish();
+            found = _propertyList0->cachedKeyValues().get(prop, jsonValue);
+            if (jsonValue.get<JSONValue::JSONString>() == "new value") {
                 matchedVal = true;
             }
             _propertyList0->releaseLock();
@@ -331,11 +368,25 @@ class ClusterlibPropertyList : public MPITestFixture {
              * really long test time.
              */
             _propertyList0->acquireLock();
-            string value = _propertyList0->getProperty(prop);
+            found =_propertyList0->cachedKeyValues().get(prop, jsonValue);
             usleep(500000);
-            string value2 = _propertyList0->getProperty(prop);
+            found2 = _propertyList0->cachedKeyValues().get(prop, jsonValue2);
             _propertyList0->releaseLock();
-            if (value.compare(value2) == 0) {
+            if (found) {
+                cerr << "testGetPropertyList4: value (" 
+                     << jsonValue.get<JSONValue::JSONString>() << endl;
+            }
+            if (found2) {
+                cerr << "testGetPropertyList4: value (" 
+                     << jsonValue2.get<JSONValue::JSONString>() << endl;
+            }
+            if (found == true && found2 == true) {
+                if (jsonValue.get<JSONValue::JSONString>() == 
+                    jsonValue2.get<JSONValue::JSONString>()) {
+                    matchedVal = true;
+                }
+            }
+            else if (found == false && found == false) {
                 matchedVal = true;
             }
         }
@@ -346,7 +397,9 @@ class ClusterlibPropertyList : public MPITestFixture {
 
         barrier(_factory, true);
         MPI_CPPUNIT_ASSERT(matchedVal == true);
-        MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop) == "new value");
+        found = _propertyList0->cachedKeyValues().get(prop, jsonValue);
+        MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>()
+                           == "new value");
     }
 
     /*
@@ -360,22 +413,27 @@ class ClusterlibPropertyList : public MPITestFixture {
                                     _factory, 
                                     true, 
                                     "testGetPropertyList5");
+        JSONValue jsonValue;
+        bool found;
         string prop = "prop5";
         /* Clean up the old propertyList */
         if (isMyRank(0)) {
             _propertyList0 = _node0->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST,
-                true);
+                CREATE_IF_NOT_FOUND);
             _propertyList0->acquireLock();
-            _propertyList0->deleteProperty(prop);
-            _propertyList0->publishProperties();
+            _propertyList0->cachedKeyValues().erase(prop);
+            _propertyList0->cachedKeyValues().publish();
             _propertyList0->releaseLock();
         }
 
         barrier(_factory, true);
+
         _propertyList0 = _node0->getPropertyList(
             ClusterlibStrings::DEFAULTPROPERTYLIST,
-            true);
+            CREATE_IF_NOT_FOUND);
+
+        barrier(_factory, true);
 
         if (isMyRank(0)) {
             _propertyList0->acquireLock();
@@ -384,18 +442,19 @@ class ClusterlibPropertyList : public MPITestFixture {
         barrier(_factory, true);
 
         if (!isMyRank(0)) {
-            _propertyList0->getProperty(prop);
-            _propertyList0->setProperty(prop, "no");
+            found = _propertyList0->cachedKeyValues().get(prop, jsonValue);
+            _propertyList0->cachedKeyValues().set(prop, "no");
             try {
-                _propertyList0->publishProperties();
+                _propertyList0->cachedKeyValues().publish();
                 cerr << "testGetPropertyList5: Published successfully" << endl;
             }
-            catch (Exception e) {
+            catch (PublishVersionException e) {
                 /* 
                  * Might not always succeed if lots of processes are
                  * trying (of course a lock would fix this =) )
                  */
-                cerr << "testGetPropertyList5: Safe failure to publish" << endl;
+                cerr << "testGetPropertyList5: Safe failure to publish"
+                     << endl;
             }
         }
         
@@ -418,19 +477,22 @@ class ClusterlibPropertyList : public MPITestFixture {
                                     _factory, 
                                     true, 
                                     "testGetPropertyList6");
+        JSONValue jsonValue;
 
         if (isMyRank(0)) {
-            PropertyList *toolkitProp = _app0->getPropertyList("toolkit", true);
-            PropertyList *kernelProp = _app0->getPropertyList("kernel", true);
+            PropertyList *toolkitProp = 
+                _app0->getPropertyList("toolkit", CREATE_IF_NOT_FOUND);
+            PropertyList *kernelProp = 
+                _app0->getPropertyList("kernel", CREATE_IF_NOT_FOUND);
 
             toolkitProp->acquireLock();
-            toolkitProp->setProperty("clusterlib", "1.1");
-            toolkitProp->publishProperties();
+            toolkitProp->cachedKeyValues().set("clusterlib", "1.1");
+            toolkitProp->cachedKeyValues().publish();
             toolkitProp->releaseLock();
             
             kernelProp->acquireLock();
-            kernelProp->setProperty("linux", "2.4");
-            kernelProp->publishProperties();
+            kernelProp->cachedKeyValues().set("linux", "2.4");
+            kernelProp->cachedKeyValues().publish();
             kernelProp->releaseLock();
             
             kernelProp->acquireLock();
@@ -455,14 +517,16 @@ class ClusterlibPropertyList : public MPITestFixture {
                                     _factory, 
                                     true, 
                                     "testGetPropertyList7");
+        JSONValue jsonValue, jsonValue2;
+        bool found, found2;
         string prop = "prop7";
         if (isMyRank(0)) {
             _propertyList0 = _node0->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST,
-                true);
+                CREATE_IF_NOT_FOUND);
             _propertyList0->acquireLock();
-            _propertyList0->deleteProperty(prop);
-            _propertyList0->publishProperties();
+            _propertyList0->cachedKeyValues().erase(prop);
+            _propertyList0->cachedKeyValues().publish();
             _propertyList0->releaseLock();
         }
 
@@ -473,23 +537,36 @@ class ClusterlibPropertyList : public MPITestFixture {
         stringstream ss;
         ss << getRank();
         _propertyList0->acquireLock();
-        _propertyList0->setProperty(prop, ss.str());
+        _propertyList0->cachedKeyValues().set(prop, ss.str());
         usleep(100000);
-        MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop)
+        found = _propertyList0->cachedKeyValues().get(prop, jsonValue);
+        MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>()
                            == ss.str());
-        _propertyList0->publishProperties();
-        MPI_CPPUNIT_ASSERT(_propertyList0->getProperty(prop)
+        _propertyList0->cachedKeyValues().publish();
+        found = _propertyList0->cachedKeyValues().get(prop, jsonValue);
+        MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>()
                            == ss.str());
         _propertyList0->releaseLock();
 
         _propertyList0->acquireLock();
-        string value = _propertyList0->getProperty(prop);
+        found = _propertyList0->cachedKeyValues().get(prop, jsonValue);
         usleep(300000);
-        string value2 = _propertyList0->getProperty(prop);
+        found2 = _propertyList0->cachedKeyValues().get(prop, jsonValue2);
         _propertyList0->releaseLock();
-        cerr << "testGetPropertyList7: value (" << value << "), value2 ("
-             << value2 << ")" << endl;
-        MPI_CPPUNIT_ASSERT(value.compare(value2) == 0);
+
+        if (found) {
+            cerr << "testGetPropertyList7: value (" 
+                 << jsonValue.get<JSONValue::JSONString>() << endl;
+        }
+        if (found2) {
+            cerr << "testGetPropertyList7: value (" 
+                 << jsonValue2.get<JSONValue::JSONString>() << endl;
+        }
+        if (found == true && found2 == true) {
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>() ==
+                               jsonValue2.get<JSONValue::JSONString>());
+        }
+        MPI_CPPUNIT_ASSERT(found == found2);
     }
 
     /* 
@@ -507,6 +584,8 @@ class ClusterlibPropertyList : public MPITestFixture {
                                     _factory, 
                                     true, 
                                     "testGetPropertyList8");
+        JSONValue jsonValue;
+        bool found;
         string prop = "prop8";
         string newValue = "prop8-newvalue";
         string propList1Name = "propList1";
@@ -517,16 +596,19 @@ class ClusterlibPropertyList : public MPITestFixture {
         PropertyList *propList3 = NULL;
 
         if (isMyRank(0)) {
-            propList1 = _node0->getPropertyList(propList1Name, true);
-            propList2 = _node0->getPropertyList(propList2Name, true);
-            propList3 = _node0->getPropertyList(propList2Name, true);
+            propList1 = _node0->getPropertyList(
+                propList1Name, CREATE_IF_NOT_FOUND);
+            propList2 = _node0->getPropertyList(
+                propList2Name, CREATE_IF_NOT_FOUND);
+            propList3 = _node0->getPropertyList(
+                propList2Name, CREATE_IF_NOT_FOUND);
             _node0->acquireLock();
-            propList1->deleteProperty(prop);
-            propList1->publishProperties();
-            propList2->deleteProperty(prop);
-            propList2->publishProperties();
-            propList3->deleteProperty(prop);
-            propList3->publishProperties();
+            propList1->cachedKeyValues().erase(prop);
+            propList1->cachedKeyValues().publish();
+            propList2->cachedKeyValues().erase(prop);
+            propList2->cachedKeyValues().publish();
+            propList3->cachedKeyValues().erase(prop);
+            propList3->cachedKeyValues().publish();
             _node0->releaseLock();
         }
 
@@ -540,54 +622,115 @@ class ClusterlibPropertyList : public MPITestFixture {
         MPI_CPPUNIT_ASSERT(propList3);
         if (isMyRank(0)) {
             _node0->acquireLock();
-            propList1->setProperty(prop, newValue);
-            MPI_CPPUNIT_ASSERT(propList1->getProperty(prop)
-                               == newValue);
-            propList2->setProperty(prop, newValue);
-            MPI_CPPUNIT_ASSERT(propList2->getProperty(prop)
-                               == newValue);
-            propList3->setProperty(prop, newValue);
-            MPI_CPPUNIT_ASSERT(propList3->getProperty(prop)
-                               == newValue);
+            propList1->cachedKeyValues().set(prop, newValue);
+            found = propList1->cachedKeyValues().get(prop, jsonValue);
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>() ==
+                               newValue);
+            propList2->cachedKeyValues().set(prop, newValue);
+            found = propList2->cachedKeyValues().get(prop, jsonValue);
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>() ==
+                               newValue);
+            propList3->cachedKeyValues().set(prop, newValue);
+            found = propList3->cachedKeyValues().get(prop, jsonValue);
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>() ==
+                               newValue);
             /* Publish backward to make the error case the most likely */
-            propList3->publishProperties();    
-            propList2->publishProperties();
-            propList1->publishProperties();     
+            propList3->cachedKeyValues().publish();    
+            propList2->cachedKeyValues().publish();
+            propList1->cachedKeyValues().publish();     
             _node0->releaseLock();
             barrier(NULL, false);
-            MPI_CPPUNIT_ASSERT(propList1->getProperty(prop)
-                               == newValue);
-            MPI_CPPUNIT_ASSERT(propList2->getProperty(prop)
-                               == newValue);
-            MPI_CPPUNIT_ASSERT(propList3->getProperty(prop)
-                               == newValue);
+            found = propList1->cachedKeyValues().get(prop, jsonValue);
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>() ==
+                               newValue);
+            found = propList2->cachedKeyValues().get(prop, jsonValue);
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>() ==
+                               newValue);
+            found = propList3->cachedKeyValues().get(prop, jsonValue);
+            MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>() ==
+                               newValue);
         }
         else {
+            bool found1_1, found2_1, found3_1;
+            bool found1_2, found2_2, found3_2;
+            JSONValue jsonValue1_1, jsonValue2_1, jsonValue3_1;
+            JSONValue jsonValue1_2, jsonValue2_2, jsonValue3_2;
             barrier(NULL, false);
+
             _node0->acquireLock();
-            string value1_1 = propList1->getProperty(prop);
-            string value2_1 = propList2->getProperty(prop);
-            string value3_1 = propList3->getProperty(prop);
+
+            found1_1 = propList1->cachedKeyValues().get(prop, jsonValue1_1);
+            found2_1 = propList2->cachedKeyValues().get(prop, jsonValue2_1);
+            found3_1 = propList3->cachedKeyValues().get(prop, jsonValue3_1);
             usleep(500000);
-            string value1_2 = propList1->getProperty(prop);
-            string value2_2 = propList2->getProperty(prop);
-            string value3_2 = propList3->getProperty(prop);
+            found1_2 = propList1->cachedKeyValues().get(prop, jsonValue1_2);
+            found2_2 = propList2->cachedKeyValues().get(prop, jsonValue2_2);
+            found3_2 = propList3->cachedKeyValues().get(prop, jsonValue3_2);
+
             _node0->releaseLock();
-            cerr << "testGetPropertyList8: value1_1 (" << value1_1
-                 << "), value1_2 (" << value1_2 << ")" << endl;
-            MPI_CPPUNIT_ASSERT(value1_1.compare(value1_2) == 0);
-            cerr << "testGetPropertyList8: value2_1 (" << value2_1
-                 << "), value2_2 (" << value2_2 << ")" << endl;
-            MPI_CPPUNIT_ASSERT(value2_1.compare(value2_2) == 0);
-            cerr << "testGetPropertyList8: value3_1 (" << value3_1
-                 << "), value3_2 (" << value3_2 << ")" << endl;
-            MPI_CPPUNIT_ASSERT(value3_1.compare(value3_2) == 0);
+
+            if (found1_1) {
+                cerr << "testGetPropertyList8: value1_1 (" 
+                     << jsonValue1_1.get<JSONValue::JSONString>() << endl;
+            }
+            if (found2_1) {
+                cerr << "testGetPropertyList8: value2_1 (" 
+                     << jsonValue2_1.get<JSONValue::JSONString>() << endl;
+            }
+            if (found3_1) {
+                cerr << "testGetPropertyList8: value3_1 (" 
+                     << jsonValue3_1.get<JSONValue::JSONString>() << endl;
+            }
+            if (found1_1 == true && found2_1 == true && found3_1 == true) {
+                MPI_CPPUNIT_ASSERT(
+                    (jsonValue1_1.get<JSONValue::JSONString>() ==
+                    jsonValue2_1.get<JSONValue::JSONString>()) &&
+                    (jsonValue2_1.get<JSONValue::JSONString>()== 
+                     jsonValue3_1.get<JSONValue::JSONString>()));
+            }
+            MPI_CPPUNIT_ASSERT(found1_1 == found2_1);
+            MPI_CPPUNIT_ASSERT(found2_1 == found3_1);
+
+            if (found1_2) {
+                cerr << "testGetPropertyList8: value1_2 (" 
+                     << jsonValue1_2.get<JSONValue::JSONString>() << endl;
+            }
+            if (found2_2) {
+                cerr << "testGetPropertyList8: value2_2 (" 
+                     << jsonValue2_2.get<JSONValue::JSONString>() << endl;
+            }
+            if (found3_2) {
+                cerr << "testGetPropertyList8: value3_2 (" 
+                     << jsonValue3_2.get<JSONValue::JSONString>() << endl;
+            }
+            if (found1_2 == true && found2_2 == true && found3_2 == true) {
+                MPI_CPPUNIT_ASSERT(
+                    (jsonValue1_2.get<JSONValue::JSONString>() ==
+                    jsonValue2_2.get<JSONValue::JSONString>()) &&
+                    (jsonValue2_2.get<JSONValue::JSONString>()== 
+                     jsonValue3_2.get<JSONValue::JSONString>()));
+            }
+            MPI_CPPUNIT_ASSERT(found1_2 == found2_2);
+            MPI_CPPUNIT_ASSERT(found2_2 == found3_2);
+
+            if (found1_1 == true && found1_2 == true) {
+                MPI_CPPUNIT_ASSERT(jsonValue1_1.get<JSONValue::JSONString>() ==
+                                   jsonValue1_2.get<JSONValue::JSONString>());
+            }
+            MPI_CPPUNIT_ASSERT(found1_1 == found1_2);
         }
 
         barrier(_factory, true);
-        MPI_CPPUNIT_ASSERT(propList1->getProperty(prop) == newValue);
-        MPI_CPPUNIT_ASSERT(propList2->getProperty(prop) == newValue);
-        MPI_CPPUNIT_ASSERT(propList3->getProperty(prop) == newValue);
+
+        found = propList1->cachedKeyValues().get(prop, jsonValue);
+        MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>()
+                           == newValue);
+        found = propList2->cachedKeyValues().get(prop, jsonValue);
+        MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>()
+                           == newValue);
+        found = propList3->cachedKeyValues().get(prop, jsonValue);
+        MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>()
+                           == newValue);
     }
 
   private:

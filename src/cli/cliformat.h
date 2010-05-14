@@ -17,12 +17,35 @@
 class CliFormat {
   public:
     /** 
+     * Print out a bool data attribute. 
+     *
+     * @param attribute the attribute name
+     * @param data the attribute data
+     */
+    static void attributeOut(std::string attribute, bool data) 
+    {
+        std::cout << " " << attribute << " : " 
+                  << ((data == true) ? "true" : "false") << std::endl;
+    }
+
+    /** 
      * Print out a numeric data attribute. 
      *
      * @param attribute the attribute name
      * @param data the attribute data
      */
     static void attributeOut(std::string attribute, int32_t data) 
+    {
+        std::cout << " " << attribute << " : " << data << std::endl;
+    }
+
+    /** 
+     * Print out a const char * data attribute. 
+     *
+     * @param attribute the attribute name
+     * @param data the attribute data
+     */
+    static void attributeOut(std::string attribute, const char *data) 
     {
         std::cout << " " << attribute << " : " << data << std::endl;
     }

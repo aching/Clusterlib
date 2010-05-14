@@ -97,3 +97,14 @@ make test_tinderbox
 
 More details and options on how to run unittests are in the directory
 unittests.
+
+
+Extending clusterlib:
+
+Add new Notifyable objects (subclass Notifyable)
+- Create an interface (i.e. class Application)
+- Create an implementation (i.e. class ApplicationImpl)
+- (optional) Create cached interfaces (i.e. class CachedKeyValues)
+- (optional) Create cached implementation (i.e. class CachedKeyValuesImpl)
+- Register your implementation in FactoryOps (i.e. registerNotifyable())
+- 

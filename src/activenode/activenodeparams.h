@@ -21,7 +21,8 @@ namespace activenode {
 /**
  * Active node test parameters
  */
-class ActiveNodeParams {
+class ActiveNodeParams 
+{
   public:
     /**
      * Output to console or file

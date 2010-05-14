@@ -42,11 +42,12 @@ class ClusterlibRemove : public MPITestFixture {
 	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
 	MPI_CPPUNIT_ASSERT(_client0 != NULL);
-	_app0 = _client0->getRoot()->getApplication(appName, true);
+	_app0 = _client0->getRoot()->getApplication(
+            appName, CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_app0 != NULL);
-	_group0 = _app0->getGroup("servers", true);
+	_group0 = _app0->getGroup("servers", CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_group0 != NULL);
-	_node0 = _group0->getNode("server-0", true);
+	_node0 = _group0->getNode("server-0", CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_node0 != NULL);
     }
 
@@ -72,7 +73,8 @@ class ClusterlibRemove : public MPITestFixture {
                                     "testRemove1");
         
         if (isMyRank(0)) {
-            Node *node = _group0->getNode("node-to-be-deleted", true);
+            Node *node = _group0->getNode(
+                "node-to-be-deleted", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(node);
             node->remove();
             MPI_CPPUNIT_ASSERT(node->getState() == Notifyable::REMOVED);
@@ -93,7 +95,7 @@ class ClusterlibRemove : public MPITestFixture {
         if (isMyRank(0)) {
             PropertyList *prop = _group0->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST,
-                true);
+                CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(prop);
             prop->remove();
             MPI_CPPUNIT_ASSERT(prop->getState() == Notifyable::REMOVED);
@@ -112,7 +114,8 @@ class ClusterlibRemove : public MPITestFixture {
                                     "testRemove3");
 
         if (isMyRank(0)) {
-            Group *group = _group0->getGroup("group-to-be-deleted", true);
+            Group *group = _group0->getGroup(
+                "group-to-be-deleted", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(group);
             group->remove();
             MPI_CPPUNIT_ASSERT(group->getState() == Notifyable::REMOVED);
@@ -132,7 +135,7 @@ class ClusterlibRemove : public MPITestFixture {
 
         if (isMyRank(0)) {
             Application *app = _client0->getRoot()->getApplication(
-                "app-to-be-deleted", true);
+                "app-to-be-deleted", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(app);
             app->remove();
             MPI_CPPUNIT_ASSERT(app->getState() == Notifyable::REMOVED);
@@ -153,7 +156,7 @@ class ClusterlibRemove : public MPITestFixture {
         if (isMyRank(0)) {
             DataDistribution *dist = _group0->getDataDistribution(
                 "dist-to-be-deleted", 
-                true);
+                CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(dist);
             dist->remove();
             MPI_CPPUNIT_ASSERT(dist->getState() == Notifyable::REMOVED);
@@ -197,7 +200,7 @@ class ClusterlibRemove : public MPITestFixture {
         if (isMyRank(0)) {
             PropertyList *prop = _node0->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST,
-                true);
+                CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(prop);
             try {
                 _node0->remove(false);
@@ -291,12 +294,14 @@ class ClusterlibRemove : public MPITestFixture {
                                     "testRemove30");
         
         if (isMyRank(0)) {
-            Node *node = _group0->getNode("node-to-be-deleted", true);
+            Node *node = _group0->getNode(
+                "node-to-be-deleted", CREATE_IF_NOT_FOUND);
             node->remove();
         }
         barrier(_factory, true);
         if (isMyRank(1)) {
-            Node *node = _group0->getNode("node-to-be-deleted", true);
+            Node *node = _group0->getNode(
+                "node-to-be-deleted", CREATE_IF_NOT_FOUND);
             node->remove();
         }
     }
@@ -313,12 +318,14 @@ class ClusterlibRemove : public MPITestFixture {
                                     "testRemove31");
         
         if (isMyRank(0)) {
-            Node *node = _group0->getNode("node-to-be-deleted", true);
+            Node *node = _group0->getNode(
+                "node-to-be-deleted", CREATE_IF_NOT_FOUND);
             node->remove();
         }
         barrier(_factory, true);
         if (isMyRank(1)) {
-            Node *node = _group0->getNode("node-to-be-deleted", true);
+            Node *node = _group0->getNode(
+                "node-to-be-deleted", CREATE_IF_NOT_FOUND);
             node->remove();
         }
     }
@@ -337,7 +344,8 @@ class ClusterlibRemove : public MPITestFixture {
             _app0->remove(true);
             MPI_CPPUNIT_ASSERT(_app0->getState() == Notifyable::REMOVED);
             _app0->releaseRef();
-            _app0 = _client0->getRoot()->getApplication(appName, true);
+            _app0 = _client0->getRoot()->getApplication(
+                appName, CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(_app0->getState() == Notifyable::READY);
         }
 

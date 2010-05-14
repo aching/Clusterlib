@@ -21,7 +21,8 @@ namespace activenode {
 /**
  * Active node
  */
-class ActiveNode {
+class ActiveNode 
+{
   public:
     /**
      * Constructor.
@@ -69,11 +70,6 @@ class ActiveNode {
     ActiveNodeParams m_params;
 
     /**
-     * Health checker for the active node.
-     */
-    std::auto_ptr<clusterlib::HealthChecker> m_nodeHealthChecker;
-    
-    /**
      * The clusterlib factory
      */
     clusterlib::Factory *m_factory;
@@ -99,9 +95,14 @@ class ActiveNode {
     clusterlib::Node *m_activeNode;
 
     /**
-     * The vectory of all the handler pointers
+     * The vector of all the handler pointers
      */
     std::vector<clusterlib::UserEventHandler *> m_handlerVec;
+
+    /**
+     * The vector of all the Periodic functions.
+     */
+    std::vector<clusterlib::Periodic *> m_periodicVec;
 
     /**
      * When the signal is sent, the shutdown will begin.

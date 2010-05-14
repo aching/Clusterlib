@@ -63,7 +63,13 @@ bool
 Cond::waitMsecs(Mutex &mutex, int64_t msecTimeout)
 {
     TRACE(CL_LOG, "waitMsecs");
-    return waitUsecs(mutex, msecTimeout * 1000);
+
+    if (msecTimeout == -1) {
+        return waitUsecs(mutex, -1);
+    }
+    else {
+        return waitUsecs(mutex, msecTimeout * 1000);
+    }
 }
 
 void
@@ -82,18 +88,41 @@ Mutex::release()
     unlock();
 }
 
+void
+Mutex::lock()
+{
+    TRACE(CL_LOG, "lock");
+
+    int ret = pthread_mutex_lock(&mutex);
+    if (ret != 0) {
+        throw InconsistentInternalStateException(
+            "lock: Failed to lock");
+    }
+}
+
+void
+Mutex::unlock()
+{
+    TRACE(CL_LOG, "unlock");
+
+    int ret = pthread_mutex_unlock(&mutex); 
+    if (ret != 0) {
+        throw InconsistentInternalStateException(
+            "unlock: Failed to unlock");
+    }
+}
 
 Locker::Locker(Mutex *mp)
 {
     TRACE(CL_LOG, "Locker");
 
-    mp->lock();
+    mp->acquire();
     mp_lock = mp;
 }
 
 Locker::~Locker()
 {
-    mp_lock->unlock();
+    mp_lock->release();
 }
 
 PredMutexCond::PredMutexCond()         
@@ -164,8 +193,13 @@ bool
 PredMutexCond::predWaitMsecs(int64_t msecTimeout)
 {
     TRACE(CL_LOG, "predWaitMsecs");
-
-    return predWaitUsecs(msecTimeout * 1000);
+    
+    if (msecTimeout == -1) {
+        return predWaitUsecs(-1);
+    }
+    else {
+        return predWaitUsecs(msecTimeout * 1000);
+    }
 }
 
 }

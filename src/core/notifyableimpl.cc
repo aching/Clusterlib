@@ -28,17 +28,24 @@ NotifyableImpl::getPropertyListNames()
 
     throwIfRemoved();
 
-    return getOps()->getPropertyListNames(this);
+    return getOps()->getChildrenNames(
+        NotifyableKeyManipulator::createPropertyListChildrenKey(getKey()),
+        CachedObjectChangeHandlers::PROPERTYLISTS_CHANGE);
 }
 
 PropertyList *
-NotifyableImpl::getPropertyList(const std::string &name, bool create)
+NotifyableImpl::getPropertyList(const string &name, AccessType accessType)
 {
     TRACE(CL_LOG, "getPropertyList");
 
     throwIfRemoved();
 
-    return getOps()->getPropertyList(name, this, create);
+    return dynamic_cast<PropertyList *>(
+        getOps()->getNotifyable(
+            this,
+            ClusterlibStrings::REGISTERED_PROPERTYLIST_NAME,
+            name,
+            accessType));
 }
 
 NameList
@@ -48,17 +55,23 @@ NotifyableImpl::getQueueNames()
 
     throwIfRemoved();
 
-    return getOps()->getQueueNames(this);
+    return getOps()->getChildrenNames(
+        NotifyableKeyManipulator::createQueueChildrenKey(getKey()),
+        CachedObjectChangeHandlers::QUEUES_CHANGE);
 }
 
 Queue *
-NotifyableImpl::getQueue(const std::string &name, bool create)
+NotifyableImpl::getQueue(const std::string &queueName, AccessType accessType)
 {
     TRACE(CL_LOG, "getQueue");
 
     throwIfRemoved();
 
-    return getOps()->getQueue(name, this, create);
+    return dynamic_cast<Queue *>(
+        getOps()->getNotifyable(this,
+                                ClusterlibStrings::REGISTERED_QUEUE_NAME,
+                                queueName,
+                                accessType));
 }
 
 void
@@ -91,7 +104,28 @@ NotifyableImpl::getMyChildren()
 
     throwIfRemoved();
     
-    return getOps()->getChildren(this);
+    /*
+     * Add the notifyables from this object and then the subclass
+     * specific objects.
+     */
+    NotifyableList tmpList, finalList;
+    tmpList = getOps()->getNotifyableList(
+        this,
+        ClusterlibStrings::REGISTERED_PROPERTYLIST_NAME,
+        getPropertyListNames(),
+        LOAD_FROM_REPOSITORY);
+    finalList.insert(finalList.end(), tmpList.begin(), tmpList.end());
+    tmpList = getOps()->getNotifyableList(
+        this,
+        ClusterlibStrings::REGISTERED_QUEUE_NAME,
+        getQueueNames(),
+        LOAD_FROM_REPOSITORY);
+    finalList.insert(finalList.end(), tmpList.begin(), tmpList.end());
+
+    tmpList = getChildrenNotifyables();
+    finalList.insert(finalList.end(), tmpList.begin(), tmpList.end());
+
+    return finalList;
 }
 
 Application *
@@ -105,12 +139,17 @@ NotifyableImpl::getMyApplication()
      * Try to find the object.
      *
      * An application is its own application, according to the
-     * semantics implemented below...
+     * semantics implemented below.
      */
     string appKey = getKey();
     Application *myApp = NULL;
     do {
-        myApp = getOps()->getApplicationFromKey(appKey, false);
+        myApp = dynamic_cast<Application *>(
+            getOps()->getNotifyableFromKey(
+                vector<string>(1, 
+                               ClusterlibStrings::REGISTERED_APPLICATION_NAME),
+                appKey, 
+                LOAD_FROM_REPOSITORY));
         appKey = NotifyableKeyManipulator::removeObjectFromKey(appKey);
     }  while ((myApp == NULL) && (!appKey.empty()));
 
@@ -131,7 +170,11 @@ NotifyableImpl::getMyGroup()
     Group *myGroup = NULL;
     do {
         groupKey = NotifyableKeyManipulator::removeObjectFromKey(groupKey);
-        myGroup = getOps()->getGroupFromKey(groupKey, false);
+        myGroup = dynamic_cast<Group *>(
+            getOps()->getNotifyableFromKey(
+                vector<string>(1, ClusterlibStrings::REGISTERED_GROUP_NAME),
+                groupKey, 
+                LOAD_FROM_REPOSITORY));
     } while ((myGroup == NULL) && (!groupKey.empty()));
 
     return myGroup;
@@ -220,24 +263,17 @@ NotifyableImpl::acquireLockWaitMsecs(int64_t msecTimeout, bool acquireChildren)
         curUsecTimeout = -1;
     }
 
-    if (getMyParent() == NULL) {
-        throw InvalidMethodException(
-            "acquireLock: Can not lock a Notifyable that has no parent "
-            "(most likely because it is the Root!)");
-    }
-
     LOG_DEBUG(CL_LOG, 
-              "acquireLock: acquring parent lock on %s", 
+              "acquireLockWaitMsec:: acquiring lock on %s", 
               getKey().c_str()); 
-    
+
     /*
      * Algorithm:
-     * -Acquire locks for this notifyable and its parent
+     * -Acquire locks for this notifyable
      * -If acquireChildren is set, acquire all child locks of this notifyable
      */
     bool gotLock = false;
     NotifyableList ntList, tmpNtList;
-    ntList.push_back(getMyParent());
     ntList.push_back(this);
     uint32_t ntListIndex = 0;
     do {
@@ -261,7 +297,7 @@ NotifyableImpl::acquireLockWaitMsecs(int64_t msecTimeout, bool acquireChildren)
         }
 
         if ((ntListIndex != 0) && (acquireChildren)) {
-            tmpNtList = getOps()->getChildren(ntList[ntListIndex]);
+            tmpNtList = ntList[ntListIndex]->getMyChildren();
             /* Invalidates all iterators (therefore use of index) */
             ntList.insert(ntList.end(), tmpNtList.begin(), tmpNtList.end()); 
         }
@@ -279,7 +315,7 @@ NotifyableImpl::acquireLockWaitMsecs(int64_t msecTimeout, bool acquireChildren)
     /* Release notifyables from getChildren() */
     NotifyableList::iterator ntIt;
     for (ntIt = ntList.begin(); ntIt != ntList.end(); ntIt++) {
-        if (*ntIt != this && *ntIt != getMyParent()) {
+        if (*ntIt != this) {
             (*ntIt)->releaseRef();
         }
     }
@@ -297,25 +333,8 @@ NotifyableImpl::releaseLock(bool releaseChildren)
 {
     TRACE(CL_LOG, "releaseLock");
 
-    /*
-     * Typically, use getMyParent() here, but it is possible we marked
-     * it deleted (in which case getMyParent() will throw.  If I have
-     * acquired the locks and deleted this node, than no other thread
-     * could possibly have deleted the parent until after I have
-     * released my locks.  Therefore, it is safe to directly use
-     * mp_parent.
-     */
-    if (mp_parent == NULL) {
-        throw InvalidMethodException(
-            "releaseLock: Can not unlock a Notifyable that has no parent");
-    }
-
-    getOps()->getDistributedLocks()->release(
-        mp_parent,
-        ClusterlibStrings::NOTIFYABLELOCK);
-
     LOG_DEBUG(CL_LOG, 
-              "releaseLock: releasing parent lock on %s", 
+              "releaseLock: releasing lock on %s", 
               getKey().c_str()); 
     if (releaseChildren == true) {
         NotifyableList ntList, tmpNtList;
@@ -336,7 +355,7 @@ NotifyableImpl::releaseLock(bool releaseChildren)
                           getKey().c_str());
             }
             try {
-                tmpNtList = getOps()->getChildren(ntList[ntListIndex]);
+                tmpNtList = ntList[ntListIndex]->getMyChildren();
             } catch (ObjectRemovedException &e) {
                 LOG_INFO(CL_LOG,
                          "releaseLock: Getting children of %s failed, likely "
@@ -378,6 +397,77 @@ NotifyableImpl::hasLock()
         hasLock(this, ClusterlibStrings::NOTIFYABLELOCK);
 }
 
+bool
+NotifyableImpl::getLockInfo(std::string *id, 
+                            int64_t *msecs)
+{
+    TRACE(CL_LOG, "getLockInfo");
+
+    throwIfRemoved();
+
+    return getOps()->getDistributedLocks()->
+        getInfo(this, ClusterlibStrings::NOTIFYABLELOCK, id, msecs);
+}
+
+void
+NotifyableImpl::acquireOwnership()
+{
+    TRACE(CL_LOG, "acquireOwnership");
+    
+     getOps()->getDistributedLocks()->acquireWaitUsecs(
+         -1,
+         this,
+         ClusterlibStrings::OWNERSHIP_LOCK);
+}
+
+bool
+NotifyableImpl::acquireOwnershipWaitMsecs(int64_t msecTimeout)
+{
+    TRACE(CL_LOG, "acquireOwnershipWaitMsecs");
+
+    return getOps()->getDistributedLocks()->acquireWaitUsecs(
+        msecTimeout * 1000,
+        this,
+        ClusterlibStrings::OWNERSHIP_LOCK);
+}
+
+void
+NotifyableImpl::releaseOwnership()
+{
+    TRACE(CL_LOG, "releaseOwnership");
+
+    getOps()->getDistributedLocks()->release(
+        this,
+        ClusterlibStrings::OWNERSHIP_LOCK);
+}
+
+bool
+NotifyableImpl::hasOwnership()
+{
+    TRACE(CL_LOG, "hasOwnership");
+
+    throwIfRemoved();
+
+    return getOps()->getDistributedLocks()->
+        hasLock(this, ClusterlibStrings::OWNERSHIP_LOCK);
+}
+
+bool
+NotifyableImpl::getOwnershipInfo(std::string *id, 
+                                 int64_t *msecs)
+{
+    TRACE(CL_LOG, "getOwnershipInfo");
+
+    throwIfRemoved();
+
+    return getOps()->getDistributedLocks()->
+        getInfo(this, ClusterlibStrings::OWNERSHIP_LOCK, id, msecs);
+}
+
+/*
+ * AC - Needs to be fixed to not have to "lock" to find the locks or
+ * else it will be worthless 
+ */
 NameList
 NotifyableImpl::getLockBids(bool children)
 {
@@ -420,7 +510,8 @@ NotifyableImpl::remove(bool removeChildren)
 
     throwIfRemoved();
 
-    if (getMyParent() == NULL) {
+    Notifyable *parent = getMyParent();
+    if (parent == NULL) {
         throw InvalidMethodException(
             "remove: Can not remove a Notifyable that has no parent");
     }
@@ -433,11 +524,11 @@ NotifyableImpl::remove(bool removeChildren)
     /*
      * Algorithm: 
      *
-     * 1. To be completely safe, must acquire exclusive locks on this
-     * Notifyable if removeChildren == false.  Otherwise lock at this
-     * Notifyable all the way down to the leaf nodes.  This guarantees
-     * that nobody will try to modify this Notifyable at the same
-     * time.
+     * 1. To be completely safe, must acquire exclusive locks on the
+     * parent of this Notifyable and this Notifyable.  Also, lock all
+     * the way down to the leaf nodes if removeChildren == true.  This
+     * guarantees that nobody will try to modify this Notifyable at
+     * the same time.
      *
      * Any failures to lock will cause failure.
      *
@@ -455,11 +546,13 @@ NotifyableImpl::remove(bool removeChildren)
      * remove event was already propagated through the clusterlib
      * 'external' event thread. 
      */
+
+    getMyParent()->acquireLock();
     acquireLock(removeChildren);
 
     try {
         if (removeChildren == false) {
-            NotifyableList ntList = getOps()->getChildren(this);
+            NotifyableList ntList = getMyChildren();
             if (ntList.empty() == false) {
                 LOG_ERROR(CL_LOG,
                           "remove: Tried to remove a single Notifyable with %"
@@ -469,11 +562,13 @@ NotifyableImpl::remove(bool removeChildren)
                     "remove: Tried to remove a Notifyable "
                     "with children");
             }
-            getOps()->removeNotifyableFromCacheByKey(getKey());
+            getOps()->removeCachedNotifyable(this);
             removeRepositoryEntries();
             
-            /* Must release lock before try to clean up from removed cache */
+            /* Must release locks before try to clean up from removed cache */
+            parent->releaseLock();
             releaseLock(removeChildren);
+
             getOps()->synchronize();
             removeFromRemovedNotifyablesIfReleased(false);
         }
@@ -485,7 +580,7 @@ NotifyableImpl::remove(bool removeChildren)
                 LOG_DEBUG(CL_LOG, 
                           "remove: getting node on %s", 
                           ntList[ntListIndex]->getKey().c_str());
-                tmpNtList = getOps()->getChildren(ntList[ntListIndex]);
+                tmpNtList = ntList[ntListIndex]->getMyChildren();
 
                 /*
                  * Invalidates all iterators (therefore use of index)
@@ -505,12 +600,14 @@ NotifyableImpl::remove(bool removeChildren)
                 LOG_DEBUG(CL_LOG, 
                           "remove: removing %s", 
                           curNtp->getKey().c_str()); 
-                getOps()->removeNotifyableFromCacheByKey(curNtp->getKey());
+                getOps()->removeCachedNotifyable(curNtp);
                 curNtp->removeRepositoryEntries(); 
             }
 
-            /* Must release lock before try to clean up from removed cache */
+            /* Must release locks before try to clean up from removed cache */
+            parent->releaseLock();
             releaseLock(removeChildren);
+
             /* Release notifyables from getChildren() */
             for (revNtListIt = ntList.rbegin(); 
                  revNtListIt != ntList.rend(); 
@@ -524,11 +621,48 @@ NotifyableImpl::remove(bool removeChildren)
         }    
     } 
     catch (Exception &e) {
+        parent->releaseLock();
         releaseLock(removeChildren);
+
         throw Exception(
             string("remove: released lock becauase of exception: ") +
             e.what());
     }
+}
+
+CachedState &
+NotifyableImpl::cachedCurrentState()
+{
+    return m_cachedCurrentState;
+}
+
+CachedState &
+NotifyableImpl::cachedDesiredState()
+{
+    return m_cachedDesiredState;
+}
+
+void
+NotifyableImpl::initialize()
+{
+    TRACE(CL_LOG, "initialize");
+
+    m_cachedCurrentState.loadDataFromRepository(false);
+    m_cachedDesiredState.loadDataFromRepository(false);
+
+    initializeCachedRepresentation();
+}
+
+void
+NotifyableImpl::removeRepositoryEntries()
+{
+    TRACE(CL_LOG, "removeRepositoryEntries");
+    
+    SAFE_CALL_ZK(getOps()->getRepository()->deleteNode(getKey(), true),
+                 "Could not delete key %s: %s",
+                 getKey().c_str(),
+                 false,
+                 true);
 }
 
 const string
@@ -737,5 +871,27 @@ NotifyableImpl::getRefCountLock()
     return &m_refCountLock;
 }
 
-};	/* End of 'namespace clusterlib' */
 
+string
+NotifyableImpl::createStateJSONArrayKey(const string &notifyableKey,
+                                        CachedStateImpl::StateType stateType)
+{
+    string res;
+    res.append(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    if (stateType == CachedStateImpl::CURRENT_STATE) {
+        res.append(ClusterlibStrings::CURRENT_STATE_JSON_VALUE);
+    }
+    else if (stateType == CachedStateImpl::DESIRED_STATE) {
+        res.append(ClusterlibStrings::DESIRED_STATE_JSON_VALUE);
+    }
+    else {
+        ostringstream oss;
+        oss << "createStateJSONArrayKey: Invalid StateType " << stateType;
+        throw InvalidArgumentsException(oss.str());
+    }
+
+    return res;
+}
+
+};	/* End of 'namespace clusterlib' */

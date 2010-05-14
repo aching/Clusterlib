@@ -40,12 +40,27 @@ const string ClusterlibStrings::DISTRIBUTIONS = "_distributions";
 const string ClusterlibStrings::PROPERTYLISTS = "_propertyLists";
 const string ClusterlibStrings::QUEUES = "_queues";
 
+const string ClusterlibStrings::REGISTERED_ROOT_NAME = "root";
+const string ClusterlibStrings::REGISTERED_APPLICATION_NAME = "application";
+const string ClusterlibStrings::REGISTERED_GROUP_NAME = "group";
+const string ClusterlibStrings::REGISTERED_NODE_NAME = "node";
+const string ClusterlibStrings::REGISTERED_PROCESSSLOT_NAME= "process slot";
+const string ClusterlibStrings::REGISTERED_DATADISTRIBUTION_NAME = 
+    "data distribution";
+const string ClusterlibStrings::REGISTERED_PROPERTYLIST_NAME = "property list";
+const string ClusterlibStrings::REGISTERED_QUEUE_NAME = "queue";
+
+const string ClusterlibStrings::NOTIFYABLESTATE_JSON_OBJECT = 
+    "_notifyableStateJsonObject";
+const string ClusterlibStrings::CURRENT_STATE_JSON_VALUE = 
+    "_currentStateJsonValue";
+const string ClusterlibStrings::DESIRED_STATE_JSON_VALUE = 
+    "_desiredStateJsonValue";
 const string ClusterlibStrings::CLIENTSTATE = "_clientState";
 const string ClusterlibStrings::CLIENTSTATEDESC = "_clientStateDesc";
 const string ClusterlibStrings::ADDRESS = "_address";
 const string ClusterlibStrings::LASTCONNECTED = "_lastConnected";
 const string ClusterlibStrings::CLIENTVERSION = "_clientVersion";
-const string ClusterlibStrings::CONNECTED = "_connected";
 
 const string ClusterlibStrings::QUEUE_PARENT = "_queueParent";
 
@@ -54,6 +69,8 @@ const string ClusterlibStrings::READY = "_ready";
 const string ClusterlibStrings::ALIVE = "_alive";
 const string ClusterlibStrings::MASTERSETSTATE = "_masterSetState";
 const string ClusterlibStrings::SUPPORTEDVERSIONS = "_supportedVersions";
+const string ClusterlibStrings::PROCESSSLOT_INFO_JSON_OBJECT = 
+    "_processSlotInfoJsonObject";
 const string ClusterlibStrings::PROCESSSLOTSUSAGE = "_processSlotsUsage";
 const string ClusterlibStrings::PROCESSSLOTSMAX = "_processSlotsMax";
 
@@ -85,8 +102,12 @@ const string ClusterlibStrings::JSON_PROCESSSTATE_DATE_KEY = "_date";
 const string ClusterlibStrings::ENABLED = "_enabled";
 const string ClusterlibStrings::DISABLED = "_disabled";
 
+const string ClusterlibStrings::DEFAULT_JSON_OBJECT = "_defaultJsonObject";
 const string ClusterlibStrings::DEFAULTPROPERTYLIST = "_defaultPropertyList";
 const string ClusterlibStrings::KEYVAL = "_keyval";
+const string ClusterlibStrings::KEYVAL_JSON_OBJECT = "_keyvalJsonObject";
+const string ClusterlibStrings::PROCESSINFO_JSON_OBJECT = 
+    "_processInfoJsonObject";
 
 const string ClusterlibStrings::PLK_STATE = "_state";
 const string ClusterlibStrings::PLV_STATE_INITIAL = "_initial";
@@ -108,18 +129,19 @@ const string ClusterlibStrings::DEFAULT_COMPLETED_QUEUE =
 const string ClusterlibStrings::QUEUEELEMENTPREFIX = "_queueElementPrefix";
 
 const string ClusterlibStrings::SHARDS = "_shards";
+const string ClusterlibStrings::SHARD_JSON_OBJECT = "_shardJsonObject";
 const string ClusterlibStrings::GOLDENSHARDS = "_goldenShards";
 
 const string ClusterlibStrings::SEQUENCE_SPLIT = "_";
 
 const string ClusterlibStrings::NOTIFYABLELOCK = "_notifyableLock";
-const string ClusterlibStrings::LEADERLOCK = "_leaderLock";
+const string ClusterlibStrings::OWNERSHIP_LOCK = "_ownershipLock";
 
 const string ClusterlibStrings::LOCKS = "_locks";
 const string ClusterlibStrings::BARRIERS = "_barriers";
 const string ClusterlibStrings::TRANSACTIONS = "_transactions";
 
-const string ClusterlibStrings::ENDEVENT = "_end event";
+const string ClusterlibStrings::ENDEVENT = "_endEvent";
     
 const string ClusterlibStrings::PARTIALLOCKNODE = 
     ClusterlibStrings::KEYSEPARATOR + 
@@ -163,6 +185,9 @@ const string ClusterlibStrings::SERVERBIN = "_server.bin";
 
 const string ClusterlibStrings::DEFAULT_CLI_APPLICATION = "_cli";
 
+const string ClusterlibStrings::STATE_SET_MSECS = "_setMsecs";
+const string ClusterlibStrings::STATE_SET_MSECS_AS_DATE = "_setMsecsAsDate";
+
 /*
  * Names associated with the special clusterlib master application.
  */
@@ -170,6 +195,7 @@ const string ClusterlibStrings::MASTER = "_master";
 
 const string ClusterlibStrings::RPC_START_PROCESS = "_startProcess";
 const string ClusterlibStrings::RPC_STOP_PROCESS = "_stopProcess";
+const string ClusterlibStrings::RPC_STOP_ACTIVENODE = "_stopActiveNode";
 const string ClusterlibStrings::RPC_GENERIC = "_generic";
 
 const string ClusterlibStrings::JSONOBJECTKEY_METHOD = "_method";
@@ -179,7 +205,6 @@ const string ClusterlibStrings::JSONOBJECTKEY_COMMAND = "_command";
 const string ClusterlibStrings::JSONOBJECTKEY_RESPQUEUEKEY = "_respQueueKey";
 const string ClusterlibStrings::JSONOBJECTKEY_NOTIFYABLEKEY = "_notifyableKey";
 const string ClusterlibStrings::JSONOBJECTKEY_SIGNAL = "_signal";
-const string ClusterlibStrings::JSONOBJECTKEY_CONNECTEDID = "_connectedId";
 const string ClusterlibStrings::JSONOBJECTKEY_TIME = "_time";
 
 };	/* End of 'namespace clusterlib' */

@@ -16,43 +16,6 @@ namespace clusterlib
 {
 
 /**
- * The object stored in the interval tree with each notifyable.
- */
-class ShardTreeData 
-{
-  public:
-    ShardTreeData()
-        : m_priority(-1),
-          m_notifyable(NULL) {}
-
-    ShardTreeData(int32_t priority, Notifyable *ntp) 
-        : m_priority(priority),
-          m_notifyable(ntp) {}
-
-    int32_t getPriority() const { return m_priority; }
-
-    Notifyable *getNotifyable() { return m_notifyable; }
-
-    bool operator==(ShardTreeData &rhs)
-    {
-        if ((getPriority() == rhs.getPriority()) &&
-            (getNotifyable() == rhs.getNotifyable())) {
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
-  private:
-    /** The priority of this shard */
-    int32_t m_priority;
-
-    /** The pointer to the Notifyable */
-    Notifyable *m_notifyable;
-};
-
-
-/**
  * Definition of class DataDistribution.
  */
 class DataDistributionImpl
@@ -60,37 +23,7 @@ class DataDistributionImpl
       public virtual NotifyableImpl
 {
   public:
-    virtual std::vector<Notifyable *> getNotifyables(const Key &key);
-
-    virtual std::vector<Notifyable *> getNotifyables(HashRange hashedKey);
-
-    virtual uint32_t getShardCount();
-
-    virtual bool isCovered();
-
-    virtual std::vector<HashRange> splitHashRange(int32_t numShards);
-
-    virtual void insertShard(HashRange start,
-                             HashRange end,
-                             Notifyable *ntp,
-                             int32_t priority = 0);
-
-    virtual void publishShards(bool unconditional = false);
-
-    virtual std::vector<Shard> getAllShards(
-        const Notifyable *ntp = NULL,
-        int32_t priority = -1);
-
-    virtual bool removeShard(Shard &shard);
-
-    virtual void clear();
-
-    virtual int32_t getVersion() 
-    {
-        throwIfRemoved();
-
-	return m_version; 
-    }
+    virtual CachedShards &cachedShards();
 
   public:
     /**
@@ -106,77 +39,38 @@ class DataDistributionImpl
      */
     virtual ~DataDistributionImpl();
 
+    virtual NotifyableList getChildrenNotifyables();
+
     virtual void initializeCachedRepresentation();
 
-    virtual void removeRepositoryEntries();
-
     /**
-     * Set the version of this object
+     * Create the shard JSONObject key
      *
-     * @param version the version to set
+     * @param dataDistributionKey the data distribution key
+     * @return the generated shard JSONObject key
      */
-    void setVersion(int32_t version) 
-    { 
-        throwIfRemoved();
-
-	m_version = version; 
-    }
-
-    /**
-     * Update the cached data distribution from the repository. Return
-     * true if there was actually a change in the value (as determined
-     * by comparing stored and new version).
-     */
-    bool update();
+    static std::string createShardJsonObjectKey(
+        const std::string &dataDistributionKey);
 
   private:
     /**
      * Make the default constructor private so it cannot be called.
      */
     DataDistributionImpl()
-        : NotifyableImpl(NULL, "", "", NULL)
+        : NotifyableImpl(NULL, "", "", NULL),
+          m_cachedShards(this)
+        
     {
         throw InvalidMethodException(
             "Someone called the DataDistributionImpl "
             "default constructor!");
     }
     
-    /**
-     * Helper function to set the shard data in the repository.
-     *
-     * @param encodedShards the JSON encoded shards
-     * @param version the previous version (or -1 for unconditional)
-     * @param finalVersion the finalVersion written
-     */
-    void updateShards(const std::string &encodedShards,
-                      int32_t version,
-                      int32_t &finalVersion);
-
   private:
     /**
-     * Unmarshall a string into this data distribution.
+     * The cached shards.
      */
-    void unmarshall(const std::string &marshalledDist);
-
-    /**
-     * Marshall a data distribution into a string.
-     */
-    std::string marshall();
-
-    /**
-     * The version number of this DataDistribution
-     */
-    int32_t m_version;
-
-    /**
-     * Stores all the shards in this object
-     */
-    IntervalTree<HashRange, ShardTreeData> m_shardTree;
-
-    /**
-     * The number of shards in the tree
-     */
-    int32_t m_shardTreeCount;
+    CachedShardsImpl m_cachedShards;
 };
 
 }	/* End of 'namespace clusterlib' */

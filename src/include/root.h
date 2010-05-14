@@ -38,8 +38,9 @@ class Root
      *         == false
      * @throw Exception only if tried to create and couldn't create
      */
-    virtual Application *getApplication(const std::string &appName,
-                                        bool create = false) = 0;
+    virtual Application *getApplication(
+        const std::string &appName,
+        AccessType accessType = LOAD_FROM_REPOSITORY) = 0;
 
     /**
      * Get a notifyable from a key. 

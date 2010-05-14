@@ -104,8 +104,8 @@ bool SignalMap::waitUsecsPredMutexCond(const string &key, int64_t usecTimeout)
     {
         Locker l1(getSignalMapLock());
         LOG_DEBUG(CL_LOG, 
-                  "waitUsecsPredMutexCond: waiting (%s), timeout (%" PRId64 
-                  ")",
+                  "waitUsecsPredMutexCond: waiting for key (%s), "
+                  "timeout (%" PRId64 ")",
                   key.c_str(),
                   usecTimeout);
         it = m_signalMap.find(key);

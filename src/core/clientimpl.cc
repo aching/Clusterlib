@@ -24,7 +24,11 @@ namespace clusterlib
 Root *
 ClientImpl::getRoot()
 {
-    return getOps()->getRoot();
+    return dynamic_cast<Root *>(
+        getOps()->getNotifyable(NULL, 
+                                ClusterlibStrings::REGISTERED_ROOT_NAME,
+                                ClusterlibStrings::ROOT,
+                                CREATE_IF_NOT_FOUND));
 }
 
 void
@@ -82,7 +86,7 @@ ClientImpl::consumeUserEvents(void *param)
              "Starting thread with ClientImpl::consumeUserEvents(), "
              "this: %p, thread: %" PRIu32,
              this,
-             static_cast<uint32_t>(pthread_self()));
+             ProcessThreadService::getTid());
 
     bool endEventReceived = false;
     string rootKey = NotifyableKeyManipulator::createRootKey();
@@ -148,7 +152,7 @@ ClientImpl::consumeUserEvents(void *param)
              "Ending thread with ClientImpl::consumeUserEvents(): "
              "this = %p, thread = %" PRIu32,
              this,
-             static_cast<uint32_t>(pthread_self()));
+             ProcessThreadService::getTid());
 }
 
 /*

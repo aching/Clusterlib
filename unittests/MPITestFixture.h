@@ -134,7 +134,9 @@ class MPITestFixture : public CppUnit::TestFixture {
                 factory->synchronize();
                 clusterlib::Root *root = factory->createClient()->getRoot();
                 clusterlib::PropertyList *propList =
-                    root->getPropertyList(m_clPropertyList, true);
+                    root->getPropertyList(
+                        m_clPropertyList, 
+                        clusterlib::CREATE_IF_NOT_FOUND);
                 bool done = false;
                 /* 
                  * publish() can fail if another process publishes at
@@ -142,14 +144,23 @@ class MPITestFixture : public CppUnit::TestFixture {
                  */
                 while (!done) {
                     try {
+                        json::JSONValue jsonValue;
+
                         propList->acquireLock();
-                        std::string value = 
-                            propList->getProperty(genTestKey());
+
+                        bool exists = propList->cachedKeyValues().get(
+                            genTestKey(), jsonValue);
+                        std::string value;
+                        if (exists) {
+                            value = 
+                                jsonValue.get<json::JSONValue::JSONString>();
+                        }
                         value.append(" ");
                         value.append(genPropertyListId());
-                        propList->setProperty(genTestKey(), value);
-                        propList->publishProperties();
+                        propList->cachedKeyValues().set(genTestKey(), value);
+                        propList->cachedKeyValues().publish();
                         done = true;
+
                         propList->releaseLock();  
                     }
                     catch (const clusterlib::PublishVersionException &e) {
@@ -177,7 +188,8 @@ class MPITestFixture : public CppUnit::TestFixture {
         if (m_updateClPropertyList) {
             clusterlib::Root *root = factory->createClient()->getRoot();
             clusterlib::PropertyList *propList =
-                root->getPropertyList(m_clPropertyList, true);
+                root->getPropertyList(m_clPropertyList, 
+                                      clusterlib::CREATE_IF_NOT_FOUND);
             std::stringstream ss;
             ss << " " << m_rank << ":" << m_hostname;
             bool done = false;
@@ -187,15 +199,24 @@ class MPITestFixture : public CppUnit::TestFixture {
              */
             while (!done) {
                 try {
+                    json::JSONValue jsonValue;
+
                     propList->acquireLock();
-                    std::string value = propList->getProperty(genTestKey());
+
+                    bool exists = propList->cachedKeyValues().get(
+                        genTestKey(), jsonValue);
+                    std::string value;
+                    if (exists) {
+                        value = jsonValue.get<json::JSONValue::JSONString>();
+                    }
                     size_t index = value.find(genPropertyListId());
                     if (index != std::string::npos) {
                         value.erase(index, genPropertyListId().size());
+                        propList->cachedKeyValues().set(genTestKey(), value);
+                        propList->cachedKeyValues().publish();
                     }
-                    propList->setProperty(genTestKey(), value);
-                    propList->publishProperties();
                     done = true;
+
                     propList->releaseLock();
                 }
                 catch (const clusterlib::PublishVersionException &e) {

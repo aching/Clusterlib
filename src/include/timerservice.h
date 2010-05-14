@@ -40,6 +40,16 @@ class TimerService {
     }
 
     /**
+     * Get the time in a human-readable format at this instant.
+     *
+     * @return a human-readable string of the current time
+     */
+    static std::string getMsecsTimeString()
+    {
+        return getMsecsTimeString(getCurrentTimeMsecs());
+    }
+
+    /**
      * Convenience function -- return the current time in msec
      * from the unix epoch.
      *

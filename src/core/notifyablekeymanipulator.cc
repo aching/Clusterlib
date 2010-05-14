@@ -67,20 +67,6 @@ NotifyableKeyManipulator::createLockNodeKey(const string &notifyableKey,
     res.append(ClusterlibStrings::SEQUENCE_SPLIT);
     return res;
 }
-                                            
-string
-NotifyableKeyManipulator::createNodeKey(const string &groupKey,
-                                        const string &nodeName)
-{
-    string res;
-    res.append(groupKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::NODES);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(nodeName);
-
-    return res;
-}
 
 string
 NotifyableKeyManipulator::createProcessSlotKey(
@@ -112,6 +98,55 @@ NotifyableKeyManipulator::createGroupKey(const string &groupKey,
 }
 
 string
+NotifyableKeyManipulator::createPropertyListChildrenKey(
+    const string &parentKey)
+{
+    string res;
+    res.append(parentKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::PROPERTYLISTS);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createQueueChildrenKey(
+    const string &parentKey)
+{
+    string res;
+    res.append(parentKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::QUEUES);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createRootKey()
+{
+    string res;
+    res.append(ClusterlibStrings::ROOTNODE);
+    res.append(ClusterlibStrings::CLUSTERLIB);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::CLUSTERLIBVERSION);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::ROOT);
+    
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createApplicationChildrenKey(const string &rootKey)
+{
+    string res;
+    res.append(rootKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::APPLICATIONS);
+
+    return res;
+}
+
+string
 NotifyableKeyManipulator::createApplicationKey(const string &appName)
 {
     string res;
@@ -130,15 +165,83 @@ NotifyableKeyManipulator::createApplicationKey(const string &appName)
 }
 
 string
-NotifyableKeyManipulator::createRootKey()
+NotifyableKeyManipulator::createGroupChildrenKey(const string &parentKey)
 {
     string res;
-        res.append(ClusterlibStrings::ROOTNODE);
-        res.append(ClusterlibStrings::CLUSTERLIB);
-        res.append(ClusterlibStrings::KEYSEPARATOR);
-        res.append(ClusterlibStrings::CLUSTERLIBVERSION);
-        res.append(ClusterlibStrings::KEYSEPARATOR);
-        res.append(ClusterlibStrings::ROOT);
+    res.append(parentKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::GROUPS);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createDataDistributionChildrenKey(
+    const string &parentKey)
+{
+    string res;
+    res.append(parentKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::DISTRIBUTIONS);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createNodeChildrenKey(const string &parentKey)
+{
+    string res;
+    res.append(parentKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::NODES);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createProcessSlotChildrenKey(const string &parentKey)
+{
+    string res;
+    res.append(parentKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::PROCESSSLOTS);
+
+    return res;
+}
+                                            
+string
+NotifyableKeyManipulator::createNodeKey(const string &groupKey,
+                                        const string &nodeName)
+{
+    string res;
+    res.append(groupKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::NODES);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(nodeName);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createNotifyableStateJSONObjectKey(
+    const string &notifyableKey)
+{
+    string res;
+    res.append(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::NOTIFYABLESTATE_JSON_OBJECT);
+
+    return res;
+}
+
+string
+NotifyableKeyManipulator::createJSONObjectKey(const string &notifyableKey)
+{
+    string res;
+    res.append(notifyableKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::DEFAULT_JSON_OBJECT);
 
     return res;
 }
@@ -241,73 +344,6 @@ NotifyableKeyManipulator::createProcessSlotPortVecKey(
 }
 
 string
-NotifyableKeyManipulator::createProcessSlotExecArgsKey(
-    const string &notifyableKey)
-{
-    string res(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::PROCESSSLOTEXECARGS);
-
-    return res;
-}
-
-string
-NotifyableKeyManipulator::createProcessSlotRunningExecArgsKey(
-    const string &notifyableKey)
-{
-    string res(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::PROCESSSLOTRUNNINGEXECARGS);
-
-    return res;
-}
-
-string
-NotifyableKeyManipulator::createProcessSlotPIDKey(
-    const string &notifyableKey)
-{
-    string res(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::PROCESSSLOTPID);
-
-    return res;
-}
-
-string
-NotifyableKeyManipulator::createProcessSlotDesiredStateKey(
-    const string &notifyableKey)
-{
-    string res(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::PROCESSSLOTDESIREDSTATE);
-
-    return res;
-}
-
-
-string
-NotifyableKeyManipulator::createProcessSlotCurrentStateKey(
-    const string &notifyableKey)
-{
-    string res(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::PROCESSSLOTCURRENTSTATE);
-
-    return res;
-}
-
-string
-NotifyableKeyManipulator::createProcessSlotReservationKey(
-    const string &notifyableKey)
-{
-    string res(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::PROCESSSLOTRESERVATION);
-
-    return res;
-}
-
-string
 NotifyableKeyManipulator::createQueuePrefixKey(
     const string &notifyableKey)
 {
@@ -335,59 +371,6 @@ NotifyableKeyManipulator::createSyncEventKey(const int64_t &syncEventId)
     ostringstream oss;
     oss << syncEventId;
     return oss.str();
-}
-
-string
-NotifyableKeyManipulator::getNotifyableKeyFromKey(const string &key)
-{
-    TRACE(CL_LOG, "getNotifyableKeyFromKey");
-
-    vector<string> components;
-    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
-
-    if (static_cast<int32_t>(components.size()) < 
-        ClusterlibInts::ROOT_COMPONENTS_COUNT) {
-        return string();
-    }
-        
-    /* 
-     * Check if this key already matches a possible Zookeeper node
-     * that represents a Notifyable.  Also, strip off one path section
-     * and check again if that fails.  
-     *
-     * The current layout of Clusterlib objects in Zookeeper limits
-     * any object to having only one layer beneath them as part of
-     * that object.  If that policy changes, this function will have
-     * to change.
-     */
-    if (NotifyableKeyManipulator::isNotifyableKey(components)) {
-        LOG_DEBUG(CL_LOG,
-                  "getNotifyableKeyFromKey: From key (%s), returned same key)",
-                  key.c_str());
-        return key;
-    }
-    if (NotifyableKeyManipulator::isNotifyableKey(components, 
-                                                  components.size() -1)) {
-        string res = key;
-        size_t keySeparator = res.rfind(ClusterlibStrings::KEYSEPARATOR);
-        if (keySeparator == string::npos) {
-            LOG_ERROR(CL_LOG,
-                      "getNotifyableKeyFromKey: Couldn't find key "
-                      "separator in key (%s)", key.c_str());
-            throw InconsistentInternalStateException(
-                "getNotifyableKeyFromKey: Couldn't find key separator");
-        }
-        res.erase(keySeparator);
-        LOG_DEBUG(CL_LOG,
-                  "getNotifyableKeyFromKey: From key (%s), "
-                  "returned stripped key (%s))",
-                  key.c_str(),
-                  res.c_str());
-
-        return res;
-    }
-
-    return string();
 }
 
 void NotifyableKeyManipulator::splitNotifyableKey(const string &key,
@@ -421,561 +404,6 @@ NotifyableKeyManipulator::isValidNotifyableName(const string &name)
     }
         
     return true;
-}
-
-bool
-NotifyableKeyManipulator::isNotifyableKey(const vector<string> &components,
-                                          int32_t elements)
-{
-    TRACE(CL_LOG, "isNotifyableKey");
-
-    if (elements > static_cast<int32_t>(components.size())) {
-        LOG_FATAL(CL_LOG,
-                  "isNotifyableKey: elements %" PRId32 
-                  " > size of components %" PRIuPTR,
-                  elements,
-                  components.size());
-        throw InvalidArgumentsException("isNotifyableKey: elements > size of "
-                                        "components");
-    }
-
-    /* 
-     * Set to the full size of the vector.
-     */
-    if (elements == -1) {
-        elements = components.size();
-    }
-
-    /* Check all the clusterlib objects, otherwise return false. */
-    if (isApplicationKey(components, elements)) {
-        return true;
-    }
-    if (isRootKey(components, elements)) {
-        return true;
-    }
-    if (isDataDistributionKey(components, elements)) {
-        return true;
-    }
-    if (isGroupKey(components, elements)) {
-        return true;
-    }
-    if (isPropertyListKey(components, elements)) {
-        return true;
-    }
-    if (isQueueKey(components, elements)) {
-        return true;
-    }
-    if (isNodeKey(components, elements)) {
-        return true;
-    }
-    if (isProcessSlotKey(components, elements)) {
-        return true;
-    }
-
-    return false;
-}
-
-bool
-NotifyableKeyManipulator::isNotifyableKey(const string &key)
-{
-    TRACE(CL_LOG, "isNotifyableKey");
-
-    vector<string> components;
-    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
-    return isNotifyableKey(components);
-}
-
-
-bool
-NotifyableKeyManipulator::isApplicationKey(const vector<string> &components,
-                                           int32_t elements)
-{
-    TRACE(CL_LOG, "isApplicationKey");
-
-    if (elements > static_cast<int32_t>(components.size())) {
-        LOG_FATAL(CL_LOG,
-                  "isApplicationKey: elements %" PRId32 
-                  " > size of components %" PRIuPTR,
-                  elements,
-                  components.size());
-        throw InvalidArgumentsException("isApplicationKey: elements > size of "
-                                        "components");
-    }
-
-    /* 
-     * Set to the full size of the vector.
-     */
-    if (elements == -1) {
-        elements = components.size();
-    }
-
-    if (elements != ClusterlibInts::APP_COMPONENTS_COUNT) {
-        return false;
-    }
-
-    if ((components.at(ClusterlibInts::CLUSTERLIB_INDEX) != 
-         ClusterlibStrings::CLUSTERLIB) ||
-        (components.at(ClusterlibInts::ROOT_INDEX) != 
-         ClusterlibStrings::ROOT) ||
-        (components.at(ClusterlibInts::APP_INDEX) != 
-         ClusterlibStrings::APPLICATIONS)) {
-        return false;
-    } 
-
-    return true;    
-}
-
-bool
-NotifyableKeyManipulator::isApplicationKey(const string &key)
-{
-    TRACE(CL_LOG, "isApplicationKey");
-
-    vector<string> components;
-    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
-    return isApplicationKey(components);
-}
-
-bool
-NotifyableKeyManipulator::isRootKey(const vector<string> &components,
-                                    int32_t elements)
-{
-    TRACE(CL_LOG, "isRootKey");
-
-    if (elements > static_cast<int32_t>(components.size())) {
-        LOG_FATAL(CL_LOG,
-                  "isRootKey: elements %" PRId32 
-                  " > size of components %" PRIuPTR,
-                  elements,
-                  components.size());
-        throw InvalidArgumentsException("isRootKey: elements > size of "
-                                        "components");
-    }
-
-    /* 
-     * Set to the full size of the vector.
-     */
-    if (elements == -1) {
-        elements = components.size();
-    }
-
-    if (elements != ClusterlibInts::ROOT_COMPONENTS_COUNT) {
-        return false;
-    }
-
-    if ((components.at(ClusterlibInts::CLUSTERLIB_INDEX) != 
-         ClusterlibStrings::CLUSTERLIB) ||
-        (components.at(ClusterlibInts::ROOT_INDEX) != 
-         ClusterlibStrings::ROOT)) {
-        return false;
-    } 
-
-    return true;    
-}
-
-bool
-NotifyableKeyManipulator::isRootKey(const string &key)
-{
-    TRACE(CL_LOG, "isRootKey");
-
-    vector<string> components;
-    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
-    return isRootKey(components);
-}
-
-bool
-NotifyableKeyManipulator::isDataDistributionKey(
-    const vector<string> &components, 
-    int32_t elements)
-{
-    TRACE(CL_LOG, "isDataDistributionKey");
-    
-    if (elements > static_cast<int32_t>(components.size())) {
-        LOG_FATAL(CL_LOG,
-                  "isDataDistributionKey: elements %" PRId32 
-                  " > size of components %" PRIuPTR,
-                  elements,
-                  components.size());
-        throw InvalidArgumentsException(
-            "isDataDistributionKey: elements > size of components");
-    }
-
-    /* 
-     * Set to the full size of the vector.
-     */
-    if (elements == -1) {
-        elements = components.size();
-    }
-
-    /*
-     * Make sure that we have enough elements to have a distribution
-     * and that after the Application key there are an even number of
-     * elements left.
-     */
-    if ((elements < ClusterlibInts::DIST_COMPONENTS_MIN_COUNT) ||
-        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
-        return false;
-    }
-
-    /*
-     * Check that the elements of the parent group are valid.
-     */
-    if (!isGroupKey(components, elements - 2)) {
-        return false;
-    }
-
-    /*
-     * Check that the second to the last element is DISTRIBUTIONS and
-     * that the distribution name is not empty.
-     */
-    if ((components.at(elements - 2) != ClusterlibStrings::DISTRIBUTIONS) ||
-        (components.at(elements - 1).empty() == true)) {
-        return false;
-    } 
-
-    return true;    
-}
-
-bool
-NotifyableKeyManipulator::isDataDistributionKey(const string &key)
-{
-    TRACE(CL_LOG, "isDataDistributionKey");
-
-    vector<string> components;
-    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
-    return isDataDistributionKey(components);    
-}
-
-bool
-NotifyableKeyManipulator::isGroupKey(const vector<string> &components, 
-                                     int32_t elements)
-{
-    TRACE(CL_LOG, "isGroupKey");
-
-    if (elements > static_cast<int32_t>(components.size())) {
-        LOG_FATAL(CL_LOG,
-                  "isGroupKey: elements %" PRId32 
-                  " > size of components %" PRIuPTR,
-                  elements,
-                  components.size());
-        throw InvalidArgumentsException("isGroupKey: elements > size of "
-                                        "components");
-    }
-
-    /* 
-     * Set to the full size of the vector.
-     */
-    if (elements == -1) {
-        elements = components.size();
-    }
-
-    /*
-     * Make sure that we have enough elements to have a group/app
-     * and that after the Application key there are an even number of
-     * elements left.
-     */
-    if ((elements < ClusterlibInts::GROUP_COMPONENTS_MIN_COUNT) ||
-        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
-        return false;
-    }
-
-    /*
-     * Check that the elements of the parent groups (recursively) and
-     * application are valid.
-     */
-    if (elements == ClusterlibInts::APP_COMPONENTS_COUNT) {
-        if (!isApplicationKey(components, elements)) {
-            return false;
-        }
-    }
-    else if (elements >= ClusterlibInts::APP_COMPONENTS_COUNT + 2) {
-        if (!isGroupKey(components, elements - 2)) {
-            return false;
-        }
-    }
-    else { 
-        /*
-         * Shouldn't happen.
-         */
-        return false;
-    }
-
-    /*
-     * Check that the second to the last element is APPLICATIONS or GROUPS and
-     * that the group name is not empty.
-     */
-    if (((components.at(elements - 2) != ClusterlibStrings::APPLICATIONS) &&
-         (components.at(elements - 2) != ClusterlibStrings::GROUPS)) ||
-        (components.at(elements - 1).empty() == true)) {
-        return false;
-    } 
-
-    return true;    
-}
-
-bool
-NotifyableKeyManipulator::isGroupKey(const string &key)
-{
-    TRACE(CL_LOG, "isGroupKey");
-
-    vector<string> components;
-    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
-    return isGroupKey(components);    
-}
-
-bool
-NotifyableKeyManipulator::isPropertyListKey(const vector<string> &components, 
-                                            int32_t elements)
-{
-    TRACE(CL_LOG, "isPropertyListKey");
-
-    if (elements > static_cast<int32_t>(components.size())) {
-        LOG_FATAL(CL_LOG,
-                  "isPropertyListKey: elements %" PRId32
-                  " > size of components %" PRIuPTR,
-                  elements,
-                  components.size());
-        throw InvalidArgumentsException(
-            "isPropertyListKey: elements > size of components");
-    }
-    
-    /* 
-     * Set to the full size of the vector.
-     */
-    if (elements == -1) {
-        elements = components.size();
-    }
-
-    /*
-     * Make sure that we have enough elements to have a property list
-     * and that after the Application key there are an even number of
-     * elements left.
-     */
-    if ((elements < ClusterlibInts::PROP_COMPONENTS_MIN_COUNT) ||
-        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
-        return false;
-    }
-
-    /*
-     * Check that the elements of the parent notifyable are valid.
-     */
-    if ((!isRootKey(components, elements - 2)) &&
-        (!isGroupKey(components, elements - 2)) &&
-        (!isDataDistributionKey(components, elements - 2)) &&
-        (!isNodeKey(components, elements - 2)) &&
-        (!isProcessSlotKey(components, elements - 2))) {
-        return false; 
-    }
-
-    /*
-     * Check that the second to the last element is PROPERTYLISTS and
-     * that the property list name is not empty.
-     */
-    if ((components.at(elements - 2) != ClusterlibStrings::PROPERTYLISTS) ||
-        (components.at(elements - 1).empty() == true)) {
-        return false;
-    } 
-
-    return true;    
-}
-
-bool
-NotifyableKeyManipulator::isPropertyListKey(const string &key)
-{
-    TRACE(CL_LOG, "isPropertyListKey");
-    
-    vector<string> components;
-    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
-    return isPropertyListKey(components);    
-}
-
-bool
-NotifyableKeyManipulator::isQueueKey(const vector<string> &components, 
-                                            int32_t elements)
-{
-    TRACE(CL_LOG, "isQueueKey");
-
-    if (elements > static_cast<int32_t>(components.size())) {
-        LOG_FATAL(CL_LOG,
-                  "isQueueKey: elements %" PRId32
-                  " > size of components %" PRIuPTR,
-                  elements,
-                  components.size());
-        throw InvalidArgumentsException(
-            "isQueueKey: elements > size of components");
-    }
-    
-    /* 
-     * Set to the full size of the vector.
-     */
-    if (elements == -1) {
-        elements = components.size();
-    }
-
-    /*
-     * Make sure that we have enough elements to have a property list
-     * and that after the Application key there are an even number of
-     * elements left.
-     */
-    if ((elements < ClusterlibInts::QUEUE_COMPONENTS_MIN_COUNT) ||
-        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
-        return false;
-    }
-
-    /*
-     * Check that the elements of the parent notifyable are valid.
-     */
-    if ((!isRootKey(components, elements - 2)) &&
-        (!isGroupKey(components, elements - 2)) &&
-        (!isDataDistributionKey(components, elements - 2)) &&
-        (!isNodeKey(components, elements - 2)) &&
-        (!isProcessSlotKey(components, elements - 2))) {
-        return false; 
-    }
-
-    /*
-     * Check that the second to the last element is QUEUES and
-     * that the queue name is not empty.
-     */
-    if ((components.at(elements - 2) != ClusterlibStrings::QUEUES) ||
-        (components.at(elements - 1).empty() == true)) {
-        return false;
-    } 
-
-    return true;    
-}
-
-bool
-NotifyableKeyManipulator::isQueueKey(const string &key)
-{
-    TRACE(CL_LOG, "isQueueKey");
-    
-    vector<string> components;
-    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
-    return isQueueKey(components);    
-}
-
-bool
-NotifyableKeyManipulator::isNodeKey(const vector<string> &components, 
-                                    int32_t elements)
-{
-    TRACE(CL_LOG, "isNodeKey");
-
-    if (elements > static_cast<int32_t>(components.size())) {
-        LOG_FATAL(CL_LOG,
-                  "isNodeKey: elements % " PRId32
-                  " > size of components %" PRIuPTR,
-                  elements,
-                  components.size());
-        throw InvalidArgumentsException("isNodeKey: elements > size of "
-                                        "components");
-    }
-
-    /* 
-     * Set to the full size of the vector.
-     */
-    if (elements == -1) {
-        elements = components.size();
-    }
-
-    /*
-     * Make sure that we have enough elements to have a node
-     * and that after the Application key there are an even number of
-     * elements left.
-     */
-    if ((elements < ClusterlibInts::NODE_COMPONENTS_MIN_COUNT) ||
-        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
-        return false;
-    }
-
-    /*
-     * Check that the elements of the parent group are valid.
-     */
-    if (!isGroupKey(components, elements - 2)) {
-        return false;
-    }
-
-    /*
-     * Check that the second to the last element is NODES and
-     * that the distribution name is not empty.
-     */
-    if ((components.at(elements - 2) != ClusterlibStrings::NODES) ||
-        (components.at(elements - 1).empty() == true)) {
-        return false;
-    } 
-
-    return true;    
-}
-
-bool
-NotifyableKeyManipulator::isNodeKey(const string &key)
-{
-    TRACE(CL_LOG, "isNodeKey");
-
-    vector<string> components;
-    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
-    return isNodeKey(components);    
-}
-
-bool
-NotifyableKeyManipulator::isProcessSlotKey(const vector<string> &components, 
-                                           int32_t elements)
-{
-    TRACE(CL_LOG, "isProcessSlotKey");
-
-    if (elements > static_cast<int32_t>(components.size())) {
-        LOG_FATAL(CL_LOG,
-                  "isProcessSlotKey: elements %" PRId32
-                  " > size of components %" PRIuPTR,
-                  elements,
-                  components.size());
-        throw InvalidArgumentsException("isProcessSlotKey: elements > size of "
-                                        "components");
-    }
-
-    /* 
-     * Set to the full size of the vector.
-     */
-    if (elements == -1) {
-        elements = components.size();
-    }
-
-    /*
-     * Make sure that we have enough elements to have a process slot
-     * and that after the Application key there are an even number of
-     * elements left.
-     */
-    if ((elements < ClusterlibInts::PROCESSSLOT_COMPONENTS_MIN_COUNT) ||
-        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
-        return false;
-    }
-
-    /*
-     * Check that the elements of the parent node are valid.
-     */
-    if (!isNodeKey(components, elements - 2)) {
-        return false;
-    }
-
-    /*
-     * Check that the second to the last element is PROCESSSLOTS
-     * that the distribution name is not empty.
-     */
-    if ((components.at(elements - 2) != ClusterlibStrings::PROCESSSLOTS) ||
-        (components.at(elements - 1).empty() == true)) {
-        return false;
-    } 
-
-    return true;    
-}
-
-bool
-NotifyableKeyManipulator::isProcessSlotKey(const string &key)
-{
-    TRACE(CL_LOG, "isProcessSlotKey");
-
-    vector<string> components;
-    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
-    return isProcessSlotKey(components);    
 }
 
 string 

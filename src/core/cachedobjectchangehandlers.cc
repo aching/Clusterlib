@@ -28,8 +28,12 @@ CachedObjectChangeHandlers::getCachedObjectChangeString(
     CachedObjectChange change)
 {
     switch (change) {
-        case NOTIFYABLE_STATE_CHANGE:
-            return "NOTIFYABLE_STATE_CHANGE";
+        case NOTIFYABLE_REMOVED_CHANGE:
+            return "NOTIFYABLE_REMOVED_CHANGE";
+        case CURRENT_STATE_CHANGE:
+            return "CURRENT_STATE_CHANGE";
+        case DESIRED_STATE_CHANGE:
+            return "DESIRED_STATE_CHANGE";
         case APPLICATIONS_CHANGE:
             return "APPLICATIONS_CHANGE";
         case GROUPS_CHANGE:
@@ -42,36 +46,22 @@ CachedObjectChangeHandlers::getCachedObjectChangeString(
             return "PROCESSSLOTS_CHANGE";
         case PROCESSSLOTS_USAGE_CHANGE:
             return "PROCESSSLOTS_USAGE_CHANGE";
-        case PROCESSSLOT_PORTVEC_CHANGE:
-            return "PROCESSSLOT_PORTVEC_CHANGE";
-        case PROCESSSLOT_EXECARGS_CHANGE:
-            return "PROCESSSLOT_EXECARGS_CHANGE";
-        case PROCESSSLOT_RUNNING_EXECARGS_CHANGE:
-            return "PROCESSSLOT_RUNNING_EXECARGS_CHANGE";
-        case PROCESSSLOT_PID_CHANGE:
-            return "PROCESSSLOT_PID_CHANGE";
-        case PROCESSSLOT_DESIRED_STATE_CHANGE:
-            return "PROCESSSLOT_DESIRED_STATE_CHANGE";
-        case PROCESSSLOT_CURRENT_STATE_CHANGE:
-            return "PROCESSSLOT_CURRENT_STATE_CHANGE";
-        case PROCESSSLOT_RESERVATION_CHANGE:
-            return "PROCESSSLOT_RESERVATION_CHANGE";
+        case PROCESSSLOT_PROCESSINFO_CHANGE:
+            return "PROCESSSLOT_PROCESSINFO_CHANGE";
         case PROPERTYLISTS_CHANGE:
             return "PROPERTYLISTS_CHANGE";
         case PROPERTYLIST_VALUES_CHANGE:
             return "PROPERTYLIST_VALUES_CHANGE";
         case SHARDS_CHANGE:
             return "SHARDS_CHANGE";
-        case NODE_CLIENT_STATE_CHANGE:
-            return "NODE_CLIENT_STATE_CHANGE";
-        case NODE_MASTER_SET_STATE_CHANGE:
-            return "NODE_MASTER_SET_STATE_CHANGE";
-        case NODE_CONNECTION_CHANGE:
-            return "NODE_CONNECTION_CHANGE";
+        case NODE_PROCESS_SLOT_INFO_CHANGE:
+            return "NODE_PROCESS_SLOT_INFO_CHANGE";
         case SYNCHRONIZE_CHANGE:
             return "SYNCHRONIZE_CHANGE";
         case PREC_LOCK_NODE_EXISTS_CHANGE:
             return "PREC_LOCK_NODE_EXISTS_CHANGE";
+        case QUEUES_CHANGE:
+            return "QUEUES_CHANGE";
         case QUEUE_CHILD_CHANGE:
             return "QUEUE_CHILD_CHANGE";
         default:
@@ -80,46 +70,119 @@ CachedObjectChangeHandlers::getCachedObjectChangeString(
 }
 
 Event
-CachedObjectChangeHandlers::handleNotifyableStateChange(NotifyableImpl *ntp,
-                                                        int32_t etype,
-                                                        const string &key)
+CachedObjectChangeHandlers::handleNotifyableRemovedChange(NotifyableImpl *ntp,
+                                                          int32_t etype,
+                                                          const string &key)
 {
-    TRACE(CL_LOG, "handleNotifyableStateChange");
+    TRACE(CL_LOG, "handleNotifyableRemovedChange");
     LOG_DEBUG(CL_LOG,
-              "handleNotifyableStateChange: %s on notifyable (%s)"
+              "handleNotifyableRemovedChange: %s on notifyable (%s)"
               " for key %s",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
               (!ntp) ? "" : ntp->getKey().c_str(),
               key.c_str());
 
-    unsetHandlerCallbackReady(NOTIFYABLE_STATE_CHANGE, key);
+    unsetHandlerCallbackReady(NOTIFYABLE_REMOVED_CHANGE, key);
     
     if (etype == ZOO_DELETED_EVENT) {
         /*
          * If this NotifyableImpl hasn't been removed (removed by a
-         * thread on another FactoryOps), the actual change in state is
-         * propagated through this handler.
+         * thread on another FactoryOps), the actual change in state
+         * is propagated through this handler.  Note that if any part
+         * of the NotifyableImpl is removed, it gets removed.
          */
-        if ((ntp) && (key.compare(ntp->getKey()) == 0)) {
-            getOps()->removeNotifyableFromCacheByKey(key);
+        if (ntp != NULL) {
+            getOps()->removeCachedNotifyable(ntp);
         }
 
         return EN_DELETED;
     }
 
+    /* Re-establish the watch since it wasn't deleted */
+    SAFE_CALLBACK_ZK(
+        getOps()->getRepository()->nodeExists(
+            key,
+            getOps()->getZooKeeperEventAdapter(),
+            getOps()->getCachedObjectChangeHandlers()->
+            getChangeHandler(
+                CachedObjectChangeHandlers::NOTIFYABLE_REMOVED_CHANGE)),
+        ,
+        CachedObjectChangeHandlers::NOTIFYABLE_REMOVED_CHANGE,
+        key,
+        "Establishing the watch on value %s failed: %s",
+        key.c_str(),
+        false,
+        true);
+
+    return EN_NOEVENT;
+}
+
+Event
+CachedObjectChangeHandlers::handleCurrentStateChange(NotifyableImpl *ntp,
+                                                     int32_t etype,
+                                                     const string &key)
+{
+    TRACE(CL_LOG, "handleCurrentStateChange");
+    LOG_DEBUG(CL_LOG,
+              "handleCurrentStateChange: %s on notifyable (%s)"
+              " for key %s",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              (!ntp) ? "" : ntp->getKey().c_str(),
+              key.c_str());
+
+    unsetHandlerCallbackReady(CURRENT_STATE_CHANGE, key);
+    
     /*
-     * If there's no notifyable, punt.
+     * If there's no notifyable or is deleted, punt.
      */
-    if (ntp == NULL) {
+    if ((ntp == NULL) || (etype == ZOO_DELETED_EVENT)) {
         LOG_WARN(CL_LOG,
-                 "handleNotifyableStateChange: Punting on event: %s on %s",
+                 "handleCurrentStateChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
-        return EN_STATECHANGE;
+        return EN_CURRENT_STATE_CHANGE;
     }
 
-    getOps()->establishNotifyableStateChange(ntp);
-    return EN_STATECHANGE;
+    /*
+     * Update the cached data and re-establish watches.
+     */
+    dynamic_cast<CachedStateImpl &>(
+        ntp->cachedCurrentState()).loadDataFromRepository(false);
+    return EN_CURRENT_STATE_CHANGE;
+}
+
+Event
+CachedObjectChangeHandlers::handleDesiredStateChange(NotifyableImpl *ntp,
+                                                     int32_t etype,
+                                                     const string &key)
+{
+    TRACE(CL_LOG, "handleDesiredStateChange");
+    LOG_DEBUG(CL_LOG,
+              "handleDesiredStateChange: %s on notifyable (%s)"
+              " for key %s",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              (!ntp) ? "" : ntp->getKey().c_str(),
+              key.c_str());
+
+    unsetHandlerCallbackReady(DESIRED_STATE_CHANGE, key);
+    
+    /*
+     * If there's no notifyable or is deleted, punt.
+     */
+    if ((ntp == NULL) || (etype == ZOO_DELETED_EVENT)) {
+        LOG_WARN(CL_LOG,
+                 "handleDesiredStateChange: Punting on event: %s on %s",
+                 zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+                 key.c_str());
+        return EN_DESIRED_STATE_CHANGE;
+    }
+
+    /*
+     * Update the cached data and re-establish watches.
+     */
+    dynamic_cast<CachedStateImpl &>(
+        ntp->cachedDesiredState()).loadDataFromRepository(false);
+    return EN_DESIRED_STATE_CHANGE;
 }
 
 Event
@@ -157,21 +220,11 @@ CachedObjectChangeHandlers::handleApplicationsChange(NotifyableImpl *ntp,
               ntp->getKey().c_str());
 
     /*
-     * Convert to a root object.
-     */
-    RootImpl *root = dynamic_cast<RootImpl *>(ntp);
-    if (root == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Conversion to Root * failed for %s",
-                 key.c_str());
-        return EN_APPSCHANGE;
-    }
-
-    /*
      * Data not required, only using this function to set the watch again.
      */
-    getOps()->getApplicationNames();
-
+    getOps()->getChildrenNames(
+        NotifyableKeyManipulator::createApplicationChildrenKey(ntp->getKey()),
+        CachedObjectChangeHandlers::APPLICATIONS_CHANGE);
     return EN_APPSCHANGE;
 }
 
@@ -210,21 +263,11 @@ CachedObjectChangeHandlers::handleGroupsChange(NotifyableImpl *ntp,
               ntp->getKey().c_str());
 
     /*
-     * Convert to group object.
-     */
-    GroupImpl *group = dynamic_cast<GroupImpl *>(ntp);
-    if (group == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Conversion to Group * failed for %s",
-                 key.c_str());
-        return EN_GROUPSCHANGE;
-    }
-
-    /*
      * Data not required, only using this function to set the watch again.
      */
-    getOps()->getGroupNames(group);
-
+    getOps()->getChildrenNames(
+        NotifyableKeyManipulator::createGroupChildrenKey(ntp->getKey()),
+        CachedObjectChangeHandlers::GROUPS_CHANGE);
     return EN_GROUPSCHANGE;
 }
 
@@ -257,17 +300,6 @@ CachedObjectChangeHandlers::handleDataDistributionsChange(NotifyableImpl *ntp,
         return EN_DISTSCHANGE;
     }
 
-    /*
-     * Convert to group object.
-     */
-    GroupImpl *group = dynamic_cast<GroupImpl *>(ntp);
-    if (group == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Conversion to Group * failed for %s",
-                 key.c_str());
-        return EN_DISTSCHANGE;
-    }
-
     LOG_DEBUG(CL_LOG,
               "handleDataDistributionsChange: %s on notifyable: \"%s\"",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
@@ -276,8 +308,10 @@ CachedObjectChangeHandlers::handleDataDistributionsChange(NotifyableImpl *ntp,
     /*
      * Data not required, only using this function to set the watch again.
      */
-    getOps()->getDataDistributionNames(group);
-
+    getOps()->getChildrenNames(
+        NotifyableKeyManipulator::createDataDistributionChildrenKey(
+            ntp->getKey()),
+        CachedObjectChangeHandlers::DATADISTRIBUTIONS_CHANGE);
     return EN_DISTSCHANGE;
 }
 
@@ -330,8 +364,9 @@ CachedObjectChangeHandlers::handleNodesChange(NotifyableImpl *ntp,
     /*
      * Data not required, only using this function to set the watch again.
      */
-    getOps()->getNodeNames(group);
-
+    getOps()->getChildrenNames(
+        NotifyableKeyManipulator::createNodeChildrenKey(ntp->getKey()),
+        CachedObjectChangeHandlers::NODES_CHANGE);
     return EN_NODESCHANGE;
 }
 
@@ -369,23 +404,12 @@ CachedObjectChangeHandlers::handleProcessSlotsChange(NotifyableImpl *ntp,
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
               ntp->getKey().c_str(),
               key.c_str());
-
-    /*
-     * Convert to a node object.
-     */
-    NodeImpl *node = dynamic_cast<NodeImpl *>(ntp);
-    if (node == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Conversion to Node * failed for %s",
-                 key.c_str());
-        return EN_PROCESSSLOTSCHANGE;
-    }
-
     /*
      * Data not required, only using this function to set the watch again.
      */
-    getOps()->getProcessSlotNames(node);
-
+    getOps()->getChildrenNames(
+        NotifyableKeyManipulator::createProcessSlotChildrenKey(ntp->getKey()),
+        CachedObjectChangeHandlers::PROCESSSLOTS_CHANGE);
     return EN_PROCESSSLOTSCHANGE;
 }
 
@@ -396,7 +420,7 @@ CachedObjectChangeHandlers::handleProcessSlotsUsageChange(NotifyableImpl *ntp,
 {
     TRACE(CL_LOG, "handleProcessSlotsUsageChange");
 
-    Event event = EN_PROCESSSLOTSCHANGE;
+    Event event = EN_PROCESSSLOTSUSAGECHANGE;
     unsetHandlerCallbackReady(PROCESSSLOTS_USAGE_CHANGE, key);
 
     /*                                                                        
@@ -437,29 +461,28 @@ CachedObjectChangeHandlers::handleProcessSlotsUsageChange(NotifyableImpl *ntp,
         return event;
     }
 
-    /*
-     * Data not required, only using this function to set the watch again.
-     */
-    node->getUseProcessSlots();
+    dynamic_cast<CachedProcessSlotInfoImpl &>(
+        node->cachedProcessSlotInfo()).loadDataFromRepository(false);
+    
     return event;
 }
 
 Event
-CachedObjectChangeHandlers::handleProcessSlotPortVecChange(NotifyableImpl *ntp,
+CachedObjectChangeHandlers::handleProcessSlotProcessInfoChange(NotifyableImpl *ntp,
                                                            int32_t etype,
                                                            const string &key)
 {
-    TRACE(CL_LOG, "handleProcessSlotPortVecChange");
+    TRACE(CL_LOG, "handleProcessSlotProcessInfoChange");
 
-    Event event = EN_PROCESSSLOTPORTVECCHANGE;
-    unsetHandlerCallbackReady(PROCESSSLOT_PORTVEC_CHANGE, key);
+    Event event = EN_PROCESSSLOTPROCESSINFOCHANGE;
+    unsetHandlerCallbackReady(PROCESSSLOT_PROCESSINFO_CHANGE, key);
 
     /*                                                                        
      * If NotifyableImpl was deleted, do not re-establish watch, pass
      * event to clients.
      */
     if (etype == ZOO_DELETED_EVENT) {
-        LOG_DEBUG(CL_LOG, "handleProcessSlotPortVecChange: deleted");
+        LOG_DEBUG(CL_LOG, "handleProcessSlotProcessInfoChange: deleted");
         return EN_DELETED;
     }
 
@@ -468,14 +491,15 @@ CachedObjectChangeHandlers::handleProcessSlotPortVecChange(NotifyableImpl *ntp,
      */
     if (ntp == NULL) {
         LOG_WARN(CL_LOG,
-                 "handleProcessSlotPortVecChange: Punting on event: %s on %s",
+                 "handleProcessSlotProcessInfoChange: "
+                 "Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
                  key.c_str());
         return event;
     }
 
     LOG_DEBUG(CL_LOG,
-              "handleProcessSlotPortVecChange: "
+              "handleProcessSlotProcessInfoChange: "
               "%s on notifyable \"%s\" for key %s",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
               ntp->getKey().c_str(),
@@ -492,365 +516,8 @@ CachedObjectChangeHandlers::handleProcessSlotPortVecChange(NotifyableImpl *ntp,
         return event;
     }
 
-    /*
-     * Data not required, only using this function to set the watch again.
-     */
-    processSlot->getPortVec();
-
-    return event;
-}
-
-Event
-CachedObjectChangeHandlers::handleProcessSlotExecArgsChange(
-    NotifyableImpl *ntp,
-    int32_t etype,
-    const string &key)
-{
-    TRACE(CL_LOG, "handleProcessSlotExecArgsChange");
-
-    Event event = EN_PROCESSSLOTEXECARGSCHANGE;
-    unsetHandlerCallbackReady(PROCESSSLOT_EXECARGS_CHANGE, key);
-
-    /*                                                                         
-     * If NotifyableImpl was deleted, do not re-establish watch, pass
-     * event to clients.
-     */
-    if (etype == ZOO_DELETED_EVENT) {
-        LOG_DEBUG(CL_LOG, "handleProcessSlotExecArgsChange: deleted");
-        return EN_DELETED;
-    }
-
-    /*                                                                         
-     * If there's no notifyable, punt.
-     */
-    if (ntp == NULL) {
-        LOG_WARN(CL_LOG,
-                 "handleProcessSlotExecArgsChange: Punting on event: %s on %s",
-                 zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-                 key.c_str());
-        return event;
-    }
-
-    LOG_DEBUG(CL_LOG,
-              "handleProcessSlotExecArgsChange: "
-              "%s on notifyable \"%s\" for key %s",
-              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str(),
-              key.c_str());
-
-    /*                                                                         
-     * Convert to a process slot object.
-     */
-    ProcessSlotImpl *processSlot = dynamic_cast<ProcessSlotImpl *>(ntp);
-    if (processSlot == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Conversion to ProcessSlotImpl * failed for %s",
-                 key.c_str());
-        return event;
-    }
-
-    /*   
-     * Data not required, only using this function to set the watch
-     * again.
-     */
-    vector<string> addEnv;
-    string path, cmd;
-    processSlot->getExecArgs(addEnv, path, cmd);
-
-    return event;
-}
-
-Event
-CachedObjectChangeHandlers::handleProcessSlotRunningExecArgsChange(
-    NotifyableImpl *ntp,
-    int32_t etype,
-    const string &key)
-{
-    TRACE(CL_LOG, "handleProcessSlotRunningExecArgsChange");
-
-    Event event = EN_PROCESSSLOTRUNNINGEXECARGSCHANGE;
-    unsetHandlerCallbackReady(PROCESSSLOT_RUNNING_EXECARGS_CHANGE, key);
-
-    /*                                                                         
-     * If NotifyableImpl was deleted, do not re-establish watch, pass
-     * event to clients.
-     */
-    if (etype == ZOO_DELETED_EVENT) {
-        LOG_DEBUG(CL_LOG, "handleProcessSlotRunningExecArgsChange: deleted");
-        return EN_DELETED;
-    }
-
-    /*                                                                         
-     * If there's no notifyable, punt.
-     */
-    if (ntp == NULL) {
-        LOG_WARN(CL_LOG,
-                 "handleProcessSlotRunningExecArgsChange: "
-                 "Punting on event: %s on %s",
-                 zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-                 key.c_str());
-        return event;
-    }
-
-    LOG_DEBUG(CL_LOG,
-              "handleProcessSlotRunningExecArgsChange: "
-              "%s on notifyable \"%s\" for key %s",
-              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str(),
-              key.c_str());
-
-    /*                                                                         
-     * Convert to a process slot object.
-     */
-    ProcessSlotImpl *processSlot = dynamic_cast<ProcessSlotImpl *>(ntp);
-    if (processSlot == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Conversion to ProcessSlotImpl * failed for %s",
-                 key.c_str());
-        return event;
-    }
-
-    /*   
-     * Data not required, only using this function to set the watch
-     * again.
-     */
-    vector<string> addEnv;
-    string path, cmd;
-    processSlot->getRunningExecArgs(addEnv, path, cmd);
-
-    return event;
-}
-
-Event
-CachedObjectChangeHandlers::handleProcessSlotPIDChange(NotifyableImpl *ntp,
-                                                       int32_t etype,
-                                                       const string &key)
-{
-    TRACE(CL_LOG, "handleProcessSlotPIDChange");
-
-    Event event = EN_PROCESSSLOTPIDCHANGE;
-    unsetHandlerCallbackReady(PROCESSSLOT_PID_CHANGE, key);
-
-    /*                                                                         
-     * If NotifyableImpl was deleted, do not re-establish watch, pass
-     * event to clients.
-     */
-    if (etype == ZOO_DELETED_EVENT) {
-        LOG_DEBUG(CL_LOG, "handleProcessSlotPIDChange: deleted");
-        return EN_DELETED;
-    }
-
-    /*                                                                         
-     * If there's no notifyable, punt.
-     */
-    if (ntp == NULL) {
-        LOG_WARN(CL_LOG,
-                 "handleProcessSlotPIDChange: "
-                 "Punting on event: %s on %s",
-                 zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-                 key.c_str());
-        return event;
-    }
-
-    LOG_DEBUG(CL_LOG,
-              "handleProcessSlotPIDChange: "
-              "%s on notifyable \"%s\" for key %s",
-              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str(),
-              key.c_str());
-
-    /*                                                                         
-     * Convert to a process slot object.
-     */
-    ProcessSlotImpl *processSlot = dynamic_cast<ProcessSlotImpl *>(ntp);
-    if (processSlot == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Conversion to ProcessSlotImpl * failed for %s",
-                 key.c_str());
-        return event;
-    }
-
-    /*   
-     * Data not required, only using this function to set the watch
-     * again.
-     */
-    processSlot->getPID();
-
-    return event;
-}
-
-Event
-CachedObjectChangeHandlers::handleProcessSlotDesiredStateChange(
-    NotifyableImpl *ntp,
-    int32_t etype,
-    const string &key)
-{
-    TRACE(CL_LOG, "handleProcessSlotDesiredStateChange");
-
-    Event event = EN_PROCESSSLOTDESIREDSTATECHANGE;
-    unsetHandlerCallbackReady(PROCESSSLOT_DESIRED_STATE_CHANGE, key);
-
-    /*                                                                         
-     * If NotifyableImpl was deleted, do not re-establish watch, pass
-     * event to clients.
-     */
-    if (etype == ZOO_DELETED_EVENT) {
-        LOG_DEBUG(CL_LOG, "handleProcessSlotDesiredStateChange: deleted");
-        return EN_DELETED;
-    }
-
-    /*                                                                         
-     * If there's no notifyable, punt.
-     */
-    if (ntp == NULL) {
-        LOG_WARN(CL_LOG,
-                 "handleProcessSlotDesiredStateChange: "
-                 "Punting on event: %s on %s",
-                 zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-                 key.c_str());
-        return event;
-    }
-
-    LOG_DEBUG(CL_LOG,
-              "handleProcessSlotDesiredStateChange: "
-              "%s on notifyable \"%s\" for key %s",
-              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str(),
-              key.c_str());
-
-    /*                                                                         
-     * Convert to a process slot object.
-     */
-    ProcessSlotImpl *processSlot = dynamic_cast<ProcessSlotImpl *>(ntp);
-    if (processSlot == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Conversion to ProcessSlotImpl * failed for %s",
-                 key.c_str());
-        return event;
-    }
-
-    /*   
-     * Data not required, only using this function to set the watch
-     * again.
-     */
-    processSlot->getDesiredProcessState(NULL, NULL);
-
-    return event;
-}
-Event
-CachedObjectChangeHandlers::handleProcessSlotCurrentStateChange(
-    NotifyableImpl *ntp,
-    int32_t etype,
-    const string &key)
-{
-    TRACE(CL_LOG, "handleProcessSlotCurrentStateChange");
-
-    Event event = EN_PROCESSSLOTCURRENTSTATECHANGE;
-    unsetHandlerCallbackReady(PROCESSSLOT_CURRENT_STATE_CHANGE, key);
-
-    /*                                                                         
-     * If NotifyableImpl was deleted, do not re-establish watch, pass
-     * event to clients.
-     */
-    if (etype == ZOO_DELETED_EVENT) {
-        LOG_DEBUG(CL_LOG, "handleProcessSlotCurrentStateChange: deleted");
-        return EN_DELETED;
-    }
-
-    /*                                                                         
-     * If there's no notifyable, punt.
-     */
-    if (ntp == NULL) {
-        LOG_WARN(CL_LOG,
-                 "handleProcessSlotCurrentStateChange: "
-                 "Punting on event: %s on %s",
-                 zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-                 key.c_str());
-        return event;
-    }
-
-    LOG_DEBUG(CL_LOG,
-              "handleProcessSlotCurrentStateChange: "
-              "%s on notifyable \"%s\" for key %s",
-              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str(),
-              key.c_str());
-
-    /*                                                                         
-     * Convert to a process slot object.
-     */
-    ProcessSlotImpl *processSlot = dynamic_cast<ProcessSlotImpl *>(ntp);
-    if (processSlot == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Conversion to ProcessSlotImpl * failed for %s",
-                 key.c_str());
-        return event;
-    }
-
-    /*   
-     * Data not required, only using this function to set the watch
-     * again.
-     */
-    processSlot->getCurrentProcessState(NULL, NULL);
-
-    return event;
-}
-
-Event
-CachedObjectChangeHandlers::handleProcessSlotReservationChange(
-    NotifyableImpl *ntp,
-    int32_t etype,
-    const string &key)
-{
-    TRACE(CL_LOG, "handleProcessSlotReservationChange");
-
-    Event event = EN_PROCESSSLOTRESERVATIONCHANGE;
-    unsetHandlerCallbackReady(PROCESSSLOT_RESERVATION_CHANGE, key);
-
-    /*                                                                         
-     * If NotifyableImpl was deleted, do not re-establish watch, pass
-     * event to clients.
-     */
-    if (etype == ZOO_DELETED_EVENT) {
-        LOG_DEBUG(CL_LOG, "handleProcessSlotReservationChange: deleted");
-        return EN_DELETED;
-    }
-
-    /*                                                                         
-     * If there's no notifyable, punt.
-     */
-    if (ntp == NULL) {
-        LOG_WARN(CL_LOG,
-                 "handleProcessSlotReservationChange: "
-                 "Punting on event: %s on %s",
-                 zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-                 key.c_str());
-        return event;
-    }
-
-    LOG_DEBUG(CL_LOG,
-              "handleProcessSlotReservationChange: "
-              "%s on notifyable \"%s\" for key %s",
-              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str(),
-              key.c_str());
-
-    /*                                                                         
-     * Convert to a process slot object.
-     */
-    ProcessSlotImpl *processSlot = dynamic_cast<ProcessSlotImpl *>(ntp);
-    if (processSlot == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Conversion to ProcessSlotImpl * failed for %s",
-                 key.c_str());
-        return event;
-    }
-
-    /*   
-     * Data not required, only using this function to set the watch
-     * again.
-     */
-    processSlot->getReservationName();
+    dynamic_cast<CachedProcessInfoImpl &>(
+        processSlot->cachedProcessInfo()).loadDataFromRepository(false);
 
     return event;
 }
@@ -893,8 +560,9 @@ CachedObjectChangeHandlers::handlePropertyListsChange(NotifyableImpl *ntp,
     /*
      * Data not required, only using this function to set the watch again.
      */
-    getOps()->getPropertyListNames(ntp);
-
+    getOps()->getChildrenNames(
+        NotifyableKeyManipulator::createPropertyListChildrenKey(ntp->getKey()),
+        CachedObjectChangeHandlers::PROPERTYLISTS_CHANGE);
     return EN_PROPLISTSCHANGE;
 }
 
@@ -946,7 +614,8 @@ CachedObjectChangeHandlers::handlePropertyListValueChange(NotifyableImpl *ntp,
         return EN_PROPLISTVALUESCHANGE;
     }
 
-    prop->updatePropertyListMap();
+    dynamic_cast<CachedKeyValuesImpl &>(
+        prop->cachedKeyValues()).loadDataFromRepository(false);
 
     return EN_PROPLISTVALUESCHANGE;
 }
@@ -997,179 +666,24 @@ CachedObjectChangeHandlers::handleDataDistributionShardsChange(
               "handleShardsChange: %s on notifyable: \"%s\"",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
               ntp->getKey().c_str());
-    /*
-     * If there was no change, return EN_NOEVENT.
-     */
-    if (!distp->update()) {
-        return EN_NOEVENT;
-    }
 
     /*
-     * Propagate to client.
+     * Update the cached data and re-establish watches.
      */
+    dynamic_cast<CachedShardsImpl &>(
+        distp->cachedShards()).loadDataFromRepository(false);
     return EN_SHARDSCHANGE;
 }
 
 Event
-CachedObjectChangeHandlers::handleClientStateChange(NotifyableImpl *ntp,
-                                                    int32_t etype,
-                                                    const string &key)
+CachedObjectChangeHandlers::handleNodeProcessSlotInfoChange(
+    NotifyableImpl *ntp,
+    int32_t etype,
+    const string &key)
 {
-    TRACE(CL_LOG, "handleClientStateChange");
+    TRACE(CL_LOG, "handleNodeProcessSlotInfoChange");
     
-    unsetHandlerCallbackReady(NODE_CLIENT_STATE_CHANGE, key);
-
-    /*                                                                       
-     * If NotifyableImpl was deleted, do not re-establish watch, pass
-     * event to clients.
-     */
-    if (etype == ZOO_DELETED_EVENT) {
-        LOG_DEBUG(CL_LOG, "handleClientStateChange: deleted");
-        return EN_DELETED;
-    }
-
-    /*
-     * If the given NotifyableImpl is NULL, punt.
-     */
-    if (ntp == NULL) {
-        LOG_WARN(CL_LOG, 
-                 "handleClientStateChange:"
-                 " No NotifyableImpl provided -- punting");
-        return EN_CLIENTSTATECHANGE;
-    }
-
-    /*
-     * Convert it to a NodeImpl *.
-     */
-    NodeImpl *np = dynamic_cast<NodeImpl *>(ntp);
-
-    /*
-     * If there's no node, punt.
-     */
-    if (np == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Conversion to NodeImpl * failed for %s",
-                 key.c_str());
-        return EN_CLIENTSTATECHANGE;
-    }
-
-    /*
-     * Get the current client state and re-establish watch.
-     */
-    int64_t msecs;
-    string clientState, clientStateDesc;
-    getOps()->getNodeClientState(np->getKey(), 
-                                 msecs, 
-                                 clientState, 
-                                 clientStateDesc);
-
-    LOG_DEBUG(CL_LOG,
-              "handleClientStateChange: %s on notifyable: (%s) with key (%s)"
-              " with new client state (%" PRId64 ", %s, %s)",
-              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str(),
-              key.c_str(),
-              msecs,
-              clientState.c_str(),
-              clientStateDesc.c_str());
-
-    np->setClientState(msecs, clientState, clientStateDesc);
-
-    /*
-     * Update the cache and cause a user-level event if
-     * the new value is different from the currently
-     * cached value.
-     */
-    string curClientState;
-    np->getClientState(NULL, &curClientState, NULL);
-    if (clientState == curClientState) {
-        return EN_NOEVENT;
-    }
-
-    return EN_CLIENTSTATECHANGE;
-}
-
-Event
-CachedObjectChangeHandlers::handleMasterSetStateChange(NotifyableImpl *ntp,
-                                                       int32_t etype,
-                                                       const string &key)
-{
-    TRACE(CL_LOG, "handleMasterSetStateChange");
-    
-    unsetHandlerCallbackReady(NODE_MASTER_SET_STATE_CHANGE, key);
-
-    /*
-     * If NotifyableImpl was deleted, do not re-establish watch, pass
-     * event to clients.
-     */
-    if (etype == ZOO_DELETED_EVENT) {
-        LOG_DEBUG(CL_LOG, "handleMasterSetStateChange: deleted");
-        return EN_DELETED;
-    }
-
-    /*
-     * If the given NotifyableImpl is NULL, punt.
-     */
-    if (ntp == NULL) {
-        LOG_WARN(CL_LOG, "No NotifyableImpl provided -- punting");
-        return EN_MASTERSTATECHANGE;
-    }
-
-    /*
-     * Try to convert to NodeImpl *
-     */
-    NodeImpl *np = dynamic_cast<NodeImpl *>(ntp);
-
-    /*
-     * If there's no node, punt.
-     */
-    if (np == NULL) {
-        LOG_WARN(CL_LOG,
-                 "Conversion to NodeImpl * failed for %s",
-                 key.c_str());
-        return EN_MASTERSTATECHANGE;
-    }
-
-    LOG_DEBUG(CL_LOG,
-              "handleMasterSetStateChange: %s on notifyable: \"%s\"",
-              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str());
-
-    /*
-     * Get the new value and re-establish watch.
-     */
-    int32_t nv = getOps()->getNodeMasterSetState(np->getKey());
-
-    /*
-     * Update the cache and cause a user-level event
-     * if the new value is different than what is in
-     * the cache now.
-     */
-    if (nv == np->getMasterSetState()) {
-        return EN_NOEVENT;
-    }
-
-    np->setMasterSetStateAndTime(nv, TimerService::getCurrentTimeMsecs());
-
-    return EN_MASTERSTATECHANGE;
-}
-
-Event
-CachedObjectChangeHandlers::handleNodeConnectionChange(NotifyableImpl *ntp,
-                                                       int32_t etype,
-                                                       const string &key)
-{
-    TRACE(CL_LOG, "handleNodeConnectionChange");
-    
-    unsetHandlerCallbackReady(NODE_CONNECTION_CHANGE, key);
-
-    /*
-     * If there's no Notifyable, punt.
-     */
-    if (ntp == NULL) {
-        LOG_WARN(CL_LOG, "No NotifyableImpl provided -- punting");
-        return EN_CONNECTEDCHANGE;
-    }
+    unsetHandlerCallbackReady(NODE_PROCESS_SLOT_INFO_CHANGE, key);
 
     /*
      * Convert it to a NodeImpl *
@@ -1183,22 +697,21 @@ CachedObjectChangeHandlers::handleNodeConnectionChange(NotifyableImpl *ntp,
         LOG_WARN(CL_LOG,
                  "Conversion to NodeImpl * failed for %s",
                  key.c_str());
-        return EN_CONNECTEDCHANGE;
+        return EN_PROCESS_SLOT_INFO_CHANGE;
     }
 
     LOG_DEBUG(CL_LOG,
-              "handleNodeConnectionChange: %s on notifyable: \"%s\"",
+              "handleNodeProcessSlotInfoChange: %s on notifyable: \"%s\"",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
               ntp->getKey().c_str());
 
     /*
-     * If there was no change, return EN_NOEVENT
+     * Update the cached data and re-establish watches.
      */
-    if (!node->updateConnected()) {
-        return EN_NOEVENT;
-    }
+    dynamic_cast<CachedProcessSlotInfoImpl &>(
+        node->cachedProcessSlotInfo()).loadDataFromRepository(false);
 
-    return EN_CONNECTEDCHANGE;
+    return EN_PROCESS_SLOT_INFO_CHANGE;
 }
 
 /*
@@ -1273,6 +786,49 @@ CachedObjectChangeHandlers::handlePrecLockNodeExistsChange(NotifyableImpl *ntp,
     }
     
     return EN_NOEVENT;
+}
+
+Event
+CachedObjectChangeHandlers::handleQueuesChange(NotifyableImpl *ntp,
+                                               int32_t etype,
+                                               const string &key)
+{
+    TRACE(CL_LOG, "handleQueuesChange");
+    
+    unsetHandlerCallbackReady(QUEUES_CHANGE, key);
+
+    /*
+     * If NotifyableImpl was deleted, do not re-establish watch, pass
+     * event to clients.
+     */
+    if (etype == ZOO_DELETED_EVENT) {
+        LOG_DEBUG(CL_LOG, "handleQueuesChange: deleted");
+        return EN_DELETED;
+    }
+
+    /*
+     * If there's no notifyable, punt.
+     */
+    if (ntp == NULL) {
+        LOG_WARN(CL_LOG,
+                 "handleQueuesChange: Punting on event: %s on %s",
+                 zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+                 key.c_str());
+        return EN_APPSCHANGE;
+    }
+
+    LOG_DEBUG(CL_LOG,
+              "handleQueuesChange: %s on notifyable: \"%s\"",
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              ntp->getKey().c_str());
+
+    /*
+     * Data not required, only using this function to set the watch again.
+     */
+    getOps()->getChildrenNames(
+        NotifyableKeyManipulator::createQueueChildrenKey(ntp->getKey()),
+        CachedObjectChangeHandlers::QUEUES_CHANGE);
+    return EN_QUEUESCHANGE;
 }
 
 Event
@@ -1436,8 +992,12 @@ CachedObjectChangeHandlers::unsetHandlerCallbackReady(
 CachedObjectEventHandler *
 CachedObjectChangeHandlers::getChangeHandler(CachedObjectChange change) {
     switch (change) {
-        case NOTIFYABLE_STATE_CHANGE:
-            return &m_notifyableStateChangeHandler;
+        case NOTIFYABLE_REMOVED_CHANGE:
+            return &m_notifyableRemovedChangeHandler;
+        case CURRENT_STATE_CHANGE:
+            return &m_currentStateChangeHandler;
+        case DESIRED_STATE_CHANGE:
+            return &m_desiredStateChangeHandler;
         case APPLICATIONS_CHANGE:
             return &m_applicationsChangeHandler;
         case GROUPS_CHANGE:
@@ -1450,36 +1010,22 @@ CachedObjectChangeHandlers::getChangeHandler(CachedObjectChange change) {
             return &m_processSlotsChangeHandler;
         case PROCESSSLOTS_USAGE_CHANGE:
             return &m_processSlotsUsageChangeHandler;
-        case PROCESSSLOT_PORTVEC_CHANGE:
-            return &m_processSlotPortVecChangeHandler;
-        case PROCESSSLOT_EXECARGS_CHANGE:
-            return &m_processSlotExecArgsChangeHandler;
-        case PROCESSSLOT_RUNNING_EXECARGS_CHANGE:
-            return &m_processSlotRunningExecArgsChangeHandler;
-        case PROCESSSLOT_PID_CHANGE:
-            return &m_processSlotPIDChangeHandler;
-        case PROCESSSLOT_DESIRED_STATE_CHANGE:
-            return &m_processSlotDesiredStateChangeHandler;
-        case PROCESSSLOT_CURRENT_STATE_CHANGE:
-            return &m_processSlotCurrentStateChangeHandler;
-        case PROCESSSLOT_RESERVATION_CHANGE:
-            return &m_processSlotReservationChangeHandler;
+        case PROCESSSLOT_PROCESSINFO_CHANGE:
+            return &m_processSlotProcessInfoChangeHandler;
         case PROPERTYLISTS_CHANGE:
             return &m_propertyListsChangeHandler;
         case PROPERTYLIST_VALUES_CHANGE:
             return &m_propertyListValueChangeHandler;
         case SHARDS_CHANGE:
             return &m_dataDistributionShardsChangeHandler;
-        case NODE_CLIENT_STATE_CHANGE:
-            return &m_nodeClientStateChangeHandler;
-        case NODE_MASTER_SET_STATE_CHANGE:
-            return &m_nodeMasterSetStateChangeHandler;
-        case NODE_CONNECTION_CHANGE:
-            return &m_nodeConnectionChangeHandler;
+        case NODE_PROCESS_SLOT_INFO_CHANGE:
+            return &m_nodeProcessSlotInfoChangeHandler;
         case SYNCHRONIZE_CHANGE:
             return &m_synchronizeChangeHandler;
         case PREC_LOCK_NODE_EXISTS_CHANGE:
             return &m_precLockNodeExistsChangeHandler;
+        case QUEUES_CHANGE:
+            return &m_queuesChangeHandler;
         case QUEUE_CHILD_CHANGE:
             return &m_queueChildChangeHandler;
         default:

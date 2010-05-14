@@ -53,20 +53,21 @@ class ClusterlibCache
         MPI_CPPUNIT_ASSERT(_zk != NULL);
 	_client0 = _factory->createClient();
 	MPI_CPPUNIT_ASSERT(_client0 != NULL);
-        _app0 = _client0->getRoot()->getApplication(appName, true);
+        _app0 = _client0->getRoot()->getApplication(appName, 
+                                                    CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(_app0 != NULL);
-        _grp0 = _app0->getGroup("bar-group", true);
+        _grp0 = _app0->getGroup("bar-group", CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(_grp0 != NULL);
-        _nod0 = _grp0->getNode("nod3", true);
+        _nod0 = _grp0->getNode("nod3", CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(_nod0 != NULL);
-        _dist0 = _grp0->getDataDistribution("dist1", true);
+        _dist0 = _grp0->getDataDistribution("dist1", CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(_dist0 != NULL);
     }
 
     /* Runs after each test */
     virtual void tearDown() 
     {
-        cleanAndBarrierMPITest(_factory, true);
+        cleanAndBarrierMPITest(_factory, CREATE_IF_NOT_FOUND);
         /*
          * Delete only the factory, that automatically deletes
          * all the other objects.
@@ -198,7 +199,7 @@ class ClusterlibCache
         /*
          * Create the new group..
          */
-        _app0->getGroup("g15", true);
+        _app0->getGroup("g15", CREATE_IF_NOT_FOUND);
 
         /*
          * Wait for event propagation.
@@ -265,7 +266,7 @@ class ClusterlibCache
         /*
          * Create the new data distribution..
          */
-        _app0->getDataDistribution("d15", true);
+        _app0->getDataDistribution("d15", CREATE_IF_NOT_FOUND);
 
         /*
          * Wait for event propagation.
@@ -334,7 +335,7 @@ class ClusterlibCache
         /*
          * Create a new node..
          */
-        _grp0->getNode("n111", true);
+        _grp0->getNode("n111", CREATE_IF_NOT_FOUND);
 
         /*
          * Wait for event propagation.
@@ -403,7 +404,7 @@ class ClusterlibCache
         /*
          * Create the new data distribution..
          */
-        _grp0->getDataDistribution("d15", true);
+        _grp0->getDataDistribution("d15", CREATE_IF_NOT_FOUND);
 
         /*
          * Wait for event propagation.
@@ -471,7 +472,7 @@ class ClusterlibCache
         /*
          * Create a new node..
          */
-        _app0->getNode("n111", true);
+        _app0->getNode("n111", CREATE_IF_NOT_FOUND);
 
         /*
          * Wait for event propagation.
@@ -539,7 +540,7 @@ class ClusterlibCache
         /*
          * Create the new group..
          */
-        _grp0->getGroup("g15", true);        
+        _grp0->getGroup("g15", CREATE_IF_NOT_FOUND);        
 
         /*
          * Wait for event propagation.

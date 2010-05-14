@@ -23,49 +23,7 @@ class ProcessSlotImpl
       public virtual NotifyableImpl
 {
   public:
-    virtual json::JSONValue getJsonPortVec();
-    virtual std::vector<int32_t> getPortVec();
-    
-    virtual void setPortVec(std::vector<int32_t> portVec);
-    virtual void setJsonPortVec(json::JSONValue jsonValue);
-
-    virtual void start();
-
-    virtual bool getExecArgs(std::vector<std::string> &addEnv,
-                             std::string &path,
-                             std::string &cmd);
-    virtual json::JSONValue getJsonExecArgs();
-
-    virtual void setExecArgs(const std::vector<std::string> &addEnv,
-                             const std::string &path,
-                             const std::string &cmd);
-    virtual void setJsonExecArgs(json::JSONValue jsonValue);
-
-    virtual bool getRunningExecArgs(std::vector<std::string> &addEnv,
-                                    std::string &path,
-                                    std::string &cmd);
-    virtual json::JSONValue getJsonRunningExecArgs();
-
-    virtual int32_t getPID();
-    virtual json::JSONValue getJsonPID();
-
-    virtual void stop(int32_t sig = 15);
-
-    virtual void getDesiredProcessState(ProcessState *processState,
-                                        int64_t *msecs);
-
-    virtual json::JSONValue getJsonDesiredProcessState();
-
-    virtual void getCurrentProcessState(ProcessState *processState, 
-                                        int64_t *msecs);
-
-    virtual json::JSONValue getJsonCurrentProcessState();
-
-    virtual std::string getReservationName();
-
-    virtual bool setReservationIfEmpty(std::string reservationName);
-
-    virtual bool releaseReservationIfMatches(std::string reservationName);
+    virtual CachedProcessInfo &cachedProcessInfo();
 
     /*
      * Internal functions not used by outside clients
@@ -78,51 +36,47 @@ class ProcessSlotImpl
                     const std::string &key,
                     const std::string &name,
                     NodeImpl *node)
-        : NotifyableImpl(fp, key, name, node) {}
+        : NotifyableImpl(fp, key, name, node),
+          m_cachedProcessInfo(this) {}
+
 
     /**
-     * Sets the PID after a start.
+     * Create the key-value JSONArray key
      *
-     * @param pid pid to be set of running process
+     * @param processSlotKey the ProcessSlot key
+     * @return the generated process info JSONArray key
      */
-    void setPID(int32_t pid);
+    static std::string createProcessInfoJsonArrKey(
+        const std::string &processSlotKey);
 
     /**
-     * Set the current process state
-     *
-     * @param processState the current process state
+     * Helper function to get the exeutable arguments from a cancelled
+     * state.
      */
-    void setCurrentProcessState(ProcessState processState);
-    
+    void getExecArgs(CachedState &cachedState,
+                     std::vector<std::string> &addEnv, 
+                     std::string &path, 
+                     std::string &command);
+
     /**
-     * Start up the process with the user-defined args on this server
+     * Start up the process with given arguments this node.
      *
+     * @param addEnv The added environment for the new process.
+     * @param path The path to execute the command.
+     * @param command The command to start.
      * @return the pid of the new process
      */
-    pid_t startLocal();
+    pid_t startLocal(const std::vector<std::string> &addEnv, 
+                     const std::string &path, 
+                     const std::string &command);
     
     /**
      * Stop the process with the user-defined args on this server
-     */
-    void stopLocal();
-
-    /**
-     * Set the running executable arguments.
      *
-     * @param addEnv the additional environment variables
-     * @param path the path to execute the command from
-     * @param cmd the command to execute
+     * @param pid The pid to send the signal to.
+     * @param signal The kill signal.
      */
-    virtual void setRunningExecArgs(const std::vector<std::string> &addEnv,
-                                    const std::string &path,
-                                    const std::string &cmd);
-
-    /**
-     * Set the running executable arguments as a JSONValue.
-     *
-     * @param jsonValue the JSONValue with all executable arguments.
-     */
-    virtual void setRunningJsonExecArgs(json::JSONValue jsonValue);
+    void stopLocal(pid_t pid, int32_t signal);
 
     /**
      * Create a string with the default executable arguments
@@ -134,20 +88,27 @@ class ProcessSlotImpl
      */
     virtual ~ProcessSlotImpl();
 
-    virtual void initializeCachedRepresentation();
+    virtual NotifyableList getChildrenNotifyables();
 
-    virtual void removeRepositoryEntries();
+    virtual void initializeCachedRepresentation();
 
   private:
     /*
      * Make the default constructor private so it cannot be called.
      */
     ProcessSlotImpl()
-        : NotifyableImpl(NULL, "", "", NULL)
+        : NotifyableImpl(NULL, "", "", NULL),
+          m_cachedProcessInfo(this)
     {
         throw InvalidMethodException("Someone called the ProcessSlotImpl "
                                      "default constructor!");
     }
+
+  private:
+    /**
+     * The cached process info
+     */
+    CachedProcessInfoImpl m_cachedProcessInfo;
 };
 
 };	/* End of 'namespace clusterlib' */

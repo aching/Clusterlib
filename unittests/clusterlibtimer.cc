@@ -97,13 +97,14 @@ class ClusterlibTimer
         MPI_CPPUNIT_ASSERT(_zk != NULL);
 	_client0 = _factory->createClient();
 	MPI_CPPUNIT_ASSERT(_client0 != NULL);
-        _app0 = _client0->getRoot()->getApplication(appName, true);
+        _app0 = _client0->getRoot()->getApplication(
+            appName, CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(_app0 != NULL);
-        _grp0 = _app0->getGroup("bar-group", true);
+        _grp0 = _app0->getGroup("bar-group", CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(_grp0 != NULL);
-        _nod0 = _grp0->getNode("nod3", true);
+        _nod0 = _grp0->getNode("nod3", CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(_nod0 != NULL);
-        _dist0 = _grp0->getDataDistribution("dist1", true);
+        _dist0 = _grp0->getDataDistribution("dist1", CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(_dist0 != NULL);
         _timer0 = new MyTimerEventHandler();
         MPI_CPPUNIT_ASSERT(_timer0 != NULL);

@@ -23,14 +23,13 @@ class ApplicationImpl
       public virtual GroupImpl
 {
   public:
-
     virtual Group *getMyGroup();
 
     /*
      * Internal functions not used by outside clients
      */
   public:
-    /*
+    /**
      * Constructor used by Factory.
      */
     ApplicationImpl(FactoryOps *fp,
@@ -40,17 +39,15 @@ class ApplicationImpl
         : NotifyableImpl(fp, key, name, root),
           GroupImpl(fp, key, name, root) {}
 
-    /*
+    /**
      * Destructor.
      */
     virtual ~ApplicationImpl() {};
 
     virtual void initializeCachedRepresentation();
 
-    virtual void removeRepositoryEntries();
-
   private:
-    /*
+    /**
      * The default constructor is private so no one can call it.
      */
     ApplicationImpl()

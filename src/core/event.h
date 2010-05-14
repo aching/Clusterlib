@@ -282,8 +282,6 @@ class GenericEvent
      * The event represented as abstract wrapper.
      */
     AbstractEventWrapper *mp_eventWrapper;
-    //shared_ptr<AbstractEventWrapper> m_eventWrapper;
-        
 };
     
 /**
@@ -336,7 +334,7 @@ class SynchronousEventAdapter
                   "eventReceived: event %p, instance %p, thread %" PRIu32,
                   &e, 
                   this, 
-                  static_cast<uint32_t>(pthread_self()));
+                  ProcessThreadService::getTid());
         
         m_queue.put(e);
     }
@@ -375,7 +373,7 @@ class SynchronousEventAdapter
                   ", instance %p, thread %" PRIu32,
                   msecTimeout,
                   this, 
-                  static_cast<uint32_t>(pthread_self()));
+                  ProcessThreadService::getTid());
         return m_queue.takeWaitMsecs(msecTimeout, e);
     }
         
@@ -422,7 +420,7 @@ void EventSource<E>::fireEvent(EventListener<E> *lp, const E &event)
               "thread %" PRIu32, 
               &event, 
               lp, 
-              static_cast<uint32_t>(pthread_self()));
+              ProcessThreadService::getTid());
 
     assert(lp);
     lp->eventReceived(*this, event);
@@ -778,7 +776,7 @@ class Timer
                   "Starting thread with Timer::sendAlarms(), "
                   "this: %p, thread %" PRIu32,
                   this, 
-                  static_cast<uint32_t>(pthread_self()));
+                  ProcessThreadService::getTid());
         
         //iterate until terminating
         while (!m_terminating) {
@@ -817,7 +815,7 @@ class Timer
                   "Ending thread with Timer::sendAlarms(): "
                   "this: %p, thread: %" PRIu32,
                   this,
-                  static_cast<uint32_t>(pthread_self()));
+                  ProcessThreadService::getTid());
     }
         
   private:

@@ -10,7 +10,6 @@
 #endif
 
 using namespace std;
-using namespace boost;
 using namespace clusterlib;
 
 #ifndef NO_TAB_COMPLETION
@@ -188,8 +187,58 @@ CliParams::parseArgs(int argc, char **argv)
     }
 }
 
-/** The key separator arguments. */
-static const string keySeparator = " ";
+/** Split the line into tokens and respect 'TOKEN' tokens */
+static vector<string> getTokensFromString(string input)
+{
+    vector<string> resVec;
+
+    size_t index = 0;
+    bool quoteToken = false;
+    size_t startTokenIndex = string::npos;
+    while (index != input.size()) {
+        if (input[index] == '\'') {
+            if (quoteToken == false) {
+                quoteToken = true;
+                startTokenIndex = index + 1;
+            }
+            else {
+                resVec.push_back(input.substr(startTokenIndex, 
+                                              index - startTokenIndex));
+                quoteToken = false;
+                startTokenIndex = string::npos;
+            }
+        }
+        else if (input[index] == ' ') {
+            if (quoteToken == false) {
+                if (startTokenIndex == string::npos) {
+                    startTokenIndex = index;
+                }
+                else {
+                    resVec.push_back(input.substr(startTokenIndex, 
+                                                  index - startTokenIndex));
+                    startTokenIndex = string::npos;
+                }
+            }
+        }
+        else {
+            if (startTokenIndex == string::npos) {
+                startTokenIndex = index;
+            }
+        }
+        ++index;
+    }
+    if (quoteToken != false) {
+        ostringstream oss;
+        oss << "getTokensFromString: Missing ' terminator in input: " << input;
+        throw InvalidArgumentsException(oss.str());
+    }
+    if (startTokenIndex != string::npos) {
+        resVec.push_back(input.substr(startTokenIndex, 
+                                      index - startTokenIndex));
+    }
+
+    return resVec;
+}
 
 void
 CliParams::parseAndRunLine()
@@ -210,7 +259,7 @@ CliParams::parseAndRunLine()
         if (m_line && *m_line) {
             add_history(m_line);
         }
-        split(components, m_line, is_any_of(keySeparator));
+        components = getTokensFromString(m_line);
         /* Clean up. */
         if (m_line) {
             free(m_line);
@@ -220,11 +269,12 @@ CliParams::parseAndRunLine()
         char lineString[4096];
         cout << "\nEnter command (Use '?' if help is required):" << endl;
         cin.getline(lineString, 4096);
-        split(components, lineString, is_any_of(keySeparator));
+        components = getTokensFromString(lineString);
 #endif
     }
     else {
-        split(components, m_command, is_any_of(keySeparator));
+
+        components = getTokensFromString(m_command);
         setFinished();
     }
 

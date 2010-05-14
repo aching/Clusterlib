@@ -30,68 +30,184 @@ class NotifyableKeyManipulator
                                      const std::string &lockName);
     static std::string createLockNodeKey(const std::string &notifyableKey,
                                          const std::string &lockName);
-    static std::string createNodeKey(const std::string &groupKey,
-                                     const std::string &nodeName);
     static std::string createProcessSlotKey(
         const std::string &nodeKey,
         const std::string &processSlotName);
+
+    /**
+     * Create the key where all property list children are stored
+     * 
+     * @param parentKey the key of the parent
+     * @return the generated children key
+     */
+    static std::string createPropertyListChildrenKey(
+        const std::string &parentKey);
+
+    /**
+     * Create the key where all queue children are stored
+     * 
+     * @param parentKey the key of the parent
+     * @return the generated children key
+     */
+    static std::string createQueueChildrenKey(
+        const std::string &parentKey);
+
+    /**
+     * Generate the root key
+     *
+     * @return the generated root key
+     */
+    static std::string createRootKey();
+
+    /**
+     * Create the key where all application children are stored
+     * 
+     * @param rootKey the key of the root
+     * @return the generated children key
+     */
+    static std::string createApplicationChildrenKey(
+        const std::string &rootKey);
+
+    /**
+     * Generate the application key
+     *
+     * @param appName the name of the application
+     * @return the generated application key
+     */
+    static std::string createApplicationKey(const std::string &appName);
+
+    /**
+     * Create the key where all group children are stored
+     * 
+     * @param parentKey the key of the parent
+     * @return the generated children key
+     */
+    static std::string createGroupChildrenKey(
+        const std::string &parentKey);
+
+    /**
+     * Create the key where all data distribution children are stored
+     * 
+     * @param parentKey the key of the parent
+     * @return the generated children key
+     */
+    static std::string createDataDistributionChildrenKey(
+        const std::string &parentKey);
+
+    /**
+     * Create the key where all node children are stored
+     * 
+     * @param parentKey the key of the parent
+     * @return the generated children key
+     */
+    static std::string createNodeChildrenKey(
+        const std::string &parentKey);
+
+    /**
+     * Generate the group key
+     *
+     * @param groupKey the name of the group key
+     * @param groupName the name of the group
+     * @return the generated group key
+     */
     static std::string createGroupKey(const std::string &groupKey,
                                       const std::string &groupName);
-    static std::string createApplicationKey(const std::string &appName);
-    static std::string createRootKey();
+
+    /**
+     * Create the key where all ProcessSlot children are stored
+     * 
+     * @param parentKey the key of the parent
+     * @return the generated children key
+     */
+    static std::string createProcessSlotChildrenKey(
+        const std::string &parentKey);
+
+    /**
+     * Generate the node key
+     *
+     * @param groupKey the name of the group key
+     * @param nodeName the name of the node
+     * @return the generated node key
+     */
+    static std::string createNodeKey(const std::string &groupKey,
+                                     const std::string &nodeName);
+
+    /**
+     * Generate the notifyable state as a JSON Object key
+     *
+     * @param notifyableKey the name of the notifyable key
+     * @return the generated notifyable state key
+     */
+    static std::string createNotifyableStateJSONObjectKey(
+        const std::string &notifyableKey);
+
+    /**
+     * Generate the a generic JSON object key for a notifyable
+     * 
+     * @param notifyableKey the name of the notifyableKey
+     * @return the generated JSON object key
+     */
+    static std::string createJSONObjectKey(
+        const std::string &notifyableKey);
+
+    /**
+     * Generate the data distribution key
+     *
+     * @param groupKey the name of the group key
+     * @param distName the name of the data distribution
+     * @return the generated data distribution key
+     */
     static std::string createDataDistributionKey(const std::string &groupKey,
                                                  const std::string &distName);
-    static std::string createShardsKey(const std::string &distKey);
+
+    /**
+     * Generate the property list key
+     *
+     * @param notifyableKey the name of the notifyable key
+     * @param propListName the name of the property list
+     * @return the generated property list key
+     */
     static std::string createPropertyListKey(const std::string &notifyableKey,
                                              const std::string &propListName);
-    static std::string createKeyValsKey(const std::string &propListkey);
+
+    /**
+     * Generate the queue key
+     *
+     * @param notifyableKey the name of the notifyable key
+     * @param queueName the name of the queue
+     * @return the generated queue key
+     */
     static std::string createQueueKey(const std::string &notifyableKey,
                                       const std::string &queueName);
+
+    /**
+     * Generate the a queue parent for a queue
+     * 
+     * @param queueKey the name of the queue
+     * @return the generated queue parent key
+     */
+    static std::string createQueueParentKey(
+        const std::string &queueKey);
+
+
+    static std::string createShardsKey(const std::string &distKey);
+    static std::string createKeyValsKey(const std::string &propListkey);
+
+
     static std::string createProcessSlotsUsageKey(
         const std::string &notifyableKey);
     static std::string createProcessSlotsMaxKey(
         const std::string &notifyableKey);
     static std::string createProcessSlotPortVecKey(
         const std::string &notifyableKey);
-    static std::string createProcessSlotExecArgsKey(
-        const std::string &notifyableKey);
-    static std::string createProcessSlotRunningExecArgsKey(
-        const std::string &notifyableKey);
-    static std::string createProcessSlotPIDKey(
-        const std::string &notifyableKey);
-    static std::string createProcessSlotDesiredStateKey(
-        const std::string &notifyableKey);
-    static std::string createProcessSlotCurrentStateKey(
-        const std::string &notifyableKey);
-    static std::string createProcessSlotReservationKey(
-        const std::string &notifyableKey);
     static std::string createQueuePrefixKey(
         const std::string &notifyableKey);
-    static std::string createQueueParentKey(
-        const std::string &queueKey);
 
     /**
      * Create a sync event key that will be used to figure out which
      * PredMutexCond to signal.
      */
     static std::string createSyncEventKey(const int64_t &syncEventId);
-
-    /**
-     * Notifyables have one key that represent the object name in the
-     * Zookeeper repository.  Each notifyable may have zookeeper nodes
-     * attached to it (at most one level deep).  Any zookeeper node
-     * beyond one level is not part of that object.  This function
-     * will get the a key that refers to a Notifyable from any input
-     * key.  For example, if the key is
-     * .../group/client/nodes/foo-server/connected, it will return
-     * .../group/client/nodes/foo-server. If the input key is not
-     * related to any Notifyable, return an empty string.
-     * 
-     * @param key the key that should contain path that is part of a
-     *            clusterlib object
-     * @return the potential notifyable key, empty if no possible key.
-     */
-    static std::string getNotifyableKeyFromKey(const std::string &key);
 
     /**
      * If there is a lot of checking Notifyable key strings, it will
@@ -112,214 +228,6 @@ class NotifyableKeyManipulator
      * @return true if name is allowed, false otherwise
      */
     static bool isValidNotifyableName(const std::string &name);
-
-    /**
-     * Checks if the components (assumed from a split) make up a valid
-     * key, not if an actual Notifyable exists for that key.
-     * 
-     * @param components A vector of components in the key parsed by split
-     *                   (i.e. first component should be "")
-     * @param elements The number of elements to check with (should 
-     *                 be <= components.size()).  If it is -1, then use 
-     *                 components.size().
-     * @return true if key is valid, false if not valid
-     */
-    static bool isNotifyableKey(const std::vector<std::string> &components, 
-                                int32_t elements = -1);
-
-    /**
-     * Checks if the key is valid, not if an actual Notifyable exists
-     * for that key.
-     * 
-     * @param key A key to test if it is a notifyable
-     * @return true if key is valid, false if not valid
-     */
-    static bool isNotifyableKey(const std::string &key);
-
-    /**
-     * Checks if the components (assumed from a split) make up a valid
-     * key, not if an actual Application exists for that key.
-     * 
-     * @param components A vector of components in the key parsed by split
-     *                   (i.e. first component should be "")
-     * @param elements The number of elements to check with (should 
-     *                 be <= components.size()).  If it is -1, then use 
-     *                 components.size().
-     * @return true if key is valid, false if not valid
-     */
-    static bool isApplicationKey(const std::vector<std::string> &components, 
-                                 int32_t elements = -1);
-
-    /**
-     * Checks if the key is valid, not if an actual Application exists
-     * for that key.
-     * 
-     * @param key A key to test if it is an application
-     * @return true if key is valid, false if not valid
-     */
-    static bool isApplicationKey(const std::string &key);
-
-    /**
-     * Checks if the components (assumed from a split) make up a valid
-     * key, not if an actual Root exists for that key.
-     * 
-     * @param components A vector of components in the key parsed by split
-     *                   (i.e. first component should be "")
-     * @param elements The number of elements to check with (should 
-     *                 be <= components.size()).  If it is -1, then use 
-     *                 components.size().
-     * @return true if key is valid, false if not valid
-     */
-    static bool isRootKey(const std::vector<std::string> &components, 
-                                 int32_t elements = -1);
-
-    /**
-     * Checks if the key is valid, not if an actual Root exists
-     * for that key.
-     * 
-     * @param key A key to test if it is an root
-     * @return true if key is valid, false if not valid
-     */
-    static bool isRootKey(const std::string &key);
-
-    /**
-     * Checks if the components (assumed from a split) make up a valid
-     * key, not if an actual DataDistribution exists for that key.
-     * 
-     * @param components A vector of components in the key parsed by split
-     *                   (i.e. first component should be "")
-     * @param elements The number of elements to check with (should 
-     *                 be <= components.size()).  If it is -1, then use 
-     *                 components.size().
-     * @return true if key is valid, false if not valid
-     */
-    static bool isDataDistributionKey(
-        const std::vector<std::string> &components, 
-        int32_t elements = -1);
-
-    /**
-     * Checks if the key is valid, not if an actual DataDistribution exists
-     * for that key.
-     * 
-     * @param key A key to test if it is an application
-     * @return true if key is valid, false if not valid
-     */
-    static bool isDataDistributionKey(const std::string &key);
-
-    /**
-     * Checks if the components (assumed from a split) make up a valid
-     * key, not if an actual Group exists for that key.
-     * 
-     * @param components A vector of components in the key parsed by split
-     *                   (i.e. first component should be "")
-     * @param elements The number of elements to check with (should 
-     *                 be <= components.size()).  If it is -1, then use 
-     *                 components.size().
-     * @return true if key is valid, false if not valid
-     */
-    static bool isGroupKey(const std::vector<std::string> &components, 
-                           int32_t elements = -1);
-
-    /**
-     * Checks if the key is valid, not if an actual Group exists
-     * for that key.
-     * 
-     * @param key A key to test if it is an application
-     * @return true if key is valid, false if not valid
-     */
-    static bool isGroupKey(const std::string &key);
-
-    /**
-     * Checks if the components (assumed from a split) make up a valid
-     * key, not if an actual PropertyList exists for that key.
-     * 
-     * @param components A vector of components in the key parsed by split
-     *                   (i.e. first component should be "")
-     * @param elements The number of elements to check with (should 
-     *                 be <= components.size()).  If it is -1, then use 
-     *                 components.size().
-     * @return true if key is valid, false if not valid
-     */
-    static bool isPropertyListKey(const std::vector<std::string> &components, 
-                                int32_t elements = -1);
-
-    /**
-     * Checks if the key is valid, not if an actual PropertyList exists
-     * for that key.
-     * 
-     * @param key A key to test if it is an application
-     * @return true if key is valid, false if not valid
-     */
-    static bool isPropertyListKey(const std::string &key);
-
-    /**
-     * Checks if the components (assumed from a split) make up a valid
-     * key, not if an actual Queue exists for that key.
-     * 
-     * @param components A vector of components in the key parsed by split
-     *                   (i.e. first component should be "")
-     * @param elements The number of elements to check with (should 
-     *                 be <= components.size()).  If it is -1, then use 
-     *                 components.size().
-     * @return true if key is valid, false if not valid
-     */
-    static bool isQueueKey(const std::vector<std::string> &components, 
-                           int32_t elements = -1);
-
-    /**
-     * Checks if the key is valid, not if an actual Queue exists
-     * for that key.
-     * 
-     * @param key A key to test if it is an application
-     * @return true if key is valid, false if not valid
-     */
-    static bool isQueueKey(const std::string &key);
-
-    /**
-     * Checks if the components (assumed from a split) make up a valid
-     * key, not if an actual Node exists for that key.
-     * 
-     * @param components A vector of components in the key parsed by split
-     *                   (i.e. first component should be "")
-     * @param elements The number of elements to check with (should 
-     *                 be <= components.size()).  If it is -1, then use 
-     *                 components.size().
-     * @return true if key is valid, false if not valid
-     */
-    static bool isNodeKey(const std::vector<std::string> &components, 
-                          int32_t elements = -1);
-
-    /**
-     * Checks if the key is valid, not if an actual Node exists
-     * for that key.
-     * 
-     * @param key A key to test if it is an application
-     * @return true if key is valid, false if not valid
-     */
-    static bool isNodeKey(const std::string &key);
-
-    /**
-     * Checks if the components (assumed from a split) make up a valid
-     * key, not if an actual ProcessSlot exists for that key.
-     * 
-     * @param components A vector of components in the key parsed by split
-     *                   (i.e. first component should be "")
-     * @param elements The number of elements to check with (should 
-     *                 be <= components.size()).  If it is -1, then use 
-     *                 components.size().
-     * @return true if key is valid, false if not valid
-     */
-    static bool isProcessSlotKey(const std::vector<std::string> &components, 
-                                 int32_t elements = -1);
-
-    /**
-     * Checks if the key is valid, not if an actual ProcessSlot exists
-     * for that key.
-     * 
-     * @param key A key to test if it is an application
-     * @return true if key is valid, false if not valid
-     */
-    static bool isProcessSlotKey(const std::string &key);
 
     /**
      * Remove the leaf node and returns the closest clusterlib

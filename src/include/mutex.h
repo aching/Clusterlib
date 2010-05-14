@@ -25,13 +25,22 @@ class Cond;
 class Mutex
 {
     friend class Cond;
+
   public:
-    Mutex() : refCount(0)
+    /**
+     * Constructor.
+     */
+    Mutex() 
+        : refCount(0)
     {
         pthread_mutexattr_init(&m_mutexAttr);
         pthread_mutexattr_settype(&m_mutexAttr, PTHREAD_MUTEX_RECURSIVE_NP);
         pthread_mutex_init(&mutex, &m_mutexAttr);
     }
+
+    /**
+     * Destructor.
+     */
     ~Mutex()
     {
         pthread_mutex_destroy(&mutex);
@@ -47,25 +56,9 @@ class Mutex
      * Release the mutex.
      */
     void release();
-    void lock()
-    {
-        int ret = pthread_mutex_lock(&mutex);
-        if (ret != 0) {
-            throw InconsistentInternalStateException(
-                "lock: Failed to lock");
-        }
-    }
     int32_t tryLock()
     {
         return pthread_mutex_trylock(&mutex);
-    }
-    void unlock()
-    {
-        int ret = pthread_mutex_unlock(&mutex); 
-        if (ret != 0) {
-            throw InconsistentInternalStateException(
-                "unlock: Failed to unlock");
-        }
     }
     int32_t getRefCount() const
     {
@@ -79,6 +72,22 @@ class Mutex
     {
         refCount--;
     }
+    
+  private:
+    void lock();
+
+    void unlock();
+
+    /**
+     * No copy constructor allowed.
+     */
+    Mutex(const Mutex &);
+
+    /**
+     * No assignment allowed.
+     */
+    Mutex & operator=(const Mutex &);
+
   private:
     pthread_mutex_t mutex;
     pthread_mutexattr_t m_mutexAttr;
@@ -144,6 +153,17 @@ class Cond
     }
 
   private:
+    /**
+     * No copy constructor allowed.
+     */
+    Cond(const Cond &);
+
+    /**
+     * No assignment allowed.
+     */
+    Cond & operator=(const Cond &);
+
+  private:
     pthread_cond_t m_cond;
 };
 
@@ -155,12 +175,12 @@ class Lock
   public:
     void lock()
     {
-        m_mutex.lock();
+        m_mutex.acquire();
     }
         
     void unlock()
     {
-        m_mutex.unlock();
+        m_mutex.release();
     }
         
     void wait()
@@ -199,27 +219,27 @@ class Lock
 
     void lockedWait()
     {
-        m_mutex.lock();
+        m_mutex.acquire();
         m_cond.wait(m_mutex);
-        m_mutex.unlock();
+        m_mutex.release();
     }
 
     bool lockedWaitUsecs(int64_t usecTimeout)
     {
         bool res;
 
-        m_mutex.lock();
+        m_mutex.acquire();
         res = m_cond.waitUsecs(m_mutex, usecTimeout);
-        m_mutex.unlock();
+        m_mutex.release();
 
         return res;
     }
 
     void lockedNotify()
     {
-        m_mutex.lock();
+        m_mutex.acquire();
         m_cond.signal();
-        m_mutex.unlock();
+        m_mutex.release();
     }
 
   private:
@@ -323,7 +343,11 @@ class RdWrLock
             throw SystemFailureException("release: failed");
         }
     }
+
   private:
+    /**
+     * The lock.
+     */
     pthread_rwlock_t m_rwlock;    
 };
 
@@ -342,7 +366,8 @@ class RdWrLocker
         READLOCK,
         WRITELOCK
     };
-    /*
+
+    /**
      * Constructor locks the passed mutex.
      */
     RdWrLocker(RdWrLock *lock, RdWrType type) 
@@ -362,13 +387,14 @@ class RdWrLocker
         }
     }
 
-    /*
+    /**
      * Destructor unlocks the mutex.
      */
-    ~RdWrLocker()
+    virtual ~RdWrLocker()
     {
         mp_lock->release();
     }
+
   private:
     /*
      * Make the default constructor private so it
@@ -377,7 +403,7 @@ class RdWrLocker
     RdWrLocker()
     {
         throw InvalidMethodException("Someone called the "
-                                       "RdWrLocker default constructor!");
+                                     "RdWrLocker default constructor!");
     }
 
   private:
@@ -385,6 +411,22 @@ class RdWrLocker
      * The read write lock
      */
     RdWrLock *mp_lock;
+};
+
+class ReadLocker : public RdWrLocker
+{
+  public:
+    ReadLocker(RdWrLock *lock) : RdWrLocker(lock, RdWrLocker::READLOCK) {}
+
+    virtual ~ReadLocker() {}
+};
+
+class WriteLocker : public RdWrLocker
+{
+  public:
+    WriteLocker(RdWrLock *lock) : RdWrLocker(lock, RdWrLocker::WRITELOCK) {}
+
+    virtual ~WriteLocker() {}
 };
 
 /**

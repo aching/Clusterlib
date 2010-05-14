@@ -265,7 +265,20 @@ MethodAdaptor::getNotifyableId(
     id[idTypeProperty] = type;
     id[idProperty] = notifyable->getKey();
     id[idNameProperty] = notifyable->getName();
+    string ownerId;
+    int64_t acquiredOwnerTime = -1;
+    bool hasOwner = 
+        notifyable->getOwnershipInfo(&ownerId, &acquiredOwnerTime);
+    if (hasOwner) {
+        id[idOwner] = ownerId;
+        ostringstream oss;
+        oss << TimerService::getMsecsTimeString(acquiredOwnerTime) 
+            << " (" << acquiredOwnerTime << ")";
+        id[idAcquiredOwnerTime] = oss.str();
+    }
     id[idBidArr] = bidArr;
+    id[idCurrentState] = notifyable->cachedCurrentState().getHistoryArray();
+    id[idDesiredState] = notifyable->cachedDesiredState().getHistoryArray();
 
     return id;
 }
@@ -274,13 +287,18 @@ JSONValue::JSONObject
 MethodAdaptor::getPropertyList(PropertyList *propertyList) {
     JSONValue::JSONObject result;
     
-    // Get all keys
+    // Get all keys and values
+    bool exists = false;
+    JSONValue jsonValue;
     if (propertyList != NULL) {
-        vector<string> keys = propertyList->getPropertyListKeys();
-        for (vector<string>::const_iterator iter = keys.begin(); 
-             iter != keys.end(); 
-             ++iter) {
-            result[*iter] = propertyList->getProperty(*iter);
+        vector<JSONValue::JSONString> keys = 
+            propertyList->cachedKeyValues().getKeys();
+        vector<JSONValue::JSONString>::const_iterator keysIt;
+        for (keysIt= keys.begin(); keysIt != keys.end(); ++keysIt) {
+            exists = propertyList->cachedKeyValues().get(*keysIt, jsonValue);
+            if (exists) {
+                result[*keysIt] = jsonValue;
+            }
         }
     }
     
@@ -400,23 +418,6 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableAttributesFromKey(
                                get<JSONValue::JSONArray>()); 
         }
         else if (dynamic_cast<Group *>(notifyable)) {
-            Group *group = 
-                dynamic_cast<Group *>(notifyable);
-            names = group->getNodeNames();
-            int32_t healthyNodes = 0, unhealthyNodes = 0;
-            for (NameList::const_iterator iter = names.begin(); 
-                 iter != names.end(); 
-                 ++iter) {
-                if (group->getNode(*iter)->isHealthy()) {
-                    healthyNodes++;
-                }
-                else {
-                    unhealthyNodes++;
-                }
-            }
-            attributes[idNodesHealthy] = healthyNodes;
-            attributes[idNodesUnhealthy] = unhealthyNodes;
-            
             attributes[idGroupSummary] = 
                 getGroupStatus(childObj["groups"].
                                get<JSONValue::JSONArray>()); 
@@ -437,9 +438,11 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableAttributesFromKey(
             DataDistribution *dataDistribution = 
                 dynamic_cast<DataDistribution *>(notifyable);
             attributes[idDataDistributionCovered] = 
-                dataDistribution->isCovered();
-            attributes[idShardCount] = dataDistribution->getShardCount();
-            vector<Shard> shardVec = dataDistribution->getAllShards();
+                dataDistribution->cachedShards().isCovered();
+            attributes[idShardCount] = 
+                dataDistribution->cachedShards().getCount();
+            vector<Shard> shardVec = 
+                dataDistribution->cachedShards().getAllShards();
             attributes[idShardSummary] =
                 getShardStatus(shardVec);
             attributes[idPropertyListSummary] = 
@@ -451,35 +454,12 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableAttributesFromKey(
         }
         else if (dynamic_cast<Node *>(notifyable)) {
             Node *node = dynamic_cast<Node *>(notifyable);
-            int64_t clientStateTime = -1;
-            string clientState, clientStateDesc;
-            stringstream timeSs;
-            node->getClientState(&clientStateTime,
-                                 &clientState, 
-                                 &clientStateDesc);
-            timeSs << clientStateTime << " (" 
-                   << TimerService::getMsecsTimeString(clientStateTime) 
-                   << ")";
-            attributes[idNodeStateSetTime] = timeSs.str();
-            attributes[idNodeState] = clientState;
-            attributes[idNodeStateDesc] = clientStateDesc;
-            string connectedId;
-            int64_t connectionTime = -1;
-            bool connected = node->isConnected(&connectedId, &connectionTime);
-            attributes[idNodeConnected] = connected ? "true" : "false";
-            if (connected) {
-                timeSs.str("");
-                timeSs << connectionTime << " (" 
-                       << TimerService::getMsecsTimeString(connectionTime) 
-                       << ")";
-                attributes[idNodeConnectedId] = connectedId;
-                attributes[idNodeConnectedTime] = timeSs.str();
+            bool useProcessSlots = node->cachedProcessSlotInfo().getEnable();
+            attributes[idNodeUseProcessSlots] = useProcessSlots;
+            if (useProcessSlots) {
+                attributes[idNodeMaxProcessSlots] = 
+                    node->cachedProcessSlotInfo().getMaxProcessSlots();
             }
-            attributes[idNodeHealth] = 
-                node->isHealthy() ? "healthy" : "unhealthy";
-            attributes[idNodeUseProcessSlots] = 
-                node->getUseProcessSlots() ? "true" : "false";
-            
             attributes[idProcessSlotSummary] = 
                 getProcessSlotStatus(childObj["processSlots"].
                                      get<JSONValue::JSONArray>()); 
@@ -497,21 +477,8 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableAttributesFromKey(
             
             attributes[idPrefixEditable + idPrefixDelim +
                        idProcessSlotPortVec] = 
-                JSONCodec::encode(processSlot->getJsonPortVec());
-            attributes[idPrefixEditable + idPrefixDelim +
-                       idProcessSlotExecArgs] = 
-                processSlot->getJsonExecArgs();
-            attributes[idProcessSlotRunningExecArgs] = 
-                processSlot->getJsonRunningExecArgs();
-            attributes[idProcessSlotPID] = 
-                processSlot->getJsonPID();
-            attributes[idProcessSlotDesiredProcessState] =
-                processSlot->getJsonDesiredProcessState(); 
-            attributes[idProcessSlotCurrentProcessState] = 
-                processSlot->getJsonCurrentProcessState();
-            attributes[idProcessSlotReservationName] = 
-                processSlot->getReservationName();
-
+                JSONCodec::encode(
+                    processSlot->cachedProcessInfo().getPortArr());
             attributes[idPropertyListSummary] = 
                 getPropertyListStatus(childObj["propertyLists"].
                                       get<JSONValue::JSONArray>()); 
@@ -523,18 +490,25 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableAttributesFromKey(
             PropertyList *propertyList = 
                 dynamic_cast<PropertyList *>(notifyable);
             attributes[idAddAttribute] = addProperty;
-            vector<string> keyVec = propertyList->getPropertyListKeys();
-            for (vector<string>::iterator it = keyVec.begin();
+            vector<JSONValue::JSONString> keyVec = 
+                propertyList->cachedKeyValues().getKeys();
+            bool exists;
+            JSONValue jsonValue;
+            for (vector<JSONValue::JSONString>::iterator it = keyVec.begin();
                  it != keyVec.end();
-                 it++) {
-                /* 
-                 * Properties are editable to anything and
-                 * deletable. 
-                 */
-                attributes[idPrefixEditable + idPrefixDelim + 
-                           idPrefixDeletable + idPrefixDelim +
-                           idPropertyListProperty + " " + *it] 
-                    = propertyList->getProperty(*it);
+                 ++it) {
+                
+                exists = propertyList->cachedKeyValues().get(*it, jsonValue);
+                if (exists) {
+                    /* 
+                     * Properties are editable to anything and
+                     * deletable. 
+                     */
+                    attributes[idPrefixEditable + idPrefixDelim + 
+                               idPrefixDeletable + idPrefixDelim +
+                               idPropertyListProperty + " " + *it] 
+                        = jsonValue;
+                }
             }
         }
         else if (dynamic_cast<Queue *>(notifyable)) {
@@ -619,30 +593,37 @@ JSONValue::JSONString MethodAdaptor::setNotifyableAttributesFromKey(
             string op = 
                 arr[setAttributeKeyIdx + 2].get<JSONValue::JSONString>();
                 
-            if (!op.compare(0,
-                            idProcessSlotPortVec.size(), 
-                            idProcessSlotPortVec)) {
-                processSlot->setJsonPortVec(arr[setAttributeKeyIdx + 3].
-                                            get<JSONValue::JSONArray>());
-            }
-            else if (!op.compare(
-                         0,
-                         idProcessSlotExecArgs.size(), 
-                         idProcessSlotExecArgs)) {
-                processSlot->setJsonExecArgs(arr[setAttributeKeyIdx + 3].
-                                             get<JSONValue::JSONObject>());
-            }
-            else if (!op.compare(
-                         0,
-                         optionStartProcess.size(),
-                         optionStartProcess)) {
-                processSlot->start();
+            if (!op.compare(
+                    0,
+                    optionStartProcess.size(),
+                    optionStartProcess)) {
+
+                processSlot->cachedDesiredState().set(
+                    ProcessSlot::PROCESS_STATE_KEY,
+                    ProcessSlot::PROCESS_STATE_RUN_CONTINUOUSLY_VALUE);
+                try {
+                    processSlot->cachedDesiredState().publish();
+                }
+                catch (PublishVersionException e) {
+                    throw JSONRPCInvocationException(
+                        string("publish failed with: ") + e.what());
+                }
             }
             else if (!op.compare(
                          0,
                          optionStopProcess.size(),
                          optionStopProcess)) {
-                processSlot->stop();
+
+                processSlot->cachedDesiredState().set(
+                    ProcessSlot::PROCESS_STATE_KEY,
+                    ProcessSlot::PROCESS_STATE_STOPPED_VALUE);
+                try {
+                    processSlot->cachedDesiredState().publish();
+                }
+                catch (PublishVersionException e) {
+                    throw JSONRPCInvocationException(
+                        string("publish failed with: ") + e.what());
+                }
             }
             else {
                 throw JSONRPCInvocationException(
@@ -678,8 +659,8 @@ JSONValue::JSONString MethodAdaptor::setNotifyableAttributesFromKey(
                         << maxLockWaitMsecs << " msecs";
                     throw JSONRPCInvocationException(oss.str());
                 }
-                propertyList->setProperty(property, value);
-                propertyList->publishProperties();
+                propertyList->cachedKeyValues().set(property, value);
+                propertyList->cachedKeyValues().publish();
                 propertyList->releaseLock();
             }
             else {
@@ -758,8 +739,8 @@ JSONValue::JSONString MethodAdaptor::removeNotifyableAttributesFromKey(
                         << " within " << maxLockWaitMsecs << " msecs";
                     throw JSONRPCInvocationException(oss.str());
                 }
-                propertyList->deleteProperty(attribute);
-                propertyList->publishProperties();
+                propertyList->cachedKeyValues().erase(attribute);
+                propertyList->cachedKeyValues().publish();
                 propertyList->releaseLock();
             }
             else {
@@ -960,10 +941,11 @@ JSONValue::JSONString MethodAdaptor::addNotifyableFromKey(
 
         if (dynamic_cast<Root *>(notifyable)) {
             if (!op.compare(optionAddApplication)) {
-                notifyable = m_root->getApplication(name, true);
+                notifyable = m_root->getApplication(name, CREATE_IF_NOT_FOUND);
             }
             else if (!op.compare(optionAddPropertyList)) {
-                notifyable = m_root->getPropertyList(name, true);
+                notifyable = m_root->getPropertyList(name, 
+                                                     CREATE_IF_NOT_FOUND);
             }
             else {
                 throw JSONRPCInvocationException(
@@ -974,19 +956,21 @@ JSONValue::JSONString MethodAdaptor::addNotifyableFromKey(
             Application *application = 
                 dynamic_cast<Application *>(notifyable);
             if (!op.compare(optionAddGroup)) {
-                notifyable = application->getGroup(name, true);
+                notifyable = application->getGroup(name, CREATE_IF_NOT_FOUND);
             }
             else if (!op.compare(optionAddDataDistribution)) {
-                notifyable = application->getDataDistribution(name, true);
+                notifyable = application->getDataDistribution(
+                    name, CREATE_IF_NOT_FOUND);
             }
             else if (!op.compare(optionAddNode)) {
-                notifyable = application->getNode(name, true);
+                notifyable = application->getNode(name, CREATE_IF_NOT_FOUND);
             }
             else if (!op.compare(optionAddQueue)) {
-                notifyable = application->getQueue(name, true);
+                notifyable = application->getQueue(name, CREATE_IF_NOT_FOUND);
             }
             else if (!op.compare(optionAddPropertyList)) {
-                notifyable =  application->getPropertyList(name, true);
+                notifyable = application->getPropertyList(name, 
+                                                          CREATE_IF_NOT_FOUND);
             }
             else {
                 throw JSONRPCInvocationException(
@@ -996,19 +980,20 @@ JSONValue::JSONString MethodAdaptor::addNotifyableFromKey(
         else if (dynamic_cast<Group *>(notifyable)) {
             Group *group = dynamic_cast<Group *>(notifyable);
             if (!op.compare(optionAddGroup)) {
-                notifyable = group->getGroup(name, true);
+                notifyable = group->getGroup(name, CREATE_IF_NOT_FOUND);
             }
             else if (!op.compare(optionAddDataDistribution)) {
-                notifyable = group->getDataDistribution(name, true);
+                notifyable = group->getDataDistribution(name, 
+                                                        CREATE_IF_NOT_FOUND);
             }
             else if (!op.compare(optionAddNode)) {
-                notifyable = group->getNode(name, true);
+                notifyable = group->getNode(name, CREATE_IF_NOT_FOUND);
             }
             else if (!op.compare(optionAddQueue)) {
-                notifyable = group->getQueue(name, true);
+                notifyable = group->getQueue(name, CREATE_IF_NOT_FOUND);
             }
             else if (!op.compare(optionAddPropertyList)) {
-                notifyable = group->getPropertyList(name, true);
+                notifyable = group->getPropertyList(name, CREATE_IF_NOT_FOUND);
             }
             else {
                 throw JSONRPCInvocationException(
@@ -1019,10 +1004,12 @@ JSONValue::JSONString MethodAdaptor::addNotifyableFromKey(
             DataDistribution *dataDistributions = 
                 dynamic_cast<DataDistribution *>(notifyable);
             if (!op.compare(optionAddQueue)) {
-                notifyable = dataDistributions->getQueue(name, true);
+                notifyable = dataDistributions->getQueue(name, 
+                                                         CREATE_IF_NOT_FOUND);
             }
             else if (!op.compare(optionAddPropertyList)) {
-                notifyable = dataDistributions->getPropertyList(name, true);
+                notifyable = dataDistributions->getPropertyList(
+                    name, CREATE_IF_NOT_FOUND);
             }
             else {
                 throw JSONRPCInvocationException(
@@ -1032,10 +1019,11 @@ JSONValue::JSONString MethodAdaptor::addNotifyableFromKey(
         else if (dynamic_cast<Node *>(notifyable)) {
             Node *node = dynamic_cast<Node *>(notifyable);
             if (!op.compare(optionAddQueue)) {
-                notifyable = node->getQueue(name, true);
+                notifyable = node->getQueue(name, CREATE_IF_NOT_FOUND);
             }
             else if (!op.compare(optionAddPropertyList)) {
-                notifyable = node->getPropertyList(name, true);
+                notifyable = node->getPropertyList(
+                    name, CREATE_IF_NOT_FOUND);
             }                
             else {
                 throw JSONRPCInvocationException(
@@ -1046,10 +1034,11 @@ JSONValue::JSONString MethodAdaptor::addNotifyableFromKey(
             ProcessSlot *processSlot = 
                 dynamic_cast<ProcessSlot *>(notifyable);
             if (!op.compare(optionAddQueue)) {
-                notifyable = processSlot->getQueue(name, true);
+                notifyable = processSlot->getQueue(name, CREATE_IF_NOT_FOUND);
             }
             else if (!op.compare(optionAddPropertyList)) {
-                notifyable = processSlot->getPropertyList(name, true);
+                notifyable = processSlot->getPropertyList(name, 
+                                                          CREATE_IF_NOT_FOUND);
             }                
             else {
                 throw JSONRPCInvocationException(
@@ -1215,7 +1204,6 @@ JSONValue::JSONObject MethodAdaptor::getGroup(
         result["nodes"] = nodes;
         result["properties"] = getPropertyList(group->getPropertyList());
         result["propertyListObjects"] = propertyLists;
-        //result["isLeader"] = group->isLeader();
         result["status"] = getOneGroupStatus(group);
 
         return result;
@@ -1234,7 +1222,7 @@ JSONValue::JSONObject MethodAdaptor::getDataDistribution(
 
         JSONValue::JSONArray shards;
             
-        vector<Shard> shardVec = distribution->getAllShards();
+        vector<Shard> shardVec = distribution->cachedShards().getAllShards();
             
         // Transform shards
         for (uint32_t i = 0; i < shardVec.size(); ++i) {
@@ -1259,7 +1247,7 @@ JSONValue::JSONObject MethodAdaptor::getDataDistribution(
         }
 
         JSONValue::JSONObject result;
-        bool covered = distribution->isCovered();
+        bool covered = distribution->cachedShards().isCovered();
         result["parent"] = getNotifyableId(distribution->getMyParent());
         result["isCovered"] = covered;
         result["shards"] = shards;
@@ -1280,22 +1268,12 @@ JSONValue::JSONObject MethodAdaptor::getNode(
     const JSONValue::JSONObject &name) {
     try {
         Node *node = dynamic_cast<Node*>(getNotifyable(name, idTypeNode));
-        int64_t clientStateTime = -1;
-        string clientState, clientStateDesc;
-        node->getClientState(&clientStateTime,
-                             &clientState, 
-                             &clientStateDesc);
-        string connectedId;
-        int64_t connectionTime = -1;
-        bool connected = node->isConnected(&connectedId, &connectionTime);
+        string ownerId;
+        int64_t ownerAcquiredTime = -1;
+        node->getOwnershipInfo(&ownerId, &ownerAcquiredTime);
         JSONValue::JSONObject result;
-        result["isHealthy"] = node->isHealthy();
-        result["isConnected"] = connected;
-        result["lastStateTime"] = clientStateTime;
-        result["lastMasterStateTime"] = node->getMasterSetStateTime();
-        result["lastConnectionTime"] = connectionTime;
-        result["masterState"] = node->getMasterSetState();
-        result["state"] = clientState;
+        result["owner"] = ownerId;
+        result["ownerAcquiredTime"] = ownerAcquiredTime;
         result["parent"] = getNotifyableId(node->getMyParent());
         result["status"] = getOneNodeStatus(node);
         result["properties"] = getPropertyList(node->getPropertyList());
@@ -1377,25 +1355,31 @@ JSONValue::JSONObject MethodAdaptor::getOneApplicationStatus(
 
 JSONValue::JSONObject MethodAdaptor::getOneNodeStatus(Node *node) {
     // Should change this to other condition
-    bool connected = node->isConnected();
-    bool healthy = node->isHealthy();
+    bool owner = node->getOwnershipInfo();
+    JSONValue jsonHealth;
+    bool healthy = false;
+    bool found = node->cachedCurrentState().get(Node::HEALTH_KEY, jsonHealth);
+    if (found && 
+        (jsonHealth.get<JSONValue::JSONString>() == Node::HEALTH_GOOD_VALUE)) {
+        healthy = true;
+    }
 
     JSONValue::JSONObject jsonObj;
     jsonObj[idProperty] = node->getKey();
     jsonObj[idNameProperty] = node->getName();
     jsonObj[idNotifyableStatus] = statusReady;
 
-    if (connected && healthy) {
+    if (owner && healthy) {
         jsonObj[idNotifyableStatus] = statusReady;
-        jsonObj[idNotifyableState] = "Connected and healthy";
+        jsonObj[idNotifyableState] = "Has owner and is healthy";
     } 
-    else if (connected || healthy) {
+    else if (owner || healthy) {
         jsonObj[idNotifyableStatus] = statusWarning;
-        jsonObj[idNotifyableState] = "Either not connected or not healthy";
+        jsonObj[idNotifyableState] = "Either no owner or not healthy";
     }
     else {
         jsonObj[idNotifyableStatus] = statusBad;
-        jsonObj[idNotifyableState] = "Not connected and not healthy";
+        jsonObj[idNotifyableState] = "No owner and not healthy";
     }
 
     return jsonObj;
@@ -1407,26 +1391,24 @@ JSONValue::JSONObject MethodAdaptor::getOneProcessSlotStatus(
     jsonObj[idProperty] = processSlot->getKey();
     jsonObj[idNameProperty] = processSlot->getName();
     jsonObj[idNotifyableStatus] = statusReady;
-
-    ProcessSlot::ProcessState currentState;
-    processSlot->getCurrentProcessState(&currentState, NULL);
-        
-    if (currentState == ProcessSlot::UNUSED) {
+    
+    JSONValue state;
+    bool found = processSlot->cachedCurrentState().getHistory(
+        0, ProcessSlot::PROCESS_STATE_KEY, state);
+    if (!found) {
         jsonObj[idNotifyableStatus] = statusInactive;
-        jsonObj[idNotifyableState] = "Not being used";
+        jsonObj[idNotifyableState] = "Not being used";        
     }
-    else if (currentState == ProcessSlot::STARTED) {
-        jsonObj[idNotifyableStatus] = statusWarning;
-        jsonObj[idNotifyableState] = "Started a process";
-    }
-    else if (currentState == ProcessSlot::RUNNING) {
+    else if (state.get<JSONValue::JSONString>() == 
+             ProcessSlot::PROCESS_STATE_RUNNING_VALUE) {
         jsonObj[idNotifyableStatus] = statusWorking;
-        jsonObj[idNotifyableState] = "Running a process";
-    } 
-    else if (currentState == ProcessSlot::FINISHED) {
+        jsonObj[idNotifyableState] = "Running a process";        
+    }
+    else if (state.get<JSONValue::JSONString>() == 
+             ProcessSlot::PROCESS_STATE_STOPPED_VALUE) {
         jsonObj[idNotifyableStatus] = statusReady;
         jsonObj[idNotifyableState] = "Finished a process";
-    }
+    }        
     else {
         jsonObj[idNotifyableStatus] = statusBad;
         jsonObj[idNotifyableState] = "Unknown problem";
@@ -1533,10 +1515,10 @@ JSONValue::JSONObject MethodAdaptor::getOneDataDistributionStatus(
     JSONValue::JSONObject jsonObj;
     jsonObj[idProperty] = distribution->getKey();
     jsonObj[idNameProperty] = distribution->getName();
-    if (distribution->getShardCount() <= 0) {
+    if (distribution->cachedShards().getCount() <= 0) {
         jsonObj[idNotifyableStatus] = statusInactive;
     }
-    else if (distribution->isCovered()) {
+    else if (distribution->cachedShards().isCovered()) {
         jsonObj[idNotifyableStatus] = statusReady;
         jsonObj[idNotifyableState] = "Covered and ready";
     }
@@ -1553,7 +1535,7 @@ JSONValue::JSONObject MethodAdaptor::getOnePropertyListStatus(
     JSONValue::JSONObject jsonObj;
     jsonObj[idProperty] = propertyList->getKey();
     jsonObj[idNameProperty] = propertyList->getName();
-    if (propertyList->getPropertyListKeys().size() == 0) {
+    if (propertyList->cachedKeyValues().getKeys().size() == 0) {
         jsonObj[idNotifyableStatus] = statusInactive;
         jsonObj[idNotifyableState] = "No keys used";
     }

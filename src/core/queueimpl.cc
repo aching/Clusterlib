@@ -24,13 +24,6 @@ using namespace boost;
 namespace clusterlib
 {
 
-/**********************************************************************/
-/* Implementation of class QueueImpl                                  */
-/**********************************************************************/
-
-/*
- * Constructor.
- */
 QueueImpl::QueueImpl(FactoryOps *fp,
                      const string &key,
                      const string &name,
@@ -385,22 +378,26 @@ QueueImpl::getAllElements()
     return idElementMap;
 }
 
+NotifyableList
+QueueImpl::getChildrenNotifyables()
+{
+    TRACE(CL_LOG, "getChildrenNotifyables");
+
+    throwIfRemoved();
+    
+    return NotifyableList();
+}
+
 void
 QueueImpl::initializeCachedRepresentation()
 {
     TRACE(CL_LOG, "initializeCachedRepresentation");
-    
-    /*
+
+    /* 
      * Ensure that the cache contains all the information about this
      * object, and that all watches are established.
      */
     establishQueueWatch();
-}
-
-void
-QueueImpl::removeRepositoryEntries()
-{
-    getOps()->removeQueue(this);
 }
 
 QueueImpl::~QueueImpl()

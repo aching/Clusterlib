@@ -101,6 +101,24 @@ class Factory
     void synchronize();
 
     /**
+     * Register a new Periodic object.  This Periodic object will be
+     * run at regular intervals according to its set frequency.
+     *
+     * @param periodic The periodic object to start running at regular
+     *        intervals.
+     */
+    void registerPeriodicThread(Periodic &periodic);
+
+    /**
+     * Unregister a Periodic object. This will cause it to stop
+     * running.
+     * 
+     * @param periodic The Periodic object to stop.
+     * @return True if found and stopped, false otherwise.
+     */
+    bool cancelPeriodicThread(Periodic &periodic);
+
+    /**
      * For use by unit tests only: get the zkadapter so that the test can
      * synthesize ZK events and examine the results.
      * 
@@ -109,6 +127,16 @@ class Factory
     zk::ZooKeeperAdapter *getRepository();    
     
   private:
+    /**
+     * Do not copy.
+     */
+    Factory(const Factory &);
+
+    /**
+     * Do not assign.
+     */
+    Factory & operator= (const Factory &);
+
     /**
      * Private access to the m_ops
      */

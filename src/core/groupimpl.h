@@ -23,25 +23,21 @@ class GroupImpl
       public virtual NotifyableImpl
 {
   public:
-    virtual void becomeLeader();
-
-    virtual void abdicateLeader();
-
-    virtual bool isLeader();
-
     virtual NameList getNodeNames();
 
-    virtual Node *getNode(const std::string &name, bool create = false);
+    virtual Node *getNode(
+        const std::string &name, AccessType accessType = LOAD_FROM_REPOSITORY);
 
     virtual NameList getGroupNames();
 
-    virtual Group *getGroup(const std::string &name, bool create = false);
+    virtual Group *getGroup(const std::string &name, 
+                            AccessType accessType = LOAD_FROM_REPOSITORY);
 
     virtual NameList getDataDistributionNames();
 
     virtual DataDistribution *getDataDistribution(
         const std::string &name,
-        bool create = false);
+        AccessType accessType = LOAD_FROM_REPOSITORY);
 
     /*
      * Internal functions not used by outside clients
@@ -61,9 +57,9 @@ class GroupImpl
      */
     virtual ~GroupImpl() {};
 
-    virtual void initializeCachedRepresentation();
+    virtual NotifyableList getChildrenNotifyables();
 
-    virtual void removeRepositoryEntries();
+    virtual void initializeCachedRepresentation();
 
   private:
     /*

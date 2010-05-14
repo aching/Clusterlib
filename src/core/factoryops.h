@@ -172,6 +172,42 @@ class FactoryOps {
         return &m_zk;
     }
 
+    /**
+     * Register a notifyable for use in clusterlib.  A notifyable may
+     * only be registered once.  This function will add them to the
+     * m_registeredNotifyableMap and make sure the safeNotifyableMap
+     * is set for that registered notifyable.  The memory allocated by
+     * the pointers will be deallocated in unregisterAllNotifyables().
+     * Once registered, the RegisteredNotifyable cannot be
+     * unregistered.
+     * 
+     * @param ntp the RegisteredNotifyable pointer to register.
+     */
+    void registerNotifyable(RegisteredNotifyable *regNtp);
+
+    /**
+     * Clean up the cached notifyable maps.  The SafeNotifyableMap
+     * destructors will actually clean up the notifyable heap
+     * allocated memory.
+     */
+    void cleanCachedNotifyableMaps();
+
+    /**
+     * Gets a notifyable from the cache or creates it.
+     *
+     * @param parent pointer to the parent notifyable (NULL if no parent)
+     * @param registeredNotifyableName the name of the registered notifyable
+     *        the user is looking for 
+     * @param name the name of the actual notifyable to get or create
+     * @param accessType the access allowed to get this notifyable
+     * @return Returns the notifyable pointer or NULL if could not be 
+     *         accessed with the given accessType.
+     */
+    NotifyableImpl *getNotifyable(NotifyableImpl *parent,
+                                  const std::string &registeredNotifyableName, 
+                                  const std::string &name,
+                                  AccessType accessType);
+
     /*
      * Add and remove clients.
      */
@@ -198,10 +234,20 @@ class FactoryOps {
      */
     bool cancelTimer(TimerId id);
     
-    /*
-     * Dispatch timer, zk, and session events.
+    /**
+     * Dispatch a timer event (used by the dispatchExternalEvents
+     * thread) for the consumeTimerEvents thread to pick up.
+     *
+     * @param tep The pointer to the timer event.
      */
     void dispatchTimerEvent(ClusterlibTimerEvent *tep);
+
+    /**
+     * Dispatch a ZK event (used by the dispatchExternalEvents thread)
+     * by converting it to a clusterlib event for users.
+     *
+     * @param zep The pointer to the event to dispatch.o
+     */
     void dispatchZKEvent(zk::ZKWatcherEvent *zep);
 
     /**
@@ -222,503 +268,147 @@ class FactoryOps {
      */
     bool dispatchEndEvent();
 
-    /*
+    /**
      * Helper method that updates the cached representation
      * of a clusterlib repository object and generates the
      * prototypical user event payload to send to clients.
+     *
+     * @param cp The cached object event handler to be called
+     * @param zep The zookeeper event to convert to clusterlib event
+     * @return A payload of the new user-level event (or NULL if none)
      */
     UserEventPayload *updateCachedObject(CachedObjectEventHandler *cp,
                                          zk::ZKWatcherEvent *zep);
 
-    /*
-     * Retrieve a list of all (currently known) applications.
+    /**
+     * Get the names of all the children of a particular Notifyable
+     * type (based on the key).  This does not guarantee they will
+     * exist after this call, but is a snapshot in time.  It also
+     * registers the handler so if the change happens, the handler
+     * will be invoked.
+     *
+     * @param notifyableKey This is the key of where to look for the children
+     * @param change This will determine which handler gets called if an event 
+     *        happens on the key.
      */
-    NameList getApplicationNames();
-
-    /*
-     * Retrieve a list of all (currently known) group names within
-     * the given group. This also establishes a watch on
-     * group changes.
-     */
-    NameList getGroupNames(GroupImpl *group);
-
-    /*
-     * Retrieve a list of all (currently known) distribution
-     * names within the given group. This also establishes
-     * a watch on distribution changes.
-     */
-    NameList getDataDistributionNames(GroupImpl *group);
-
-    /*
-     * Retrieve a list of all (currently known) node names
-     * within the given group. This also establishes a
-     * watch on node changes.
-     */
-    NameList getNodeNames(GroupImpl *group);
-
-    /*
-     * Retrieve a list of all (currently known) process slot names
-     * within the given node. This also establishes a
-     * watch on process slot changes.
-     */
-    NameList getProcessSlotNames(NodeImpl *node);
-
-    /*
-     * Retrieve a list of all (currently known) property list names
-     * within the given notifyable. This also establishes a
-     * watch on property list changes.
-     */
-    NameList getPropertyListNames(NotifyableImpl *ntp);
-
-    /*
-     * Retrieve a list of all (currently known) queue names
-     * within the given notifyable. This also establishes a
-     * watch on queue changes.
-     */
-    NameList getQueueNames(NotifyableImpl *ntp);
+    NameList getChildrenNames(
+        const std::string &notifyableKey,
+        CachedObjectChangeHandlers::CachedObjectChange change);
 
     /**
-     * Get any immediate children of this NotifyableImpl.  In order to
-     * guarantee that this is atomic, hold the lock of this
-     * NotifyableImpl first.
+     * After calling getChildrenNames(), this function can be used to
+     * take the returned NameList and get all the Notifyable pointers.
+     * Note that if the accessType is not CREATE_IF_NOT_FOUND, some of
+     * these names may no longer exist if the distributed lock on the
+     * parent was not held.
      *
-     * @param ntp the NotifyableImpl to look for children on
-     * @return list of pointers to the Notifyable children.
+     * @param parent The parent Notifyable of the nameList
+     * @param registeredNotifyableName The registered Notifyable name (only
+     *        these types of notifyables will be acquired.
+     * @param nameList A list of names for this particular type of Notifyable
+     * @param accessType The access type.
+     * @return A list of Notifyable * that match the type of 
+     *         registeredNotifyableName
      */
-    NotifyableList getChildren(Notifyable *ntp);
-    
-    /*
-     * Retrieve (and potentially create) instances of
-     * objects representing applications, groups, nodes,
-     * and distributions.
+    NotifyableList getNotifyableList(
+        NotifyableImpl *parent,
+        const std::string &registeredNotifyableName,
+        const NameList &nameList,
+        AccessType accessType);
+        
+    /**
+     * Check for valid key from a vector of RegisteredNotifyable objects.
+     * 
+     * @param registeredNameVec The list of names of 
+     *        RegisteredNotifyable objects to check.  If this vector is empty, 
+     *        check all registered RegisteredNotifyable objects.
+     * @param key A key to test if it matches this RegisteredNotifyable
+     * @return True if at least one isValidKey from a RegisteredNotifyable 
+     *         isValidKey passes, false otherwise.
      */
-    
-    /** 
-     * Get the root. 
-     *
-     * @return the pointer to the root
-     */
-    RootImpl *getRoot();
+    bool isValidKey(const std::vector<std::string> &registeredNameVec,
+                    const std::string &key);
 
-    /** 
-     * Get a application from the root. 
-     *
-     * @param name the application name under the root
-     * @param create if true try to create it if it doesn't exist
-     * @return NULL if not found or creation failed, otherwise the pointer 
-     *         to the application
+    /**
+     * Check for valid key from a vector of RegisteredNotifyable objects.
+     * 
+     * @param registeredNameVec The list of names of 
+     *        RegisteredNotifyable objects to check.  If this vector is empty, 
+     *        check all registered RegisteredNotifyable objects.
+     * @param components A vector of components in the key parsed by split
+     *                   (i.e. first component should be "")
+     * @param elements The number of elements to check with (should 
+     *                 be <= components.size()).  If it is -1, then use 
+     *                 components.size().
+     * @return True if at least one isValidKey from a RegisteredNotifyable 
+     *         isValidKey passes, false otherwise.
      */
-    ApplicationImpl *getApplication(const std::string &name,
-                                    bool create = false);
-    
-    /** 
-     * Get a group from a parent group key. 
-     *
-     * @param name the group name under the parent
-     * @param parentGroup key to this parent group
-     * @param create if true try to create it if it doesn't exist
-     * @return NULL if not found or creation failed, otherwise the pointer 
-     *         to the group
-     */
-    GroupImpl *getGroup(const std::string &name,
-                        GroupImpl *parentGroup,
-                        bool create = false);
+    bool isValidKey(const std::vector<std::string> &registeredNameVec,
+                    const std::vector<std::string> &components, 
+                    int32_t elements = -1);
 
-    /** 
-     * Get a node from a parent group key. 
-     *
-     * @param name the node name under the parent
-     * @param parentGroup key to this parent group
-     * @param create if true try to create it if it doesn't exist
-     * @return NULL if not found or creation failed, otherwise the pointer 
-     *         to the node
+    /**
+     * Notifyables have one key that represent the object name in the
+     * Zookeeper repository.  Each notifyable may have zookeeper nodes
+     * attached to it (at most one level deep).  Any zookeeper node
+     * beyond one level is not part of that object.  This function
+     * will get the a key that refers to a Notifyable from any input
+     * key.  For example, if the key is
+     * .../group/client/nodes/foo-server/connected, it will return
+     * .../group/client/nodes/foo-server. If the input key is not
+     * related to any Notifyable, return an empty string.
+     * 
+     * @param key the key that should contain path that is part of a
+     *        clusterlib object
+     * @return the potential notifyable key, empty if no possible key.
      */
-    NodeImpl *getNode(const std::string &name,
-                      GroupImpl *parentGroup,
-                      bool create = false);
+    std::string getNotifyableKeyFromKey(const std::string &key);
 
-    /** 
-     * Get a process slot from a parent node key. 
-     *
-     * @param name the process slot name under the parent
-     * @param parentNode key to this parent node
-     * @param create if true try to create it if it doesn't exist
-     * @return NULL if not found or creation failed, otherwise the pointer 
-     *         to the node
-     */
-    ProcessSlotImpl *getProcessSlot(const std::string &name,
-                                    NodeImpl *parentNode,
-                                    bool create = false);
-    
-    /** 
-     * Get a data distribution from a parent group key. 
-     *
-     * @param name the data distribution name under the parent
-     * @param parentGroup key to this parent group
-     * @param create if true try to create it if it doesn't exist
-     * @return NULL if not found or creation failed, otherwise the pointer 
-     *         to the data distribution
-     */
-    DataDistributionImpl *getDataDistribution(const std::string &name,
-                                              GroupImpl *parentGroup,
-                                              bool create = false);
-
-    /** 
-     * Get a property list from a parent notifyable key. 
-     *
-     * @param name the property list name under the parent
-     * @param parent key to this parent
-     * @param create if true try to create it if it doesn't exist
-     * @return NULL if not found or creation failed, otherwise the pointer 
-     *         to the property list
-     */
-    PropertyListImpl *getPropertyList(const std::string &name,
-                                      Notifyable *parent,
-                                      bool create = false);
-
-    /** 
-     * Get a queue from a parent notifyable key. 
-     *
-     * @param name the queue under the parent
-     * @param parent key to this parent
-     * @param create if true try to create it if it doesn't exist
-     * @return NULL if not found or creation failed, otherwise the pointer 
-     *         to the queue
-     */
-    QueueImpl *getQueue(const std::string &name,
-                        Notifyable *parent,
-                        bool create = false);
-
-    void updateNodeClientState(const std::string &nodeKey,
-                               const std::string &cs);
-    void updateNodeClientStateDesc(const std::string &nodeKey,
-                                   const std::string &desc);
-    void updateNodeMasterSetState(const std::string &nodeKey,
-                                  const std::string &ms);
-    
     /**
      * Get the notifyable represented by this key. 
      *
+     * @param registeredNameVec The list of names of 
+     *        RegisteredNotifyable objects to check.  If this vector is empty, 
+     *        check all registered RegisteredNotifyable objects.
      * @param key the key that should contain a clusterlib object
      * @param create try to create this object if it does not exist?
      * @return NULL if no Notifyable can be found, else the Notifyable *
      */
-    NotifyableImpl *getNotifyableFromKey(const std::string &key, 
-                                         bool create = false);
-
+    NotifyableImpl *getNotifyableFromKey(
+        const std::vector<std::string> &registeredNameVec,
+        const std::string &key, 
+        AccessType accessType = LOAD_FROM_REPOSITORY);
+    
     /**
      * Get the notifyable represented by these components.
      *
+     * @param registeredNameVec The list of names of 
+     *        RegisteredNotifyable objects to check.  If this vector is empty, 
+     *        check all registered RegisteredNotifyable objects.
      * @param components Should represent the Notifyable object
      * @param elements The number of elements to use in the components
                        (-1 for all)
      * @param create try to create this object if it does not exist?
      */
     NotifyableImpl *getNotifyableFromComponents(
+        const std::vector<std::string> &registeredNameVec,
         const std::vector<std::string> &components,
         int32_t elements = -1, 
-        bool create = false);
-
-    /**
-     * Get the exact application represented by this key
-     *
-     * @param key should represent the Application object
-     * @param create try to create this object if it does not exist?
-     * @return NULL if cannot be found, else the Application *
-     */
-    ApplicationImpl *getApplicationFromKey(const std::string &key,
-                                           bool create = false);
-    /**
-     * Get the exact Application represented by these components.
-     *
-     * @param components Should represent the Application object
-     * @param elements The number of elements to use in the components
-                       (-1 for all)
-     * @param create try to create this object if it does not exist?
-     * @return NULL if cannot be found, else the Application *
-     */
-    ApplicationImpl *getApplicationFromComponents(
-        const std::vector<std::string> &components,
-        int32_t elements = -1, 
-        bool create = false);
-
-    /**
-     * Get the exact root represented by this key
-     *
-     * @param key should represent the Root object
-     * @return NULL if cannot be found, else the Root *
-     */
-    RootImpl *getRootFromKey(const std::string &key);
-    /**
-     * Get the exact Root represented by these components.
-     *
-     * @param components Should represent the Root object
-     * @param elements The number of elements to use in the components
-                       (-1 for all)
-     * @return NULL if cannot be found, else the Root *
-     */
-    RootImpl *getRootFromComponents(
-        const std::vector<std::string> &components,
-        int32_t elements = -1);
-
-    /**
-     * Get the exact data distribution represented by this key
-     *
-     * @param key should represent the DataDistribution object
-     * @param create try to create this object if it does not exist?
-     * @return NULL if cannot be found, else the DataDistribution *
-     */
-    DataDistributionImpl *getDataDistributionFromKey(
-        const std::string &key,
-        bool create = false);
-
-    /**
-     * Get the exact DataDistribution represented by these components.
-     *
-     * @param components Should represent the DataDistribution object
-     * @param elements The number of elements to use in the components
-                       (-1 for all)
-     * @param create try to create this object if it does not exist?
-     * @return NULL if cannot be found, else the DataDistribution *
-     */
-    DataDistributionImpl *getDataDistributionFromComponents(
-        const std::vector<std::string> &components,
-        int32_t elements = -1, 
-        bool create = false);
-
-    /**
-     * Get the exact property list represented by this key
-     *
-     * @param key should represent the PropertyListImpl object
-     * @param create try to create this object if it does not exist?
-     * @return NULL if cannot be found, else the PropertyListImpl *
-     */
-    PropertyListImpl *getPropertyListFromKey(const std::string &key,
-                                         bool create = false);
-
-    /**
-     * Get the exact PropertyListImpl represented by these components.
-     *
-     * @param components Should represent the PropertyListImpl object
-     * @param elements The number of elements to use in the components
-                       (-1 for all)
-     * @param create try to create this object if it does not exist?
-     * @return NULL if cannot be found, else the PropertyListImpl *
-     */
-    PropertyListImpl *getPropertyListFromComponents(
-        const std::vector<std::string> &components,
-        int32_t elements = -1, 
-        bool create = false);
-
-    /**
-     * Get the exact queue represented by this key
-     *
-     * @param key should represent the QueueImpl object
-     * @param create try to create this object if it does not exist?
-     * @return NULL if cannot be found, else the QueueImpl *
-     */
-    QueueImpl *getQueueFromKey(const std::string &key,
-                                         bool create = false);
-
-    /**
-     * Get the exact QueueImpl represented by these components.
-     *
-     * @param components Should represent the QueueImpl object
-     * @param elements The number of elements to use in the components
-                       (-1 for all)
-     * @param create try to create this object if it does not exist?
-     * @return NULL if cannot be found, else the QueueImpl *
-     */
-    QueueImpl *getQueueFromComponents(
-        const std::vector<std::string> &components,
-        int32_t elements = -1, 
-        bool create = false);
-
-    /**
-     * Get the exact group or application represented by this key.
-     *
-     * @param key should represent the Group/Applications object
-     * @param create try to create this object if it does not exist?
-     * @return NULL if cannot be found, else the GroupImpl *
-     */
-    GroupImpl *getGroupFromKey(const std::string &key, bool create = false);
-
-    /**
-     * Get the exact Group/Applications represented by these components.
-     *
-     * @param components Should represent the GroupImpl object
-     * @param elements The number of elements to use in the components
-                       (-1 for all)
-     * @param create try to create this object if it does not exist?
-     * @return NULL if cannot be found, else the GroupImpl *
-     */
-    GroupImpl *getGroupFromComponents(
-        const std::vector<std::string> &components,
-        int32_t elements = -1, 
-        bool create = false);
-
-    /**
-     * Get the node represented exactly by this key
-     *
-     * @param key should represent the NodeImpl object
-     * @param create try to create this object if it does not exist?
-     * @return NULL if cannot be found, else the NodeImpl *
-     */
-    NodeImpl *getNodeFromKey(const std::string &key, bool create = false);
-
-    /**
-     * Get the exact NodeImpl represented by these components.
-     *
-     * @param components Should represent the NodeImpl object
-     * @param elements The number of elements to use in the components
-                       (-1 for all)
-     * @param create try to create this object if it does not exist?
-     * @return NULL if cannot be found, else the NodeImpl *
-     */
-    NodeImpl *getNodeFromComponents(
-        const std::vector<std::string> &components,
-        int32_t elements = -1, 
-        bool create = false);
-
-    /**
-     * Get the process slot represented exactly by this key
-     *
-     * @param key should represent the ProcessSlotImpl object
-     * @param create try to create this object if it does not exist?
-     * @return NULL if cannot be found, else the NodeImpl *
-     */
-    ProcessSlotImpl *getProcessSlotFromKey(const std::string &key, 
-                                           bool create = false);
-
-    /**
-     * Get the exact ProcessSlotImpl represented by these components.
-     *
-     * @param components Should represent the ProcessSlotImpl object
-     * @param elements The number of elements to use in the components
-                       (-1 for all)
-     * @param create try to create this object if it does not exist?
-     * @return NULL if cannot be found, else the ProcessSlotImpl *
-     */
-    ProcessSlotImpl *getProcessSlotFromComponents(
-        const std::vector<std::string> &components,
-        int32_t elements = -1, 
-        bool create = false);
-
-    /*
-     * Load entities from ZooKeeper.
-     */
-    ApplicationImpl *loadApplication(const std::string &name,
-                                     const std::string &key);
-    DataDistributionImpl *loadDataDistribution(const std::string &distName,
-                                               const std::string &distKey,
-                                               GroupImpl *parentGroup);
-    PropertyListImpl* loadPropertyList(const std::string &propListName,
-                                   const std::string &propListKey,
-                                   Notifyable *parent);
-    QueueImpl* loadQueue(const std::string &queueName,
-                         const std::string &queueKey,
-                         Notifyable *parent);
-    GroupImpl *loadGroup(const std::string &groupName,
-                         const std::string &groupKey,
-                         GroupImpl *parentGroup);
-    NodeImpl *loadNode(const std::string &nodeName,
-                       const std::string &nodeKey,
-                       GroupImpl *parentGroup);
-    ProcessSlotImpl *loadProcessSlot(const std::string &processSlotName,
-                                     const std::string &processSlotKey,
-                                     NodeImpl *parentNode);
-
-    std::string loadShards(const std::string &key, int32_t &version);
-    std::string loadKeyValMap(const std::string &key, int32_t &version);
-
-    /*
-     * Retrieve Node connected state.
-     *
-     * @param key the key of the node to check
-     * @param data the repository data returned
-     * @return true if found
-     */
-    bool loadNodeConnected(const std::string &key, 
-                           std::string &data,
-                           int32_t &version);
-
-    /*
-     * Create entities in ZooKeeper.
-     */
-    ApplicationImpl *createApplication(const std::string &appName, 
-                                       const std::string &key);
-    DataDistributionImpl *createDataDistribution(
-	const std::string &distName,
-        const std::string &distKey,
-        const std::string &marshalledShards,
-        GroupImpl *parentGroup);
-    PropertyListImpl *createPropertyList(const std::string &propListName,
-                                         const std::string &propListKey,
-                                         Notifyable *parent);
-    QueueImpl *createQueue(const std::string &queueName,
-                           const std::string &queueKey,
-                           Notifyable *parent);
-    GroupImpl *createGroup(const std::string &groupName,
-                           const std::string &groupKey,
-                           GroupImpl *parentGroup);
-    NodeImpl *createNode(const std::string &nodeName,
-                         const std::string &nodeKey,
-                         GroupImpl *parentGroup);
-    ProcessSlotImpl *createProcessSlot(const std::string &processSlotName,
-                                       const std::string &processSlotKey,
-                                       NodeImpl *parentNode);
+        AccessType accessType = LOAD_FROM_REPOSITORY);
     
-    /*
-     * Remove entities in Zookeeper.
-     */
-    void removeApplication(ApplicationImpl *app);
-    void removeDataDistribution(DataDistributionImpl *dist);
-    void removePropertyList(PropertyListImpl *propList);
-    void removeQueue(QueueImpl *queueList);
-    void removeGroup(GroupImpl *group);
-    void removeNode(NodeImpl *node);
-    void removeProcessSlot(ProcessSlotImpl *processSlot);
-
-    /*
-     * Remove Notifyable from the factory cache and into
-     * m_removedNotifyables (dead pool) that will be cleaned up later.
-     */
-    void removeNotifyableFromCacheByKey(const std::string &key);
-
     /**
-     * Get the client state fields from the repository.
+     * Removes the notifyable from the m_cachedNotifyableMap, puts it
+     * in the dead pool of m_removedNotifyables and set its to
+     * removed.
      *
-     * @param key the key of the node for the state
-     * @param msecs the msecs since the epoch when the state was last reported
-     * @param clientState the current state of the node (defined in class
-     *        HealthReport)
-     * @param clientStateDesc the human readable state of the node
+     * @param ntp pointer to the notifyable to remove
      */
-    void getNodeClientState(const std::string &key,
-                            int64_t &msecs,
-                            std::string &clientState,
-                            std::string &clientStateDesc);
-
-    int32_t getNodeMasterSetState(const std::string &key);
-
-    /*
-     * Manage a node's connected state.
-     */
-    bool createConnected(const std::string &key, const std::string &id);
-    void removeConnected(const std::string &key);
-
+    void removeCachedNotifyable(NotifyableImpl *ntp);
+    
     /*
      * Get various locks and conditionals.
      */
     Mutex *getClientsLock();
-    Mutex *getPropertyListLock();
-    Mutex *getQueueLock();
-    Mutex *getDataDistributionsLock();
-    Mutex *getRootLock();
-    Mutex *getApplicationsLock();
-    Mutex *getGroupsLock();
-    Mutex *getNodesLock();
-    Mutex *getProcessSlotsLock();
     Mutex *getRemovedNotifyablesLock();
     Mutex *getTimersLock();
     Mutex *getSyncEventLock();
@@ -781,6 +471,10 @@ class FactoryOps {
      */
     void stopZKEventDispatch();
     void injectEndEvent();
+
+    /**
+     * Wait for the FactoryOps threads to be joined.
+     */
     void waitForThreads();
 
     /**
@@ -848,46 +542,53 @@ class FactoryOps {
         return &m_responseSignalMap;
     }
 
+    /**
+     * Get a RegisteredNotifyable.  Since all RegisteredNotifyable
+     * objects should have been registered in the constructor, the
+     * pointer can be safely returned.  They cannot be removed until
+     * the FactoryOps destructor.
+     *
+     * @param registeredName The RegisteredNotifyable name to look for.
+     * @param throwIfNotFound Throw an exception is the RegisteredNotifyable 
+     *        cannot be found?  If false, will just return NULL.
+     * @return Pointer to the RegisteredNotifyable or NULL if cannot be found.
+     */
+    RegisteredNotifyable *getRegisteredNotifyable(
+        const std::string &registeredName, bool throwIfNotFound = false);
+
+    /**
+     * Register a new Periodic object.  This Periodic object will be
+     * run at regular intervals according to its set frequency.
+     *
+     * @param periodic The periodic object to start running at regular
+     *        intervals.
+     */
+    void registerPeriodicThread(Periodic &periodic);
+
+    /**
+     * Unregister a Periodic object. This will cause it to stop
+     * running.
+     * 
+     * @param periodic The Periodic object to stop.
+     * @return True if found and stopped, false otherwise.
+     */
+    bool cancelPeriodicThread(Periodic &periodic);
+
   private:
+    /**
+     * Unregister all registered notifyables.
+     */
+    void unregisterAllNotifyables();
+
     /**
      * Clean up clients
      */
     void discardAllClients();
 
     /**
-     * Clean up data distributions
+     * Clean up all Periodic threads.
      */
-    void discardAllDataDistributions();
-
-    /**
-     * Clean up propertyLists
-     */
-    void discardAllPropertyLists();
-
-    /**
-     * Clean up queues
-     */
-    void discardAllQueues();
-
-    /**
-     * Clean up applications
-     */
-    void discardAllApplications();
-
-    /**
-     * Clean up groups
-     */
-    void discardAllGroups();
-
-    /**
-     * Clean up nodes
-     */
-    void discardAllNodes();
-
-    /**
-     * Clean up process slots
-     */
-    void discardAllProcessSlots();
+    void discardAllPeriodicThreads();
 
     /**
      * Clean up all removed notifyables
@@ -912,6 +613,13 @@ class FactoryOps {
      */
     void consumeTimerEvents(void *param);
 
+    /**
+     * This method is is run by the threads for each registered
+     * Periodic object.  It will run as frequently as the Periodic
+     * object dictacts.
+     */
+    void runPeriodic(void *param);
+
   private:
     /*
      * The registry of attached clients (and servers).
@@ -919,53 +627,27 @@ class FactoryOps {
     ClientImplList m_clients;
     Mutex m_clLock;
 
-    /*
-     * The cached root.
+    /**
+     * The cache of all clusterlib notifyables
      */
-    RootImpl *mp_root;
-    Mutex m_rootLock;
+    std::map<std::string, SafeNotifyableMap *> m_cachedNotifyableMap;
 
-    /*
-     * The registry of cached property lists.
+    /**
+     * The lock that protects m_cachedNotifyableMap
      */
-    NotifyableImplMap m_propLists;
-    Mutex m_propListsLock;
+    Mutex m_cachedNotifyableMapLock;
 
-    /*
-     * The registry of cached queues.
+    /**
+     * All the registered notifyables
      */
-    NotifyableImplMap m_queues;
-    Mutex m_queuesLock;
+    std::map<std::string, RegisteredNotifyable *> m_registeredNotifyableMap;
 
-    /*
-     * The registry of cached data distributions.
+    /**
+     * The lock that protects m_registeredNotifyableMap.
      */
-    NotifyableImplMap m_dists;
-    Mutex m_distsLock;
+    RdWrLock m_registeredNotifyableMapRdWrLock;
 
-    /*
-     * The registry of cached applications.
-     */
-    NotifyableImplMap m_apps;
-    Mutex m_appsLock;
-
-    /*
-     * The registry of cached groups.
-     */
-    NotifyableImplMap m_groups;
-    Mutex m_groupsLock;
-
-    /*
-     * The registry of cached nodes.
-     */
-    NotifyableImplMap m_nodes;
-    Mutex m_nodesLock;
-
-    /*
-     * The registry of cached process slots.
-     */
-    NotifyableImplMap m_processSlots;
-    Mutex m_processSlotsLock;
+    
 
     /*
      * The registry of timer handlers.
@@ -1050,6 +732,17 @@ class FactoryOps {
      * synchronous event adapter.
      */
     CXXThread<FactoryOps> m_externalEventThread;
+
+    /**
+     * Threads that will be running any user-defined Periodic
+     * functions and the PredMutexCond that will coordinate them.
+     */
+    std::map<Periodic *, CXXThread<FactoryOps> *> m_periodicMap;
+
+    /**
+     * Protects m_periodicMap.
+     */
+    Mutex m_periodicMapLock;
 
     /**
      * Is the event loop terminating?

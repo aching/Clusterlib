@@ -74,6 +74,23 @@ class DistributedLocks
     bool hasLock(Notifyable *ntp, const std::string &lockName);
 
     /**
+     * Get the current lock owner information.  This is mainly for
+     * debugging, since this information can change at any point.
+     *
+     * @param ntp the Notifyable that is being checked
+     * @param lockName the name of the lock
+     * @param id if a valid pointer and an owner exists, the id of 
+     *        the owner
+     * @param msecs if a valid pointer and an owner exists, the msecs
+     *        since the epoch when the owner tried to become the owner
+     * @return true if there is an owner
+     */
+    bool getInfo(Notifyable *ntp,
+                 const std::string &lockName,
+                 std::string *id = NULL,
+                 int64_t *msecs = NULL);
+
+    /**
      * Get the map that is used to signal threads trying to acquire locks.
      *
      * @return pointer to m_waitMap

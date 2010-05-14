@@ -40,6 +40,18 @@ class Thread
      * Wait for this thread to end.
      */ 
     void Join();
+
+  private:
+    /**
+     * Do not copy construct 
+     */
+    Thread(const Thread &);
+
+    /**
+     * Do not assign.
+     */
+    Thread & operator= (const Thread &);
+
   private:
     pthread_t mThread;  
     void *_ctx;
@@ -86,8 +98,27 @@ class CXXThread
         Thread::Create(ctx, ThreadExec<T>);
     }
 
+    /**
+     * Get the internal PredMutexCond for signaling this object's
+     * thread to stop.
+     *
+     * @return Reference to internal m_predMutexCond
+     */
+    PredMutexCond & getPredMutexCond()
+    {
+        return m_predMutexCond;
+    }
+
   private:
+    /**
+     * Used to get the context to call its member function.
+     */
     ThreadContext<T>* ctx;
+
+    /**
+     * Used to signal the thread to exit.
+     */
+    PredMutexCond m_predMutexCond;
 };
 
 };	/* End of 'namespace clusterlib' */

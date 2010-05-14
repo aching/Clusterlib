@@ -21,6 +21,8 @@ activenode_LDADD = \
 activenode_SOURCES = \
 	activenode.cc \
 	activenodeparams.cc \
+	activenodeperiodiccheck.cc \
+	processslotupdater.cc \
 	main.cc
 
 CXXFLAGS = @BASE_CXXFLAGS@

@@ -670,7 +670,7 @@ ZooKeeperAdapter::processEvents(void *param)
              "Starting thread with ZooKeeperAdapter::processEvents(), "
              "this: %p, thread: %" PRIu32,
              this,
-             static_cast<uint32_t>(pthread_self()));
+             clusterlib::ProcessThreadService::getTid());
 
     while (1) {
         ZKWatcherEvent source;
@@ -730,7 +730,7 @@ ZooKeeperAdapter::processEvents(void *param)
              "Ending thread with ZooKeeperAdapter::processEvents(): "
              "this: %p, thread: %" PRIu32,
              this,
-             static_cast<uint32_t>(pthread_self()));
+             clusterlib::ProcessThreadService::getTid());
 }
 
 void
@@ -742,7 +742,7 @@ ZooKeeperAdapter::processUserEvents(void *param)
              "Starting thread with ZooKeeperAdapter::processUserEvents(), "
              "this: %p, thread: %" PRIu32,
              this,
-             static_cast<uint32_t>(pthread_self()));
+             clusterlib::ProcessThreadService::getTid());
 
     while (1) {
         ZKWatcherEvent source;
@@ -780,7 +780,7 @@ ZooKeeperAdapter::processUserEvents(void *param)
              "Ending thread with ZooKeeperAdapter::processUserEvents() "
              "this: %p, thread: %" PRIu32,
              this,
-             static_cast<uint32_t>(pthread_self()));
+             clusterlib::ProcessThreadService::getTid());
 }
 
 void 

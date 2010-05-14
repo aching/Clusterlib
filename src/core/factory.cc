@@ -76,6 +76,18 @@ Factory::isConnected()
 }
 
 void
+Factory::registerPeriodicThread(Periodic &periodic)
+{
+    getOps()->registerPeriodicThread(periodic);
+}
+
+bool
+Factory::cancelPeriodicThread(Periodic &periodic)
+{
+    return getOps()->cancelPeriodicThread(periodic);
+}
+
+void
 Factory::synchronize()
 {
     TRACE(CL_LOG, "synchronize");

@@ -308,15 +308,16 @@ ClusterlibRPCMethod::setMethodStatus(const string &status,
     JSONValue::JSONArray allStatusArr;
     JSONValue::JSONArray lastStatusArr;
     JSONValue::JSONValue jsonValue;
+    bool found = false;
     string encodedJsonArr;
     while ((maxRetries == -1) || (retries <= maxRetries)) {
         gotLock = propertyList->acquireLockWaitMsecs(100);
         if (gotLock) {
             allStatusArr.clear();
             lastStatusArr.clear();
-            encodedJsonArr = propertyList->getProperty(statusKey);
-            if (!encodedJsonArr.empty()) {
-                jsonValue = JSONCodec::decode(encodedJsonArr);
+            found = 
+                propertyList->cachedKeyValues().get(statusKey, jsonValue);
+            if (found) {
                 allStatusArr = jsonValue.get<JSONValue::JSONArray>();
             }
             time = TimerService::getCurrentTimeMsecs();
@@ -331,10 +332,11 @@ ClusterlibRPCMethod::setMethodStatus(const string &status,
                     static_cast<int32_t>(allStatusArr.size()))) {
                 allStatusArr.pop_front();
             }
-            propertyList->setProperty(statusKey, 
-                                      JSONCodec::encode(allStatusArr));
+            propertyList->cachedKeyValues().set(
+                statusKey, 
+                allStatusArr);
             try {
-                propertyList->publishProperties();
+                propertyList->cachedKeyValues().publish();
                 propertyList->releaseLock();
                 return true;
             }
@@ -518,11 +520,11 @@ ClusterlibRPCManager::setBasicRequestStatus(
             jsonBasicStatusArr.push_back(time);
             jsonBasicStatusArr.push_back(timeString);
             jsonStatusObj["basic status"] = jsonBasicStatusArr;
-            propertyList->setProperty(
+            propertyList->cachedKeyValues().set(
                 basicStatusKey, 
                 JSONCodec::encode(jsonStatusObj));
             try {
-                propertyList->publishProperties();
+                propertyList->cachedKeyValues().publish();
                 propertyList->releaseLock();
                 return true;
             }

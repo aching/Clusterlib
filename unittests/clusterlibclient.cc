@@ -4,6 +4,7 @@
 extern TestParams globalTestParams;
 
 using namespace std;
+using namespace clusterlib;
 
 const string appName = "unittests-client-app";
 
@@ -104,13 +105,15 @@ class ClusterlibClient
          * Create applications with different names and
          * observe allowed creation and exceptions.
          */
-        _app0 = _client0->getRoot()->getApplication(appName, true);
+        _app0 = _client0->getRoot()->getApplication(appName, 
+                                                    CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(_app0 != NULL);
         /* Should not exist, didn't try to create, so return NULL */
-        _app0 = _client0->getRoot()->getApplication("", false);
+        _app0 = _client0->getRoot()->getApplication("a", LOAD_FROM_REPOSITORY);
         MPI_CPPUNIT_ASSERT(_app0 == NULL);
         try {
-            _app0 = _client0->getRoot()->getApplication("/frob", true);
+            _app0 = _client0->getRoot()->getApplication("/frob", 
+                                                        CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
         } catch (clusterlib::InvalidArgumentsException &e) {
         }

@@ -6,6 +6,22 @@ INCLUDES = \
 METASOURCES = AUTO
 lib_LIBRARIES = libcluster.a
 libcluster_a_SOURCES = \
+	cacheddataimpl.cc \
+	cachedstateimpl.cc \
+	cachedkeyvaluesimpl.cc \
+	cachedprocessinfoimpl.cc \
+	cachedprocessslotinfoimpl.cc \
+	cachedshardsimpl.cc \
+	registerednotifyableimpl.cc \
+	registeredrootimpl.cc \
+	registeredapplicationimpl.cc \
+	registeredgroupimpl.cc \
+	registereddatadistributionimpl.cc \
+	registerednodeimpl.cc \
+	registeredqueueimpl.cc \
+	registeredprocessslotimpl.cc \
+	registeredpropertylistimpl.cc \
+	safenotifyablemap.cc \
 	processthreadservice.cc \
 	clusterlibexceptions.cc \
 	json.cc \
@@ -37,8 +53,6 @@ libcluster_a_SOURCES = \
 	zkadapter.cc \
 	jsonrpcresponsehandler.cc \
 	jsonrpcmethodhandler.cc \
-	startprocessrpc.cc \
-	stopprocessrpc.cc \
 	genericrpc.cc \
 	clusterlibrpc.cc \
         md5/md5.cc

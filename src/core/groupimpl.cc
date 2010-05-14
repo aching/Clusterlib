@@ -4,11 +4,11 @@
  * Implementation of class GroupImpl; it represents a set of nodes within
  * a specific application of clusterlib
  *
- * =============================================================================
+ * ============================================================================
  * $Header:$
  * $Revision$
  * $Date$
- * =============================================================================
+ * ============================================================================
  */
 
 #include "clusterlibinternal.h"
@@ -21,40 +21,6 @@ using namespace std;
 namespace clusterlib
 {
 
-void
-GroupImpl::becomeLeader()
-{
-    TRACE(CL_LOG, "becomeLeader");
-
-    throwIfRemoved();
-
-    getOps()->getDistributedLocks()->acquire(this,
-                                             ClusterlibStrings::LEADERLOCK);
-}
-
-void
-GroupImpl::abdicateLeader()
-{
-    TRACE(CL_LOG, "abdicateLeader");
-
-    throwIfRemoved();
-
-    getOps()->getDistributedLocks()->release(this,
-                                             ClusterlibStrings::LEADERLOCK);
-}
-
-bool
-GroupImpl::isLeader()
-{
-    TRACE(CL_LOG, "isLeader");
-
-    throwIfRemoved();
-
-    return getOps()->getDistributedLocks()->hasLock(
-        this,
-        ClusterlibStrings::LEADERLOCK);
-}
-
 NameList
 GroupImpl::getNodeNames() 
 {
@@ -62,23 +28,24 @@ GroupImpl::getNodeNames()
 
     throwIfRemoved();
 
-    return getOps()->getNodeNames(this);
+    return getOps()->getChildrenNames(
+        NotifyableKeyManipulator::createNodeChildrenKey(getKey()),
+        CachedObjectChangeHandlers::NODES_CHANGE);
 }
 
-/*
- * Retrieve a node object. Load it from
- * the cluster if it is not yet in the
- * cache.
- */
 Node *
 GroupImpl::getNode(const string &nodeName, 
-                   bool create)
+                   AccessType accessType)
 {
     TRACE(CL_LOG, "getNode");
 
     throwIfRemoved();
 
-    return getOps()->getNode(nodeName, this, create);
+    return dynamic_cast<Node *>(
+        getOps()->getNotifyable(this,
+                                ClusterlibStrings::REGISTERED_NODE_NAME,
+                                nodeName,
+                                accessType));
 }
 
 NameList
@@ -88,23 +55,24 @@ GroupImpl::getGroupNames()
 
     throwIfRemoved();
 
-    return getOps()->getGroupNames(this);
+    return getOps()->getChildrenNames(
+        NotifyableKeyManipulator::createGroupChildrenKey(getKey()),
+        CachedObjectChangeHandlers::GROUPS_CHANGE);
 }
 
-/*
- * Retrieve a group object. Load it
- * from the cluster if it is not
- * yet in the cache.
- */
 Group *
 GroupImpl::getGroup(const string &groupName,
-                    bool create)
+                    AccessType accessType)
 {
     TRACE(CL_LOG, "getGroup");
 
     throwIfRemoved();
 
-    return getOps()->getGroup(groupName, this, create);
+    return dynamic_cast<Group *>(
+        getOps()->getNotifyable(this,
+                                ClusterlibStrings::REGISTERED_GROUP_NAME, 
+                                groupName,
+                                accessType));
 }
 
 NameList
@@ -114,23 +82,59 @@ GroupImpl::getDataDistributionNames()
 
     throwIfRemoved();
 
-    return getOps()->getDataDistributionNames(this);
+    return getOps()->getChildrenNames(
+        NotifyableKeyManipulator::createDataDistributionChildrenKey(getKey()),
+        CachedObjectChangeHandlers::DATADISTRIBUTIONS_CHANGE);
 }
 
-/*
- * Retrieve a data distribution object. Load
- * it from the cluster if it is not yet in
- * the cache.
- */
 DataDistribution *
 GroupImpl::getDataDistribution(const string &distName,
-                               bool create)
+                               AccessType accessType)
 {
     TRACE(CL_LOG, "getDataDistribution");
 
     throwIfRemoved();
 
-    return getOps()->getDataDistribution(distName, this, create);
+    return dynamic_cast<DataDistribution *>(
+        getOps()->getNotifyable(
+            this,
+            ClusterlibStrings::REGISTERED_DATADISTRIBUTION_NAME, 
+            distName,
+            accessType));
+}
+
+NotifyableList
+GroupImpl::getChildrenNotifyables()
+{
+    TRACE(CL_LOG, "getChildrenNotifyables");
+    
+    throwIfRemoved();
+    
+    /*
+     * Add the notifyables from this object and then the subclass
+     * specific objects.
+     */
+    NotifyableList tmpList, finalList;
+    tmpList = getOps()->getNotifyableList(
+        this,
+        ClusterlibStrings::REGISTERED_NODE_NAME,
+        getNodeNames(),
+        LOAD_FROM_REPOSITORY);
+    finalList.insert(finalList.end(), tmpList.begin(), tmpList.end());
+    tmpList = getOps()->getNotifyableList(
+        this,
+        ClusterlibStrings::REGISTERED_GROUP_NAME,
+        getGroupNames(),
+        LOAD_FROM_REPOSITORY);
+    finalList.insert(finalList.end(), tmpList.begin(), tmpList.end());
+    tmpList = getOps()->getNotifyableList(
+        this,
+        ClusterlibStrings::REGISTERED_DATADISTRIBUTION_NAME,
+        getDataDistributionNames(),
+        LOAD_FROM_REPOSITORY);
+    finalList.insert(finalList.end(), tmpList.begin(), tmpList.end());
+
+    return finalList;
 }
 
 void
@@ -141,12 +145,6 @@ GroupImpl::initializeCachedRepresentation()
     /*
      * Nothing to do here.
      */
-}
-
-void
-GroupImpl::removeRepositoryEntries()
-{
-    getOps()->removeGroup(this);
 }
 
 };	/* End of 'namespace clusterlib' */

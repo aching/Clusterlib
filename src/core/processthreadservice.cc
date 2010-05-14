@@ -186,6 +186,14 @@ ProcessThreadService::getHostname()
     return tmp;
 }
 
+int32_t
+ProcessThreadService::getTid()
+{
+    TRACE(CL_LOG, "getTid");
+
+    return static_cast<int32_t>(gettid());
+}
+
 string 
 ProcessThreadService::getHostnamePidTid()
 {

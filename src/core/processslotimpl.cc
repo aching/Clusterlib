@@ -29,770 +29,140 @@ using namespace json;
 namespace clusterlib
 {
 
-JSONValue
-ProcessSlotImpl::getJsonPortVec()
+const string ProcessSlot::PID_KEY = "_pid";
+
+const string ProcessSlot::DESIRED_PROCESS_STATE_SET_MSECS_KEY = 
+    "_desiredProcessStateSetMsecs";
+
+const string ProcessSlot::EXEC_ENV_KEY = "_executableEnvironment";
+
+const string ProcessSlot::EXEC_PATH_KEY = "_executablePath";
+
+const string ProcessSlot::EXEC_COMMAND_KEY = "_executableCommand";
+
+const string ProcessSlot::PROCESS_STATE_KEY = "_processState";
+
+const string ProcessSlot::PROCESS_STATE_RUNNING_VALUE = "_processStateRunning";
+const string ProcessSlot::PROCESS_STATE_RUN_ONCE_VALUE = 
+    "_processStateRunOnce";
+const string ProcessSlot::PROCESS_STATE_RUN_CONTINUOUSLY_VALUE = 
+    "_processStateRunContinuously";
+const string ProcessSlot::PROCESS_STATE_STOPPED_VALUE = "_processStateStopped";
+const string ProcessSlot::PROCESS_STATE_FAILURE_VALUE = "_processStateFailure";
+
+const string ProcessSlot::PROCESS_STATE_FAILURE_MSG_KEY = 
+    "_processStateFailureMsg";
+
+const string ProcessSlot::PROCESS_STATE_SET_MSECS_KEY = 
+    "_processStateSetMsecs";
+
+const string ProcessSlot::PROCESS_STATE_SET_MSECS_AS_DATE_KEY = 
+    "_processStateSetMsecsAsDate";
+
+CachedProcessInfo &
+ProcessSlotImpl::cachedProcessInfo()
 {
-    TRACE(CL_LOG, "getJsonPortVec");
-
-    string processSlotPortVecKey = 
-        NotifyableKeyManipulator::createProcessSlotPortVecKey(getKey());
-
-    string encodedJsonValue;
-    SAFE_CALLBACK_ZK(
-        getOps()->getRepository()->getNodeData(
-            processSlotPortVecKey,
-            encodedJsonValue,
-            getOps()->getZooKeeperEventAdapter(),
-            getOps()->getCachedObjectChangeHandlers()->
-            getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_PORTVEC_CHANGE)),
-        getOps()->getRepository()->getNodeData(
-            processSlotPortVecKey,
-            encodedJsonValue),
-        CachedObjectChangeHandlers::PROCESSSLOT_PORTVEC_CHANGE,
-        processSlotPortVecKey,
-        "Reading the value of %s failed: %s",
-        processSlotPortVecKey.c_str(),
-        false,
-        true);        
-    if (encodedJsonValue.empty()) {
-        return JSONValue();
-    }
-    return JSONCodec::decode(encodedJsonValue);
-}
-vector<int32_t>
-ProcessSlotImpl::getPortVec()
-{
-    TRACE(CL_LOG, "getPortVec");
-    vector<int32_t> portVec;
-    JSONValue jsonValue = getJsonPortVec();
-    if (jsonValue.type() == typeid(JSONValue::JSONNull)) {
-        return portVec;
-    }
-    JSONValue::JSONArray jsonArr = jsonValue.get<JSONValue::JSONArray>();
-    portVec.reserve(jsonArr.size());
-    for (size_t i = 0; i < jsonArr.size(); i++) {
-        portVec.push_back(
-            static_cast<int32_t>(jsonArr[i].get<JSONValue::JSONInteger>()));
-    }
-
-    return portVec;
+    return m_cachedProcessInfo;
 }
 
-void 
-ProcessSlotImpl::setJsonPortVec(JSONValue jsonValue)
+string
+ProcessSlotImpl::createProcessInfoJsonArrKey(const string &processSlotKey)
 {
-    TRACE(CL_LOG, "setJsonPortVec");
+    string res;
+    res.append(processSlotKey);
+    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(ClusterlibStrings::PROCESSINFO_JSON_OBJECT);
 
-    string processSlotPortVecKey = 
-        NotifyableKeyManipulator::createProcessSlotPortVecKey(getKey());
-
-    string encodedJsonValue = JSONCodec::encode(jsonValue);
-    acquireLock();
-    SAFE_CALL_ZK(getOps()->getRepository()->setNodeData(
-                     processSlotPortVecKey,
-                     encodedJsonValue),
-                 "Setting of %s failed: %s",
-                 processSlotPortVecKey.c_str(),
-                 true,
-                 false);
-    releaseLock();
-}
-void 
-ProcessSlotImpl::setPortVec(vector<int32_t> portVec)
-{
-    TRACE(CL_LOG, "setPortVec");
-
-    JSONValue::JSONArray jsonArr;
-    portVec.reserve(jsonArr.size());
-    for (size_t i = 0; i < portVec.size(); i++) {
-        jsonArr.push_back(
-            static_cast<int64_t>(portVec[i]));
-    }
-
-    setJsonPortVec(jsonArr);
+    return res;
 }
 
 void
-ProcessSlotImpl::start()
+ProcessSlotImpl::getExecArgs(CachedState &cachedState,
+                             vector<string> &addEnv,
+                             string &path,
+                             string &command)
 {
-    TRACE(CL_LOG, "start");
+    TRACE(CL_LOG, "getExecArgs");
+    
+    bool found;
+    JSONValue jsonValue;
+    found = cachedState.get(ProcessSlot::EXEC_ENV_KEY, jsonValue);
+    if (found == true) {
+        addEnv.clear();
+        JSONValue::JSONArray jsonArr = jsonValue.get<JSONValue::JSONArray>();
+        JSONValue::JSONArray::const_iterator jsonArrIt;
+        for (jsonArrIt = jsonArr.begin(); 
+             jsonArrIt != jsonArr.end(); 
+             ++jsonArrIt) {
+            addEnv.push_back(jsonArrIt->get<JSONValue::JSONString>());
+        }
+    }
 
-    string processSlotDesiredStateKey = 
-        NotifyableKeyManipulator::createProcessSlotDesiredStateKey(getKey());
-
-    JSONValue::JSONArray jsonArr;
-    int64_t msecs = TimerService::getCurrentTimeMsecs();
-    jsonArr.push_back(ClusterlibStrings::PROCESSSTATE_RUNNING);
-    jsonArr.push_back(msecs);
-    jsonArr.push_back(TimerService::getMsecsTimeString(msecs));
-
-    string encodedJsonValue = JSONCodec::encode(jsonArr);
-    SAFE_CALL_ZK(getOps()->getRepository()->setNodeData(
-                     processSlotDesiredStateKey,
-                     encodedJsonValue),
-                 "Setting of %s failed: %s",
-                 processSlotDesiredStateKey.c_str(),
-                 true,
-                 false);
+    found = cachedState.get(ProcessSlot::EXEC_PATH_KEY, jsonValue);
+    if (found == true) {
+        path = jsonValue.get<JSONValue::JSONString>();
+    }
+    
+    found = cachedState.get(ProcessSlot::EXEC_COMMAND_KEY, jsonValue);
+    if (found == false) {
+        throw RepositoryDataMissingException(
+            "getExecArgs: No EXEC_COMMAND_KEY");
+    }
+    command = jsonValue.get<JSONValue::JSONString>();
 }
 
 pid_t
-ProcessSlotImpl::startLocal()
+ProcessSlotImpl::startLocal(const vector<string> &addEnv, 
+                            const string &path, 
+                            const string &command)
 {
     TRACE(CL_LOG, "startLocal");
 
-    vector<string> addEnv;
-    string path;
-    string cmd;
-
-    acquireLock();
-    getExecArgs(addEnv, path, cmd);
     LOG_DEBUG(CL_LOG, 
-              "startLocal: with path=%s, cmd=%s", 
-              path.c_str(), cmd.c_str());
-    pid_t pid = ProcessThreadService::forkExec(addEnv, path, cmd);
-    setRunningExecArgs(addEnv, path, cmd);
-    releaseLock();
+              "startLocal: with path=%s, command=%s", 
+              path.c_str(), command.c_str());
+    pid_t pid = ProcessThreadService::forkExec(addEnv, path, command);
     if (pid == -1) {
-        LOG_ERROR(CL_LOG, "start: Failed to run forkExec");
+        LOG_ERROR(CL_LOG, "startLocal: Failed to run forkExec");
     }
     
     return pid;
 }
 
-JSONValue
-ProcessSlotImpl::getJsonExecArgs()
-{
-    TRACE(CL_LOG, "getJsonExecArgs");
-
-    string processSlotExecArgsKey = 
-        NotifyableKeyManipulator::createProcessSlotExecArgsKey(getKey());
-
-    string encodedJsonValue;
-    SAFE_CALLBACK_ZK(
-        getOps()->getRepository()->getNodeData(
-            processSlotExecArgsKey,
-            encodedJsonValue,
-            getOps()->getZooKeeperEventAdapter(),
-            getOps()->getCachedObjectChangeHandlers()->
-            getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_EXECARGS_CHANGE)),
-        getOps()->getRepository()->getNodeData(
-            processSlotExecArgsKey,
-            encodedJsonValue),
-        CachedObjectChangeHandlers::PROCESSSLOT_EXECARGS_CHANGE,
-        processSlotExecArgsKey,
-        "Read the value of %s failed: %s",
-        processSlotExecArgsKey.c_str(),
-        false,
-        true);    
-
-    if (encodedJsonValue.empty()) {
-        return JSONValue();
-    }
-    else {
-        return JSONCodec::decode(encodedJsonValue);
-    }
-}
-bool
-ProcessSlotImpl::getExecArgs(vector<string> &addEnv,
-                             string &path,
-                             string &cmd)
-{
-    TRACE(CL_LOG, "getExecArgs");
-
-    string processSlotExecArgsKey = 
-        NotifyableKeyManipulator::createProcessSlotExecArgsKey(getKey());
-
-    cmd.clear();
-    path.clear();
-    addEnv.clear();
-    JSONValue jsonValue = getJsonExecArgs();
-    if (jsonValue.type() == typeid(JSONValue::JSONNull)) {
-        return false;
-    }
-    else {
-        JSONValue::JSONObject jsonObj = jsonValue.get<JSONValue::JSONObject>();
-        if (jsonObj[ClusterlibStrings::JSONOBJECTKEY_COMMAND].type() !=  
-            typeid(JSONValue::JSONNull)) {
-            cmd = jsonObj[ClusterlibStrings::JSONOBJECTKEY_COMMAND].
-                get<JSONValue::JSONString>();
-        }
-        if (jsonObj[ClusterlibStrings::JSONOBJECTKEY_PATH].type() !=  
-            typeid(JSONValue::JSONNull)) {
-            path = jsonObj[ClusterlibStrings::JSONOBJECTKEY_PATH].
-                get<JSONValue::JSONString>();
-        }
-        
-        if (jsonObj[ClusterlibStrings::JSONOBJECTKEY_ADDENV].type() != 
-            typeid(JSONValue::JSONNull)) {
-            JSONValue::JSONArray jsonArrAddEnv = 
-                jsonObj[ClusterlibStrings::JSONOBJECTKEY_ADDENV].
-                get<JSONValue::JSONArray>();
-            addEnv.reserve(jsonArrAddEnv.size());
-            for (size_t i = 0; i < jsonArrAddEnv.size(); i++) {
-                addEnv.push_back(
-                    jsonArrAddEnv[i].get<JSONValue::JSONString>());
-            }
-        }
-
-        return true;
-    }
-}
-
 void 
-ProcessSlotImpl::setJsonExecArgs(json::JSONValue jsonValue) 
+ProcessSlotImpl::stopLocal(pid_t pid, int32_t signal)
 {
-    TRACE(CL_LOG, "setJsonExecArgs");
-        
-    string processSlotExecArgsKey = 
-        NotifyableKeyManipulator::createProcessSlotExecArgsKey(getKey());
+    TRACE(CL_LOG, "stopLocal");
 
-    /* Do a series of checks */
-    if (jsonValue.type() != typeid(JSONValue::JSONObject)) {
-        throw InvalidArgumentsException(
-            "setJsonExecArgs: Should be an object");
-    }
-
-    acquireLock();
-    SAFE_CALL_ZK(getOps()->getRepository()->setNodeData(
-                     processSlotExecArgsKey,
-                     JSONCodec::encode(jsonValue)),
-                 "Setting of %s failed: %s",
-                 processSlotExecArgsKey.c_str(),
-                 true,
-                 false);
-    releaseLock();
-}
-void ProcessSlotImpl::setExecArgs(const vector<string> &addEnv,
-                                  const string &path,
-                                  const string &cmd)
-{
-    TRACE(CL_LOG, "setExecArgs");
-        
-    string processSlotExecArgsKey = 
-        NotifyableKeyManipulator::createProcessSlotExecArgsKey(getKey());
-
-    JSONValue::JSONObject jsonObj;
-    JSONValue::JSONArray jsonArrAddEnv;
-    for (size_t i = 0; i < addEnv.size(); i++) {
-        jsonArrAddEnv.push_back(addEnv[i]);
-    }
-    jsonObj[ClusterlibStrings::JSONOBJECTKEY_ADDENV] = jsonArrAddEnv;
-    jsonObj[ClusterlibStrings::JSONOBJECTKEY_PATH] = path;
-    jsonObj[ClusterlibStrings::JSONOBJECTKEY_COMMAND] = cmd;
-
-    setJsonExecArgs(jsonObj);
-}
-
-JSONValue
-ProcessSlotImpl::getJsonRunningExecArgs()
-{
-    TRACE(CL_LOG, "getJsonRunningExecArgs");
-
-    string processSlotRunningExecArgsKey = 
-        NotifyableKeyManipulator::createProcessSlotRunningExecArgsKey(
-            getKey());
-
-    string encodedJsonValue;
-    SAFE_CALLBACK_ZK(
-        getOps()->getRepository()->getNodeData(
-            processSlotRunningExecArgsKey,
-            encodedJsonValue,
-            getOps()->getZooKeeperEventAdapter(),
-            getOps()->getCachedObjectChangeHandlers()->
-            getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_RUNNING_EXECARGS_CHANGE)),
-        getOps()->getRepository()->getNodeData(
-            processSlotRunningExecArgsKey,
-            encodedJsonValue),
-        CachedObjectChangeHandlers::PROCESSSLOT_RUNNING_EXECARGS_CHANGE,
-        processSlotRunningExecArgsKey,
-        "Reading the value of %s failed: %s",
-        processSlotRunningExecArgsKey.c_str(),
-        false,
-        true);    
-
-    if (encodedJsonValue.empty()) {
-        return JSONValue();
-    }
-    else {
-        return JSONCodec::decode(encodedJsonValue);
-    }
-}
-bool
-ProcessSlotImpl::getRunningExecArgs(vector<string> &addEnv,
-                                    string &path,
-                                    string &cmd)
-{
-    TRACE(CL_LOG, "getRunningExecArgs");
-
-    string processSlotRunningExecArgsKey = 
-        NotifyableKeyManipulator::createProcessSlotRunningExecArgsKey(
-            getKey());
-
-    JSONValue jsonValue = getJsonRunningExecArgs();
-    if (jsonValue.type() == typeid(JSONValue::JSONNull)) {
-        return false;
-    }
-    else {
-        JSONValue::JSONObject jsonObj = jsonValue.get<JSONValue::JSONObject>();
-        if (jsonObj[ClusterlibStrings::JSONOBJECTKEY_COMMAND].type() !=  
-            typeid(JSONValue::JSONNull)) {
-            cmd = jsonObj[ClusterlibStrings::JSONOBJECTKEY_COMMAND].
-                get<JSONValue::JSONString>();
-        }
-        if (jsonObj[ClusterlibStrings::JSONOBJECTKEY_PATH].type() !=  
-            typeid(JSONValue::JSONNull)) {
-            path = jsonObj[ClusterlibStrings::JSONOBJECTKEY_PATH].
-                get<JSONValue::JSONString>();
-        }
-        
-        if (jsonObj[ClusterlibStrings::JSONOBJECTKEY_ADDENV].type() != 
-            typeid(JSONValue::JSONNull)) {
-            JSONValue::JSONArray jsonArrAddEnv = 
-                jsonObj[ClusterlibStrings::JSONOBJECTKEY_ADDENV].
-                get<JSONValue::JSONArray>();
-            addEnv.reserve(jsonArrAddEnv.size());
-            for (size_t i = 0; i < jsonArrAddEnv.size(); i++) {
-                addEnv.push_back(
-                    jsonArrAddEnv[i].get<JSONValue::JSONString>());
-            }
-        }
-
-        return true;
-    }
-}
-
-JSONValue 
-ProcessSlotImpl::getJsonPID()
-{
-    TRACE(CL_LOG, "getJsonPID");
-
-    string processSlotPIDKey = 
-        NotifyableKeyManipulator::createProcessSlotPIDKey(getKey());
-
-    string encodedJsonValue;
-    SAFE_CALLBACK_ZK(
-        getOps()->getRepository()->getNodeData(
-            processSlotPIDKey,
-            encodedJsonValue,
-            getOps()->getZooKeeperEventAdapter(),
-            getOps()->getCachedObjectChangeHandlers()->
-            getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_PID_CHANGE)),
-        getOps()->getRepository()->getNodeData(
-            processSlotPIDKey,
-            encodedJsonValue),
-        CachedObjectChangeHandlers::PROCESSSLOT_PID_CHANGE,
-        processSlotPIDKey,
-        "Reading thevalue of %s failed: %s",
-        processSlotPIDKey.c_str(),
-        false,
-        true);
-    if (encodedJsonValue.empty()) {
-        return JSONValue();
-    }
-    else {        
-        return JSONCodec::decode(encodedJsonValue);
-    }
-}
-int32_t 
-ProcessSlotImpl::getPID()
-{
-    TRACE(CL_LOG, "getPID");
-
-    string processSlotPIDKey = 
-        NotifyableKeyManipulator::createProcessSlotPIDKey(getKey());
-
-    JSONValue jsonValue = getJsonPID();
-    if (jsonValue.type() == typeid(JSONValue::JSONNull)) {
-        return -1;
-    }
-    return static_cast<int32_t>(jsonValue.get<JSONValue::JSONInteger>());
-}
-
-void
-ProcessSlotImpl::setPID(int32_t pid)
-{
-    TRACE(CL_LOG, "setPID");
-
-    string processSlotPIDKey = 
-        NotifyableKeyManipulator::createProcessSlotPIDKey(getKey());
-
-    JSONValue::JSONInteger jsonInt = static_cast<int64_t>(pid);
-    string encodedJsonValue = JSONCodec::encode(jsonInt);
-    SAFE_CALL_ZK(getOps()->getRepository()->setNodeData(
-                     processSlotPIDKey,
-                     encodedJsonValue),
-                 "Getting of %s failed: %s",
-                 processSlotPIDKey.c_str(),
-                 true,
-                 false);
-}
-
-void
-ProcessSlotImpl::stop(int32_t sig)
-{
-    TRACE(CL_LOG, "stop");
-
-    string processSlotDesiredStateKey = 
-        NotifyableKeyManipulator::createProcessSlotDesiredStateKey(getKey());
-    
-    JSONValue::JSONArray jsonArr;
-    int64_t msecs = TimerService::getCurrentTimeMsecs();
-    jsonArr.push_back(ClusterlibStrings::PROCESSSTATE_STOPPED);
-    jsonArr.push_back(msecs);
-    jsonArr.push_back(TimerService::getMsecsTimeString(msecs));
-    jsonArr.push_back(static_cast<int64_t>(sig));
-
-    string encodedJsonValue = JSONCodec::encode(jsonArr);
-    SAFE_CALL_ZK(getOps()->getRepository()->setNodeData(
-                     processSlotDesiredStateKey,
-                     encodedJsonValue),
-                 "Setting of %s failed: %s",
-                 processSlotDesiredStateKey.c_str(),
-                 true,
-                 false);
-}
-
-void 
-ProcessSlotImpl::stopLocal()
-{
-    TRACE(CL_LOG, "stop");
-
-    int32_t pid = getPID();
     if (pid > 0) {
-       int32_t ret = kill(pid, SIGKILL);
+       int32_t ret = kill(pid, signal);
        if (ret != 0) {
-           stringstream ss; 
-           ss << "stop: kill of pid " << pid << " failed.";
-           throw SystemFailureException(ss.str());
+           if (errno == ESRCH) {
+               LOG_WARN(CL_LOG, "stopLocal: kill failed with ESRCH");
+           }
+           else {
+               ostringstream oss; 
+               oss << "stopLocal: kill of pid " << pid << " failed with error"
+                   << strerror(errno);
+               throw SystemFailureException(oss.str());
+           }
        }
     }
     else {
-        throw InvalidMethodException("stop: pid <= 0");
+        throw InvalidMethodException("stopLocal: pid <= 0");
     }
 }
 
-void 
-ProcessSlotImpl::setRunningJsonExecArgs(json::JSONValue jsonValue) 
+NotifyableList
+ProcessSlotImpl::getChildrenNotifyables()
 {
-    TRACE(CL_LOG, "setRunningJsonExecArgs");
-        
-    string processSlotRunningExecArgsKey = 
-        NotifyableKeyManipulator::createProcessSlotRunningExecArgsKey(
-            getKey());
+    TRACE(CL_LOG, "getChildrenNotifyables");
 
-    /* Do a series of checks */
-    if (jsonValue.type() != typeid(JSONValue::JSONObject)) {
-        throw InvalidArgumentsException(
-            "setRunningJsonExecArgs: Should be an object");
-    }
-
-    acquireLock();
-    SAFE_CALL_ZK(getOps()->getRepository()->setNodeData(
-                     processSlotRunningExecArgsKey,
-                     JSONCodec::encode(jsonValue)),
-                 "Setting of %s failed: %s",
-                 processSlotRunningExecArgsKey.c_str(),
-                 true,
-                 false);
-    releaseLock();
-}
-void ProcessSlotImpl::setRunningExecArgs(const vector<string> &addEnv,
-                                         const string &path,
-                                         const string &cmd)
-{
-    TRACE(CL_LOG, "setRunningExecArgs");
-        
-    string processSlotRunningExecArgsKey = 
-        NotifyableKeyManipulator::createProcessSlotRunningExecArgsKey(
-            getKey());
-
-    JSONValue::JSONObject jsonObj;
-    JSONValue::JSONArray jsonArrAddEnv;
-    for (size_t i = 0; i < addEnv.size(); i++) {
-        jsonArrAddEnv.push_back(addEnv[i]);
-    }
-    jsonObj[ClusterlibStrings::JSONOBJECTKEY_ADDENV] = jsonArrAddEnv;
-    jsonObj[ClusterlibStrings::JSONOBJECTKEY_PATH] = path;
-    jsonObj[ClusterlibStrings::JSONOBJECTKEY_COMMAND] = cmd;
-
-    setRunningJsonExecArgs(jsonObj);
-}
-
-string
-ProcessSlotImpl::createDefaultExecArgs()
-{
-    TRACE(CL_LOG, "createDefaultExecArgs");
-
-    JSONValue::JSONObject jsonObj;
-    jsonObj[ClusterlibStrings::JSONOBJECTKEY_ADDENV] = JSONValue();
-    jsonObj[ClusterlibStrings::JSONOBJECTKEY_PATH] = JSONValue();
-    jsonObj[ClusterlibStrings::JSONOBJECTKEY_COMMAND] = JSONValue();
-
-    return JSONCodec::encode(jsonObj);
-}
-
-
-JSONValue
-ProcessSlotImpl::getJsonDesiredProcessState()
-{
-    TRACE(CL_LOG, "getJsonDesiredProcessState");
-
-    string processSlotDesiredStateKey = 
-        NotifyableKeyManipulator::createProcessSlotDesiredStateKey(getKey());
-
-    string encodedJsonValue;
-    SAFE_CALLBACK_ZK(
-        getOps()->getRepository()->getNodeData(
-            processSlotDesiredStateKey,
-            encodedJsonValue,
-            getOps()->getZooKeeperEventAdapter(),
-            getOps()->getCachedObjectChangeHandlers()->
-            getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_DESIRED_STATE_CHANGE)),
-        getOps()->getRepository()->getNodeData(
-            processSlotDesiredStateKey,
-            encodedJsonValue),
-        CachedObjectChangeHandlers::PROCESSSLOT_DESIRED_STATE_CHANGE,
-        processSlotDesiredStateKey,
-        "Reading the value of %s failed: %s",
-        processSlotDesiredStateKey.c_str(),
-        false,
-        true);
-    if (encodedJsonValue.empty()) {
-        return JSONValue();
-    }
-    return JSONCodec::decode(encodedJsonValue);
-}
-
-void
-ProcessSlotImpl::getDesiredProcessState(
-    ProcessSlot::ProcessState *processState,
-    int64_t *msecs)
-{
-    JSONValue jsonValue = getJsonDesiredProcessState();
-    if (jsonValue.type() == typeid(JSONValue::JSONNull)) {
-        if (processState) {
-            *processState = ProcessSlot::UNUSED;
-        }
-        if (msecs) {
-            *msecs = TimerService::getCurrentTimeMsecs();
-        }
-    }
-    else {        
-        JSONValue::JSONArray jsonArray = jsonValue.get<JSONValue::JSONArray>();
-        if (processState) {
-            *processState = ProcessSlot::getProcessStateFromString(
-                jsonArray[0].get<JSONValue::JSONString>());
-        }
-        if (msecs) {
-            *msecs = jsonArray[1].get<JSONValue::JSONInteger>();
-        }
-    }
-}
-
-JSONValue
-ProcessSlotImpl::getJsonCurrentProcessState()
-{
-    TRACE(CL_LOG, "getJsonCurrentProcessState");
-
-    string processSlotCurrentStateKey = 
-        NotifyableKeyManipulator::createProcessSlotCurrentStateKey(getKey());
+    throwIfRemoved();
     
-    string encodedJsonValue;
-    SAFE_CALLBACK_ZK(
-        getOps()->getRepository()->getNodeData(
-            processSlotCurrentStateKey,
-            encodedJsonValue,
-            getOps()->getZooKeeperEventAdapter(),
-            getOps()->getCachedObjectChangeHandlers()->
-            getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_CURRENT_STATE_CHANGE)),
-        getOps()->getRepository()->getNodeData(
-            processSlotCurrentStateKey,
-            encodedJsonValue),
-        CachedObjectChangeHandlers::PROCESSSLOT_CURRENT_STATE_CHANGE,
-        processSlotCurrentStateKey,
-        "Reading the value of %s failed: %s",
-        processSlotCurrentStateKey.c_str(),
-        false,
-        true);
-    if (encodedJsonValue.empty()) {
-        return JSONValue();
-    }
-    return JSONCodec::decode(encodedJsonValue);
+    return NotifyableList();
 }
-
-void
-ProcessSlotImpl::getCurrentProcessState(
-    ProcessSlot::ProcessState *processState,
-    int64_t *msecs)
-{
-    JSONValue jsonValue = getJsonCurrentProcessState();
-    if (jsonValue.type() == typeid(JSONValue::JSONNull)) {
-        if (processState) {
-            *processState = ProcessSlot::UNUSED;
-        }
-        if (msecs) {
-            *msecs = TimerService::getCurrentTimeMsecs();
-        }
-    }
-    else {        
-        JSONValue::JSONArray jsonArray = jsonValue.get<JSONValue::JSONArray>();
-        if (processState) {
-            *processState = ProcessSlot::getProcessStateFromString(
-                jsonArray[0].get<JSONValue::JSONString>());
-        }
-        if (msecs) {
-            *msecs = jsonArray[1].get<JSONValue::JSONInteger>();
-        }
-    }
-}
-
-void
-ProcessSlotImpl::setCurrentProcessState(ProcessState processState)
-{
-    TRACE(CL_LOG, "setCurrentProcessState");
-
-    string processSlotCurrentStateKey = 
-        NotifyableKeyManipulator::createProcessSlotCurrentStateKey(getKey());
-
-    JSONValue::JSONArray jsonArr;
-    int64_t msecs = TimerService::getCurrentTimeMsecs();
-    jsonArr.push_back(ProcessSlot::getProcessStateAsString(processState));
-    jsonArr.push_back(msecs);
-    jsonArr.push_back(TimerService::getMsecsTimeString(msecs));
-    
-    string encodedJsonValue = JSONCodec::encode(jsonArr);
-    SAFE_CALL_ZK(getOps()->getRepository()->setNodeData(
-                     processSlotCurrentStateKey,
-                     encodedJsonValue),
-                 "Getting of %s failed: %s",
-                 processSlotCurrentStateKey.c_str(),
-                 true,
-                 false);
-}
-
-string
-ProcessSlotImpl::getReservationName()
-{
-    TRACE(CL_LOG, "getReservationName");
-
-    string processSlotReservationKey = 
-        NotifyableKeyManipulator::createProcessSlotReservationKey(getKey());
-
-    string currentReservationName;
-    SAFE_CALLBACK_ZK(
-        getOps()->getRepository()->getNodeData(
-            processSlotReservationKey,
-            currentReservationName,
-            getOps()->getZooKeeperEventAdapter(),
-            getOps()->getCachedObjectChangeHandlers()->
-            getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_RESERVATION_CHANGE)),
-        getOps()->getRepository()->getNodeData(
-            processSlotReservationKey,
-            currentReservationName),
-        CachedObjectChangeHandlers::PROCESSSLOT_RESERVATION_CHANGE,
-        processSlotReservationKey,
-        "Reading the value of %s failed: %s",
-        processSlotReservationKey.c_str(),
-        false,
-        true);
-    return currentReservationName;
-}
-
-
-bool 
-ProcessSlotImpl::setReservationIfEmpty(string reservationName)
-{
-    TRACE(CL_LOG, "setReservationIfEmpty");
-
-    string processSlotReservationKey = 
-        NotifyableKeyManipulator::createProcessSlotReservationKey(getKey());
-
-    string currentReservationName;
-    bool ret = false;
-    acquireLock();
-    SAFE_CALLBACK_ZK(
-        getOps()->getRepository()->getNodeData(
-            processSlotReservationKey,
-            currentReservationName,
-            getOps()->getZooKeeperEventAdapter(),
-            getOps()->getCachedObjectChangeHandlers()->
-            getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_RESERVATION_CHANGE)),
-        getOps()->getRepository()->getNodeData(
-            processSlotReservationKey,
-            currentReservationName),
-        CachedObjectChangeHandlers::PROCESSSLOT_RESERVATION_CHANGE,
-        processSlotReservationKey,
-        "Reading the value of %s failed: %s",
-        processSlotReservationKey.c_str(),
-        false,
-        true);
-    if (currentReservationName.empty()) {
-        SAFE_CALL_ZK(getOps()->getRepository()->setNodeData(
-                         processSlotReservationKey,
-                         reservationName),
-                     "Setting of %s failed: %s",
-                     processSlotReservationKey.c_str(),
-                     true,
-                     false);
-        ret = true;
-    }
-    releaseLock();
-
-    return ret;
-}
-
-bool 
-ProcessSlotImpl::releaseReservationIfMatches(string reservationName)
-{
-    TRACE(CL_LOG, "releaseReservationIfMatches");
-
-    string processSlotReservationKey = 
-        NotifyableKeyManipulator::createProcessSlotReservationKey(getKey());
-
-    string currentReservationName;
-    bool ret = false;
-    acquireLock();
-    SAFE_CALLBACK_ZK(
-        getOps()->getRepository()->getNodeData(
-            processSlotReservationKey,
-            currentReservationName,
-            getOps()->getZooKeeperEventAdapter(),
-            getOps()->getCachedObjectChangeHandlers()->
-            getChangeHandler(
-                CachedObjectChangeHandlers::PROCESSSLOT_RESERVATION_CHANGE)),
-        getOps()->getRepository()->getNodeData(
-            processSlotReservationKey,
-            currentReservationName),
-        CachedObjectChangeHandlers::PROCESSSLOT_RESERVATION_CHANGE,
-        processSlotReservationKey,
-        "Reading the value of %s failed: %s",
-        processSlotReservationKey.c_str(),
-        false,
-        true);
-    if (currentReservationName == reservationName) {
-        string empty;
-        SAFE_CALL_ZK(getOps()->getRepository()->setNodeData(
-                         processSlotReservationKey,
-                         empty),
-                     "Setting of %s failed: %s",
-                     processSlotReservationKey.c_str(),
-                     true,
-                     false);
-        ret = true;
-    }
-    releaseLock();
-
-    return ret;
-}
+ 
 void
 ProcessSlotImpl::initializeCachedRepresentation()
 {
@@ -801,16 +171,8 @@ ProcessSlotImpl::initializeCachedRepresentation()
     /*
      * Ensure that the cache contains all the information about this
      * object, and that all watches are established.
-     *
-     * This object's members operate completely in zookeeeper, so no
-     * initialization is required.
      */
-}
-
-void
-ProcessSlotImpl::removeRepositoryEntries()
-{
-    getOps()->removeProcessSlot(this);
+    m_cachedProcessInfo.loadDataFromRepository(false);
 }
 
 ProcessSlotImpl::~ProcessSlotImpl()

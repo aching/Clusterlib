@@ -76,6 +76,30 @@ class GetAttributes : public CliCommand
 };
 
 /**
+ * Set a current state key-value of a notifyable
+ */
+class SetCurrentState : public CliCommand
+{
+  public:
+    SetCurrentState(Client *client);
+    virtual void action();
+    virtual std::string helpMessage();
+    virtual ~SetCurrentState();
+};
+
+/**
+ * Set a desired state key-value of a notifyable
+ */
+class SetDesiredState : public CliCommand
+{
+  public:
+    SetDesiredState(Client *client);
+    virtual void action();
+    virtual std::string helpMessage();
+    virtual ~SetDesiredState();
+};
+
+/**
  * Add an application to the clusterlib hierarchy
  */
 class AddApplication : public CliCommand
@@ -205,6 +229,42 @@ class JSONRPCCommand : public CliCommand
 
   private:
     Queue *m_respQueue;
+};
+
+/**
+ * Start a running process.
+ */
+class StartProcessSlot : public CliCommand
+{
+  public:
+    StartProcessSlot(Client *client);
+    virtual void action();
+    virtual std::string helpMessage();
+    virtual ~StartProcessSlot();
+};
+
+/**
+ * Stop a running process.
+ */
+class StopProcessSlot : public CliCommand
+{
+  public:
+    StopProcessSlot(Client *client);
+    virtual void action();
+    virtual std::string helpMessage();
+    virtual ~StopProcessSlot();
+};
+
+/**
+ * Shutdown an ActiveNode
+ */
+class StopActiveNode : public CliCommand
+{
+  public:
+    StopActiveNode(Client *client);
+    virtual void action();
+    virtual std::string helpMessage();
+    virtual ~StopActiveNode();
 };
 
 /**

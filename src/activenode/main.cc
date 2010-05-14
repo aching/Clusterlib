@@ -35,19 +35,19 @@ int main(int argc, char* argv[])
     ActiveNode activeNode(params, factory.get());
     Queue *recvQueue = activeNode.getActiveNode()->getQueue(
         ClusterlibStrings::DEFAULT_RECV_QUEUE, 
-        true);
+        CREATE_IF_NOT_FOUND);
     Queue *completedQueue = activeNode.getActiveNode()->getQueue(
         ClusterlibStrings::DEFAULT_COMPLETED_QUEUE, 
-        true);
+        CREATE_IF_NOT_FOUND);
     PropertyList *rpcMethodHandlerPropertylist = 
         activeNode.getActiveNode()->getPropertyList(
             ClusterlibStrings::DEFAULTPROPERTYLIST,
-            true);
-    /* Try to clear the property list if possible wihin 0.5 seconds */
+            CREATE_IF_NOT_FOUND);
+    /* Try to clear the PropertyList if possible wihin 0.5 seconds */
     bool gotLock = rpcMethodHandlerPropertylist->acquireLockWaitMsecs(500);
     if (gotLock) {
-        rpcMethodHandlerPropertylist->clear();
-        rpcMethodHandlerPropertylist->publishProperties();
+        rpcMethodHandlerPropertylist->cachedKeyValues().clear();
+        rpcMethodHandlerPropertylist->cachedKeyValues().publish();
         rpcMethodHandlerPropertylist->releaseLock();
     }
 
@@ -57,15 +57,13 @@ int main(int argc, char* argv[])
                                  completedQueue, 
                                  completedQueueMaxSize, 
                                  rpcMethodHandlerPropertylist));
-
-    /* Create and register available methods. */
-    auto_ptr<StartProcessMethod> startProcessMethod(new StartProcessMethod());
-    rpcManager->registerMethod(startProcessMethod->getName(),
-                               startProcessMethod.get());
-    auto_ptr<StopProcessMethod> stopProcessMethod(new StopProcessMethod());
-    rpcManager->registerMethod(stopProcessMethod->getName(),
-                               stopProcessMethod.get());
-    
+    /*
+     * Deliberately added an ClusterlibRPCManager that has no methods
+     * as an example.  Create and register methods if desired.  For
+     * example
+     * 
+     * rpcManager->registerMethod(...
+     */
     vector<ClusterlibRPCManager *> rpcManagerVec;
     rpcManagerVec.push_back(rpcManager.get());
     return activeNode.run(rpcManagerVec);

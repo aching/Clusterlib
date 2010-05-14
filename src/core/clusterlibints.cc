@@ -12,9 +12,24 @@
 
 #include "clusterlib.h"
 
-
 namespace clusterlib
 {
+
+std::string
+getAccessTypeString(AccessType accessType)
+{
+    switch (accessType) {
+        case CACHED_ONLY:
+            return "CACHED_ONLY";
+        case LOAD_FROM_REPOSITORY:
+            return "LOAD_FROM_REPOSITORY";
+        case CREATE_IF_NOT_FOUND:
+            return "CREATE_IF_NOT_FOUND";
+        default:
+            return "unknown access type";
+    }
+}
+
 /* 
  * All indices use for parsing ZK node names
  */

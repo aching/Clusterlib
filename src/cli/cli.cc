@@ -57,14 +57,14 @@ int main(int argc, char* argv[])
      */
     Root *root = params->getClient()->getRoot();
     Application *cliApp = root->getApplication(
-        ClusterlibStrings::DEFAULT_CLI_APPLICATION, true);
+        ClusterlibStrings::DEFAULT_CLI_APPLICATION, CREATE_IF_NOT_FOUND);
     Queue *respQueue = cliApp->getQueue(
         ProcessThreadService::getHostnamePidTid() + 
-        ClusterlibStrings::DEFAULT_RESP_QUEUE, true);
+        ClusterlibStrings::DEFAULT_RESP_QUEUE, CREATE_IF_NOT_FOUND);
     string respQueueKey = respQueue->getKey();
     Queue *completedQueue = cliApp->getQueue(
         ProcessThreadService::getHostnamePidTid() + 
-        ClusterlibStrings::DEFAULT_COMPLETED_QUEUE, true);
+        ClusterlibStrings::DEFAULT_COMPLETED_QUEUE, CREATE_IF_NOT_FOUND);
     string completedQueueKey = completedQueue->getKey();    
     Client *jsonRPCResponseClient = 
         params->getFactory()->createJSONRPCResponseClient(respQueue,
@@ -88,6 +88,11 @@ int main(int argc, char* argv[])
                                                  params->getClient()));
     params->registerCommand(new JSONRPCCommand(params->getClient(), 
                                                respQueue));
+    params->registerCommand(new SetCurrentState(params->getClient()));
+    params->registerCommand(new SetDesiredState(params->getClient()));
+    params->registerCommand(new StartProcessSlot(params->getClient()));
+    params->registerCommand(new StopProcessSlot(params->getClient()));
+    params->registerCommand(new StopActiveNode(params->getClient()));
     params->registerCommand(new Help(params));
     params->registerCommand(new Quit(params));
     

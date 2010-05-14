@@ -67,6 +67,13 @@ class ProcessThreadService {
     static std::string getHostname();
 
     /**
+     * Get the thread id.
+     * 
+     * @return thread id converted to int32_t
+     */
+    static int32_t getTid();
+
+    /**
      * Get hostname, process id and thread id string.  Useful for
      * uniquely identifying a client.
      *

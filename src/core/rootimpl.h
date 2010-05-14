@@ -25,8 +25,9 @@ class RootImpl
   public:
     virtual NameList getApplicationNames();
 
-    virtual Application *getApplication(const std::string &appName,
-                                        bool create = false);
+    virtual Application *getApplication(
+        const std::string &appName,
+        AccessType accessType = LOAD_FROM_REPOSITORY);
 
     virtual Notifyable *getNotifyableFromKey(const std::string &key);
 
@@ -46,20 +47,11 @@ class RootImpl
         throw InvalidMethodException("RootImpl is not part of a group");
     }
 
-    virtual PropertyList *getPropertyList(std::string name,
-                                          bool create = false)
+    virtual PropertyList *getPropertyList(
+        std::string name,
+        AccessType accessType = LOAD_FROM_REPOSITORY)
     {
         throw InvalidMethodException("RootImpl cannot have properties");
-    }
-
-    virtual void acquireLock(bool acquireChildren = false)
-    {
-        throw InvalidMethodException("RootImpl cannot acquire locks");
-    }
-
-    virtual void releaseLock(bool releaseChildren = false)
-    {
-        throw InvalidMethodException("RootImpl cannot release locks");
     }
 
     virtual void remove(bool removeChildren = false) 
@@ -86,13 +78,29 @@ class RootImpl
 
     virtual ~RootImpl() {};
 
+    virtual NotifyableList getChildrenNotifyables();
+
     virtual void initializeCachedRepresentation();
 
     virtual void removeRepositoryEntries() 
     {
         throw InvalidMethodException("RootImpl cannot remove its"
-                                       " repository entries");
+                                     " repository entries");
     }
+
+    virtual std::string generateKey(const std::string &parentKey,
+                                    const std::string &name) const;
+
+    virtual bool isValidName(const std::string &name) const;
+
+    virtual NotifyableImpl *createNotifyable(const std::string &notifyableName,
+                                             const std::string &notifyableKey,
+                                             NotifyableImpl *parent,
+                                             FactoryOps &factoryOps);
+
+    virtual std::vector<std::string> generateRepositoryList(
+        const std::string &notifyableName,
+        const std::string &notifyableKey);
 
   private:
     /*
@@ -104,6 +112,11 @@ class RootImpl
         throw InvalidMethodException("Someone called the RootImpl "
                                        "default constructor!");
     }
+
+    /**
+     * The registered name of this object.
+     */
+    static std::string m_registeredName;
 };
 
 };	/* End of 'namespace clusterlib' */
