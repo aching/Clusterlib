@@ -183,8 +183,8 @@ ProcessSlotUpdater::run()
             }
             else if (waitedPid == 0) {
                 LOG_DEBUG(CL_LOG, 
-                          "run: No update on process %" PRIdPTR, 
-                          oldPid);
+                          "run: No update on process %" PRId32, 
+                          static_cast<int32_t>(oldPid));
             }
             else if (waitedPid != oldPid) {
                 ostringstream oss;
