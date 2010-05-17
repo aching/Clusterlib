@@ -23,6 +23,11 @@ using namespace clusterlib;
 using namespace json;
 using namespace json::rpc;
 
+static string zkCmds = "Zookeeper Commands";
+static string clusterlibCmds = "Clusterlib Commands";
+static string cliCmds = "CLI Commands";
+static string argCmds = "Arguments Commands";
+
 /**
  * The command line interface may be used in a shell-like environment
  * or to execute a stand alone command.
@@ -71,36 +76,61 @@ int main(int argc, char* argv[])
                                                           completedQueue);
 
     /* Register the commands after connecting */
-    params->registerCommand(setLogLevelCommand);
-    params->registerCommand(new RemoveNotifyable(params->getClient()));
-    params->registerCommand(new GetChildren(params->getClient()));
-    params->registerCommand(new GetLockBids(params->getClient()));
-    params->registerCommand(new GetAttributes(params->getClient()));
-    params->registerCommand(new AddApplication(params->getClient()));
-    params->registerCommand(new AddGroup(params->getClient()));
-    params->registerCommand(new AddDataDistribution(params->getClient()));
-    params->registerCommand(new AddNode(params->getClient()));
-    params->registerCommand(new AddPropertyList(params->getClient()));
-    params->registerCommand(new AddQueue(params->getClient()));
-    params->registerCommand(new GetZnode(params->getFactory(),
-                                         params->getClient()));
-    params->registerCommand(new GetZnodeChildren(params->getFactory(), 
-                                                 params->getClient()));
-    params->registerCommand(new JSONRPCCommand(params->getClient(), 
-                                               respQueue));
-    params->registerCommand(new SetCurrentState(params->getClient()));
-    params->registerCommand(new SetDesiredState(params->getClient()));
-    params->registerCommand(new StartProcessSlot(params->getClient()));
-    params->registerCommand(new StopProcessSlot(params->getClient()));
-    params->registerCommand(new StopActiveNode(params->getClient()));
-    params->registerCommand(new Help(params));
-    params->registerCommand(new Quit(params));
+    params->registerCommandByGroup(new GetZnode(params->getFactory(),
+                                         params->getClient()),
+                                   zkCmds);
+    params->registerCommandByGroup(new GetZnodeChildren(params->getFactory(), 
+                                                        params->getClient()),
+                                   zkCmds);
+    
+    params->registerCommandByGroup(setLogLevelCommand, clusterlibCmds);
+    params->registerCommandByGroup(new RemoveNotifyable(params->getClient()),
+                                   clusterlibCmds);
+    params->registerCommandByGroup(new GetChildren(params->getClient()),
+                                   clusterlibCmds);
+    params->registerCommandByGroup(new GetLockBids(params->getClient()),
+                                   clusterlibCmds);
+    params->registerCommandByGroup(new GetAttributes(params->getClient()),
+                                   clusterlibCmds);
+    params->registerCommandByGroup(new AddApplication(params->getClient()),
+                                   clusterlibCmds);
+    params->registerCommandByGroup(new AddGroup(params->getClient()),
+                                   clusterlibCmds);
+    params->registerCommandByGroup(new AddDataDistribution(
+                                       params->getClient()),
+                                   clusterlibCmds);
+    params->registerCommandByGroup(new AddNode(params->getClient()),
+                                   clusterlibCmds);
+    params->registerCommandByGroup(new AddPropertyList(params->getClient()),
+                                   clusterlibCmds);
+    params->registerCommandByGroup(new AddQueue(params->getClient()),
+                                   clusterlibCmds);
+    params->registerCommandByGroup(new JSONRPCCommand(params->getClient(), 
+                                                      respQueue),
+                                   clusterlibCmds);
+    params->registerCommandByGroup(new SetCurrentState(params->getClient()),
+                                   clusterlibCmds);
+    params->registerCommandByGroup(new SetDesiredState(params->getClient()),
+                                   clusterlibCmds);
+    params->registerCommandByGroup(new StartProcessSlot(params->getClient()),
+                                   clusterlibCmds);
+    params->registerCommandByGroup(new StopProcessSlot(params->getClient()),
+                                   clusterlibCmds);
+    params->registerCommandByGroup(new StopActiveNode(params->getClient()),
+                                   clusterlibCmds);
+    
+    params->registerCommandByGroup(new AddAlias(params), cliCmds);
+    params->registerCommandByGroup(new RemoveAlias(params), cliCmds);
+    params->registerCommandByGroup(new GetAliasReplacement(params), cliCmds);
+    params->registerCommandByGroup(new Help(params), cliCmds);
+    params->registerCommandByGroup(new Quit(params), cliCmds);
     
     /* Register the arguments */
-    params->registerCommand(new BoolArg());
-    params->registerCommand(new IntegerArg());
-    params->registerCommand(new StringArg());
-    params->registerCommand(new NotifyableArg(params->getClient()));
+    params->registerCommandByGroup(new BoolArg(), argCmds);
+    params->registerCommandByGroup(new IntegerArg(), argCmds);
+    params->registerCommandByGroup(new StringArg(), argCmds);
+    params->registerCommandByGroup(new NotifyableArg(params->getClient()),
+                                   argCmds);
 
     /* Keep getting commands until done. */
     while (!params->finished()) {
@@ -109,12 +139,18 @@ int main(int argc, char* argv[])
     
     /* Clean up */
     params->getFactory()->removeClient(jsonRPCResponseClient);
-    map<string, CliCommand *>::iterator it;
-    for (it = params->getCommandMap()->begin(); 
-         it != params->getCommandMap()->end();
-         ++it) {
-        delete it->second;
+    map<string, map<string, CliCommand *> >::const_iterator groupCommandMapIt;
+    map<string, CliCommand *>::const_iterator commandMapIt;
+    for (groupCommandMapIt = params->getGroupCommandMap()->begin();
+         groupCommandMapIt != params->getGroupCommandMap()->end();
+         ++groupCommandMapIt) {
+        for (commandMapIt = groupCommandMapIt->second.begin();
+             commandMapIt != groupCommandMapIt->second.end();
+             ++commandMapIt) {
+            delete commandMapIt->second;
+        }
     }
+
     respQueue->remove();
     completedQueue->remove();
 

@@ -12,9 +12,6 @@
 #ifndef	_CL_CLIPARAMS_H_
 #define _CL_CLIPARAMS_H_
 
-#include <iostream>
-#include <getopt.h>
-#include <ctype.h>
 #include "clicommand.h"
 
 /**
@@ -61,56 +58,13 @@ class CliParams {
      *
      * @param the command to register (should be allocated with new)
      */
-    void registerCommand(CliCommand *command) 
-    {
-        std::pair<std::map<std::string, CliCommand *>::iterator, bool> ret = 
-            m_commandMap.insert(
-                std::pair<std::string, CliCommand *>(
-                    command->getCommandName(), command));
-        if (ret.second == false) {
-            throw clusterlib::InvalidArgumentsException(
-                "registerCommand: Command " + command->getCommandName() + 
-                " already exists!");
-        }
-    }
+    void registerCommandByGroup(CliCommand *command, 
+                                const std::string &groupName);
 
     /**
-     * Print the command names.
+     * Print the command names by group.
      */
-    void printCommandNames() 
-    {
-        printf("Commands:\n");
-        std::vector<std::string> commandVec;
-        std::map<std::string, CliCommand *>::const_iterator it;
-        for (it = m_commandMap.begin(); it != m_commandMap.end(); it++) {
-            /* 
-             * Distinguish command from arg based on capitalized first
-             * letter. 
-             */
-            if (!it->first.empty() && !isupper(*(it->first.c_str()))) {
-                printf(" %s\n", it->first.c_str());
-            }
-        }
-    }
-
-    /**
-     * Print the command argument names.
-     */
-    void printArgNames() 
-    {
-        printf("Arguments:\n");
-        std::vector<std::string> commandVec;
-        std::map<std::string, CliCommand *>::const_iterator it;
-        for (it = m_commandMap.begin(); it != m_commandMap.end(); it++) {
-            /* 
-             * Distinguish command from arg based on capitalized first
-             * letter. 
-             */
-            if (!it->first.empty() && isupper(*(it->first.c_str()))) {
-                printf(" %s\n", it->first.c_str());
-            }
-        }
-    }
+    void printCommandNamesByGroup();
 
     /**
      * Is this program finished?
@@ -144,13 +98,14 @@ class CliParams {
     CliCommand *getCommandByName(const std::string &name);
 
     /**
-     * Get the command map.
+     * Get the group command map.
      *
-     * @return the pointer to the command map.
+     * @return the pointer to the group command map.
      */
-    std::map<std::string, CliCommand* > *getCommandMap() 
+    std::map<std::string, std::map<std::string, CliCommand* > > *
+        getGroupCommandMap() 
     {
-        return &m_commandMap; 
+        return &m_groupCommandMap; 
     }
 
     /**
@@ -212,14 +167,56 @@ class CliParams {
     void initFactoryAndClient();
     
     /**
+     * Generate the welcome message.  Can be overriden by subclasses.
+     *
+     * @return The final welcome message.
+     */
+    virtual std::string generateWelcomeMessage();
+
+    /**
      * Destructor.
      */
-    ~CliParams() 
+    virtual ~CliParams() 
     {
         if (m_factory) {
             delete m_factory;
             m_factory = NULL;
         }
+    }
+
+    /**
+     * Add an alias.  The alias must not already exist.
+     *
+     * @param alias The new alias for the replacement.
+     * @param replacement The replacement the alias maps to.
+     */ 
+    void addAlias(const std::string &alias, const std::string &replacement);
+
+    /**
+     * Remove an alias.  The alias may/may not exist.
+     *
+     * @param alias The new alias for the replacement.
+     * @return 1 if the alias was removed, 0 if not found.
+     */
+    size_t removeAlias(const std::string &alias);
+
+    /**
+     * Get the alias's replacement.  If the alias doesn't exist an
+     * InvalidArgumentsException will be thrown.
+     *
+     * @param alias The alias that maps to the replacement
+     * @return The replacement that the alias mapped to.
+     */
+    std::string getAliasReplacement(const std::string &alias);
+
+    /**
+     * Get the alias replacement map.
+     *
+     * @return The pointer to the alias replacement map.
+     */
+    std::map<std::string, std::string> *getAliasReplacementMap()
+    {
+        return &m_aliasReplacementMap;
     }
 
     /**
@@ -254,9 +251,16 @@ class CliParams {
     clusterlib::Client *m_client;
 
     /**
-     * Registered commands
+     * Registered commands organized by group.
      */
-    std::map<std::string, CliCommand *> m_commandMap;
+    std::map<std::string, std::map<std::string, CliCommand *> > 
+        m_groupCommandMap;
+
+    /**
+     * Alias to replacement map (i.e. masterNode ->
+     * /_clusterlib/1.0/_root/applications/_gqs/_node/masterNode))
+     */
+    std::map<std::string, std::string> m_aliasReplacementMap;
 
     /**
      * Time to exit?

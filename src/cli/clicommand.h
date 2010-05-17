@@ -97,6 +97,7 @@ class CliCommand {
      */
     std::string getNativeArg(int32_t argIndex)
     {
+        checkArgVecIndex(argIndex);
         return m_argVec[argIndex];
     }
 
@@ -114,11 +115,14 @@ class CliCommand {
             throw clusterlib::InvalidArgumentsException(
                 "getBoolArg: Index invalid " + ss.str());
         }
+
+        checkArgVecIndex(argIndex);
         if (m_argVec[argIndex].compare("true") == 0) {
             return true;
         }
-
-        return false;
+        else {
+            return false;
+        }
     }
 
     /**
@@ -135,6 +139,8 @@ class CliCommand {
             throw clusterlib::InvalidArgumentsException(
                 "getIntArg: Index invalid " + ss.str());
         }
+
+        checkArgVecIndex(argIndex);
         return ::atoi(m_argVec[argIndex].c_str());
     }
 
@@ -152,7 +158,8 @@ class CliCommand {
             throw clusterlib::InvalidArgumentsException(
                 "getStringArg: Index invalid " + ss.str());
         }
-
+        
+        checkArgVecIndex(argIndex);
         return m_argVec[argIndex];
     }
 
@@ -171,6 +178,7 @@ class CliCommand {
                 "getNotifyableArg: Index invalid " + ss.str());
         }
 
+        checkArgVecIndex(argIndex);
         return getClient()->getRoot()->getNotifyableFromKey(
             m_argVec[argIndex]);
     }
@@ -240,6 +248,20 @@ class CliCommand {
     }
     
   private:
+    /** 
+     *  Make sure the argument vector index is valid.
+     */
+    void checkArgVecIndex(int32_t argIndex) 
+    {
+        if ((argIndex >= static_cast<int32_t>(m_argVec.size())) ||
+            (argIndex < 0)) {
+            std::ostringstream oss;
+            oss << "checkArgVecIndex: argIndex = " << argIndex
+                << " and argVec.size = " << m_argVec.size();
+            throw clusterlib::InvalidArgumentsException(oss.str());
+        }
+    }
+
     /**
      * Make sure the argument count is valid.
      */

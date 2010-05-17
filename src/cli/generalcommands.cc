@@ -10,6 +10,7 @@
  * ============================================================================
  */
 
+#include <iostream>
 #include <sys/utsname.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -26,7 +27,7 @@ using namespace json::rpc;
 namespace clusterlib {
 
 SetLogLevel::SetLogLevel()
-        : CliCommand("setloglevel", NULL)
+        : CliCommand("setLogLevel", NULL)
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::IntegerArg);
@@ -84,7 +85,7 @@ SetLogLevel::helpMessage()
 SetLogLevel::~SetLogLevel() {};
 
 RemoveNotifyable::RemoveNotifyable(Client *client) 
-    : CliCommand("removenotifyable", client) 
+    : CliCommand("removeNotifyable", client) 
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::NotifyableArg);
@@ -117,7 +118,7 @@ RemoveNotifyable::helpMessage()
 RemoveNotifyable::~RemoveNotifyable() {}
 
 GetLockBids::GetLockBids(Client *client) 
-    : CliCommand("getlockbids", client, 0)
+    : CliCommand("getLockBids", client, 0)
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::NotifyableArg);
@@ -161,7 +162,7 @@ GetLockBids::helpMessage()
 GetLockBids::~GetLockBids() {}
 
 GetChildren::GetChildren(Client *client) 
-    : CliCommand("getchildren", client, 0) 
+    : CliCommand("getChildren", client, 0) 
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::NotifyableArg);
@@ -202,7 +203,7 @@ GetChildren::helpMessage()
 GetChildren::~GetChildren() {}
 
 GetAttributes::GetAttributes(Client *client) 
-    : CliCommand("getattributes", client) 
+    : CliCommand("getAttributes", client) 
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::NotifyableArg);
@@ -445,7 +446,7 @@ SetDesiredState::helpMessage()
 SetDesiredState::~SetDesiredState() {}
 
 AddApplication::AddApplication(Client *client) 
-    : CliCommand("addapplication", client, 0) 
+    : CliCommand("addApplication", client, 0) 
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::NotifyableArg);
@@ -482,7 +483,7 @@ AddApplication::helpMessage()
 AddApplication::~AddApplication() {}
 
 AddGroup::AddGroup(Client *client) 
-    : CliCommand("addgroup", client) 
+    : CliCommand("addGroup", client) 
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::NotifyableArg);
@@ -516,7 +517,7 @@ AddGroup::helpMessage()
 AddGroup::~AddGroup() {}
 
 AddDataDistribution::AddDataDistribution(Client *client) 
-    : CliCommand("adddatadistribution", client) 
+    : CliCommand("addDataDistribution", client) 
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::NotifyableArg);
@@ -553,7 +554,7 @@ AddDataDistribution::helpMessage()
 AddDataDistribution::~AddDataDistribution() {}
 
 AddNode::AddNode(Client *client) 
-    : CliCommand("addnode", client) 
+    : CliCommand("addNode", client) 
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::NotifyableArg);
@@ -587,7 +588,7 @@ AddNode::helpMessage()
 AddNode::~AddNode() {}
 
 AddPropertyList::AddPropertyList(Client *client) 
-    : CliCommand("addpropertylist", client) 
+    : CliCommand("addPropertyList", client) 
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::NotifyableArg);
@@ -623,7 +624,7 @@ AddPropertyList::helpMessage()
 AddPropertyList::~AddPropertyList() {}
 
 AddQueue::AddQueue(Client *client) 
-    : CliCommand("addqueue", client) 
+    : CliCommand("addQueue", client) 
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::NotifyableArg);
@@ -659,7 +660,7 @@ AddQueue::helpMessage()
 AddQueue::~AddQueue() {}
 
 GetZnode::GetZnode(Factory *factory, Client *client)
-    : CliCommand("getznode", NULL, 0), m_factory(factory) 
+    : CliCommand("getZnode", NULL, 0), m_factory(factory) 
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::StringArg);
@@ -691,7 +692,7 @@ GetZnode::helpMessage()
 GetZnode::~GetZnode() {}
 
 GetZnodeChildren::GetZnodeChildren(Factory *factory, Client *client)
-    : CliCommand("getznodechildren", NULL, 0), m_factory(factory) 
+    : CliCommand("getZnodeChildren", NULL, 0), m_factory(factory) 
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::StringArg);
@@ -746,9 +747,7 @@ void
 Help::action() 
 {
     if (getArgCount() == 0) {
-        m_params->printCommandNames();
-        cout << endl;
-        m_params->printArgNames();
+        m_params->printCommandNamesByGroup();
     }
     else {
         /* Find the command and print out the options for it */
@@ -777,8 +776,80 @@ Help::helpMessage()
  
 Help::~Help() {}
 
+AddAlias::AddAlias(CliParams *cliParams) 
+    : CliCommand("addAlias", NULL),
+      m_params(cliParams)
+{
+    vector<CliCommand::ArgType> argTypeVec;
+    argTypeVec.push_back(CliCommand::StringArg);
+    argTypeVec.push_back(CliCommand::StringArg);
+    setArgTypeVec(argTypeVec);
+} 
+
+void 
+AddAlias::action() 
+{
+    m_params->addAlias(getStringArg(0), getStringArg(1));
+}
+
+string
+AddAlias::helpMessage() 
+{
+    return "First StringArg is the new alias, that maps to the second "
+        "StringArg.  For example, 'root' --> '/_clusterlib/1.0/root' ";
+}
+ 
+AddAlias::~AddAlias() {}
+
+RemoveAlias::RemoveAlias(CliParams *cliParams) 
+    : CliCommand("removeAlias", NULL),
+      m_params(cliParams)
+{
+    vector<CliCommand::ArgType> argTypeVec;
+    argTypeVec.push_back(CliCommand::StringArg);
+    setArgTypeVec(argTypeVec);
+}
+
+void 
+RemoveAlias::action() 
+{
+    m_params->removeAlias(getStringArg(0));
+}
+
+string
+RemoveAlias::helpMessage() 
+{
+    return "First StringArg is the alias to remove.";
+}
+ 
+RemoveAlias::~RemoveAlias() {}
+
+GetAliasReplacement::GetAliasReplacement(CliParams *cliParams) 
+    : CliCommand("getAliasReplacement", NULL),
+      m_params(cliParams)
+{
+    vector<CliCommand::ArgType> argTypeVec;
+    argTypeVec.push_back(CliCommand::StringArg);
+    setArgTypeVec(argTypeVec);
+}
+
+void 
+GetAliasReplacement::action() 
+{
+    cout << "AliasReplacement: " 
+         << m_params->getAliasReplacement(getStringArg(0));
+}
+
+string
+GetAliasReplacement::helpMessage() 
+{
+    return "First StringArg is the alias to find.";
+}
+ 
+GetAliasReplacement::~GetAliasReplacement() {}
+
 JSONRPCCommand::JSONRPCCommand(Client *client, Queue *respQueue) 
-    : CliCommand("jsonrpc", client),
+    : CliCommand("jsonRpc", client),
       m_respQueue(respQueue)
 {
     vector<CliCommand::ArgType> argTypeVec;
@@ -839,7 +910,7 @@ JSONRPCCommand::helpMessage()
 JSONRPCCommand::~JSONRPCCommand() {}
 
 StartProcessSlot::StartProcessSlot(Client *client) 
-    : CliCommand("startprocessslot", client) 
+    : CliCommand("startProcessSlot", client) 
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::NotifyableArg);
@@ -890,7 +961,7 @@ StartProcessSlot::helpMessage()
 StartProcessSlot::~StartProcessSlot() {}
 
 StopProcessSlot::StopProcessSlot(Client *client) 
-    : CliCommand("stopprocessslot", client) 
+    : CliCommand("stopProcessSlot", client) 
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::NotifyableArg);
@@ -930,7 +1001,7 @@ StopProcessSlot::~StopProcessSlot() {}
 
 
 StopActiveNode::StopActiveNode(Client *client) 
-    : CliCommand("stopactivenode", client) 
+    : CliCommand("stopActiveNode", client) 
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::NotifyableArg);
@@ -982,7 +1053,7 @@ Quit::helpMessage()
 Quit::~Quit() {}
 
 BoolArg::BoolArg()
-    : CliCommand("BoolArg", NULL) { } 
+    : CliCommand("boolArg", NULL) { } 
 
 void
 BoolArg::action() 
@@ -999,7 +1070,7 @@ BoolArg::helpMessage()
 BoolArg::~BoolArg() {}
 
 IntegerArg::IntegerArg() 
-    : CliCommand("IntegerArg", NULL) {}
+    : CliCommand("integerArg", NULL) {}
 
 void 
 IntegerArg::action() 
@@ -1017,7 +1088,7 @@ IntegerArg::helpMessage()
 IntegerArg::~IntegerArg() {}
 
 StringArg::StringArg() 
-    : CliCommand("StringArg", NULL) {}
+    : CliCommand("stringArg", NULL) {}
 
 void
 StringArg::action() 
@@ -1035,7 +1106,7 @@ StringArg::helpMessage()
 StringArg::~StringArg() {}
 
 NotifyableArg::NotifyableArg(Client *client) 
-    : CliCommand("NotifyableArg", client) {}
+    : CliCommand("notifyableArg", client) {}
 
 void
 NotifyableArg::action() 

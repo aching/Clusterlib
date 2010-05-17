@@ -14,87 +14,113 @@ using namespace clusterlib;
 
 #ifndef NO_TAB_COMPLETION
 /** 
- * Used by readline.  Try to complete based on previously seen keys or
- * all the different command names.
+ * Used by readline.  Try to complete based on previously seen
+ * Notifyable keys, children of Notifyable keys, all command names,
+ * and all alias replacements.
  */
 static char *
 commandCompletion(const char *text, int iteration)
 {
     CliParams *params = CliParams::getInstance();
 
+    static set<string>::iterator keySetIt;
+    static bool atLeastOneResult = false;
+
+    static map<string, map<string, CliCommand *> >::iterator groupIt;
+    static map<string, CliCommand *>::iterator commandIt;
+
+    static map<string, string>::iterator aliasReplacementMapIt;
+
+    /* Initialize the static members in the first iteration */
+    if (iteration == 0) {
+        keySetIt = params->getKeySet()->begin();
+        
+        groupIt = params->getGroupCommandMap()->begin();
+        commandIt = groupIt->second.begin();
+
+        aliasReplacementMapIt = params->getAliasReplacementMap()->begin();
+    }
+
+    /* Look for a Notifyable key */
     if (text && (text[0] == '/')) {
-        static set<string>::iterator it;
-        static bool atLeastOneResult = false;
-        if (iteration == 0) {
-            it = params->getKeySet()->begin();
-            if (atLeastOneResult == false) {
-                /* No results last time, let's find some */
-                string chopText(text);
-                Root *root = params->getClient()->getRoot();
-                string rootKey(root->getKey());
-                /*
-                 * Algorithm: 
-                 * 
-                 * Cut off a letter each time until an
-                 * entry is found in the key set.  If a key is found,
-                 * get the children and continue.  If no notifyable
-                 * can be retrieved, remove that entry from the set
-                 * and keep going.
-                 */
-                set<string>::iterator chopIt;
-                while (chopText.size() >= rootKey.size()) {
-                    for (chopIt = params->getKeySet()->begin();
-                         chopIt != params->getKeySet()->end();
-                         chopIt++) {
-                        if (chopIt->compare(chopText) == 0) {
-                            Notifyable *ntp = 
-                                root->getNotifyableFromKey(chopText);
-                            if (ntp == NULL) {
-                                params->removeFromKeySet(chopText);
-                            }
-                            else {
-                                NotifyableList nl = ntp->getMyChildren();
-                                NotifyableList::const_iterator nlIt;
-                                for (nlIt = nl.begin(); 
-                                     nlIt != nl.end(); 
-                                     nlIt++) {
-                                    params->addToKeySet((*nlIt)->getKey());
-                                }
+        if (atLeastOneResult == false) {
+            /* No results last time, let's find some */
+            string chopText(text);
+            Root *root = params->getClient()->getRoot();
+            string rootKey(root->getKey());
+            /*
+             * Algorithm: 
+             * 
+             * Cut off a letter each time until an
+             * entry is found in the key set.  If a key is found,
+             * get the children and continue.  If no notifyable
+             * can be retrieved, remove that entry from the set
+             * and keep going.
+             */
+            set<string>::iterator chopIt;
+            while (chopText.size() >= rootKey.size()) {
+                for (chopIt = params->getKeySet()->begin();
+                     chopIt != params->getKeySet()->end();
+                     ++chopIt) {
+                    if (chopIt->compare(chopText) == 0) {
+                        Notifyable *ntp = 
+                            root->getNotifyableFromKey(chopText);
+                        if (ntp == NULL) {
+                            params->removeFromKeySet(chopText);
+                        }
+                        else {
+                            NotifyableList nl = ntp->getMyChildren();
+                            NotifyableList::const_iterator nlIt;
+                            for (nlIt = nl.begin(); 
+                                 nlIt != nl.end(); 
+                                 nlIt++) {
+                                params->addToKeySet((*nlIt)->getKey());
                             }
                         }
                     }
-                    chopText.resize(chopText.size() - 1);
                 }
+                chopText.resize(chopText.size() - 1);
             }
-            atLeastOneResult = false;
         }
+        atLeastOneResult = false;
 
-        for (; it != params->getKeySet()->end(); it++) {
-            if (it->compare(0, strlen(text), text) == 0) {
-                set<string>::iterator returnIt = it;
-                it++;
+        while (keySetIt != params->getKeySet()->end()) {
+            if (keySetIt->compare(0, strlen(text), text) == 0) {
+                set<string>::iterator returnIt = keySetIt;
+                ++keySetIt;
                 atLeastOneResult = true;
                 return strdup(returnIt->c_str());
             }
+            ++keySetIt;
         }
     }
-    else {
-        if (params->getCommandMap()->size() == 0) {
-            return NULL;
-        }
-        
-        static map<string, CliCommand *>::iterator it;
-        if (iteration == 0) {
-            it = params->getCommandMap()->begin();
-        }
-        
-        for (; it != params->getCommandMap()->end(); it++) {
-            if (it->first.compare(0, strlen(text), text) == 0) {
-                map<string, CliCommand *>::iterator returnIt = it;
-                it++;
+
+    /* Look for a matching command */
+    while (groupIt != params->getGroupCommandMap()->end()) {
+        while (commandIt != groupIt->second.end()) {
+            if (commandIt->first.compare(0, strlen(text), text) == 0) {
+                map<string, CliCommand *>::iterator returnIt = commandIt;
+                ++commandIt;
+                if (commandIt == groupIt->second.end()) {
+                    ++groupIt;
+                    commandIt = groupIt->second.begin();
+                }
                 return strdup(returnIt->first.c_str());
             }
+            ++commandIt;
         }
+        ++groupIt;
+        commandIt = groupIt->second.begin();
+    }
+    
+    /* Look for a matching aliases */
+    while (aliasReplacementMapIt != params->getAliasReplacementMap()->end()) {
+        if (aliasReplacementMapIt->first.compare(0, strlen(text), text) == 0) {
+            map<string, string>::iterator returnIt = aliasReplacementMapIt;
+            ++aliasReplacementMapIt;
+            return strdup(returnIt->first.c_str());
+        }
+        ++aliasReplacementMapIt;
     }
 
     return NULL;
@@ -210,10 +236,7 @@ static vector<string> getTokensFromString(string input)
         }
         else if (input[index] == ' ') {
             if (quoteToken == false) {
-                if (startTokenIndex == string::npos) {
-                    startTokenIndex = index;
-                }
-                else {
+                if (startTokenIndex != string::npos) {
                     resVec.push_back(input.substr(startTokenIndex, 
                                                   index - startTokenIndex));
                     startTokenIndex = string::npos;
@@ -247,14 +270,14 @@ CliParams::parseAndRunLine()
     vector<string> components;
 
     if (m_listCommands) {
-        printCommandNames();
+        printCommandNamesByGroup();
         setFinished();
         return;
     }
 
     if (m_command.empty()) {
 #ifndef NO_TAB_COMPLETION
-        m_line = readline("\nEnter command (Use '?' if help is required):\n");
+        m_line = readline(generateWelcomeMessage().c_str());
         /* If the line has text, save it to history. */
         if (m_line && *m_line) {
             add_history(m_line);
@@ -267,7 +290,7 @@ CliParams::parseAndRunLine()
         }        
 #else
         char lineString[4096];
-        cout << "\nEnter command (Use '?' if help is required):" << endl;
+        cout << generateWelcomeMessage();
         cin.getline(lineString, 4096);
         components = getTokensFromString(lineString);
 #endif
@@ -300,6 +323,21 @@ CliParams::parseAndRunLine()
         if (command != NULL) {
             components.erase(components.begin());
             cout << endl;
+            
+            /* Change all tokens to aliases if not removeTokenAlias command */
+            if (command->getCommandName().compare("removeTokenAlias")) {
+                map<string, string>::const_iterator aliasReplacementMapIt;
+                for (it = components.begin(); it != components.end(); ++it) {
+                    aliasReplacementMapIt = m_aliasReplacementMap.find(*it);
+                    if (aliasReplacementMapIt != m_aliasReplacementMap.end()) {
+                        cout << "Note: Replacing token '"
+                             << *it << "' with alias '" 
+                             << aliasReplacementMapIt->second << "'" << endl;
+                        *it = aliasReplacementMapIt->second;
+                    }
+                }
+            }
+
             try {
                 command->setArgVec(components);
                 command->action();
@@ -317,16 +355,95 @@ CliParams::parseAndRunLine()
     }
 }
 
+void
+CliParams::registerCommandByGroup(CliCommand *command, const string &groupName)
+{
+    /*
+     * Do not allow commands with the same name to be registered even
+     * if they are in different groups.
+     */
+    map<string, map<string, CliCommand *> >::const_iterator groupCommandMapIt;
+    map<string, CliCommand *>::const_iterator commandMapIt;
+    for (groupCommandMapIt = m_groupCommandMap.begin();
+         groupCommandMapIt != m_groupCommandMap.end();
+         ++groupCommandMapIt) {
+        commandMapIt = groupCommandMapIt->second.find(
+            command->getCommandName());
+        if (commandMapIt != groupCommandMapIt->second.end()) {
+            throw clusterlib::InvalidArgumentsException(
+                "registerCommand: Command " + command->getCommandName() + 
+                " with group " + groupName + " already exists!");
+        }
+    }
+    
+    m_groupCommandMap[groupName][command->getCommandName()] = command;
+}
+
+void
+CliParams::printCommandNamesByGroup()
+{
+    map<string, map<string, CliCommand *> >::const_iterator groupCommandMapIt;
+    map<string, CliCommand *>::const_iterator commandMapIt;
+    for (groupCommandMapIt = m_groupCommandMap.begin();
+         groupCommandMapIt != m_groupCommandMap.end();
+         ++groupCommandMapIt) {
+        cout << groupCommandMapIt->first << ":" << endl;
+        for (commandMapIt = groupCommandMapIt->second.begin();
+             commandMapIt != groupCommandMapIt->second.end();
+             ++commandMapIt) {
+            cout << " " << commandMapIt->first << endl;
+        }
+        cout << endl;
+    }
+}
+
 CliCommand *
 CliParams::getCommandByName(const string &name)
 {
-    map<string, CliCommand *>::iterator it = 
-        m_commandMap.find(name);
-    if (it == m_commandMap.end()) {
-        return NULL;
+    map<string, map<string, CliCommand *> >::const_iterator groupCommandMapIt;
+    map<string, CliCommand *>::const_iterator commandMapIt;
+    for (groupCommandMapIt = m_groupCommandMap.begin();
+         groupCommandMapIt != m_groupCommandMap.end();
+         ++groupCommandMapIt) {
+        commandMapIt = groupCommandMapIt->second.find(name);
+        if (commandMapIt != groupCommandMapIt->second.end()) {
+            return commandMapIt->second;
+        }
     }
     
-    return it->second;
+    return NULL;
+}
+
+void
+CliParams::addAlias(const string &token, const string &alias)
+{
+    pair<map<string, string>::iterator, bool> ret = 
+        m_aliasReplacementMap.insert(make_pair<string, string>(token, alias));
+    if (ret.second == false) {
+        ostringstream oss;
+        oss << "addAlias: Alias " << alias << " already exists";
+        throw InvalidArgumentsException(oss.str());
+    }
+}
+
+size_t
+CliParams::removeAlias(const string &alias)
+{
+    return m_aliasReplacementMap.erase(alias);
+}
+
+string
+CliParams::getAliasReplacement(const string &alias)
+{
+    map<string, string>::const_iterator aliasReplacementMapIt = 
+        m_aliasReplacementMap.find(alias);
+    if (aliasReplacementMapIt == m_aliasReplacementMap.end()) {
+        ostringstream oss;
+        oss << "getAliasReplacement: Alias " << alias << " not found";
+        throw InvalidArgumentsException(oss.str());
+    }
+    
+    return aliasReplacementMapIt->second;
 }
 
 void
@@ -334,8 +451,40 @@ CliParams::initFactoryAndClient()
 {
     m_factory = new Factory(getZkServerPortList());
     m_client = m_factory->createClient();
-    
+
     /* Add the root key to the key set. */
     addToKeySet(m_client->getRoot()->getKey());
 }
 
+static size_t MaxAliasSize = 15;
+
+string
+CliParams::generateWelcomeMessage()
+{
+    string res;
+    int32_t remainingAliasSize = -1;
+
+    if (!m_aliasReplacementMap.empty()) {
+        res.append("Alias listed below:\n");
+        map<string, string>::const_iterator aliasReplacementMapIt;
+        for (aliasReplacementMapIt = m_aliasReplacementMap.begin();
+             aliasReplacementMapIt != m_aliasReplacementMap.end();
+             ++aliasReplacementMapIt) {
+            res.append("'");
+            res.append(aliasReplacementMapIt->first);
+            res.append("' ");
+            remainingAliasSize = 
+                MaxAliasSize - aliasReplacementMapIt->first.size();
+            if (remainingAliasSize > 0) {
+                res.append(remainingAliasSize, '-');
+            }
+            res.append("> '");
+            res.append(aliasReplacementMapIt->second);
+            res.append("'");
+            res.append("\n");
+        }
+    }
+    res.append("Enter command (Use '?' if help is required):\n");
+
+    return res;
+}

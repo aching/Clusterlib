@@ -217,6 +217,51 @@ class Help : public CliCommand
 };
 
 /**
+ * Add CLI aliases
+ */
+class AddAlias : public CliCommand
+{
+  public:
+    AddAlias(CliParams *cliParams);
+    virtual void action();
+    virtual std::string helpMessage();
+    virtual ~AddAlias();
+
+  private:
+    CliParams *m_params;
+};
+
+/**
+ * Remove CLI aliases
+ */
+class RemoveAlias : public CliCommand
+{
+  public:
+    RemoveAlias(CliParams *cliParams);
+    virtual void action();
+    virtual std::string helpMessage();
+    virtual ~RemoveAlias();
+
+  private:
+    CliParams *m_params;
+};
+
+/**
+ * Get a CLI alias's replacement
+ */
+class GetAliasReplacement : public CliCommand
+{
+  public:
+    GetAliasReplacement(CliParams *cliParams);
+    virtual void action();
+    virtual std::string helpMessage();
+    virtual ~GetAliasReplacement();
+
+  private:
+    CliParams *m_params;
+};
+
+/**
  * Issue JSON-RPC request
  */
 class JSONRPCCommand : public CliCommand
@@ -307,7 +352,7 @@ class IntegerArg : public CliCommand
 };
 
 /**
- * Std::StringArg
+ * StringArg
  */
 class StringArg : public CliCommand
 {
