@@ -1228,10 +1228,12 @@ JSONValue::JSONObject MethodAdaptor::getDataDistribution(
         for (uint32_t i = 0; i < shardVec.size(); ++i) {
             JSONValue::JSONObject shard;
             ostringstream oss;
-            oss << shardVec[i].getStartRange();
+            oss << JSONCodec::encode(
+                shardVec[i].getStartRange().toJSONValue());
             shard["low"] = oss.str();
             oss.str("");
-            oss << shardVec[i].getEndRange();
+            oss << JSONCodec::encode(
+                shardVec[i].getEndRange().toJSONValue());
             shard["high"] = oss.str();
             oss.str("");
             oss << shardVec[i].getPriority();
@@ -1393,8 +1395,8 @@ JSONValue::JSONObject MethodAdaptor::getOneProcessSlotStatus(
     jsonObj[idNotifyableStatus] = statusReady;
     
     JSONValue state;
-    bool found = processSlot->cachedCurrentState().getHistory(
-        0, ProcessSlot::PROCESS_STATE_KEY, state);
+    bool found = processSlot->cachedCurrentState().get(
+        ProcessSlot::PROCESS_STATE_KEY, state);
     if (!found) {
         jsonObj[idNotifyableStatus] = statusInactive;
         jsonObj[idNotifyableState] = "Not being used";        
@@ -1565,9 +1567,9 @@ JSONValue::JSONObject MethodAdaptor::getOneQueueStatus(
 JSONValue::JSONObject MethodAdaptor::getOneShardStatus(
     Shard &shard) {
     JSONValue::JSONObject jsonObj;
-    stringstream ss;
-    ss << "start=" << shard.getStartRange() << ", end="
-       << shard.getEndRange();
+    ostringstream oss;
+    oss << "start=" << JSONCodec::encode(shard.getStartRange().toJSONValue()) 
+        << ", end=" << JSONCodec::encode(shard.getEndRange().toJSONValue());
     Notifyable *notifyable = shard.getNotifyable();
     if (notifyable == NULL) {
         jsonObj[idProperty] = "N/A";
@@ -1582,7 +1584,7 @@ JSONValue::JSONObject MethodAdaptor::getOneShardStatus(
             getOneNotifyableStatus(notifyable);
         jsonObj[idNotifyableStatus] = 
             jsonNotifyableObject[idNotifyableStatus];
-        jsonObj[idNotifyableState] = ss.str();
+        jsonObj[idNotifyableState] = oss.str();
     }
     return jsonObj;
 }

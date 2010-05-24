@@ -18,7 +18,6 @@ namespace clusterlib
 /*
  * Define the types associated with a hash function.
  */
-typedef uint64_t HashRange;
 typedef int32_t  HashFunctionId;
 
 /*
@@ -42,7 +41,6 @@ typedef int32_t TimerId;
 /*
  * Alphabetical order of forward declared classes.
  */
-class Md5Key;
 class Application;
 class ApplicationImpl;
 class CachedMetadata;
@@ -73,12 +71,12 @@ class Factory;
 class FactoryOps;
 class Group;
 class GroupImpl;
+class HashRange;
 class HealthChecker;
 class InternalChangeHandlers;
 class JSONRPCMethodHandler;
 class JSONRPCRequest;
 class JSONRPCResponseHandler;
-class Key;
 class Mutex;
 class Node;
 class NodeImpl;
@@ -114,6 +112,8 @@ class SignalMap;
 class TimerEventHandler;
 class TimerEventPayload;
 class TimerService;
+class Uint64HashRange;
+class UnknownHashRange;
 class UserEventHandler;
 class UserEventPayload;
 

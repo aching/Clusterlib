@@ -24,11 +24,11 @@ libcluster_a_SOURCES = \
 	safenotifyablemap.cc \
 	processthreadservice.cc \
 	clusterlibexceptions.cc \
+	unknownhashrange.cc \
 	json.cc \
 	jsonrpc.cc \
 	queueimpl.cc \
 	processslotimpl.cc \
-	md5key.cc \
 	callbackandcontext.cc \
 	notifyableimpl.cc \
 	nodeimpl.cc \

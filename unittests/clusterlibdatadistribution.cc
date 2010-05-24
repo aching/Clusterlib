@@ -92,14 +92,20 @@ class ClusterlibDataDistribution : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(dist);
             
             dist->acquireLock();
-            dist->cachedShards().insert(0, 999, NULL);
-            dist->cachedShards().insert(1000, 1999, NULL);
+            dist->cachedShards().insert(Uint64HashRange(0), 
+                                        Uint64HashRange(999), 
+                                        NULL);
+            dist->cachedShards().insert(Uint64HashRange(1000),
+                                        Uint64HashRange(1999),
+                                        NULL);
             int32_t shardCount = dist->cachedShards().getCount();
             cerr << "testDataDistribution2: shardCount = " << shardCount
                  << endl;
             MPI_CPPUNIT_ASSERT(shardCount == 2);
             dist->cachedShards().clear();
-            dist->cachedShards().insert(2000, 2999, NULL);
+            dist->cachedShards().insert(Uint64HashRange(2000),
+                                        Uint64HashRange(2999),
+                                        NULL);
             MPI_CPPUNIT_ASSERT(dist->cachedShards().getCount() == 1);
             dist->cachedShards().publish();
             dist->releaseLock();
@@ -127,13 +133,21 @@ class ClusterlibDataDistribution : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(dist);
             
             dist->acquireLock();
-            dist->cachedShards().insert(0, 999, NULL);
-            dist->cachedShards().insert(1000, 1999, NULL);
-            dist->cachedShards().insert(2000, 2999, NULL);
+            dist->cachedShards().insert(Uint64HashRange(0), 
+                                        Uint64HashRange(999),
+                                        NULL);
+            dist->cachedShards().insert(Uint64HashRange(1000),
+                                        Uint64HashRange(1999),
+                                        NULL);
+            dist->cachedShards().insert(Uint64HashRange(2000),
+                                        Uint64HashRange(2999),
+                                        NULL);
             dist->cachedShards().publish();
             MPI_CPPUNIT_ASSERT(dist->cachedShards().isCovered() == false);
             dist->cachedShards().insert(
-                3000, numeric_limits<uint64_t>::max(), NULL);
+                Uint64HashRange(3000), 
+                Uint64HashRange(numeric_limits<uint64_t>::max()),
+                NULL);
             dist->cachedShards().publish();
             MPI_CPPUNIT_ASSERT(dist->cachedShards().getCount() == 4);
             MPI_CPPUNIT_ASSERT(dist->cachedShards().isCovered() == true);
@@ -162,11 +176,21 @@ class ClusterlibDataDistribution : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(dist);
             
             dist->acquireLock();
-            dist->cachedShards().insert(0, 999, NULL);
-            dist->cachedShards().insert(1000, 1999, NULL);
-            dist->cachedShards().insert(2000, 2999, NULL);
-            dist->cachedShards().insert(3000, 3999, NULL);
-            dist->cachedShards().insert(4000, 4999, NULL);
+            dist->cachedShards().insert(Uint64HashRange(0),
+                                        Uint64HashRange(999),
+                                        NULL);
+            dist->cachedShards().insert(Uint64HashRange(1000),
+                                        Uint64HashRange(1999),
+                                        NULL);
+            dist->cachedShards().insert(Uint64HashRange(2000), 
+                                        Uint64HashRange(2999),
+                                        NULL);
+            dist->cachedShards().insert(Uint64HashRange(3000), 
+                                        Uint64HashRange(3999), 
+                                        NULL);
+            dist->cachedShards().insert(Uint64HashRange(4000), 
+                                        Uint64HashRange(4999), 
+                                        NULL);
 
             vector<Shard> shardVec = dist->cachedShards().getAllShards();
             MPI_CPPUNIT_ASSERT(dist->cachedShards().getCount() == 5);
@@ -174,36 +198,46 @@ class ClusterlibDataDistribution : public MPITestFixture {
 
             MPI_CPPUNIT_ASSERT(dist->cachedShards().remove(shardVec[2]) 
                                == true);
-            MPI_CPPUNIT_ASSERT(shardVec[2].getStartRange() == 2000);
-            MPI_CPPUNIT_ASSERT(shardVec[2].getEndRange() == 2999);
+            MPI_CPPUNIT_ASSERT(shardVec[2].getStartRange() == 
+                               Uint64HashRange(2000));
+            MPI_CPPUNIT_ASSERT(shardVec[2].getEndRange() == 
+                               Uint64HashRange(2999));
             MPI_CPPUNIT_ASSERT(shardVec[2].getNotifyable() == NULL);
             MPI_CPPUNIT_ASSERT(dist->cachedShards().getCount() == 4);
 
             MPI_CPPUNIT_ASSERT(dist->cachedShards().remove(shardVec[1]) 
                                == true);
-            MPI_CPPUNIT_ASSERT(shardVec[1].getStartRange() == 1000);
-            MPI_CPPUNIT_ASSERT(shardVec[1].getEndRange() == 1999);
+            MPI_CPPUNIT_ASSERT(shardVec[1].getStartRange() == 
+                               Uint64HashRange(1000));
+            MPI_CPPUNIT_ASSERT(shardVec[1].getEndRange() == 
+                               Uint64HashRange(1999));
             MPI_CPPUNIT_ASSERT(shardVec[1].getNotifyable() == NULL);
             MPI_CPPUNIT_ASSERT(dist->cachedShards().getCount() == 3);
 
             MPI_CPPUNIT_ASSERT(dist->cachedShards().remove(shardVec[4]) 
                                == true);
-            MPI_CPPUNIT_ASSERT(shardVec[4].getStartRange() == 4000);
-            MPI_CPPUNIT_ASSERT(shardVec[4].getEndRange() == 4999);
+            MPI_CPPUNIT_ASSERT(shardVec[4].getStartRange() == 
+                               Uint64HashRange(4000));
+            MPI_CPPUNIT_ASSERT(shardVec[4].getEndRange() == 
+                               Uint64HashRange(4999));
             MPI_CPPUNIT_ASSERT(shardVec[4].getNotifyable() == NULL);
             MPI_CPPUNIT_ASSERT(dist->cachedShards().getCount() == 2);
 
             MPI_CPPUNIT_ASSERT(dist->cachedShards().remove(shardVec[3])
                                == true);
-            MPI_CPPUNIT_ASSERT(shardVec[3].getStartRange() == 3000);
-            MPI_CPPUNIT_ASSERT(shardVec[3].getEndRange() == 3999);
+            MPI_CPPUNIT_ASSERT(shardVec[3].getStartRange() == 
+                               Uint64HashRange(3000));
+            MPI_CPPUNIT_ASSERT(shardVec[3].getEndRange() == 
+                               Uint64HashRange(3999));
             MPI_CPPUNIT_ASSERT(shardVec[3].getNotifyable() == NULL);
             MPI_CPPUNIT_ASSERT(dist->cachedShards().getCount() == 1);
 
             MPI_CPPUNIT_ASSERT(dist->cachedShards().remove(shardVec[0]) 
                                == true);
-            MPI_CPPUNIT_ASSERT(shardVec[0].getStartRange() == 0);
-            MPI_CPPUNIT_ASSERT(shardVec[0].getEndRange() == 999);
+            MPI_CPPUNIT_ASSERT(shardVec[0].getStartRange() == 
+                               Uint64HashRange(0));
+            MPI_CPPUNIT_ASSERT(shardVec[0].getEndRange() == 
+                               Uint64HashRange(999));
             MPI_CPPUNIT_ASSERT(shardVec[0].getNotifyable() == NULL);
             MPI_CPPUNIT_ASSERT(dist->cachedShards().getCount() == 0);
             dist->releaseLock();
@@ -231,7 +265,6 @@ class ClusterlibDataDistribution : public MPITestFixture {
             dist = _app0->getDataDistribution(
                 "dd0", CREATE_IF_NOT_FOUND);
             dist->acquireLock();
-
             MPI_CPPUNIT_ASSERT(dist);
             Node *n0 = _app0->getNode("n0", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(n0);
@@ -240,31 +273,31 @@ class ClusterlibDataDistribution : public MPITestFixture {
             Node *n2 = _app0->getNode("n2", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(n2);
 
-            Md5Key key("hello");
-            cerr << "hashrange of hello is " << key.hashKey() << endl;
-            MPI_CPPUNIT_ASSERT(key.hashKey() == 6719722671305337462LL);
-            vector<Notifyable *> ntpVec = dist->cachedShards().getNotifyables(key);
+            Uint64HashRange hashPoint(6719722671305337462LL);
+            vector<Notifyable *> ntpVec = dist->cachedShards().getNotifyables(
+                hashPoint);
+
             MPI_CPPUNIT_ASSERT(ntpVec.size() == 0);
 
-            dist->cachedShards().insert(0, 6719722671305337462LL, n0);
-            ntpVec = dist->cachedShards().getNotifyables(key);
+            dist->cachedShards().insert(Uint64HashRange(0),
+                                        Uint64HashRange(6719722671305337462LL),
+                                        n0);
+            ntpVec = dist->cachedShards().getNotifyables(hashPoint);
             MPI_CPPUNIT_ASSERT(ntpVec.size() == 1);
             MPI_CPPUNIT_ASSERT(ntpVec[0]->getName().compare("n0") == 0);
 
-            dist->cachedShards().insert(
-                6719722671305337462LL, 6719722671305399999LL, n1);
-            ntpVec = dist->cachedShards().getNotifyables(key);
-            MPI_CPPUNIT_ASSERT(ntpVec.size() == 2);
-            MPI_CPPUNIT_ASSERT(ntpVec[0]->getName().compare("n0") == 0);
-            MPI_CPPUNIT_ASSERT(ntpVec[1]->getName().compare("n1") == 0);
-            ntpVec = dist->cachedShards().getNotifyables(key.hashKey());
+            dist->cachedShards().insert(Uint64HashRange(6719722671305337462LL),
+                                        Uint64HashRange(6719722671305399999LL),
+                                        n1);
+            ntpVec = dist->cachedShards().getNotifyables(hashPoint);
             MPI_CPPUNIT_ASSERT(ntpVec.size() == 2);
             MPI_CPPUNIT_ASSERT(ntpVec[0]->getName().compare("n0") == 0);
             MPI_CPPUNIT_ASSERT(ntpVec[1]->getName().compare("n1") == 0);
 
-            dist->cachedShards().insert(
-                6719722671305337450LL, 6719722671305399999LL, n2);
-            ntpVec = dist->cachedShards().getNotifyables(key.hashKey());
+            dist->cachedShards().insert(Uint64HashRange(6719722671305337450LL),
+                                        Uint64HashRange(6719722671305399999LL),
+                                        n2);
+            ntpVec = dist->cachedShards().getNotifyables(hashPoint);
             MPI_CPPUNIT_ASSERT(ntpVec.size() == 3);
             MPI_CPPUNIT_ASSERT(ntpVec[0]->getName().compare("n0") == 0);
             MPI_CPPUNIT_ASSERT(ntpVec[1]->getName().compare("n2") == 0);
@@ -272,7 +305,7 @@ class ClusterlibDataDistribution : public MPITestFixture {
             vector<Shard> shardVec = dist->cachedShards().getAllShards();
             
             dist->cachedShards().remove(shardVec[0]);
-            ntpVec = dist->cachedShards().getNotifyables(key);
+            ntpVec = dist->cachedShards().getNotifyables(hashPoint);
             MPI_CPPUNIT_ASSERT(ntpVec.size() == 2);
             MPI_CPPUNIT_ASSERT(ntpVec[0]->getName().compare("n2") == 0);
             MPI_CPPUNIT_ASSERT(ntpVec[1]->getName().compare("n1") == 0);
@@ -311,11 +344,15 @@ class ClusterlibDataDistribution : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(n2);
 
             dist->cachedShards().clear();
-            dist->cachedShards().insert(0, 6719722671305337462LL, n0);
-            dist->cachedShards().insert(
-                6719722671305337462LL, 6719722671305399999LL, n1);
-            dist->cachedShards().insert(
-                6719722671305337450LL, 6719722671305399999LL, n2);
+            dist->cachedShards().insert(Uint64HashRange(0),
+                                        Uint64HashRange(6719722671305337462LL),
+                                        n0);
+            dist->cachedShards().insert(Uint64HashRange(6719722671305337462LL),
+                                        Uint64HashRange(6719722671305399999LL),
+                                        n1);
+            dist->cachedShards().insert(Uint64HashRange(6719722671305337450LL),
+                                        Uint64HashRange(6719722671305399999LL),
+                                        n2);
             dist->cachedShards().publish();
             dist->releaseLock();
             barrier(_factory, true);
@@ -363,7 +400,6 @@ class ClusterlibDataDistribution : public MPITestFixture {
             dist = _app0->getDataDistribution(
                 "dd0", CREATE_IF_NOT_FOUND);
             dist->acquireLock();
-
             MPI_CPPUNIT_ASSERT(dist);
             Node *n0 = _app0->getNode("n0", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(n0);
@@ -379,11 +415,15 @@ class ClusterlibDataDistribution : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(p2);
 
             dist->cachedShards().clear();
-            dist->cachedShards().insert(0, 6719722671305337462LL, p0);
-            dist->cachedShards().insert(
-                6719722671305337462LL, 6719722671305399999LL, p1);
-            dist->cachedShards().insert(
-                6719722671305337450LL, 6719722671305399999LL, p2);
+            dist->cachedShards().insert(Uint64HashRange(0),
+                                        Uint64HashRange(6719722671305337462LL),
+                                        p0);
+            dist->cachedShards().insert(Uint64HashRange(6719722671305337462LL),
+                                        Uint64HashRange(6719722671305399999LL),
+                                        p1);
+            dist->cachedShards().insert(Uint64HashRange(6719722671305337450LL),
+                                        Uint64HashRange(6719722671305399999LL),
+                                        p2);
             dist->cachedShards().publish();
             dist->releaseLock();
             PropertyList *pl = _app0->getPropertyList(

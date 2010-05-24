@@ -64,18 +64,17 @@ class CachedShardsImpl
     virtual void loadDataFromRepository(bool setWatchesOnly);
 
   public:
-    virtual std::vector<Notifyable *> getNotifyables(const Key &key);
+    virtual std::string getHashRangeName();
 
-    virtual std::vector<Notifyable *> getNotifyables(HashRange hashedKey);
+    virtual std::vector<Notifyable *> getNotifyables(
+        const HashRange &hashedKey);
 
     virtual uint32_t getCount();
 
     virtual bool isCovered();
 
-    virtual std::vector<HashRange> splitHashRange(int32_t numShards);
-
-    virtual void insert(HashRange start,
-                        HashRange end,
+    virtual void insert(const HashRange &start,
+                        const HashRange &end,
                         Notifyable *ntp,
                         int32_t priority = 0);
     
@@ -98,32 +97,54 @@ class CachedShardsImpl
 
   private:
     /**
-     * Marshall the shards into a JSONValue for publishing.
+     * Marshal the shards into a JSONValue for publishing.
      *
      * @return An JSON array of the shards.
      */
-    json::JSONValue::JSONArray marshallShards();
+    json::JSONValue::JSONArray marshalShards();
 
     /**
-     * unmarshall a stringified sequence of shards into this
-     * object. The shards are stored as a JSONArray of JSONArrays
-     * (begin, end, notifyablekey, priority)
+     * Unmarshal a stringified sequence of shards into this
+     * object. The shards are stored as a JSONArray of JSONArray
+     * objects (begin, end, notifyablekey, priority), with an initial
+     * JSONString at the front of the JSONArray to denote the
+     * HashRange.
      *
      * @param encodedJsonArr The encoded JSON array of shards (each shard 
      *        is a JSON array as well)
      */
-    void unmarshallShards(const std::string &encodedJsonArr);
+    void unmarshalShards(const std::string &encodedJsonArr);
+
+    /**
+     * Throw an InvalidMethodException() is the HashRange is
+     * UnknownHashRange.
+     */
+    void throwIfUnknownHashRange();
     
   private:
     /**
-     * Stores all the shards in this object
+     * Stores all the Shard objects for HashRange types that are not
+     * UnknownHashRange.  Must be a pointer since the HashRange may
+     * change.
      */
-    IntervalTree<HashRange, ShardTreeData> m_shardTree;
+    IntervalTree<HashRange &, ShardTreeData> *m_shardTree;
 
     /**
-     * The number of shards in the tree
+     * The number of shards in the tree.
      */
     int32_t m_shardTreeCount;
+
+    /**
+     * Unsorted storage for UnknownHashRange Shard objects.
+     */
+    std::vector<Shard> m_unknownShardArr;
+
+    /**
+     * Registered HashRange (set implicitly when read, or used).  Can
+     * only be set when Shard objects are loaded or during an insert()
+     * when there are no Shard objects.
+     */
+    HashRange *m_hashRange;
 };
 
 };	/* End of 'namespace clusterlib' */

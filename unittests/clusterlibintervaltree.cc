@@ -43,9 +43,9 @@ class ClusterlibIntervalTree : public MPITestFixture {
                                     false, 
                                     "testIntervalTree1");
         
-        IntervalTree<int, int *> tree;
+        IntervalTree<int, int *> tree(-1, NULL);
         for (int i = 0; i < 20; i ++) {
-            tree.insertNode(i, i + 20, NULL);
+            tree.insertNode(i, i + 20, -1, NULL);
             MPI_CPPUNIT_ASSERT(tree.verifyTree());
         }
     }
@@ -63,25 +63,29 @@ class ClusterlibIntervalTree : public MPITestFixture {
                                     "testIntervalTree2");
 
         IntervalTreeNode<int, int *> *node = NULL;        
-        IntervalTree<int, int *> tree;
+        IntervalTree<int, int *> tree(-1, NULL);
         for (int i = 0; i < 10*10; i += 10) {
-            tree.insertNode(i, i + 9, NULL);
+            tree.insertNode(i, i + 9, -1, NULL);
             MPI_CPPUNIT_ASSERT(tree.verifyTree());
         }
         for (int i = 0; i < 10*10; i += 10) {
             node = tree.intervalSearch(i, i);
             MPI_CPPUNIT_ASSERT(node);
-            tree.deleteNode(node);
+            MPI_CPPUNIT_ASSERT(
+                (node->getStartRange() + 9) == node->getEndRange());
+            delete tree.deleteNode(node);
             MPI_CPPUNIT_ASSERT(tree.verifyTree());
         }        
         for (int i = 0; i < 10*10; i += 10) {
-            tree.insertNode(i, i + 9, NULL);
+            tree.insertNode(i, i + 9, -1, NULL);
             MPI_CPPUNIT_ASSERT(tree.verifyTree());
         }
         for (int i = 90; i >= 0; i -= 10) {
             node = tree.intervalSearch(i, i);
             MPI_CPPUNIT_ASSERT(node);
-            tree.deleteNode(node);
+            MPI_CPPUNIT_ASSERT(
+                (node->getStartRange() + 9) == node->getEndRange());
+            delete tree.deleteNode(node);
             MPI_CPPUNIT_ASSERT(tree.verifyTree());
         }        
     }
@@ -98,16 +102,18 @@ class ClusterlibIntervalTree : public MPITestFixture {
                                     false, 
                                     "testIntervalTree3");
         
-        IntervalTree<int, int *> tree;
+        IntervalTree<int, int *> tree(-1, NULL);
         for (int i = 0; i < 10*10; i += 10) {
-            tree.insertNode(i, i + 9, NULL);
+            tree.insertNode(i, i + 9, -1, NULL);
             MPI_CPPUNIT_ASSERT(tree.verifyTree());
         }
         IntervalTreeNode<int, int *> *node;
         for (int i = 0; i < 10; i++) {
             node = tree.getTreeHead();
             MPI_CPPUNIT_ASSERT(node);
-            tree.deleteNode(node);
+            MPI_CPPUNIT_ASSERT(
+                (node->getStartRange() + 9) == node->getEndRange());
+            delete tree.deleteNode(node);
             MPI_CPPUNIT_ASSERT(tree.verifyTree());
         }        
     }
@@ -124,26 +130,30 @@ class ClusterlibIntervalTree : public MPITestFixture {
                                     false, 
                                     "testIntervalTree4");
         
-        IntervalTree<int, int *> tree;
+        IntervalTree<int, int *> tree(-1, NULL);
         IntervalTreeNode<int, int *> *node = NULL;
         for (int i = 0; i < 41; i++) {
-            tree.insertNode(i*10, i*10 + 9, NULL);
+            tree.insertNode(i*10, i*10 + 9, -1, NULL);
             MPI_CPPUNIT_ASSERT(tree.verifyTree());
         }
         for (int i = 0; i < 41; i++) {
             node = tree.getTreeMinStartRangeNode();
             MPI_CPPUNIT_ASSERT(node);
-            tree.deleteNode(node);
+            MPI_CPPUNIT_ASSERT(
+                (node->getStartRange() + 9) == node->getEndRange());
+            delete tree.deleteNode(node);
             MPI_CPPUNIT_ASSERT(tree.verifyTree());
         }        
         for (int i = 0; i < 41; i++) {
-            tree.insertNode(i*10, i*10 + 9, NULL);
+            tree.insertNode(i*10, i*10 + 9, -1, NULL);
             MPI_CPPUNIT_ASSERT(tree.verifyTree());
         }
         for (int i = 0; i < 41; i++) {
             node = tree.getTreeMaxStartRangeNode();
             MPI_CPPUNIT_ASSERT(node);
-            tree.deleteNode(node);
+            MPI_CPPUNIT_ASSERT(
+                (node->getStartRange() + 9) == node->getEndRange());
+            delete tree.deleteNode(node);
             MPI_CPPUNIT_ASSERT(tree.verifyTree());
         }        
     }
@@ -159,9 +169,9 @@ class ClusterlibIntervalTree : public MPITestFixture {
                                     false, 
                                     "testIntervalTree3");
         
-        IntervalTree<int, int *> tree;
+        IntervalTree<int, int *> tree(-1, NULL);
         for (int i = 0; i < 10*10; i += 10) {
-            tree.insertNode(i, i + 9, NULL);
+            tree.insertNode(i, i + 9, -1, NULL);
             MPI_CPPUNIT_ASSERT(tree.verifyTree());
         }
         IntervalTree<int, int *>::iterator it = tree.begin();

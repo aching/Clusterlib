@@ -39,6 +39,7 @@
 #include "propertylistimpl.h"
 #include "rootimpl.h"
 #include "queueimpl.h"
+#include "unknownhashrange.h"
 #include "safenotifyablemap.h"
 #include "clientimpl.h"
 #include "registerednotifyable.h"

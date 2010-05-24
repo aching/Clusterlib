@@ -90,6 +90,12 @@ FactoryOps::FactoryOps(const string &registry, int64_t connectTimeout)
     }
 
     /*
+     * Register the HashRange objects.
+     */
+    registerHashRange(UnknownHashRange());
+    registerHashRange(Uint64HashRange());
+
+    /*
      * Register all the clusterlib objects.
      */
     RegisteredNotifyable *regNtp = NULL;
@@ -160,11 +166,42 @@ FactoryOps::unregisterAllNotifyables()
 {
     WriteLocker l(&m_registeredNotifyableMapRdWrLock);
     
-    map<string, RegisteredNotifyable *>::iterator registerNotifyableMapIt;
+    map<string, RegisteredNotifyable *>::iterator registeredNotifyableMapIt;
     while (!m_registeredNotifyableMap.empty()) {
-        registerNotifyableMapIt = m_registeredNotifyableMap.begin();
-        delete registerNotifyableMapIt->second;
-        m_registeredNotifyableMap.erase(registerNotifyableMapIt);
+        registeredNotifyableMapIt = m_registeredNotifyableMap.begin();
+        delete registeredNotifyableMapIt->second;
+        m_registeredNotifyableMap.erase(registeredNotifyableMapIt);
+    }
+}
+
+void
+FactoryOps::registerHashRange(const HashRange &hashRange)
+{
+    TRACE(CL_LOG, "registerHashRange");
+    
+    WriteLocker l(&m_registeredHashRangeMapRdWrLock);
+    
+    map<string, HashRange *>::const_iterator registeredHashRangeMapIt = 
+        m_registeredHashRangeMap.find(hashRange.getName());
+    if (registeredHashRangeMapIt != m_registeredHashRangeMap.end()) {
+        ostringstream oss;
+        oss << "registerHashRange: Already has HashRange with name="
+            << hashRange.getName() << " in m_registeredHashRangeMap";
+        throw InvalidArgumentsException(oss.str());
+    }
+    m_registeredHashRangeMap[hashRange.getName()] = &(hashRange.create());
+}
+
+void
+FactoryOps::unregisterAllHashRanges()
+{
+    WriteLocker l(&m_registeredHashRangeMapRdWrLock);
+
+    map<string, HashRange *>::iterator registeredHashRangeMapIt;
+    while (!m_registeredHashRangeMap.empty()) {
+        registeredHashRangeMapIt = m_registeredHashRangeMap.begin();
+        delete registeredHashRangeMapIt->second;
+        m_registeredHashRangeMap.erase(registeredHashRangeMapIt);
     }
 }
 
@@ -434,6 +471,28 @@ FactoryOps::getRegisteredNotifyable(const string &registeredName,
     else {
         return registeredNotifyableIt->second;
     }
+}
+
+HashRange &
+FactoryOps::getHashRange(const string &name)
+{
+    TRACE(CL_LOG, "getHashRange");
+
+    map<string, HashRange *>::const_iterator registeredHashRangeMapIt;
+
+    ReadLocker l(&m_registeredHashRangeMapRdWrLock);
+
+    registeredHashRangeMapIt = m_registeredHashRangeMap.find(name);
+    if (registeredHashRangeMapIt == m_registeredHashRangeMap.end()) {
+        registeredHashRangeMapIt = 
+            m_registeredHashRangeMap.find(UnknownHashRange::name());
+        if (registeredHashRangeMapIt == m_registeredHashRangeMap.end()) {
+            throw InconsistentInternalStateException(
+                "getHashRange: No such HashRange with name = unknown exists!");
+        }
+    }
+
+    return registeredHashRangeMapIt->second->create();
 }
 
 void

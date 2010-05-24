@@ -155,26 +155,21 @@ class IntervalTreeNodeImpl : public IntervalTreeNode<R, D> {
         std::ostream &stream, 
         const IntervalTreeNodeImpl<R, D> &node);
 
-    /**
-     * Generic constructor
-     *
-     * @param isSentinel if true, this node is a sentinel
-     */
-    IntervalTreeNodeImpl(bool isSentinel = false);
-
     /** 
      * Constructor 
      * 
      * @param startRange the start of the interval range (inclusive)
      * @param endRange the end of the interval range (inclusive) the 
-     *        endMaxRange is also initialized to this value
+     *        endRangeMax is also initialized to this value
+     * @param endRangeMax will be set to endRange initially
      * @param data the data stored by this object
      * @param isSentinel if true, this node is a sentinel
      */
     IntervalTreeNodeImpl(R startRange, 
-                     R endRange, 
-                     D data, 
-                     bool isSentinel = false);
+                         R endRange, 
+                         R endRangeMax,
+                         D data, 
+                         bool isSentinel = false);
 
     /** 
      * Set the start range.
@@ -336,33 +331,22 @@ operator<<(std::ostream &stream, const IntervalTreeNodeImpl<R, D> &node)
 }
 
 template<typename R, typename D>
-IntervalTreeNodeImpl<R, D>::IntervalTreeNodeImpl(bool isSentinel) 
-    : m_color(IntervalTreeNodeImpl<R, D>::NONE),
-      m_parentP(this),
-      m_leftChildP(this),
-      m_rightChildP(this),
-      m_sentinel(isSentinel) 
-{
-    if (isSentinel) {
-        m_color = IntervalTreeNode<R, D>::BLACK;
-    }
-}
-
-template<typename R, typename D>
 IntervalTreeNodeImpl<R, D>::IntervalTreeNodeImpl(R startRange, 
-                                         R endRange, 
-                                         D data, 
-                                         bool isSentinel)
+                                                 R endRange, 
+                                                 R endRangeMax,
+                                                 D data, 
+                                                 bool isSentinel)
     : m_color(IntervalTreeNodeImpl<R, D>::NONE),
       m_startRange(startRange),
       m_endRange(endRange),
-      m_endRangeMax(endRange),
+      m_endRangeMax(endRangeMax),
       m_parentP(this),
       m_leftChildP(this),
       m_rightChildP(this),
       m_data(data),
       m_sentinel(isSentinel) 
 {
+    m_endRangeMax = endRange;
     if (isSentinel) {
         m_color = IntervalTreeNode<R, D>::BLACK;
     }
@@ -569,7 +553,7 @@ class IntervalTree {
     /** 
      * Constructor
      */
-    IntervalTree();
+    IntervalTree(R sentinelInitRange, D sentinelInitData);
 
     /** 
      * Find a particular node that matches all the parameters
@@ -602,15 +586,21 @@ class IntervalTree {
      *
      * @param nodeP the node to be deleted
      */
-    void deleteNode(IntervalTreeNode<R, D> * nodeP);
+    IntervalTreeNode<R, D> *deleteNode(IntervalTreeNode<R, D> * nodeP);
 
     /** 
      * Insert a node into the tree (allocated by object).  The
      * balanced tree is maintained by the object.  The user is
      * responsible for managing the memory used for data (if any).
+     *
+     * @param startRange The start of the range (memory managed by the user)
+     * @param endRange The end of the range (memory managed by the user)
+     * @param endRangeMax The end max of the range (memory managed by the user)
+     * @param data The data (memory managed by the user)
      */
     void insertNode(R startRange,
                     R endRange, 
+                    R endRangeMax,
                     D data);
 
     /**
@@ -782,6 +772,7 @@ class IntervalTree {
      */
     IntervalTreeNodeImpl<R, D> *insertNodeIntoTree(R startRange,
                                                    R endRange,
+                                                   R endRangeMax,
                                                    D data);
 
     /** 
@@ -871,7 +862,7 @@ class IntervalTree {
                    int32_t &nodeCount) const;
 
   private:
-    /** Sentinel node that all leaf nodes point to */
+    /** Sentinel node from the user that all leaf nodes point to */
     IntervalTreeNodeImpl<R, D> m_sentinelNode;
 
     /** Head node of the tree */
@@ -879,11 +870,13 @@ class IntervalTree {
 };
 
 template<typename R, typename D> 
-IntervalTree<R, D>::IntervalTree()
-    : m_sentinelNode(true),
+IntervalTree<R, D>::IntervalTree(R sentinelInitRange, D sentinelInitData)
+    : m_sentinelNode(sentinelInitRange, 
+                     sentinelInitRange, 
+                     sentinelInitRange, 
+                     sentinelInitData,
+                     true),
       m_headNodeP(&m_sentinelNode) {}
-
-
 
 template<typename R, typename D> 
 IntervalTreeNode<R, D> *
@@ -940,7 +933,7 @@ IntervalTree<R, D>::intervalSearch(R startRange,
 }
 
 template<typename R, typename D> 
-void
+IntervalTreeNode<R, D> *
 IntervalTree<R, D>::deleteNode(IntervalTreeNode<R, D> *nodeP)
 {
     IntervalTreeNodeImpl<R, D> *xP = getSentinelNode();
@@ -949,9 +942,9 @@ IntervalTree<R, D>::deleteNode(IntervalTreeNode<R, D> *nodeP)
         dynamic_cast<IntervalTreeNodeImpl<R, D> *>(nodeP);
 
     if ((zP == NULL) || (zP == getSentinelNode())) {
-        std::stringstream ss;
-        ss << "deleteNode: zP is bad (" << zP << ")";
-        throw Exception(ss.str());
+        std::ostringstream oss;
+        oss << "deleteNode: zP is bad (" << zP << ")";
+        throw InvalidArgumentsException(oss.str());
     }
 
     if ((zP->getLeftChildImpl() == getSentinelNode()) ||
@@ -992,35 +985,38 @@ IntervalTree<R, D>::deleteNode(IntervalTreeNode<R, D> *nodeP)
         zP->setStartRange(yP->getStartRange());
         zP->setEndRange(yP->getEndRange());
 
-        /* Preserve the endMaxRange semantics */
+        /* Preserve the endRangeMax semantics */
         updateEndRangeMax(zP);
         zP->setData(yP->getData());
     }
 
-    /* Preserve the endMaxRange semantics */
+    /* Preserve the endRangeMax semantics */
     endRangeMaxUpdateAncestors(yP);
-    
+
     if (yP->getColor() == IntervalTreeNode<R, D>::BLACK) {
         deleteFixUp(xP);
     }
 
     /* 
-     * Deallocate the memory associated with the IntervalTreeNode at
-     * this point.  If data was stored, it is gone now from this
-     * object.
+     * Return this pointer for the user to deallocate the memory
+     * associated with the IntervalTreeNode at this point.  If data
+     * was stored, it will be gone from this object after the user
+     * deallocates it.
      */
-    delete yP;
+    return yP;
 }
 
 template<typename R, typename D> 
 void 
 IntervalTree<R, D>::insertNode(R startRange,
                                R endRange,
+                               R endRangeMax,
                                D data)
 {
     IntervalTreeNodeImpl<R, D> *yP = NULL;
     IntervalTreeNodeImpl<R, D> *xP = insertNodeIntoTree(startRange, 
                                                         endRange, 
+                                                        endRangeMax,
                                                         data);
 
     xP->setColor(IntervalTreeNode<R, D>::RED);
@@ -1184,31 +1180,34 @@ IntervalTree<R, D>::checkTree(const IntervalTreeNodeImpl<R, D> *headNodeP,
     /* Check that the nodes's color is valid, if red, has black children. */
     if ((headNodeP->getColor() != IntervalTreeNode<R, D>::RED) &&
         (headNodeP->getColor() != IntervalTreeNode<R, D>::BLACK)) {
-        std::stringstream ss;
-        ss << "checkTree: color '"
-           << IntervalTreeNode<R, D>::getColorString(headNodeP->getColor())
-           << "' is invalid!";
-        LOG_ERROR(ITREE_LOG, "%s", ss.str().c_str());
+        std::ostringstream oss;
+        oss << "checkTree: color '"
+            << IntervalTreeNode<R, D>::getColorString(headNodeP->getColor())
+            << "' is invalid!";
+        LOG_ERROR(ITREE_LOG, "%s", oss.str().c_str());
         return false;
         
     }
     if (headNodeP->getColor() == IntervalTreeNode<R, D>::RED) {
-        if (headNodeP->getColor() == headNodeP->getLeftChildImpl()->getColor()) {
-            std::stringstream ss;
-            ss << "checkTree: color '" 
-               << IntervalTreeNode<R, D>::getColorString(headNodeP->getColor())
-               << "' == left child color '"
-               << IntervalTreeNode<R, D>::getColorString(
-                   headNodeP->getLeftChildImpl()->getColor()) << "'";
-            LOG_ERROR(ITREE_LOG, "%s", ss.str().c_str());
+        if (headNodeP->getColor() == 
+            headNodeP->getLeftChildImpl()->getColor()) {
+            std::ostringstream oss;
+            oss << "checkTree: color '" 
+                << IntervalTreeNode<R, D>::getColorString(
+                    headNodeP->getColor())
+                << "' == left child color '"
+                << IntervalTreeNode<R, D>::getColorString(
+                    headNodeP->getLeftChildImpl()->getColor()) << "'";
+            LOG_ERROR(ITREE_LOG, "%s", oss.str().c_str());
             return false;
         }
-        if (headNodeP->getColor() == headNodeP->getRightChildImpl()->getColor()) {
-            std::stringstream ss;
-            ss << "checkTree: color'" << headNodeP->getColor()
-               << "' < right child color '"
-               << headNodeP->getRightChildImpl()->getColor() << "'";
-            LOG_ERROR(ITREE_LOG, "%s", ss.str().c_str());
+        if (headNodeP->getColor() == 
+            headNodeP->getRightChildImpl()->getColor()) {
+            std::ostringstream oss;
+            oss << "checkTree: color'" << headNodeP->getColor()
+                << "' < right child color '"
+                << headNodeP->getRightChildImpl()->getColor() << "'";
+            LOG_ERROR(ITREE_LOG, "%s", oss.str().c_str());
             return false;
         }
     }
@@ -1217,21 +1216,21 @@ IntervalTree<R, D>::checkTree(const IntervalTreeNodeImpl<R, D> *headNodeP,
     if ((headNodeP->getLeftChildImpl() != getSentinelNode()) &&
         (headNodeP->getStartRange() <= 
          headNodeP->getLeftChildImpl()->getStartRange())) {
-        std::stringstream ss;
-        ss << "checkTree: start range '" << headNodeP->getStartRange()
-           << "' <= start range '"
-           << headNodeP->getLeftChildImpl()->getStartRange() << "'";
-        LOG_ERROR(ITREE_LOG, "%s", ss.str().c_str());
+        std::ostringstream oss;
+        oss << "checkTree: start range '" << headNodeP->getStartRange()
+            << "' <= start range '"
+            << headNodeP->getLeftChildImpl()->getStartRange() << "'";
+        LOG_ERROR(ITREE_LOG, "%s", oss.str().c_str());
         return false;
     }
     if ((headNodeP->getRightChildImpl() != getSentinelNode()) &&
         (headNodeP->getStartRange() > 
          headNodeP->getRightChildImpl()->getStartRange())) {
-        std::stringstream ss;
-        ss << "checkTree: start range '" << headNodeP->getStartRange()
-           << "' <= start range '"
-           << headNodeP->getRightChildImpl()->getStartRange() << "'";
-        LOG_ERROR(ITREE_LOG, "%s", ss.str().c_str());
+        std::ostringstream oss;
+        oss << "checkTree: start range '" << headNodeP->getStartRange()
+            << "' <= start range '"
+            << headNodeP->getRightChildImpl()->getStartRange() << "'";
+        LOG_ERROR(ITREE_LOG, "%s", oss.str().c_str());
         return false;
     }
     
@@ -1244,51 +1243,51 @@ IntervalTree<R, D>::checkTree(const IntervalTreeNodeImpl<R, D> *headNodeP,
     if ((headNodeP->getStartRange() >= 
          headNodeP->getParentImpl()->getStartRange()) &&
         (headNodeP->getParentImpl()->getLeftChildImpl() == headNodeP)) {
-        std::stringstream ss;
-        ss << "checkTree: start range '" << headNodeP->getStartRange()
-           << "' >= start range '" 
-           << headNodeP->getParentImpl()->getStartRange() << "'";
-        LOG_ERROR(ITREE_LOG, "%s", ss.str().c_str());
+        std::ostringstream oss;
+        oss << "checkTree: start range '" << headNodeP->getStartRange()
+            << "' >= start range '" 
+            << headNodeP->getParentImpl()->getStartRange() << "'";
+        LOG_ERROR(ITREE_LOG, "%s", oss.str().c_str());
         return false;
     }
     if ((headNodeP->getStartRange() < 
          headNodeP->getParentImpl()->getStartRange()) &&
         (headNodeP->getParentImpl()->getRightChildImpl() == headNodeP)) {
-        std::stringstream ss;
-        ss << "checkTree: start range '" << headNodeP->getStartRange()
-           << "' < start range '" 
-           << headNodeP->getParentImpl()->getStartRange() << "'";
-        LOG_ERROR(ITREE_LOG, "%s", ss.str().c_str());
+        std::ostringstream oss;
+        oss << "checkTree: start range '" << headNodeP->getStartRange()
+            << "' < start range '" 
+            << headNodeP->getParentImpl()->getStartRange() << "'";
+        LOG_ERROR(ITREE_LOG, "%s", oss.str().c_str());
         return false;
     }
     
     /* Check endRangeMax of self against self and parents */
     if (headNodeP->getEndRangeMax() < headNodeP->getEndRange()) {
-        std::stringstream ss;
-        ss << "checkTree: end range max'" << headNodeP->getEndRangeMax()
-           << "' < end range '"
-           << headNodeP->getEndRange() << "'";
-        LOG_ERROR(ITREE_LOG, "%s", ss.str().c_str());
+        std::ostringstream oss;
+        oss << "checkTree: end range max '" << headNodeP->getEndRangeMax()
+            << "' < end range '"
+            << headNodeP->getEndRange() << "'";
+        LOG_ERROR(ITREE_LOG, "%s", oss.str().c_str());
         return false;
     }
     if ((headNodeP->getLeftChildImpl() != getSentinelNode()) &&
         (headNodeP->getEndRangeMax() < 
          headNodeP->getLeftChildImpl()->getEndRangeMax())) {
-        std::stringstream ss;
-        ss << "checkTree: end range max'" << headNodeP->getEndRangeMax()
-           << "' < end range max '"
-           << headNodeP->getLeftChildImpl()->getEndRangeMax() << "'";
-        LOG_ERROR(ITREE_LOG, "%s", ss.str().c_str());
+        std::ostringstream oss;
+        oss << "checkTree: end range max '" << headNodeP->getEndRangeMax()
+            << "' < end range max '"
+            << headNodeP->getLeftChildImpl()->getEndRangeMax() << "'";
+        LOG_ERROR(ITREE_LOG, "%s", oss.str().c_str());
         return false;
     }
     if ((headNodeP->getRightChildImpl() != getSentinelNode()) &&
         (headNodeP->getEndRangeMax() < 
          headNodeP->getRightChildImpl()->getEndRangeMax())) {
-        std::stringstream ss;
-        ss << "checkTree: end range max'" << headNodeP->getEndRangeMax()
-           << "' < end range max '"
-           << headNodeP->getRightChildImpl()->getEndRangeMax() << "'";
-        LOG_ERROR(ITREE_LOG, "%s", ss.str().c_str());
+        std::ostringstream oss;
+        oss << "checkTree: end range max '" << headNodeP->getEndRangeMax()
+            << "' < end range max '"
+            << headNodeP->getRightChildImpl()->getEndRangeMax() << "'";
+        LOG_ERROR(ITREE_LOG, "%s", oss.str().c_str());
         return false;
     }
     bool foundEndRangeMaxSource = false;
@@ -1306,10 +1305,10 @@ IntervalTree<R, D>::checkTree(const IntervalTreeNodeImpl<R, D> *headNodeP,
         foundEndRangeMaxSource = true;
     }
     if (foundEndRangeMaxSource == false) {
-        std::stringstream ss;
-        ss << "checkTree: end range max '" << headNodeP->getEndRangeMax()
-           << "' != end range, left end range, or right end range";
-        LOG_ERROR(ITREE_LOG, "%s", ss.str().c_str());
+        std::ostringstream oss;
+        oss << "checkTree: end range max '" << headNodeP->getEndRangeMax()
+            << "' != end range, left end range, or right end range";
+        LOG_ERROR(ITREE_LOG, "%s", oss.str().c_str());
         return false;
     }
     
@@ -1330,9 +1329,9 @@ IntervalTree<R, D>::printDepthFirstSearch(
     }
 
     printDepthFirstSearch(headNodeP->getLeftChild());
-    std::stringstream ss;
-    ss << *headNodeP;
-    LOG_INFO(ITREE_LOG, "%s", ss.str().c_str());
+    std::ostringstream oss;
+    oss << *(dynamic_cast<const IntervalTreeNodeImpl<R, D> *>(headNodeP));
+    LOG_INFO(ITREE_LOG, "%s", oss.str().c_str());
     printDepthFirstSearch(headNodeP->getRightChild());
 }
 
@@ -1368,9 +1367,9 @@ IntervalTree<R, D>::printBreadthFirstSearch(
             nextLevelNodes++;
         }
         
-        std::stringstream ss;
-        ss << *(dynamic_cast<const IntervalTreeNodeImpl<R, D> *>(tmpNodeP));
-        LOG_DEBUG(ITREE_LOG, "%s", ss.str().c_str());
+        std::ostringstream oss;
+        oss << *(dynamic_cast<const IntervalTreeNodeImpl<R, D> *>(tmpNodeP));
+        LOG_DEBUG(ITREE_LOG, "%s", oss.str().c_str());
 
         currentLevelNodesSeen++;
         if (currentLevelNodesSeen == currentLevelNodes) {
@@ -1467,12 +1466,16 @@ template<typename R, typename D>
 IntervalTreeNodeImpl<R, D> *
 IntervalTree<R, D>::insertNodeIntoTree(R startRange,
                                        R endRange,
+                                       R endRangeMax,
                                        D data)
 {
     assert(startRange <= endRange);
 
     IntervalTreeNodeImpl<R, D> *zP = 
-        new IntervalTreeNodeImpl<R, D>(startRange, endRange, data);
+        new IntervalTreeNodeImpl<R, D>(startRange, 
+                                       endRange, 
+                                       endRangeMax, 
+                                       data);
     
     /* All links initially point to the sentinel */
     zP->setParent(getSentinelNode());
@@ -1481,7 +1484,7 @@ IntervalTree<R, D>::insertNodeIntoTree(R startRange,
 
     /* 
      * Find the proper location to add the node while updating the
-     * endMaxRange for intermediate nodes
+     * endRangeMax for intermediate nodes
      */
     IntervalTreeNodeImpl<R, D> *xP = getHeadNode();
     IntervalTreeNodeImpl<R, D> *yP = getSentinelNode();
@@ -1524,14 +1527,14 @@ IntervalTree<R, D>::rotateLeft(IntervalTreeNodeImpl<R, D> *nodeP)
     IntervalTreeNodeImpl<R, D> *yP = xP->getRightChildImpl();
 
     if ((xP == NULL) || (xP == getSentinelNode())) {
-        std::stringstream ss;
-        ss << "rotateLeft: xP is bad (" << xP << ")";
-        throw Exception(ss.str());
+        std::ostringstream oss;
+        oss << "rotateLeft: xP is bad (" << xP << ")";
+        throw Exception(oss.str());
     }
     if ((yP == NULL) || (yP == getSentinelNode())) {
-        std::stringstream ss;
-        ss << "rotateLeft: yP is bad (" << yP << ")";
-        throw Exception(ss.str());
+        std::ostringstream oss;
+        oss << "rotateLeft: yP is bad (" << yP << ")";
+        throw Exception(oss.str());
     }
 
     xP->setRightChild(yP->getLeftChildImpl());
@@ -1555,7 +1558,7 @@ IntervalTree<R, D>::rotateLeft(IntervalTreeNodeImpl<R, D> *nodeP)
     yP->setLeftChild(xP);
     xP->setParent(yP);
 
-    /* Preserve the endMaxRange semantics */
+    /* Preserve the endRangeMax semantics */
     updateEndRangeMax(xP);
     updateEndRangeMax(yP);
 }
@@ -1568,14 +1571,14 @@ IntervalTree<R, D>::rotateRight(IntervalTreeNodeImpl<R, D> *nodeP)
     IntervalTreeNodeImpl<R, D> *yP = xP->getLeftChildImpl();
 
     if ((xP == NULL) || (xP == getSentinelNode())) {
-        std::stringstream ss;
-        ss << "xP is bad (" << xP << ")";
-        throw Exception(ss.str());
+        std::ostringstream oss;
+        oss << "xP is bad (" << xP << ")";
+        throw Exception(oss.str());
     }
     if ((yP == NULL) || (yP == getSentinelNode())) {
-        std::stringstream ss;
-        ss << "yP is bad (" << yP << ")";
-        throw Exception(ss.str());
+        std::ostringstream oss;
+        oss << "yP is bad (" << yP << ")";
+        throw Exception(oss.str());
     }
 
     xP->setLeftChild(yP->getRightChildImpl());
@@ -1599,7 +1602,7 @@ IntervalTree<R, D>::rotateRight(IntervalTreeNodeImpl<R, D> *nodeP)
     yP->setRightChild(xP);
     xP->setParent(yP);
 
-    /* Preserve the endMaxRange semantics */
+    /* Preserve the endRangeMax semantics */
     updateEndRangeMax(xP);
     updateEndRangeMax(yP);
 }
@@ -1610,36 +1613,97 @@ IntervalTree<R, D>::endRangeMaxUpdateAncestors(
     IntervalTreeNodeImpl<R, D> *nodeP)
 {
     IntervalTreeNodeImpl<R, D> *tmpNodeP = nodeP;
-    R newEndRangeMax;
 
+    bool sameEndRangeMax = false;
+    bool leftChildPotential = false;
+    bool rightChildPotential = false;
     while (tmpNodeP->getParentImpl() != getSentinelNode()) {
+        sameEndRangeMax = true;
+        leftChildPotential = false;
+        rightChildPotential = false;
         tmpNodeP = tmpNodeP->getParentImpl();
         
         /*
-         * Start with the end range of this node and then compare
-         * aginst the max end range of each of its children.
+         * Since R could be a reference, cannot create a temporary
+         * variable fo type R to just find the best value.  Therefore,
+         * if the end range max is the same as the end range, then,
+         * just check to see if the children should replace it.
+         * Otherwise if the end range max is not the same as the end
+         * range, then it might need to be replaced by the left or
+         * right child.  If none of those replace it, then the end
+         * range should replace the end range max.
          */
-        newEndRangeMax = tmpNodeP->getEndRange();
+        if (tmpNodeP->getEndRangeMax() < tmpNodeP->getEndRange()) {
+            std::ostringstream oss;
+            oss << "endRangeMaxUpdateAncestors: Impossible that max=" 
+                << tmpNodeP->getEndRangeMax() << " and end=" 
+                << tmpNodeP->getEndRange();
+            throw InconsistentInternalStateException(oss.str());
+        }
+
+
         if ((tmpNodeP->getLeftChildImpl() != getSentinelNode()) &&
             (tmpNodeP->getEndRange() < 
              tmpNodeP->getLeftChildImpl()->getEndRangeMax())) {
-            newEndRangeMax = tmpNodeP->getLeftChildImpl()->getEndRangeMax();
+            leftChildPotential = true;
         }
         if ((tmpNodeP->getRightChildImpl() != getSentinelNode()) &&
             (tmpNodeP->getEndRange() < 
              tmpNodeP->getRightChildImpl()->getEndRangeMax())) {
-            newEndRangeMax = tmpNodeP->getRightChildImpl()->getEndRangeMax();
+            rightChildPotential = true;
         }
 
-        /* 
-         * If everything is the same, then no need to proceed up
-         * further.
-         */
-        if (newEndRangeMax == tmpNodeP->getEndRangeMax()) {
-            break;
+        if (leftChildPotential == true && rightChildPotential == true) {
+            /* Right child biggest or left child biggest? */
+            if (tmpNodeP->getLeftChildImpl()->getEndRangeMax() <
+                tmpNodeP->getRightChildImpl()->getEndRangeMax()) {
+                if (tmpNodeP->getRightChildImpl()->getEndRangeMax() !=
+                    tmpNodeP->getEndRangeMax()) {
+                    sameEndRangeMax = false;
+                    tmpNodeP->setEndRangeMax(
+                        tmpNodeP->getRightChildImpl()->getEndRangeMax());
+                }
+            }
+            else {
+                if (tmpNodeP->getLeftChildImpl()->getEndRangeMax() !=
+                    tmpNodeP->getEndRangeMax()) {
+                    sameEndRangeMax = false;
+                    tmpNodeP->setEndRangeMax(
+                        tmpNodeP->getLeftChildImpl()->getEndRangeMax());
+                }
+            }
+        }
+        else if (leftChildPotential == false && rightChildPotential == false) {
+            if (tmpNodeP->getEndRange() != tmpNodeP->getEndRangeMax()) {
+                sameEndRangeMax = false;
+                tmpNodeP->setEndRangeMax(tmpNodeP->getEndRange());
+            }
         }
         else {
-            tmpNodeP->setEndRangeMax(newEndRangeMax);
+            if (leftChildPotential == true) {
+                 if (tmpNodeP->getLeftChildImpl()->getEndRangeMax() !=
+                    tmpNodeP->getEndRangeMax()) {
+                    sameEndRangeMax = false;
+                    tmpNodeP->setEndRangeMax(
+                        tmpNodeP->getLeftChildImpl()->getEndRangeMax());
+                }                
+            }
+            else {
+                  if (tmpNodeP->getRightChildImpl()->getEndRangeMax() !=
+                    tmpNodeP->getEndRangeMax()) {
+                    sameEndRangeMax = false;
+                    tmpNodeP->setEndRangeMax(
+                        tmpNodeP->getRightChildImpl()->getEndRangeMax());
+                }                
+            }
+        }
+        
+        /* 
+         * Nothing changed for this node, therefore the remaining
+         * ancestors are fine.
+         */
+        if (sameEndRangeMax == true) {
+            break;
         }
     }
 }
@@ -1769,9 +1833,9 @@ IntervalTreeNodeImpl<R, D> *
 IntervalTree<R, D>::getSuccesor(IntervalTreeNodeImpl<R, D> *nodeP)
 {
     if ((nodeP == NULL) || (nodeP == getSentinelNode())) {
-        std::stringstream ss;
-        ss << "getSuccesor: nodeP is bad (" << nodeP << ")";
-        throw Exception(ss.str());
+        std::ostringstream oss;
+        oss << "getSuccesor: nodeP is bad (" << nodeP << ")";
+        throw Exception(oss.str());
     }
     IntervalTreeNodeImpl<R, D> *xP = nodeP;
 

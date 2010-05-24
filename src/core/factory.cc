@@ -95,6 +95,14 @@ Factory::synchronize()
     return getOps()->synchronize();
 }
 
+void
+Factory::registerHashRange(const HashRange &hashRange)
+{
+    TRACE(CL_LOG, "registerHashRange");
+
+    getOps()->registerHashRange(hashRange);
+}
+
 zk::ZooKeeperAdapter *
 Factory::getRepository()
 {

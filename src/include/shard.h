@@ -25,9 +25,12 @@ class Shard {
      *
      * @return the start of the range
      */
-    HashRange getStartRange() const 
+    HashRange &getStartRange() const 
     { 
-        return m_startRange;
+        if (m_startRange == NULL) {
+            throw InvalidMethodException("getStartRange: No start range set.");
+        }
+        return *m_startRange;
     }
     
     /**
@@ -35,9 +38,12 @@ class Shard {
      *
      * @return the end of the range
      */
-    HashRange getEndRange() const 
+    HashRange &getEndRange() const 
     { 
-        return m_endRange;
+        if (m_endRange == NULL) {
+            throw InvalidMethodException("getEndRange: No end range set.");
+        }
+        return *m_endRange;
     }
 
     /**
@@ -45,7 +51,7 @@ class Shard {
      *
      * @return the Notifyable * asssociated with this Shard (NULL if none)
      */
-    Notifyable *getNotifyable()
+    Notifyable *getNotifyable() const
     {
         return m_notifyable;
     }
@@ -63,24 +69,82 @@ class Shard {
     /**
      * Constructor.
      */
-    Shard(HashRange startRange, 
-          HashRange endRange, 
+    Shard(const HashRange &startRange, 
+          const HashRange &endRange, 
           Notifyable *ntp, 
           int32_t priority)
-        : m_startRange(startRange),
-          m_endRange(endRange),
+        : m_startRange(&(startRange.create())),
+          m_endRange(&(endRange.create())),
           m_notifyable(ntp),
-          m_priority(priority) {}
-    
+          m_priority(priority) 
+    {
+        *m_startRange = startRange;
+        *m_endRange = endRange;
+    }
+
+    /**
+     * Default constructor.
+     */
+    Shard()
+        : m_startRange(NULL),
+          m_endRange(NULL),
+          m_notifyable(NULL),
+          m_priority(-1) {}
+
+    /**
+     * Copy constructor.
+     */
+    Shard(const Shard &other)
+        : m_startRange(&(other.getStartRange().create())),
+          m_endRange(&(other.getEndRange().create())),
+          m_notifyable(other.getNotifyable()),
+          m_priority(other.getPriority())
+    {
+        *m_startRange = other.getStartRange();
+        *m_endRange = other.getEndRange();
+    }
+
+    /**
+     * Destructor.
+     */
+    ~Shard() 
+    {
+        if (m_startRange != NULL) {
+            delete m_startRange;
+        }
+        if (m_endRange != NULL) {
+            delete m_endRange;
+        }
+    }
+
+    /**
+     * Assignment operator for deep copy.
+     */
+    Shard & operator= (const Shard &other)
+    {
+        if (m_startRange == NULL) {
+            m_startRange = &(other.getStartRange().create());
+            *m_startRange = other.getStartRange();
+        }
+        if (m_endRange == NULL) {
+            m_endRange = &(other.getEndRange().create());
+            *m_endRange = other.getEndRange();
+        }
+        m_notifyable = other.getNotifyable();
+        m_priority = other.getPriority();
+
+        return *this;
+    }
+
   private:
     /** Start of the range */
-    HashRange m_startRange;
+    HashRange *m_startRange;
 
     /** End of the range */
-    HashRange m_endRange;
+    HashRange *m_endRange;
 
     /** Notifyable associated with this shard */
-    Notifyable *m_notifyable;
+    mutable Notifyable *m_notifyable;
 
     /** Priority of this shard */
     int32_t m_priority;

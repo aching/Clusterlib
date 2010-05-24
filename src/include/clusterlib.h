@@ -47,6 +47,8 @@
 #include "cachedkeyvalues.h"
 #include "cachedshards.h"
 #include "cachedprocessinfo.h"
+#include "hashrange.h"
+#include "uint64hashrange.h"
 #include "notifyable.h"
 #include "group.h"
 #include "application.h"
@@ -54,14 +56,11 @@
 #include "node.h"
 #include "processslot.h"
 #include "queue.h"
-#include "key.h"
 #include "shard.h"
 #include "datadistribution.h"
 #include "propertylist.h"
 #include "root.h"
 #include "client.h"
 #include "factory.h"
-
-#include "md5key.h"
 
 #endif	/* !_CL_CLUSTERLIB_H_ */

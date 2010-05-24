@@ -186,6 +186,16 @@ class FactoryOps {
     void registerNotifyable(RegisteredNotifyable *regNtp);
 
     /**
+     * Register a HashRange for use in clusterlib.  This function will
+     * add the HashRange to the m_registeredHashRangeMap.  There is no
+     * need for the user to worry about deallocating any memory as
+     * this object will spawn a copy with create().
+     *
+     * @param hashRange Reference to a HashRange to register.
+     */
+    void registerHashRange(const HashRange &hashRange);
+
+    /**
      * Clean up the cached notifyable maps.  The SafeNotifyableMap
      * destructors will actually clean up the notifyable heap
      * allocated memory.
@@ -557,6 +567,17 @@ class FactoryOps {
         const std::string &registeredName, bool throwIfNotFound = false);
 
     /**
+     * Get a HashRange.  Since the objects are registered and will not
+     * be removed until the FactoryOps destructor, it is safe to
+     * return the objects.
+     *
+     * @param name The name of the HashRange to look for.
+     * @return Reference to the HashRange or UnknownHashRange if
+     *         couldn't be found.
+     */
+    HashRange &getHashRange(const std::string &name);
+
+    /**
      * Register a new Periodic object.  This Periodic object will be
      * run at regular intervals according to its set frequency.
      *
@@ -580,6 +601,11 @@ class FactoryOps {
      */
     void unregisterAllNotifyables();
 
+    /**
+     * Unregister all the HashRange objects.
+     */
+    void unregisterAllHashRanges();
+    
     /**
      * Clean up clients
      */
@@ -647,7 +673,15 @@ class FactoryOps {
      */
     RdWrLock m_registeredNotifyableMapRdWrLock;
 
-    
+    /**
+     * All the registered HashRange objects
+     */
+    std::map<std::string, HashRange *> m_registeredHashRangeMap;
+
+    /**
+     * The lock that protects m_registeredHashRangeMap.
+     */
+    RdWrLock m_registeredHashRangeMapRdWrLock;
 
     /*
      * The registry of timer handlers.

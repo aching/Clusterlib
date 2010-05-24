@@ -101,6 +101,15 @@ class Factory
     void synchronize();
 
     /**
+     * Register a user-defined HashRange for CachedShards in
+     * DataDistribution to understand.  hashRange can be deallocated
+     * anytime after registration.
+     *
+     * @param hashRange Reference to a HashRange to register.
+     */
+    void registerHashRange(const HashRange &hashRange);
+
+    /**
      * Register a new Periodic object.  This Periodic object will be
      * run at regular intervals according to its set frequency.
      *

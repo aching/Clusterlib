@@ -23,22 +23,21 @@ class CachedShards
 {
   public:
     /**
+     * Get the name of the hash range for these shards.
+     *
+     * @return The name of the HashRange.
+     */
+    virtual std::string getHashRangeName() = 0;
+
+    /**
      * Find the Notifyables that the key maps to.  Sorted by priority (high
      * to low)
      *
      * @param key the key to find.
      * @return the vector of Notifyable pointer that have this key
      */
-    virtual std::vector<Notifyable *> getNotifyables(const Key &key) = 0;
-
-    /**
-     * Find the Notifyables that the hashedKey maps to.  Sorted by priority
-     * (high to low)
-     *
-     * @param hashedKey the hashed key to find
-     * @return the vector of Notifyable pointer that have this hashed key
-     */
-    virtual std::vector<Notifyable *> getNotifyables(HashRange hashedKey) = 0;
+    virtual std::vector<Notifyable *> getNotifyables(
+        const HashRange &hashRange) = 0;
     
     /**
      * Return the number of shards in this cached data distribution.
@@ -63,18 +62,6 @@ class CachedShards
     virtual bool isCovered() = 0;
 
     /**
-     * Split the HashRange into a fixed number of shards.  Users can
-     * use this helper function in association with insertShard to
-     * create a simple data distribution.  It is meant as a
-     * convenience function (shards do not have to be the same size).
-     *
-     * @param numShards the number of shards to split the HashRange range into
-     * @return the vector of lower bound HashRange.  The upper bound
-     *         is the next lower bound HashRange in the vector minus 1.
-     */
-    virtual std::vector<HashRange> splitHashRange(int32_t numShards) = 0;
-
-    /**
      * Add a shard to this data distribution.  The changes are not
      * propagated to the repository until after a publish() is
      * successful.
@@ -84,8 +71,8 @@ class CachedShards
      * @param ntp the notifyable that will handle this range
      * @param priority the priority of this shard (-1 is reserved, do not use)
      */
-    virtual void insert(HashRange start,
-                        HashRange end,
+    virtual void insert(const HashRange &start,
+                        const HashRange &end,
                         Notifyable *ntp,
                         int32_t priority = 0) = 0;
     

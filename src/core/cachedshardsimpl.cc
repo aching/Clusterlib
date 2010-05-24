@@ -38,22 +38,47 @@ static bool shardPriorityCompare(Shard a, Shard b)
 
 CachedShardsImpl::CachedShardsImpl(NotifyableImpl *ntp)
     : CachedDataImpl(ntp),
-      m_shardTreeCount(0)
+      m_shardTree(NULL),
+      m_shardTreeCount(0),
+      m_hashRange(NULL)
 {
+    /* 
+     * Start with the UnknownHashRange and initialize to the correct
+     * one later. 
+     */
+    m_hashRange = &(getOps()->getHashRange(UnknownHashRange::name()));
+
+    /*
+     * Do this for consistency.
+     */
+    m_shardTree = new IntervalTree<HashRange &, ShardTreeData>(
+        *m_hashRange, ShardTreeData());
 }
 
 CachedShardsImpl::~CachedShardsImpl()
 {
     Locker l(&getCachedDataLock());
-
+    
     /*
      * Cannot simply call "clear()" since the repository object may have
      * been removed.
      */
-    while (m_shardTree.empty() == false) {
-        m_shardTree.deleteNode(m_shardTree.getTreeHead());
+    IntervalTreeNode<HashRange &, ShardTreeData> *node = NULL;
+    while (m_shardTree->empty() == false) {
+        node = m_shardTree->getTreeHead();
+        
+        node = m_shardTree->deleteNode(node);
+        delete &(node->getStartRange());
+        delete &(node->getEndRange());
+        delete &(node->getEndRangeMax());
+        delete node;
     }
+    delete m_shardTree;
+    m_shardTree = NULL;
     m_shardTreeCount = 0;
+
+    delete m_hashRange;
+    m_hashRange = NULL;
 }
 
 int32_t
@@ -68,7 +93,7 @@ CachedShardsImpl::publish(bool unconditional)
 
     Locker l(&getCachedDataLock());
 
-    string encodedJsonObject = JSONCodec::encode(marshallShards());
+    string encodedJsonObject = JSONCodec::encode(marshalShards());
     LOG_INFO(CL_LOG,
              "Tried to publish shards for notifyable %s to %s "
              "with current version %d, unconditional %d\n",
@@ -147,11 +172,19 @@ CachedShardsImpl::loadDataFromRepository(bool setWatchesOnly)
         return;
     }
 
-    unmarshallShards(encodedJsonValue);
+    unmarshalShards(encodedJsonValue);
+}
+
+string
+CachedShardsImpl::getHashRangeName()
+{
+    Locker l(&getCachedDataLock());
+
+    return m_hashRange->getName();
 }
 
 vector<Notifyable *> 
-CachedShardsImpl::getNotifyables(const Key &key)
+CachedShardsImpl::getNotifyables(const HashRange &hashPoint)
 {
     TRACE(CL_LOG, "getNotifyables");
 
@@ -159,41 +192,24 @@ CachedShardsImpl::getNotifyables(const Key &key)
 
     /* This is a slow implementation, will be optimized later. */
     vector<Shard> shardVec = getAllShards(NULL, -1);
-    /* Sort the shard by priority */
-    sort(shardVec.begin(), shardVec.end(), shardPriorityCompare);
-
-    vector<Shard>::iterator shardVecIt;
     vector<Notifyable *> ntpVec;
-    for (shardVecIt = shardVec.begin(); 
-         shardVecIt != shardVec.end(); 
-         ++shardVecIt) {
-        if ((shardVecIt->getStartRange() <= key.hashKey()) &&
-            (shardVecIt->getEndRange() >= key.hashKey())) {
-            ntpVec.push_back(shardVecIt->getNotifyable());
-        }
+
+    /* Allow this to success if nothing exists */
+    if (shardVec.empty()) {
+        return ntpVec;
     }
 
-    return ntpVec;
-}
+    throwIfUnknownHashRange();
 
-vector<Notifyable *> 
-CachedShardsImpl::getNotifyables(HashRange hashedKey)
-{
-    TRACE(CL_LOG, "getNotifyables");
-
-    getNotifyable()->throwIfRemoved();
-
-    /* This is a slow implementation, will be optimized later. */
-    vector<Shard> shardVec = getAllShards(NULL, -1);
     /* Sort the shard by priority */
     sort(shardVec.begin(), shardVec.end(), shardPriorityCompare);
 
     vector<Shard>::iterator shardVecIt;
-    vector<Notifyable *> ntpVec;
+
     for (shardVecIt = shardVec.begin(); shardVecIt != shardVec.end(); 
-         shardVecIt++) {
-        if ((shardVecIt->getStartRange() <= hashedKey) &&
-            (shardVecIt->getEndRange() >= hashedKey)) {
+         ++shardVecIt) {
+        if ((shardVecIt->getStartRange() <= hashPoint) &&
+            (shardVecIt->getEndRange() >= hashPoint)) {
             ntpVec.push_back(shardVecIt->getNotifyable());
         }
     }
@@ -218,49 +234,47 @@ CachedShardsImpl::isCovered()
     TRACE(CL_LOG, "isCovered");
 
     getNotifyable()->throwIfRemoved();
+    throwIfUnknownHashRange();
 
     Locker l(&getCachedDataLock());
 
-    IntervalTree<HashRange, ShardTreeData>::iterator it;
-    HashRange end = 0;
-    for (it = m_shardTree.begin(); it != m_shardTree.end(); it++) {
-        LOG_DEBUG(CL_LOG, "isCovered: end=%" PRIu64 " sr=%" PRIu64 " er=%"
-                  PRIu64, 
-                  end, it->getStartRange(), it->getEndRange());
+    IntervalTree<HashRange &, ShardTreeData>::iterator it
+        = m_shardTree->begin();
+    if (it->getStartRange().isBegin() == false) {
+        return false;
+    }
+    HashRange &end = m_hashRange->create();
+    end = it->getStartRange();
+    for (; it != m_shardTree->end(); ++it) {
+        LOG_DEBUG(
+            CL_LOG, 
+            "isCovered: end=%s startRange=%s endRange=%s",
+            JSONCodec::encode(end.toJSONValue()).c_str(), 
+            JSONCodec::encode(it->getStartRange().toJSONValue()).c_str(), 
+            JSONCodec::encode(it->getEndRange().toJSONValue()).c_str());
         if (it->getStartRange() > end) {
+            delete &end;
             return false;
         }
         else if (it->getEndRange() >= end) {
-            if (it->getEndRange() == numeric_limits<HashRange>::max()) {
+            if (it->getEndRange().isEnd()) {
+                delete &end;
                 return true;
             }
             else {
-                end = it->getEndRange() + 1;
+                end = it->getEndRange();
+                ++end;
             }
         }
     }
 
+    delete &end;
     return false;
 }
 
-vector<HashRange> 
-CachedShardsImpl::splitHashRange(int32_t numShards)
-{
-    TRACE(CL_LOG, "splitHashRange");
-
-    HashRange shardSize = numeric_limits<HashRange>::max() / numShards;
-    vector<HashRange> resVec;
-    resVec.resize(numShards);
-    for (int32_t i = 0; i < numShards; i++) {
-        resVec[i] = i*shardSize;
-    }
-    
-    return resVec;
-}
-
 void 
-CachedShardsImpl::insert(HashRange start,
-                         HashRange end,
+CachedShardsImpl::insert(const HashRange &start,
+                         const HashRange &end,
                          Notifyable *ntp,
                          int32_t priority) 
 {
@@ -270,7 +284,44 @@ CachedShardsImpl::insert(HashRange start,
     
     Locker l(&getCachedDataLock());
 
-    m_shardTree.insertNode(start, end, ShardTreeData(priority, ntp));
+    /*
+     * Ensure that the HashRange objects are the same type and not
+     * UnknownHashRange.  The only time they need not be the same as
+     * the m_hashRange is if m_shardTreeCount == 0.  Then m_hashRange
+     * is set to this type.
+     */
+    if ((start.getName() == UnknownHashRange::name()) ||
+        (end.getName() == UnknownHashRange::name())) {
+        throw InvalidArgumentsException(
+            "insert: Either start or end has HashRange == UnknownHashRange");
+    }
+
+    if ((m_shardTreeCount == 0) && 
+        (start.getName() != getHashRangeName())) {
+        clear();
+        delete m_hashRange;
+        m_hashRange = &(start.create());
+        delete m_shardTree;
+        m_shardTree = new IntervalTree<HashRange &, ShardTreeData>(
+            *m_hashRange, ShardTreeData());
+    }
+
+    if ((typeid(start) != typeid(*m_hashRange)) ||
+        (typeid(start) != typeid(end))) {
+        throw InvalidArgumentsException(
+            "insert: The types of start, end and "
+            "the set hash range are not in agreement.");
+    }
+
+    /* Alllocate the data that will be put into the tree. */
+    HashRange &finalStart = m_hashRange->create();
+    HashRange &finalEnd = m_hashRange->create();
+    HashRange &finalEndMax = m_hashRange->create();
+    finalStart = start;
+    finalEnd = end;
+
+    m_shardTree->insertNode(
+        finalStart, finalEnd, finalEndMax, ShardTreeData(priority, ntp));
     ++m_shardTreeCount;
 }
 
@@ -286,15 +337,24 @@ CachedShardsImpl::getAllShards(const Notifyable *ntp, int32_t priority)
      * priority.
      */
     vector<Shard> res;
-    IntervalTree<HashRange, ShardTreeData>::iterator treeIt;
+    IntervalTree<HashRange &, ShardTreeData>::iterator treeIt;
 
     Locker l(&getCachedDataLock());
-    for (treeIt = m_shardTree.begin(); treeIt != m_shardTree.end(); ++treeIt) {
-        res.push_back(Shard(treeIt->getStartRange(),
-                            treeIt->getEndRange(),
-                            treeIt->getData().getNotifyable(),
-                            treeIt->getData().getPriority()));
+
+    if (getHashRangeName() == UnknownHashRange::name()) {
+        res = m_unknownShardArr;
     }
+    else {
+        for (treeIt = m_shardTree->begin(); 
+             treeIt != m_shardTree->end(); 
+             ++treeIt) {
+            res.push_back(Shard(treeIt->getStartRange(),
+                                treeIt->getEndRange(),
+                                treeIt->getData().getNotifyable(),
+                                treeIt->getData().getPriority()));
+        }
+    }
+
     vector<Shard>::iterator resIt;
     vector<Shard> finalRes;
     for (resIt = res.begin(); resIt != res.end(); resIt++) {
@@ -318,16 +378,22 @@ CachedShardsImpl::remove(Shard &shard)
     TRACE(CL_LOG, "remove");
 
     getNotifyable()->throwIfRemoved();
+    throwIfUnknownHashRange();
 
     Locker l(&getCachedDataLock());
 
-    IntervalTreeNode<HashRange, ShardTreeData> *treeNtp = 
-        m_shardTree.nodeSearch(shard.getStartRange(),
-                               shard.getEndRange(),
-                               ShardTreeData(shard.getPriority(),
-                                             shard.getNotifyable()));
-    if (treeNtp != NULL) {
-        m_shardTree.deleteNode(treeNtp);
+    IntervalTreeNode<HashRange &, ShardTreeData> *node = 
+        m_shardTree->nodeSearch(shard.getStartRange(),
+                                shard.getEndRange(),
+                                ShardTreeData(shard.getPriority(),
+                                              shard.getNotifyable()));
+    if (node != NULL) {
+        node = m_shardTree->deleteNode(node);
+        delete &(node->getStartRange());
+        delete &(node->getEndRange());
+        delete &(node->getEndRangeMax());
+        delete node;
+
         m_shardTreeCount--;
         return true;
     }
@@ -344,50 +410,70 @@ CachedShardsImpl::clear()
     
     Locker l(&getCachedDataLock());
     
-    while (m_shardTree.empty() == false) {
-        m_shardTree.deleteNode(m_shardTree.getTreeHead());
+    IntervalTreeNode<HashRange &, ShardTreeData> *node = NULL;
+    while (m_shardTree->empty() == false) {
+        node = m_shardTree->getTreeHead();
+
+        node = m_shardTree->deleteNode(node);
+        delete &(node->getStartRange());
+        delete &(node->getEndRange());
+        delete &(node->getEndRangeMax());
+        delete node;
     }
     m_shardTreeCount = 0;
+
+    m_unknownShardArr.clear();
 }
 
 JSONValue::JSONArray
-CachedShardsImpl::marshallShards()
+CachedShardsImpl::marshalShards()
 {
-    TRACE(CL_LOG, "marshallShards");
+    TRACE(CL_LOG, "marshalShards");
 
     getNotifyable()->throwIfRemoved();
-
+    
     Locker l(&getCachedDataLock());
 
-    IntervalTree<HashRange, ShardTreeData>::iterator it;
+    IntervalTree<HashRange &, ShardTreeData>::iterator it;
     JSONValue::JSONArray shardArr;
     JSONValue::JSONArray shardMetadataArr;
-    for (it = m_shardTree.begin(); it != m_shardTree.end(); it++) {
-        shardMetadataArr.clear();
-        shardMetadataArr.push_back(it->getStartRange());
-        shardMetadataArr.push_back(it->getEndRange());
-        if (it->getData().getNotifyable() == NULL) {
-            shardMetadataArr.push_back(string());
+
+    /* Shard format: [ "<HashRange name>",[<shard0],[shard1],...] */
+    if (m_shardTreeCount != 0) {
+        if (m_hashRange->getName() == UnknownHashRange::name()) {
+            throw InvalidMethodException(
+                "marshalShards: Cannot marshal shards if the HashRange is "
+                "UnknownHashRange and the number of elements is > 0");
         }
-        else {
-            shardMetadataArr.push_back(
-                it->getData().getNotifyable()->getKey());
+
+        shardArr.push_back(m_hashRange->getName());
+        for (it = m_shardTree->begin(); it != m_shardTree->end(); it++) {
+            shardMetadataArr.clear();
+            shardMetadataArr.push_back(it->getStartRange().toJSONValue());
+            shardMetadataArr.push_back(it->getEndRange().toJSONValue());
+            if (it->getData().getNotifyable() == NULL) {
+                shardMetadataArr.push_back(string());
+            }
+            else {
+                shardMetadataArr.push_back(
+                    it->getData().getNotifyable()->getKey());
+            }
+            shardMetadataArr.push_back(it->getData().getPriority());
+            shardArr.push_back(shardMetadataArr);
         }
-        shardMetadataArr.push_back(it->getData().getPriority());
-        shardArr.push_back(shardMetadataArr);
     }
 
     LOG_DEBUG(CL_LOG, 
-              "marshallShards: Generated string (%s)", 
+              "marshalShards: Generated string (%s)", 
               JSONCodec::encode(shardArr).c_str());
 
     return shardArr;
 }
 
 void
-CachedShardsImpl::unmarshallShards(const string &encodedJsonArr)
+CachedShardsImpl::unmarshalShards(const string &encodedJsonArr)
 {
-    TRACE(CL_LOG, "unmarshallShards");
+    TRACE(CL_LOG, "unmarshalShards");
 
     getNotifyable()->throwIfRemoved();
 
@@ -396,7 +482,7 @@ CachedShardsImpl::unmarshallShards(const string &encodedJsonArr)
     vector<string>::iterator sIt;
 
     LOG_DEBUG(CL_LOG, 
-              "unmarshallShards: Got encodedJsonArr '%s'", 
+              "unmarshalShards: Got encodedJsonArr '%s'", 
               encodedJsonArr.c_str());
 
     Locker l(&getCachedDataLock());
@@ -408,23 +494,46 @@ CachedShardsImpl::unmarshallShards(const string &encodedJsonArr)
         return;
     }
 
-    JSONValue jsonValue = JSONCodec::decode(encodedJsonArr);
-    if (jsonValue.type() == typeid(JSONValue::JSONNull)) {
+    JSONValue::JSONArray jsonArr = 
+        JSONCodec::decode(encodedJsonArr).get<JSONValue::JSONArray>();
+    if (jsonArr.empty()) {
         return;
     }
-    
-    JSONValue::JSONArray shardArr = jsonValue.get<JSONValue::JSONArray>();
+
     JSONValue::JSONArray shardMetadataArr;    
-    JSONValue::JSONArray::const_iterator shardArrIt;
+    JSONValue::JSONArray::const_iterator jsonArrIt;
     Notifyable *ntp = NULL;
-    for (shardArrIt = shardArr.begin(); 
-         shardArrIt != shardArr.end(); 
-         ++shardArrIt) {
+
+    /* 
+     * First array element should be the HashRange name and should
+     * match the *m_hashRange. 
+     */
+    JSONValue::JSONString hashRangeName = 
+        jsonArr.front().get<JSONValue::JSONString>();
+    jsonArr.pop_front();
+    delete m_hashRange;
+    m_hashRange = &(getOps()->getHashRange(hashRangeName));
+    delete m_shardTree;
+    m_shardTree = new IntervalTree<HashRange &, ShardTreeData>(
+        *m_hashRange, ShardTreeData());
+
+    bool unknownHashRange = false;
+    if (m_hashRange->getName() == UnknownHashRange::name()) {
+        unknownHashRange = true;
+    }
+
+    /*
+     * If this is UnknownHashRange data, put in m_shardArr, otherwise
+     * put in m_shardTree.
+     */
+    for (jsonArrIt = jsonArr.begin(); 
+         jsonArrIt != jsonArr.end(); 
+         ++jsonArrIt) {
         shardMetadataArr.clear();
-        shardMetadataArr = shardArrIt->get<JSONValue::JSONArray>();
+        shardMetadataArr = jsonArrIt->get<JSONValue::JSONArray>();
         if (shardMetadataArr.size() != 4) {
             throw InconsistentInternalStateException(
-                "unmarshallShards: Impossible that the size of the "
+                "unmarshalShards: Impossible that the size of the "
                 "shardMetadataArr != 4");
         }
         
@@ -434,19 +543,35 @@ CachedShardsImpl::unmarshallShards(const string &encodedJsonArr)
         if (!ntpString.empty()) {
             ntp = getOps()->getNotifyableFromKey(vector<string>(), ntpString);
         }
-        m_shardTree.insertNode(
-            shardMetadataArr[0].get<JSONValue::JSONUInteger>(),
-            shardMetadataArr[1].get<JSONValue::JSONUInteger>(),
-            ShardTreeData(shardMetadataArr[3].get<JSONValue::JSONInteger>(),
-                          ntp));
+
+        if (unknownHashRange) {
+            m_unknownShardArr.push_back(
+                Shard(UnknownHashRange(shardMetadataArr[0]),
+                      UnknownHashRange(shardMetadataArr[1]),
+                      ntp,
+                      shardMetadataArr[3].get<JSONValue::JSONInteger>()));
+        }
+        else {
+            HashRange &start = m_hashRange->create();
+            HashRange &end = m_hashRange->create();
+            HashRange &endMax = m_hashRange->create();
+            start.set(shardMetadataArr[0]);
+            end.set(shardMetadataArr[1]);
+            
+            m_shardTree->insertNode(
+                start,
+                end,
+                endMax,
+                ShardTreeData(
+                    shardMetadataArr[3].get<JSONValue::JSONInteger>(),
+                    ntp));
+        }
 
         LOG_DEBUG(CL_LOG,
-                  "unmarshallShards: Found shard: start=%" PRIu64 
-                  " (%s), end=%" PRIu64 " (%s), notifyable key=%s, "
-                  "priority=%" PRId64,
-                  shardMetadataArr[0].get<JSONValue::JSONUInteger>(),
+                  "unmarshalShards: Found shard with HashRange name %s: "
+                  "start=%s end=%s, notifyable key=%s, priority=%" PRId64,
+                  m_hashRange->getName().c_str(),
                   JSONCodec::encode(shardMetadataArr[0]).c_str(),
-                  shardMetadataArr[1].get<JSONValue::JSONUInteger>(),
                   JSONCodec::encode(shardMetadataArr[1]).c_str(),
                   (ntp == NULL) ? "NULL" : ntp->getKey().c_str(),
                   shardMetadataArr[3].get<JSONValue::JSONInteger>());
@@ -455,4 +580,15 @@ CachedShardsImpl::unmarshallShards(const string &encodedJsonArr)
     }
 }
 
-};	/* End of 'namespace clusterlib' */
+void
+CachedShardsImpl::throwIfUnknownHashRange()
+{
+    Locker l(&getCachedDataLock());
+
+    if (getHashRangeName() == UnknownHashRange::name()) {
+        throw InvalidMethodException("throwIfUnknownHashRange: This method is "
+                                     "not available for UnknownHashRange");
+    }
+}
+
+}	/* End of 'namespace clusterlib' */

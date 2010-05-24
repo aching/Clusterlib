@@ -66,15 +66,16 @@ main(int ac, char **av)
 	cerr << "dist name = " << dst->getName() << endl;
 	cerr << "dist key = " << dst->getKey() << endl;
 
-	vector<HashRange> shards;
-	shards.push_back(100);
-	shards.push_back(1000);
-	shards.push_back(10000);
-
 	dst->acquireLock();
-        dst->cachedShards().insert(0, 99, s0);
-        dst->cachedShards().insert(100, 199, s1);        
-        dst->cachedShards().insert(200, 299, s2);
+        dst->cachedShards().insert(Uint64HashRange(0),
+                                   Uint64HashRange(99), 
+                                   s0);
+        dst->cachedShards().insert(Uint64HashRange(100),
+                                   Uint64HashRange(199),
+                                   s1);        
+        dst->cachedShards().insert(Uint64HashRange(200),
+                                   Uint64HashRange(299),
+                                   s2);
 	dst->cachedShards().publish();
 	dst->releaseLock();
 
