@@ -29,8 +29,6 @@ using namespace json;
 namespace clusterlib
 {
 
-const string ProcessSlot::PID_KEY = "_pid";
-
 const string ProcessSlot::DESIRED_PROCESS_STATE_SET_MSECS_KEY = 
     "_desiredProcessStateSetMsecs";
 

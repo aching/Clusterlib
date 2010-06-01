@@ -867,36 +867,34 @@ JSONRPCCommand::action()
         throw Exception("JSONRPCCommand failed to get the queue " +
                         getNativeArg(0));
     }
-    try {
-        JSONValue::JSONObject respObj;
-        JSONValue paramValue = JSONCodec::decode(getNativeArg(2));
-        /*
-         * Add in the response queue to the paramArr.
-         */
-        JSONValue::JSONArray paramArr = 
-            paramValue.get<JSONValue::JSONArray>();
-        JSONValue::JSONObject paramObj = 
-            paramArr[0].get<JSONValue::JSONObject>();
-        paramObj[ClusterlibStrings::JSONOBJECTKEY_RESPQUEUEKEY] = 
-            m_respQueue->getKey();
-        paramArr.clear();
-        paramArr.push_back(paramObj);
-        string queueKey = getNativeArg(0);
-        auto_ptr<json::rpc::JSONRPCRequest> req;
-        /* Use the generic request. */
-        req.reset(new GenericRequest(getClient(), getNativeArg(1)));
-        
-        req->sendRequest(queueKey.c_str());
-        req->waitResponse();
-        respObj = req->getResponse();
-        cout << "response: " << JSONCodec::encode(respObj);
+
+    JSONValue::JSONObject respObj;
+    JSONValue paramValue = JSONCodec::decode(getNativeArg(2));
+    /*
+     * Add in the response queue to the paramArr.
+     */
+    JSONValue::JSONArray paramArr = 
+        paramValue.get<JSONValue::JSONArray>();
+    JSONValue::JSONObject paramObj = 
+        paramArr[0].get<JSONValue::JSONObject>();
+    paramObj[ClusterlibStrings::JSONOBJECTKEY_RESPQUEUEKEY] = 
+        m_respQueue->getKey();
+    paramArr.clear();
+    paramArr.push_back(paramObj);
+    string queueKey = getNativeArg(0);
+    auto_ptr<json::rpc::JSONRPCRequest> req;
+    /* Use the generic request. */
+    req.reset(new GenericRequest(getClient(), getNativeArg(1)));
+    
+    req->sendRequest(queueKey.c_str());
+    req->waitResponse();
+    if ((req->getResponseError()).type() != typeid(JSONValue::JSONNull)) {
+        throw JSONRPCInvocationException(
+            string("GenericRequest failed with error") +
+            JSONCodec::encode(req->getResponseError()));
     }
-    catch (const JSONRPCInvocationException &ex) {
-        throw Exception("JSONRPCCommand failed to parse your JSON-RPC "
-                        "request " + getNativeArg(1) + 
-                        string(" with params ") + getNativeArg(2) + ": " +
-                        ex.what());
-    }
+    respObj = req->getResponse();
+    cout << "response: " << JSONCodec::encode(respObj);
 }
 
 string
@@ -1005,6 +1003,7 @@ StopActiveNode::StopActiveNode(Client *client)
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::NotifyableArg);
+    argTypeVec.push_back(CliCommand::BoolArg);
     setArgTypeVec(argTypeVec);
 } 
 
@@ -1018,8 +1017,12 @@ StopActiveNode::action()
     }
     node->acquireLock();
 
-    node->cachedDesiredState().set(Node::ACTIVENODE_SHUTDOWN,
-                                   true);
+    bool shutdown = true;
+    if (getArgCount() > 1) {
+        shutdown = getBoolArg(1);
+    }
+    node->cachedDesiredState().set(
+        Node::ACTIVENODE_SHUTDOWN, shutdown);
     node->cachedDesiredState().publish();
 
     node->releaseLock();
@@ -1028,7 +1031,8 @@ StopActiveNode::action()
 string
 StopActiveNode::helpMessage()
 {
-    return "Shutdown an ActiveNode.  NotifyableArg is the Node notifyable.";
+    return "Shutdown an ActiveNode.  NotifyableArg is the Node notifyable. "
+        " BoolArg is optional, if not set, defaults to true";
 }
  
 StopActiveNode::~StopActiveNode() {}

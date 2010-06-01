@@ -7,12 +7,15 @@ INCLUDES = \
 	-I@MPICH_INCLUDES@ \
         -I@CPPUNIT_INCLUDES@
 METASOURCES = AUTO
-# Only build the unittests if MPICH and cppunit are present
+# Only build the unittests and libraries if MPICH and cppunit are present
 if HAVE_MPICH
 if HAVE_CPPUNIT
+lib_LIBRARIES = libunittests.a
 bin_PROGRAMS = unittests
 endif
 endif
+libunittests_a_SOURCES = \
+	testparams.cc
 unittests_LDADD = \
 	$(top_builddir)/src/core/libcluster.a \
 	@LOG4CXX_LIB@ \

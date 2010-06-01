@@ -21,6 +21,8 @@ using namespace std;
 namespace clusterlib
 {
 
+const string Notifyable::PID_KEY = "_pid";
+
 NameList
 NotifyableImpl::getPropertyListNames() 
 {

@@ -8,7 +8,8 @@
   
 #include "clusterlibinternal.h"
   
-namespace clusterlib {
+namespace clusterlib 
+{
 
 /**
  * The amount of delay prior to checking if the filename has changed

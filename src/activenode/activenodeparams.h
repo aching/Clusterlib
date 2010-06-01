@@ -35,9 +35,7 @@ class ActiveNodeParams
     /**
      * Constructor
      */
-    ActiveNodeParams() :
-        m_numProcs(0),
-        m_outputType(FILE) {}
+    ActiveNodeParams();
 
     /**
      * Print the usage
@@ -73,9 +71,17 @@ class ActiveNodeParams
      *
      * @return the groups as a vector
      */
-    const std::vector<std::string> &getGroupsVec() const 
+    const std::vector<std::string> &getGroupVec() const 
     {
-        return m_groupsVec; 
+        return m_groupVec; 
+    }
+
+    /**
+     * Set the groups as a vector.
+     */
+    void setGroupVec(const std::vector<std::string> &groupVec)
+    {
+        m_groupVec = groupVec;
     }
 
     /**
@@ -100,12 +106,22 @@ class ActiveNodeParams
      */
     const std::string &getNodeName() const { return m_nodeName; }
 
+    /**
+     * Get the number of milliseconds to check.
+     */
+    const int32_t getCheckMsecs() const { return m_checkMsecs; }
+
   private:
     /**
      * The name of the node (either defaulting to the hostname or a
      * user-specified name).
      */
     std::string m_nodeName;
+
+    /**
+     * The number of milliseconds to wait in between node checks.
+     */
+    int32_t m_checkMsecs;
 
     /**
      * The number of processes to run this test with
@@ -115,7 +131,7 @@ class ActiveNodeParams
     /**
      * Vector of the groups hierarchy that the node belongs in. 
      */
-    std::vector<std::string> m_groupsVec;
+    std::vector<std::string> m_groupVec;
 
     /** 
      * The command separated list of ZooKeeper Servers

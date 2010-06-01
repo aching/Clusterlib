@@ -131,25 +131,23 @@ ProcessThreadService::waitPid(pid_t processId, int32_t &returnCode)
     int statVal;
     pid_t curId = -1;
     returnCode = -1;
-    while (curId != processId) {
-        oss.str("");
-        oss << "waitPid: Waiting for processId " << processId;
-        LOG_DEBUG(CL_LOG, oss.str().c_str());
-        curId = ::wait(&statVal);
-        if (curId == -1) {
-            if (errno == ECHILD) {
-                LOG_ERROR(CL_LOG,
-                          "waitPid: No child processes while waiting for %d", 
-                          processId);
-                return false;
-            }
-        }
+    oss.str("");
+    oss << "waitPid: Waiting for processId " << processId;
+    LOG_DEBUG(CL_LOG, "%s", oss.str().c_str());
 
-        oss.str();
-        oss << "waitPid: Got curId " << curId
-            << " (looking for " << processId << ")"; 
-        LOG_DEBUG(CL_LOG, oss.str().c_str());
+    /*
+     * Since the 'options = 0', waitpid will wait until the
+     * termination of the process, not just a change in state.
+     */
+    curId = ::waitpid(processId, &statVal, 0);
+    if (curId == -1) {
+        oss.str("");
+        oss << "waitPid: Error waiting for pid " << processId 
+            << " with errno=" << errno << " and error=" << strerror(errno);
+        LOG_ERROR(CL_LOG, "%s", oss.str().c_str());
+        return false;
     }
+
     if (WIFEXITED(statVal)) {
         returnCode = WEXITSTATUS(statVal);
         return true;
@@ -186,6 +184,14 @@ ProcessThreadService::getHostname()
     return tmp;
 }
 
+pid_t
+ProcessThreadService::getPid()
+{
+    TRACE(CL_LOG, "getPid");
+    
+    return getpid();
+}
+
 int32_t
 ProcessThreadService::getTid()
 {
@@ -204,9 +210,9 @@ ProcessThreadService::getHostnamePidTid()
      * thread.
      */
     stringstream ss;
-    ss << getHostname() << ".pid." << getpid() 
+    ss << getHostname() << ".pid." << getPid() 
        << ".tid." << gettid();
     return ss.str();
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

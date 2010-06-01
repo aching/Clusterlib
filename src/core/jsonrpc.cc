@@ -130,9 +130,9 @@ JSONRPCManager::invoke(const JSONValue &rpcInvocation,
             ex.what(), id);
     }
 
-    RPCMethodMap::const_iterator methodIter;
     Locker l(getLock());
-    methodIter = m_rpcMethods.find(method);
+
+    RPCMethodMap::const_iterator methodIter = m_rpcMethods.find(method);
     if (methodIter == m_rpcMethods.end()) {
         // Method not found
         return generateErrorResponse(

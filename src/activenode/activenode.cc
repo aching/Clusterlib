@@ -29,11 +29,6 @@ namespace activenode {
 static const size_t hostnameSize = 255;
 
 /**
- * Run check every 15 seconds for the node.
- */
-static const int64_t ActiveNodeCheckMsecsFrequency = 15 * 1000;
-
-/**
  * Run check every 2 seconds for each ProcessSlot.
  */
 static const int64_t ProcessSlotUpdaterFrequency = 2 * 1000;
@@ -43,7 +38,7 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
       m_factory(factory) 
 {
 
-    vector<string> groupVec = m_params.getGroupsVec();
+    vector<string> groupVec = m_params.getGroupVec();
     if (groupVec.size() <= 0) {
         LOG_FATAL(CL_LOG, "No groups found in the group vector");
         return;
@@ -54,35 +49,26 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
     m_root = m_client->getRoot();
     m_activeNodeGroup = m_root->getApplication(groupVec[0], 
                                                CREATE_IF_NOT_FOUND);
-    for (size_t i = 1; i < m_params.getGroupsVec().size(); i++) {
+    for (size_t i = 1; i < m_params.getGroupVec().size(); i++) {
         m_activeNodeGroup = m_activeNodeGroup->getGroup(groupVec[i], 
                                                         CREATE_IF_NOT_FOUND);
     }
 
     string nodeName = m_params.getNodeName();
-    if (nodeName.empty()) {
-        struct utsname uts;
-        int ret = uname(&uts);
-        if (ret == -1) {
-            LOG_FATAL(CL_LOG, "Couldn't get hostname: %s",
-                  strerror(errno));
-        }
-        nodeName = uts.nodename;
-    }
 
     /* 
      * Start updating the node health and setting up the ProcessSlot
-     * objects.
+     * objects as soon as ownership is acquired.
      */
     Mutex activeNodeMutex;
     m_activeNode = m_activeNodeGroup->getNode(nodeName, CREATE_IF_NOT_FOUND);
     m_activeNode->acquireOwnership();
-    Periodic *activeNodePeridicCheck = 
-        new ActiveNodePeriodicCheck(ActiveNodeCheckMsecsFrequency, 
+    m_activeNodePeriodicCheck = 
+        new ActiveNodePeriodicCheck(m_params.getCheckMsecs(), 
                                     m_activeNode,
                                     m_predMutexCond);
-    m_periodicVec.push_back(activeNodePeridicCheck);
-    m_factory->registerPeriodicThread(*activeNodePeridicCheck);
+    m_periodicVec.push_back(m_activeNodePeriodicCheck);
+    m_factory->registerPeriodicThread(*m_activeNodePeriodicCheck);
     
     /* Get rid of all the previous ProcessSlot objects */
     NameList nl = m_activeNode->getProcessSlotNames();
@@ -174,6 +160,12 @@ ActiveNode::run(vector<ClusterlibRPCManager *> &rpcManagerVec)
     }
     
     return 0;
+}
+
+Periodic *
+ActiveNode::getActiveNodePeriodicCheck()
+{
+    return m_activeNodePeriodicCheck;
 }
 
 }

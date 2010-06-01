@@ -63,6 +63,13 @@ class ActiveNode
     int32_t run(
         ::std::vector< ::clusterlib::ClusterlibRPCManager *> &rpcManagerVec);
 
+    /**
+     * Get the ActiveNodePeriodicCheck pointer.
+     *
+     * @return Pointer to m_activeNodePeriodicCheck.
+     */
+    clusterlib::Periodic *getActiveNodePeriodicCheck();
+
   private:
     /**
      * Parsed parameters.
@@ -103,6 +110,11 @@ class ActiveNode
      * The vector of all the Periodic functions.
      */
     std::vector<clusterlib::Periodic *> m_periodicVec;
+
+    /**
+     * Pointer to the ActiveNodePeriodicCheck
+     */
+    clusterlib::Periodic *m_activeNodePeriodicCheck;
 
     /**
      * When the signal is sent, the shutdown will begin.

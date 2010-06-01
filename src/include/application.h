@@ -23,6 +23,6 @@ class Application
 {
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_APPLICATION_H_ */

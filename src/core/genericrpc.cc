@@ -31,7 +31,7 @@ void
 GenericRPC::checkParams(const JSONValue::JSONArray &paramArr)
 {
     if (paramArr.size() != 1) {
-        throw JSONRPCInvocationException(
+        throw JSONRPCParamsException(
             "checkParams: Expecting one array element");
     }
 }

@@ -18,7 +18,8 @@ namespace clusterlib
  * This class provides a static functions to help manipulate processes
  * and therads.
  */
-class ProcessThreadService {
+class ProcessThreadService 
+{
   public:
     /**
      * Starts up a process 
@@ -67,6 +68,13 @@ class ProcessThreadService {
     static std::string getHostname();
 
     /**
+     * Get the process id.
+     * 
+     * @return The process id of this process.
+     */
+    static pid_t getPid();
+
+    /**
      * Get the thread id.
      * 
      * @return thread id converted to int32_t
@@ -82,6 +90,6 @@ class ProcessThreadService {
     static std::string getHostnamePidTid();
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_PROCESSTHREADSERVICE_H_ */

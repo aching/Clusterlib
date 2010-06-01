@@ -1,10 +1,24 @@
 #include "clusterlibinternal.h"
 #include "activenodeparams.h"
 
+using namespace clusterlib;
 using namespace std;
 using namespace boost;
 
-namespace activenode {
+namespace activenode 
+{
+
+/**
+ * Default check frequency
+ */
+static int32_t DefaultCheckMsecs = 15 * 1000;
+
+ActiveNodeParams::ActiveNodeParams() :
+    m_checkMsecs(DefaultCheckMsecs),
+    m_numProcs(0),
+    m_outputType(FILE) 
+{
+}
 
 void 
 ActiveNodeParams::printUsage(char *exec) const
@@ -20,6 +34,8 @@ ActiveNodeParams::printUsage(char *exec) const
 " -z  --zk_server_port  Zookeeper server port list \n"
 "                       (i.e. wm301:2181,wm302:2181)\n"
 " -p  --num_processes   The number of processes to manage\n"
+" -P  --periodic_check  Milliseconds to wait between node checks\n"
+"                       (default " << DefaultCheckMsecs << ")\n"
 " -N  --node_name       If not set, the node name defaults to the hostname\n"
 " -o  --output_type     Choose the output type.\n"
 "                       console - console output\n"
@@ -35,6 +51,7 @@ ActiveNodeParams::parseArgs(int argc, char **argv)
         {"node_location", 1, NULL, 'n'},
         {"zk_server_port_list", 1, NULL, 'z'},
         {"num_processes", 1, NULL, 'p'},
+        {"periodic_check", 1, NULL, 'P'},
         {"node_name", 1, NULL, 'N'},
         {"output_type", 1, NULL, 'o'},
         {0,0,0,0}
@@ -44,7 +61,7 @@ ActiveNodeParams::parseArgs(int argc, char **argv)
     int32_t option_index = 0;
     int32_t err = -1;
     int32_t ret = 0;
-    const char *optstring = ":hn:z:p:N:o:";
+    const char *optstring = ":hn:z:p:P:N:o:";
 
     /* Parse all standard command line arguments */
     while (1) {
@@ -57,12 +74,12 @@ ActiveNodeParams::parseArgs(int argc, char **argv)
                 printUsage(argv[0]);
                 exit(-1);
             case 'n':
-                split(m_groupsVec, optarg, is_any_of(";"));
-                if (m_groupsVec.begin()->empty()) {
-                    m_groupsVec.erase(m_groupsVec.begin());
+                split(m_groupVec, optarg, is_any_of(";"));
+                if (m_groupVec.begin()->empty()) {
+                    m_groupVec.erase(m_groupVec.begin());
                 }
-                if (m_groupsVec.back().empty()) {
-                    m_groupsVec.pop_back();
+                if (m_groupVec.back().empty()) {
+                    m_groupVec.pop_back();
                 }
                 break;
             case 'z':
@@ -70,6 +87,13 @@ ActiveNodeParams::parseArgs(int argc, char **argv)
                 break;
             case 'p':
                 m_numProcs = ::atoi(optarg);
+                break;
+            case 'P':
+                m_checkMsecs = ::atoi(optarg);
+                if (m_checkMsecs <= 0) {
+                    cout << "Invalid -P option (must be > 0)" << endl;
+                    exit(-1);
+                }
                 break;
             case 'N':
                 m_nodeName = optarg;
@@ -90,25 +114,33 @@ ActiveNodeParams::parseArgs(int argc, char **argv)
                 }
                 break;
             default:
-                cout << "Option -" 
-                     << static_cast<char>(optopt) 
+                cout << "Option -" << static_cast<char>(optopt)
                      << " is invalid" << endl;
                 exit(-1);
         }
     }
 
-    if (m_groupsVec.empty()) {
+    if (m_groupVec.empty()) {
         cout << "Option -n needs to be set" << endl;
         printUsage(argv[0]);
         ::exit(-1);
     }
     if (m_zkServerPortList.empty()) {
-        cout << "Option -z needs to be set" << endl;;
+        cout << "Option -z needs to be set" << endl;
         printUsage(argv[0]);
         ::exit(-1);
     }
     if (m_numProcs <= 0) {
-        cout << "Option -p needs to be set and be greater than 0" << endl;;
+        cout << "Option -p needs to be set and be greater than 0" << endl;
+        printUsage(argv[0]);
+        ::exit(-1);
+    }
+    if (m_nodeName.empty()) {
+        m_nodeName = ProcessThreadService::getHostname();
+    }
+
+    if (m_nodeName.empty()) {
+        cout << "Node name is impossibly empty." << endl;
         printUsage(argv[0]);
         ::exit(-1);
     }

@@ -1,10 +1,13 @@
 @SOURCE_PATH@/src/include			/include
 - *.h
 
-@SOURCE_PATH@/src/cli	         		/include
+@SOURCE_PATH@/src/cli	         		/include/cli
 - *.h
 
-@SOURCE_PATH@/src/activenode        		/include
+@SOURCE_PATH@/src/activenode        		/include/activenode
+- *.h
+
+@SOURCE_PATH@/unittests	        		/include/unittests
 - *.h
 
 @BUILD_PATH@/src/core				/lib
@@ -15,6 +18,9 @@
 
 @BUILD_PATH@/src/activenode			/lib
 - libactivenode.a
+
+@BUILD_PATH@/unittests				/lib
+- libunittests.a
 
 @BUILD_PATH@/src/cli				/bin
 - cli
@@ -27,3 +33,6 @@
 
 @SOURCE_PATH@/misc				/conf
 - log4cxx.cfg
+
+@SOURCE_PATH@/unittests				/scripts
+- unittestsHelper.pl.in

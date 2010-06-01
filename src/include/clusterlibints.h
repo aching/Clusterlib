@@ -11,20 +11,23 @@
 #ifndef	_CL_CLUSTERLIBINTS_H_
 #define	_CL_CLUSTERLIBINTS_H_
 
-#include <iostream>
-
 namespace clusterlib
 {
 
- /**
-  * How do you want to access the Notifyable?
-  */
+/**
+ * How do you want to access the Notifyable?
+ */
 enum AccessType {
     CACHED_ONLY = 0, ///< Only try to get the data in the cache, not repository
     LOAD_FROM_REPOSITORY, ///< Only check the cache and the repository
     CREATE_IF_NOT_FOUND, ///< Create if not found in the cache or repository
 };
 
+/**
+ * Helper function to get the AccessType as a string.
+ *
+ * @return The AccessType as a string.
+ */
 std::string getAccessTypeString(AccessType accessType);
 
 /**
@@ -91,6 +94,6 @@ class ClusterlibInts
     }
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_CLUSTERLIBINTS_H_ */

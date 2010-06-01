@@ -218,7 +218,8 @@ class CliCommand {
     clusterlib::Client *getClient() { return m_client; }
 
     /**
-     * Subclasses commands must define the action to take.
+     * Subclasses commands must define the action to take.  If there
+     * was a failure, they should throw the appropriate exception.
      */
     virtual void action() = 0;
 

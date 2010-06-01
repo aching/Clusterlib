@@ -581,7 +581,6 @@ FactoryOps::cancelPeriodicThread(Periodic &periodic)
     periodicMapIt->second->getPredMutexCond().predSignal();
     periodicMapIt->second->Join();
     m_periodicMap.erase(periodicMapIt);
-    delete periodicMapIt->second;
 
     return true;
 }

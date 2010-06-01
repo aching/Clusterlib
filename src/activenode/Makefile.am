@@ -8,7 +8,9 @@ METASOURCES = AUTO
 lib_LIBRARIES = libactivenode.a
 libactivenode_a_SOURCES = \
 	activenode.cc \
-	activenodeparams.cc
+	activenodeparams.cc \
+	activenodeperiodiccheck.cc \
+	processslotupdater.cc
 bin_PROGRAMS = activenode
 activenode_LDADD = \
         $(top_builddir)/src/core/libcluster.a \

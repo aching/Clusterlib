@@ -41,7 +41,7 @@ MethodAdaptor::invoke(const std::string &name,
     if (name == "getNotifyableAttributesFromKey") {
         if (param.size() != 1 || 
             param[0].type() != typeid(JSONValue::JSONString)) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires one string parameter.");
         }
         return getNotifyableAttributesFromKey(
@@ -49,7 +49,7 @@ MethodAdaptor::invoke(const std::string &name,
     } else if (name == "setNotifyableAttributesFromKey") {
         if (param.size() != 1 ||
             param[0].type() != typeid(JSONValue::JSONArray)) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires at one array parameter.");
         }
         return setNotifyableAttributesFromKey(
@@ -59,7 +59,7 @@ MethodAdaptor::invoke(const std::string &name,
             param[0].type() != typeid(JSONValue::JSONString) ||
             param[1].type() != typeid(JSONValue::JSONString) ||
             param[2].type() != typeid(JSONValue::JSONString)) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires three string parameter.");
         }
         return removeNotifyableAttributesFromKey(
@@ -69,7 +69,7 @@ MethodAdaptor::invoke(const std::string &name,
     } else if (name == "getNotifyableChildrenFromKey") {
         if (param.size() != 1 ||
             param[0].type() != typeid(JSONValue::JSONString)) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires one string parameter.");
         }
         return getNotifyableChildrenFromKey(
@@ -79,7 +79,7 @@ MethodAdaptor::invoke(const std::string &name,
             param[0].type() != typeid(JSONValue::JSONString) ||
             param[1].type() != typeid(JSONValue::JSONString) ||
             param[2].type() != typeid(JSONValue::JSONString)) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires three string parameters.");
         }
         return addNotifyableFromKey(
@@ -90,7 +90,7 @@ MethodAdaptor::invoke(const std::string &name,
         if (param.size() != 2 ||
             param[0].type() != typeid(JSONValue::JSONString) ||
             param[1].type() != typeid(JSONValue::JSONBoolean)) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires one string parameter and "
                 "one boolean parameter.");
         }
@@ -100,76 +100,76 @@ MethodAdaptor::invoke(const std::string &name,
     } else if (name == "getApplication") {
         if (param.size() != 1 || 
             param[0].type() != typeid(JSONValue::JSONObject)) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires one object parameter.");
         }
         return getApplication(param[0].get<JSONValue::JSONObject>());
     } else if (name == "getGroup") {
         if (param.size() != 1 || 
             param[0].type() != typeid(JSONValue::JSONObject)) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires one object parameter.");
         }
         return getGroup(param[0].get<JSONValue::JSONObject>());
     } else if (name == "getDataDistribution") {
         if (param.size() != 1 || 
             param[0].type() != typeid(JSONValue::JSONObject)) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires one object parameter.");
         }
         return getDataDistribution(param[0].get<JSONValue::JSONObject>());
     } else if (name == "getNode") {
         if (param.size() != 1 || 
             param[0].type() != typeid(JSONValue::JSONObject)) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires one object parameter.");
         }
         return getNode(param[0].get<JSONValue::JSONObject>());
     } else if (name == "getPropertyList") {
         if (param.size() != 1 || 
             param[0].type() != typeid(JSONValue::JSONObject)) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires one object parameter.");
         }
         return getPropertyList(param[0].get<JSONValue::JSONObject>());
     } else if (name == "getApplications") {
         if (param.size() != 0) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires no parameter.");
         }
         return getApplications();
     } else if (name == "getApplicationStatus") {
         if (param.size() != 1 || 
             param[0].type() != typeid(JSONValue::JSONArray)) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires one array parameter.");
         }
         return getApplicationStatus(param[0].get<JSONValue::JSONArray>());
     } else if (name == "getGroupStatus") {
         if (param.size() != 1 || 
             param[0].type() != typeid(JSONValue::JSONArray)) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires one array parameter.");
         }
         return getGroupStatus(param[0].get<JSONValue::JSONArray>());
     } else if (name == "getNodeStatus") {
         if (param.size() != 1 || 
             param[0].type() != typeid(JSONValue::JSONArray)) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires one array parameter.");
         }
         return getNodeStatus(param[0].get<JSONValue::JSONArray>());
     } else if (name == "getPropertyListStatus") {
         if (param.size() != 1 || 
             param[0].type() != typeid(JSONValue::JSONArray)) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires one array parameter.");
         }
         return getPropertyListStatus(param[0].get<JSONValue::JSONArray>());
     } else if (name == "getDataDistributionStatus") {
         if (param.size() != 1 || 
             param[0].type() != typeid(JSONValue::JSONArray)) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires one array parameter.");
         }
         return getDataDistributionStatus(
@@ -177,13 +177,13 @@ MethodAdaptor::invoke(const std::string &name,
     } else if (name == "getChildrenLockBids") {
         if (param.size() != 1 || 
             param[0].type() != typeid(JSONValue::JSONString)) {
-            throw JSONRPCInvocationException(
+            throw JSONRPCParamsException(
                 "Method '" + name + "' requires one string parameter.");
         }
         return getChildrenLockBids(
             param[0].get<JSONValue::JSONString>());
     } else {
-        throw JSONRPCInvocationException(
+        throw JSONRPCParamsException(
             "Unknown method '" + name + "' invoked.");
     }
 }

@@ -44,6 +44,23 @@ class JSONRPCInvocationException
 };
 
 /**
+ * RPC exception when the request parameters are invalid.
+ */
+class JSONRPCParamsException 
+    : public JSONRPCInvocationException
+{
+  public:
+    /**
+     * Creates an instance of JSONRPCInvocationException with error 
+     * message.
+     *
+     * @param msg the error message.
+     */
+    explicit JSONRPCParamsException(const std::string &msg) 
+        : JSONRPCInvocationException(msg) {}
+};
+
+/**
  * Defines a state which can be persisted across calls.
  */
 class PersistableState {

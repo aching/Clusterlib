@@ -23,11 +23,6 @@ class ProcessSlot
 {
   public:
     /**
-     * Used to access the PID of the current state.
-     */
-    static const std::string PID_KEY;
-
-    /**
      * Used to access the set time of the desired state that this
      * current state is responding to.
      */
