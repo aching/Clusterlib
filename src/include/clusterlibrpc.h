@@ -189,7 +189,7 @@ class ClusterlibRPCMethod
      */
     bool setMethodStatus(const std::string &status, 
                          int32_t maxRetries = 5,
-                         int32_t maxStatusesShown = 5);
+                         int32_t maxStatusesShown = 20);
 
     /**
      * Set the rpc manager.  Not intended for users, but set during

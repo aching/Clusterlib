@@ -74,22 +74,6 @@ class ClusterlibStrings
     static const std::string PROCESSSLOTSUSAGE;
     static const std::string PROCESSSLOTSMAX;
 
-    static const std::string PROCESSSLOTPORTVEC;
-    static const std::string PROCESSSLOTEXECARGS;
-    static const std::string PROCESSSLOTRUNNINGEXECARGS;
-    static const std::string PROCESSSLOTPID;
-    static const std::string PROCESSSLOTDESIREDSTATE;
-    static const std::string PROCESSSLOTCURRENTSTATE;
-    static const std::string PROCESSSLOTRESERVATION;
-
-    static const std::string PROCESSSTATE_UNUSED;
-    static const std::string PROCESSSTATE_STARTED;
-    static const std::string PROCESSSTATE_RUNNING;
-    static const std::string PROCESSSTATE_STOPPED;
-    static const std::string PROCESSSTATE_FINISHED;
-    static const std::string PROCESSSTATE_FAILED;
-    static const std::string PROCESSSTATE_INVALID;
-
     static const std::string JSON_PROCESSSTATE_STATE_KEY;
     static const std::string JSON_PROCESSSTATE_MSECS_KEY;
     static const std::string JSON_PROCESSSTATE_DATE_KEY;
@@ -110,10 +94,13 @@ class ClusterlibStrings
     static const std::string PLV_STATE_INITIAL;
     static const std::string PLV_STATE_PREPARING;
     static const std::string PLV_STATE_READY;
+    static const std::string PLV_STATE_HALTING;
     static const std::string PLV_STATE_STOPPED;
 
     static const std::string PLK_RPCMANAGER_REQ_POSTFIX;
     static const std::string PLK_RPCMANAGER_REQ_STATUS_POSTFIX;
+    static const std::string PLK_PORT_RANGE_START;
+    static const std::string PLK_PORT_RANGE_END;
     static const std::string PLK_USED_PORT_JSON_ARRAY;
 
     /** 

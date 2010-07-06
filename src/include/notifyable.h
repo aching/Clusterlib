@@ -26,6 +26,41 @@ class Notifyable
     static const std::string PID_KEY;
 
     /**
+     * Used to access the notifyable state.
+     */
+    static const std::string NOTIFYABLE_STATE_KEY;
+
+    /**
+     * Used to denote the notifyable state: preparing (current state only)
+     */
+    static const std::string NOTIFYABLE_STATE_PREPARING_VALUE;
+
+    /**
+     * Used to denote the notifyable state: ready (current state only)
+     */
+    static const std::string NOTIFYABLE_STATE_READY_VALUE;
+
+    /**
+     * Used to denote the notifyable state: unavailable (current state only)
+     */
+    static const std::string NOTIFYABLE_STATE_UNAVAILABLE_VALUE;
+
+    /**
+     * Used to denote the notifyable state: unused (current state only)
+     */
+    static const std::string NOTIFYABLE_STATE_UNUSED_VALUE;
+
+    /**
+     * Used to denote the notifyable state: maintain (desired state only)
+     */
+    static const std::string NOTIFYABLE_STATE_MAINTAIN_VALUE;
+
+    /**
+     * Used to denote the notifyable state: none (desired state only)
+     */
+    static const std::string NOTIFYABLE_STATE_NONE_VALUE;
+
+    /**
      * State of the Notifyable.
      */
     enum State {
@@ -86,6 +121,14 @@ class Notifyable
      * @throw Exception if Notifyable is the root or application
      */
     virtual Group *getMyGroup() = 0; 
+
+    /**
+     * Get a notifyable from a key. 
+     *
+     * @param key the key that represents a notifyable.
+     * @return a pointer to that notifyable if it exists, otherwise NULL.
+     */
+    virtual Notifyable *getNotifyableFromKey(const std::string &key) = 0;
 
     /**
      * What state is this Notifyable in?  It is safe to call this even
@@ -182,7 +225,7 @@ class Notifyable
      * @throw Exception if this Notifyable or its parent no
      * longer exist.
      */
-    virtual void acquireLock(bool acquireChildren = 0) = 0;
+    virtual void acquireLock(bool acquireChildren = false) = 0;
 
     /** 
      * \brief Acquire the clusterlib lock for this Notifyable within a
@@ -205,7 +248,7 @@ class Notifyable
      * @return true if the lock was acquired or false if timed out
      */
     virtual bool acquireLockWaitMsecs(int64_t msecTimeout,
-                                      bool acquireChildren = 0) = 0;
+                                      bool acquireChildren = false) = 0;
 
     /** 
      * \brief Release the clusterlib lock for this Notifyable.
@@ -220,7 +263,7 @@ class Notifyable
      * @param releaseChildren release the children as well?
      * @throw Exception if internal state is in consistent 
      */
-    virtual void releaseLock(bool releaseChildren = 0) = 0;    
+    virtual void releaseLock(bool releaseChildren = false) = 0;    
 
     /**
      * Do I have the lock?
@@ -325,7 +368,7 @@ class Notifyable
      * the Notifyable has children and removeChildren was not set, or the 
      * Notifyable is not allowed to be removed (i.e. root).
      */
-    virtual void remove(bool removeChildren = 0) = 0;
+    virtual void remove(bool removeChildren = false) = 0;
 
     /**
      * Access the cached current state of this notifyable

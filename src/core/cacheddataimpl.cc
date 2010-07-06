@@ -1,5 +1,6 @@
 /*
- * cachedataimpl.cc --dataLengthralOwner
+ * cachedataimpl.cc -
+ *
  * Implementation of the CachedDataImpl class.
  *
  * ============================================================================

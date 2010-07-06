@@ -198,8 +198,6 @@ class NotifyableKeyManipulator
         const std::string &notifyableKey);
     static std::string createProcessSlotsMaxKey(
         const std::string &notifyableKey);
-    static std::string createProcessSlotPortVecKey(
-        const std::string &notifyableKey);
     static std::string createQueuePrefixKey(
         const std::string &notifyableKey);
 

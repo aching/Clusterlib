@@ -67,9 +67,20 @@ class ProcessSlot
     static const std::string PROCESS_STATE_RUN_CONTINUOUSLY_VALUE;
 
     /**
-     * Used to denote the process state: stopped (current and desired state)
+     * Used to denote the process state: exit (current and desired
+     * state).  This will cause an ActiveNode to kill the underlying
+     * process in the desired state).
      */
-    static const std::string PROCESS_STATE_STOPPED_VALUE;
+    static const std::string PROCESS_STATE_EXIT_VALUE;
+
+    /**
+     * Used to denote the process state: clean exist (desired state).
+     * This is a user-defined exit.  An ActiveNode will simply wait
+     * for the process to exit and then change the PROCESS_STATE_KEY
+     * to PROCESS_STATE_EXIT_VALUE in the current state.  The user
+     * must enact the appropriate method to have this process exit.
+     */
+    static const std::string PROCESS_STATE_CLEANEXIT_VALUE;
 
     /**
      * Used to denote the process state: failure (current state only)
@@ -77,11 +88,10 @@ class ProcessSlot
     static const std::string PROCESS_STATE_FAILURE_VALUE;
 
     /**
-     * Used to accesss the failure of the current process state.  This
-     * is used to give more detailed information about the failure if
-     * there was one.
+     * Used to accesss more information about the current process
+     * state.  It describes PROCESS_STATE_KEY in more detail.
      */
-    static const std::string PROCESS_STATE_FAILURE_MSG_KEY; 
+    static const std::string PROCESS_STATE_MSG_KEY; 
 
     /**
      * Used to access the set time of the process state.
@@ -92,6 +102,36 @@ class ProcessSlot
      * Used to access the set time as a date of the process state.
      */
     static const std::string PROCESS_STATE_SET_MSECS_AS_DATE_KEY;
+
+    /**
+     * Used to denote the running process state (current state only)
+     */
+    static const std::string BINARY_STATE_KEY;
+
+    /**
+     * Used to denote the running process state: none (current state only)
+     */
+    static const std::string BINARY_STATE_NONE_VALUE;
+
+    /**
+     * Used to denote the running process state: preparing (current state only)
+     */
+    static const std::string BINARY_STATE_PREPARING_VALUE;
+
+    /**
+     * Used to denote the running process state: ready (current state only)
+     */
+    static const std::string BINARY_STATE_READY_VALUE;
+
+    /**
+     * Used to denote the running process state: busy (current state only)
+     */
+    static const std::string BINARY_STATE_BUSY_VALUE;
+
+    /**
+     * Used to denote the running process state: halting (current state only)
+     */
+    static const std::string BINARY_STATE_HALTING_VALUE;
 
     /**
      * Access the cached process info

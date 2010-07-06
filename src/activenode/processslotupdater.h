@@ -25,7 +25,7 @@ class ProcessSlotUpdater
     enum UpdateAction {
         NONE = 0, ///< Do nothing
         START, ///< Start the new process
-        STOP, ///< Stop the current process
+        KILL, ///< Kill the current process
     };
 
     /**

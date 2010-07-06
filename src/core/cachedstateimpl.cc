@@ -96,23 +96,20 @@ CachedStateImpl::loadDataFromRepository(bool setWatchesOnly)
     Stat stat;
 
     Locker l(&getCachedDataLock());
-    
-    CachedObjectEventHandler *handler = NULL;
-    CachedObjectChangeHandlers::CachedObjectChange change;
+
+    CachedObjectChangeHandlers::CachedObjectChange change;    
     if (m_stateType == CURRENT_STATE) {
         change = CachedObjectChangeHandlers::CURRENT_STATE_CHANGE;
-        handler = getOps()->getCachedObjectChangeHandlers()->getChangeHandler(
-            change);
     }
     else if (m_stateType == DESIRED_STATE) {
         change = CachedObjectChangeHandlers::DESIRED_STATE_CHANGE;
-        handler = getOps()->getCachedObjectChangeHandlers()->getChangeHandler(
-            change);
     }
     else {
         throw InconsistentInternalStateException(
             "loadDataFromRepository: No valid stateType");
     }
+    CachedObjectEventHandler *handler = 
+        getOps()->getCachedObjectChangeHandlers()->getChangeHandler(change);
 
     SAFE_CALLBACK_ZK(
         getOps()->getRepository()->getNodeData(
@@ -312,4 +309,4 @@ CachedStateImpl::getHistoryArray()
     return m_historyArr;
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

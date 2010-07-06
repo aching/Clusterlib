@@ -28,7 +28,7 @@ ClientImpl::getRoot()
         getOps()->getNotifyable(NULL, 
                                 ClusterlibStrings::REGISTERED_ROOT_NAME,
                                 ClusterlibStrings::ROOT,
-                                CREATE_IF_NOT_FOUND));
+                                CACHED_ONLY));
 }
 
 void

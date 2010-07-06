@@ -89,6 +89,7 @@ RemoveNotifyable::RemoveNotifyable(Client *client)
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::NotifyableArg);
+    argTypeVec.push_back(CliCommand::BoolArg);
     setArgTypeVec(argTypeVec);
 }
 
@@ -104,7 +105,8 @@ RemoveNotifyable::action()
     
     string key = ntp->getKey();
     string name = ntp->getName();
-    ntp->remove();
+    bool removeChildren = getBoolArg(1);
+    ntp->remove(removeChildren);
     cout << "Removed notifyable with name (" 
          << name << ") and key (" << key << ")" << endl;
 }
@@ -112,7 +114,10 @@ RemoveNotifyable::action()
 string
 RemoveNotifyable::helpMessage()
 {
-    return "Remove the notifyable specified by the NotifyableArg";
+    return "Remove a notifyable\n"
+        "0 (NotifyableArg) - The notifyable to remove.\n"
+        "1 (BoolArg) - If true, do remove the notifyable even if it has\n"
+        "              children. Otherwise, do not.\n";
 }
 
 RemoveNotifyable::~RemoveNotifyable() {}
@@ -963,6 +968,7 @@ StopProcessSlot::StopProcessSlot(Client *client)
 {
     vector<CliCommand::ArgType> argTypeVec;
     argTypeVec.push_back(CliCommand::NotifyableArg);
+    argTypeVec.push_back(CliCommand::BoolArg);
     setArgTypeVec(argTypeVec);
 } 
 
@@ -978,8 +984,16 @@ StopProcessSlot::action()
 
     processSlot->acquireLock();
 
-    processSlot->cachedDesiredState().set(ProcessSlot::PROCESS_STATE_KEY,
-                                   ProcessSlot::PROCESS_STATE_STOPPED_VALUE);
+    if (getBoolArg(1) == false) {
+        processSlot->cachedDesiredState().set(
+            ProcessSlot::PROCESS_STATE_KEY,
+            ProcessSlot::PROCESS_STATE_EXIT_VALUE);
+    }
+    else {
+        processSlot->cachedDesiredState().set(
+            ProcessSlot::PROCESS_STATE_KEY,
+            ProcessSlot::PROCESS_STATE_CLEANEXIT_VALUE);
+    }
     processSlot->cachedDesiredState().set(
         ProcessSlot::PROCESS_STATE_SET_MSECS_KEY,
         TimerService::getCurrentTimeMsecs());
@@ -991,8 +1005,10 @@ StopProcessSlot::action()
 string
 StopProcessSlot::helpMessage()
 {
-    return "Set the desired state to stop the process on a ProcessSlot.  "
-        "NotifyableArg is the ProcessSlot notifyable. ";
+    return "Set the desired state to stop the process on a ProcessSlot.\n"
+        "0 (NotifyableArg) - The ProcessSlot notifyable.\n"
+        "1 (BoolArg) - If true, do a clean exit (application implemented),\n"
+        "              otherwise, kill the process.\n";
 }
  
 StopProcessSlot::~StopProcessSlot() {}
@@ -1128,4 +1144,21 @@ NotifyableArg::helpMessage()
  
 NotifyableArg::~NotifyableArg() {}
 
-};	/* End of 'namespace clusterlib' */
+JsonArg::JsonArg(Client *client) 
+    : CliCommand("jsonArg", client) {}
+
+void
+JsonArg::action() 
+{
+    cout << helpMessage() << endl;
+}
+
+string
+JsonArg::helpMessage()
+{
+    return "Valid values: Any key that is a valid json (i.e. \"hi\")";
+}
+ 
+JsonArg::~JsonArg() {}
+
+}	/* End of 'namespace clusterlib' */

@@ -333,17 +333,6 @@ NotifyableKeyManipulator::createProcessSlotsMaxKey(
 }
 
 string
-NotifyableKeyManipulator::createProcessSlotPortVecKey(
-    const string &notifyableKey)
-{
-    string res(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::PROCESSSLOTPORTVEC);
-
-    return res;
-}
-
-string
 NotifyableKeyManipulator::createQueuePrefixKey(
     const string &notifyableKey)
 {

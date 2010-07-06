@@ -45,17 +45,32 @@ const string ProcessSlot::PROCESS_STATE_RUN_ONCE_VALUE =
     "_processStateRunOnce";
 const string ProcessSlot::PROCESS_STATE_RUN_CONTINUOUSLY_VALUE = 
     "_processStateRunContinuously";
-const string ProcessSlot::PROCESS_STATE_STOPPED_VALUE = "_processStateStopped";
+const string ProcessSlot::PROCESS_STATE_EXIT_VALUE = "_processStateExit";
+const string ProcessSlot::PROCESS_STATE_CLEANEXIT_VALUE = 
+    "_processStateCleanexit";
 const string ProcessSlot::PROCESS_STATE_FAILURE_VALUE = "_processStateFailure";
 
-const string ProcessSlot::PROCESS_STATE_FAILURE_MSG_KEY = 
-    "_processStateFailureMsg";
+const string ProcessSlot::PROCESS_STATE_MSG_KEY = 
+    "_processStateMsg";
 
 const string ProcessSlot::PROCESS_STATE_SET_MSECS_KEY = 
     "_processStateSetMsecs";
 
 const string ProcessSlot::PROCESS_STATE_SET_MSECS_AS_DATE_KEY = 
     "_processStateSetMsecsAsDate";
+
+const string ProcessSlot::BINARY_STATE_KEY = "_binaryState";
+
+const string ProcessSlot::BINARY_STATE_NONE_VALUE = 
+    "_binaryStateNone";
+const string ProcessSlot::BINARY_STATE_PREPARING_VALUE = 
+    "_binaryStatePreparing";
+const string ProcessSlot::BINARY_STATE_READY_VALUE = 
+    "_binaryStateReady";
+const string ProcessSlot::BINARY_STATE_BUSY_VALUE = 
+    "_binaryStateBusy";
+const string ProcessSlot::BINARY_STATE_HALTING_VALUE = 
+    "_binaryStateHalting";
 
 CachedProcessInfo &
 ProcessSlotImpl::cachedProcessInfo()

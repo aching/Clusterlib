@@ -28,6 +28,10 @@ class CachedProcessInfoImpl
     virtual void loadDataFromRepository(bool setWatchesOnly);
 
   public:
+    virtual json::JSONValue::JSONArray getHostnameArr();
+
+    virtual void setHostnameArr(const json::JSONValue::JSONArray &hostnameArr);
+
     virtual json::JSONValue::JSONArray getPortArr();
 
     virtual void setPortArr(const json::JSONValue::JSONArray &portArr);
@@ -43,6 +47,26 @@ class CachedProcessInfoImpl
     virtual ~CachedProcessInfoImpl() {}
     
   private:
+    /**
+     * Marshal the m_hostnameArr and m_portArr into a JSONValue for publishing.
+     *
+     * @return An JSON array of the two arrays.
+     */
+    json::JSONValue::JSONArray marshal();
+
+    /**
+     * Unmarshal the two arrays into this object
+     *
+     * @param encodedJsonArr The encoded JSON array of two arrays
+     */
+    void unmarshal(const std::string &encodedJsonArr);
+
+  private:
+    /**
+     * The hostname array stored as a JSONArray
+     */
+    ::json::JSONValue::JSONArray m_hostnameArr;
+
     /**
      * The port array stored as a JSONArray
      */

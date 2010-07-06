@@ -29,8 +29,6 @@ class RootImpl
         const std::string &appName,
         AccessType accessType = LOAD_FROM_REPOSITORY);
 
-    virtual Notifyable *getNotifyableFromKey(const std::string &key);
-
     virtual Notifyable *getMyParent() const
     {
         throw InvalidMethodException("RootImpl does not have a parent");

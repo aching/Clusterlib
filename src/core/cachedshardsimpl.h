@@ -22,33 +22,73 @@ class ShardTreeData
 {
   public:
     ShardTreeData()
-        : m_priority(-1),
-          m_notifyable(NULL) {}
+        : m_priority(-1) {}
 
-    ShardTreeData(int32_t priority, Notifyable *ntp) 
+    ShardTreeData(int32_t priority, const std::string &ntpKey) 
         : m_priority(priority),
-          m_notifyable(ntp) {}
+          m_notifyableKey(ntpKey) {}
 
     int32_t getPriority() const { return m_priority; }
 
-    Notifyable *getNotifyable() { return m_notifyable; }
+    const std::string &getNotifyableKey() const { return m_notifyableKey; }
 
-    bool operator==(ShardTreeData &rhs)
+    bool operator< (const ShardTreeData &rhs) const
+    {
+        if (getPriority() < rhs.getPriority()) {
+            return true;
+        }
+        else if (getPriority() == rhs.getPriority()) {
+            if (getNotifyableKey() < rhs.getNotifyableKey()) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        else {
+            return false;
+        }
+    }
+
+    bool operator==(const ShardTreeData &rhs) const
     {
         if ((getPriority() == rhs.getPriority()) &&
-            (getNotifyable() == rhs.getNotifyable())) {
+            (getNotifyableKey() == rhs.getNotifyableKey())) {
             return true;
         }
         else {
             return false;
         }
     }
+
+    bool operator> (const ShardTreeData &rhs) const
+    {
+        if (!(*this < rhs) && (!(*this == rhs))) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    /**
+     * Print out useful data from <<.
+     */
+    friend std::ostream & operator<< (std::ostream &stream, 
+                                      const ShardTreeData &other)
+    {
+        stream << "ShardTreeData(priority=" << other.getPriority()
+               << ",key=" << other.getNotifyableKey() << ")";
+
+        return stream;
+    }
+
   private:
     /** The priority of this shard */
     int32_t m_priority;
 
-    /** The pointer to the Notifyable */
-    Notifyable *m_notifyable;
+    /** The Notifyable key */
+    std::string m_notifyableKey;
 };
 
 /**

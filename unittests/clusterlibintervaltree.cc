@@ -14,6 +14,8 @@ class ClusterlibIntervalTree : public MPITestFixture {
     CPPUNIT_TEST(testIntervalTree3);
     CPPUNIT_TEST(testIntervalTree4);
     CPPUNIT_TEST(testIntervalTree5);
+    CPPUNIT_TEST(testIntervalTree6);
+    CPPUNIT_TEST(testIntervalTree7);
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -186,7 +188,68 @@ class ClusterlibIntervalTree : public MPITestFixture {
         MPI_CPPUNIT_ASSERT(count == 10);
     }
 
-  private:
+    /* 
+     * Simple test to add/remove 10 identical nodes with the same
+     * data.  Remove them one by one from the min.
+     */
+    void testIntervalTree6()
+    {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    NULL,
+                                    false, 
+                                    "testIntervalTree6");
+        
+        IntervalTree<int, int > tree(-1, -1);
+        for (int i = 0; i < 5; ++i) {
+            tree.insertNode(0, 0, -1, i);
+            MPI_CPPUNIT_ASSERT(tree.verifyTree());
+        }
+        for (int i = 9; i >= 5; --i) {
+            tree.insertNode(0, 0, -1, i);
+            MPI_CPPUNIT_ASSERT(tree.verifyTree());
+        }
+        IntervalTreeNode<int, int> *node = NULL;
+        for (int i = 0; i < 10; ++i) {
+            node = tree.getTreeMinStartRangeNode();
+            MPI_CPPUNIT_ASSERT(node);
+            MPI_CPPUNIT_ASSERT(node->getData() == i);
+            delete tree.deleteNode(node);
+            MPI_CPPUNIT_ASSERT(tree.verifyTree());
+        }
+    }
+
+    /* 
+     * Simple test to add/remove 10 identical nodes with the same
+     * data.  Remove them one by one from the max.
+     */
+    void testIntervalTree7()
+    {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    NULL,
+                                    false, 
+                                    "testIntervalTree7");
+        
+        IntervalTree<int, int > tree(-1, -1);
+        for (int i = 0; i < 5; ++i) {
+            tree.insertNode(0, 0, -1, i);
+            MPI_CPPUNIT_ASSERT(tree.verifyTree());
+        }
+        for (int i = 9; i >= 5; --i) {
+            tree.insertNode(0, 0, -1, i);
+            MPI_CPPUNIT_ASSERT(tree.verifyTree());
+        }
+        IntervalTreeNode<int, int> *node = NULL;
+        for (int i = 9; i >= 0; --i) {
+            node = tree.getTreeMaxStartRangeNode();
+            MPI_CPPUNIT_ASSERT(node);
+            MPI_CPPUNIT_ASSERT(node->getData() == i);
+            cerr << "node=" << node->getData() << ",i=" << i << endl;;
+            delete tree.deleteNode(node);
+            MPI_CPPUNIT_ASSERT(tree.verifyTree());
+        }
+    }
 };
 
 /* Registers the fixture into the 'registry' */

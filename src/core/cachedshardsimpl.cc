@@ -321,7 +321,10 @@ CachedShardsImpl::insert(const HashRange &start,
     finalEnd = end;
 
     m_shardTree->insertNode(
-        finalStart, finalEnd, finalEndMax, ShardTreeData(priority, ntp));
+        finalStart, 
+        finalEnd, 
+        finalEndMax, 
+        ShardTreeData(priority, (ntp == NULL) ? string() : ntp->getKey()));
     ++m_shardTreeCount;
 }
 
@@ -348,18 +351,25 @@ CachedShardsImpl::getAllShards(const Notifyable *ntp, int32_t priority)
         for (treeIt = m_shardTree->begin(); 
              treeIt != m_shardTree->end(); 
              ++treeIt) {
-            res.push_back(Shard(treeIt->getStartRange(),
-                                treeIt->getEndRange(),
-                                treeIt->getData().getNotifyable(),
-                                treeIt->getData().getPriority()));
+            res.push_back(
+                Shard(dynamic_cast<Root *>(
+                          getOps()->getNotifyable(
+                              NULL,
+                              ClusterlibStrings::REGISTERED_ROOT_NAME,
+                              ClusterlibStrings::ROOT,
+                              CACHED_ONLY)),
+                      treeIt->getStartRange(),
+                      treeIt->getEndRange(),
+                      treeIt->getData().getNotifyableKey(),
+                      treeIt->getData().getPriority()));
         }
     }
 
     vector<Shard>::iterator resIt;
     vector<Shard> finalRes;
-    for (resIt = res.begin(); resIt != res.end(); resIt++) {
+    for (resIt = res.begin(); resIt != res.end(); ++resIt) {
         /* Filter by notifyable if not NULL */
-        if ((ntp == NULL) || (ntp == resIt->getNotifyable())) {
+        if ((ntp == NULL) || (ntp->getKey() == resIt->getNotifyableKey())) {
             finalRes.push_back(*resIt);
         }
 
@@ -382,11 +392,14 @@ CachedShardsImpl::remove(Shard &shard)
 
     Locker l(&getCachedDataLock());
 
+    //AC-debug
+    m_shardTree->printDepthFirstSearch();
+
     IntervalTreeNode<HashRange &, ShardTreeData> *node = 
         m_shardTree->nodeSearch(shard.getStartRange(),
                                 shard.getEndRange(),
                                 ShardTreeData(shard.getPriority(),
-                                              shard.getNotifyable()));
+                                              shard.getNotifyableKey()));
     if (node != NULL) {
         node = m_shardTree->deleteNode(node);
         delete &(node->getStartRange());
@@ -451,13 +464,7 @@ CachedShardsImpl::marshalShards()
             shardMetadataArr.clear();
             shardMetadataArr.push_back(it->getStartRange().toJSONValue());
             shardMetadataArr.push_back(it->getEndRange().toJSONValue());
-            if (it->getData().getNotifyable() == NULL) {
-                shardMetadataArr.push_back(string());
-            }
-            else {
-                shardMetadataArr.push_back(
-                    it->getData().getNotifyable()->getKey());
-            }
+            shardMetadataArr.push_back(it->getData().getNotifyableKey());
             shardMetadataArr.push_back(it->getData().getPriority());
             shardArr.push_back(shardMetadataArr);
         }
@@ -502,7 +509,6 @@ CachedShardsImpl::unmarshalShards(const string &encodedJsonArr)
 
     JSONValue::JSONArray shardMetadataArr;    
     JSONValue::JSONArray::const_iterator jsonArrIt;
-    Notifyable *ntp = NULL;
 
     /* 
      * First array element should be the HashRange name and should
@@ -537,18 +543,20 @@ CachedShardsImpl::unmarshalShards(const string &encodedJsonArr)
                 "shardMetadataArr != 4");
         }
         
-        JSONValue::JSONString ntpString = 
+        JSONValue::JSONString ntpKey = 
             shardMetadataArr[2].get<JSONValue::JSONString>();
-        ntp = NULL;
-        if (!ntpString.empty()) {
-            ntp = getOps()->getNotifyableFromKey(vector<string>(), ntpString);
-        }
 
         if (unknownHashRange) {
             m_unknownShardArr.push_back(
-                Shard(UnknownHashRange(shardMetadataArr[0]),
+                Shard(dynamic_cast<Root *>(
+                          getOps()->getNotifyable(
+                              NULL,
+                              ClusterlibStrings::REGISTERED_ROOT_NAME,
+                              ClusterlibStrings::ROOT,
+                              CACHED_ONLY)),
+                      UnknownHashRange(shardMetadataArr[0]),
                       UnknownHashRange(shardMetadataArr[1]),
-                      ntp,
+                      ntpKey,
                       shardMetadataArr[3].get<JSONValue::JSONInteger>()));
         }
         else {
@@ -564,7 +572,7 @@ CachedShardsImpl::unmarshalShards(const string &encodedJsonArr)
                 endMax,
                 ShardTreeData(
                     shardMetadataArr[3].get<JSONValue::JSONInteger>(),
-                    ntp));
+                    ntpKey));
         }
 
         LOG_DEBUG(CL_LOG,
@@ -573,7 +581,7 @@ CachedShardsImpl::unmarshalShards(const string &encodedJsonArr)
                   m_hashRange->getName().c_str(),
                   JSONCodec::encode(shardMetadataArr[0]).c_str(),
                   JSONCodec::encode(shardMetadataArr[1]).c_str(),
-                  (ntp == NULL) ? "NULL" : ntp->getKey().c_str(),
+                  ntpKey.c_str(),
                   shardMetadataArr[3].get<JSONValue::JSONInteger>());
 
         ++m_shardTreeCount;

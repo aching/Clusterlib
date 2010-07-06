@@ -125,6 +125,87 @@ Locker::~Locker()
     mp_lock->release();
 }
 
+RdWrLock::RdWrLock()
+{
+    int ret = pthread_rwlockattr_init(&m_rwlockAttr);
+    if (ret != 0) {
+        ostringstream oss;
+        oss << "RdWrLock: pthread_rwlockattr_init failed with ret=" << ret
+            << ", errno=" << errno << ", strerror=" << strerror(errno);
+        throw SystemFailureException(oss.str());
+    }
+    ret = pthread_rwlockattr_setpshared(&m_rwlockAttr, PTHREAD_PROCESS_SHARED);
+    if (ret != 0) {
+        ostringstream oss;
+        oss << "RdWrLock: pthread_rwlockattr_setpshared failed with ret="
+            << ret << ", errno=" << errno << ", strerror=" << strerror(errno);
+        throw SystemFailureException(oss.str());
+    }
+    
+    ret = pthread_rwlock_init(&m_rwlock, &m_rwlockAttr);
+    if (ret != 0) {
+        ostringstream oss;
+        oss << "RdWrLock: pthread_rwlock_init failed with ret=" << ret
+            << ", errno=" << errno << ", strerror=" << strerror(errno);
+        throw SystemFailureException(oss.str());
+    }
+}
+
+RdWrLock::~RdWrLock()
+{
+    int ret = pthread_rwlock_destroy(&m_rwlock);
+    if (ret != 0) {
+        ostringstream oss;
+        oss << "RdWrLock: pthread_rwlock_destroy failed with ret=" << ret
+            << ", errno=" << errno << ", strerror=" << strerror(errno);
+        throw SystemFailureException(oss.str());
+    }
+
+    ret = pthread_rwlockattr_destroy(&m_rwlockAttr);
+    if (ret != 0) {
+        ostringstream oss;
+        oss << "RdWrLock: pthread_rwlockattr_destroy failed with ret=" << ret
+            << ", errno=" << errno << ", strerror=" << strerror(errno);
+        throw SystemFailureException(oss.str());
+    }
+}
+
+void
+RdWrLock::acquireRead()
+{        
+    int ret = pthread_rwlock_rdlock(&m_rwlock);
+    if (ret != 0) {
+        ostringstream oss;
+        oss << "acquireRead: Failed with ret=" << ret << ", errno=" 
+            << errno << ", strerror=" << strerror(errno);
+        throw SystemFailureException(oss.str());
+    }
+}
+
+void 
+RdWrLock::acquireWrite()
+{
+    int ret = pthread_rwlock_wrlock(&m_rwlock);
+    if (ret != 0) {
+        ostringstream oss;
+        oss << "acquireWrite: Failed with ret=" << ret << ", errno=" 
+            << errno << ", strerror=" << strerror(errno);
+        throw SystemFailureException(oss.str());
+    }
+}
+
+void 
+RdWrLock::release()
+{
+    int ret = pthread_rwlock_unlock(&m_rwlock);
+    if (ret != 0) {
+        ostringstream oss;
+        oss << "release: Failed with ret=" << ret << ", errno=" 
+            << errno << ", strerror=" << strerror(errno);
+        throw SystemFailureException(oss.str());
+    }
+}
+
 PredMutexCond::PredMutexCond()         
     : pred(false),
       refCount(0) 

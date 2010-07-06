@@ -23,6 +23,20 @@ class CachedProcessInfo
 {
   public:
     /**
+     * Get a vector of hostnames (user-defined).  They are of type
+     * JSONValue::JSONString.  If not defined, will be empty.
+     */
+    virtual json::JSONValue::JSONArray getHostnameArr() = 0;
+
+    /**
+     * Set a vector of hostnames (user-defined) as a JSONValue.
+     *
+     * @param hostnameArr The JSONArray of hostnames to set as a JSONValue
+     */
+    virtual void setHostnameArr(
+        const json::JSONValue::JSONArray &hostnameArr) = 0;
+
+    /**
      * Get a vector of ports (user-defined).  They are of type
      * JSONValue::JSONInteger.  If not defined, will be empty.
      *

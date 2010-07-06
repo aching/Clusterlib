@@ -496,7 +496,9 @@ namespace json {
             {
                 ostringstream pos;
                 pos << (int)ss.tellg();
-                throw JSONParseException("Expect an array, object, string, number, boolean or null at " + pos.str());
+                throw JSONParseException(
+                    "Expects an array, object, string, number, boolean or "
+                    "null at " + pos.str() + " from " + ss.str());
             }
             }
             skipBlanks(in);

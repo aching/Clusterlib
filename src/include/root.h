@@ -42,14 +42,6 @@ class Root
         const std::string &appName,
         AccessType accessType = LOAD_FROM_REPOSITORY) = 0;
 
-    /**
-     * Get a notifyable from a key. 
-     *
-     * @param key the key that represents a notifyable.
-     * @return a pointer to that notifyable if it exists, otherwise NULL.
-     */
-    virtual Notifyable *getNotifyableFromKey(const std::string &key) = 0;
-
     /*
      * Destructor.
      */

@@ -25,6 +25,8 @@ const ::json::JSONValue::JSONString idNotifyableStatus = "status";
 /* Notifyable specific attributes */ 
 const ::json::JSONValue::JSONString idNodesHealthy = "nodesHealthy";
 const ::json::JSONValue::JSONString idNodesUnhealthy = "nodesUnhealthy";
+const ::json::JSONValue::JSONString idDataDistributionHashRangeName = 
+    "hashRangeName";
 const ::json::JSONValue::JSONString idDataDistributionCovered = "covered";
 const ::json::JSONValue::JSONString idNodeStateSetTime = 
     "client state set time";
@@ -36,7 +38,8 @@ const ::json::JSONValue::JSONString idNodeUseProcessSlots =
     "useProcessSlots";
 const ::json::JSONValue::JSONString idNodeMaxProcessSlots = 
     "maxProcessSlots";
-const ::json::JSONValue::JSONString idProcessSlotPortVec = "portVec";
+const ::json::JSONValue::JSONString idProcessSlotHostnameArr = "hostnameArr";
+const ::json::JSONValue::JSONString idProcessSlotPortArr = "portArr";
 const ::json::JSONValue::JSONString idProcessSlotExecArgs = "execArgs";
 const ::json::JSONValue::JSONString idProcessSlotRunningExecArgs = 
     "runningExecArgs";

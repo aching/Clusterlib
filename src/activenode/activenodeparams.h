@@ -107,9 +107,30 @@ class ActiveNodeParams
     const std::string &getNodeName() const { return m_nodeName; }
 
     /**
+     * Get whether node ownership is necesesary.
+     *
+     * @return True if node ownership is necessary, false otherwise.
+     */
+    bool getEnableNodeOwnership() const { return m_enableNodeOwnership; }
+
+    /**
      * Get the number of milliseconds to check.
      */
     const int32_t getCheckMsecs() const { return m_checkMsecs; }
+
+    /**
+     * Get the starting port range.
+     *
+     * @return The starting port or -1 if not used.
+     */
+    int32_t getPortRangeStart() const { return m_portRangeStart; }
+
+    /**
+     * Get the ending port range.
+     *
+     * @return The ending port or -1 if not used.
+     */
+    int32_t getPortRangeEnd() const { return m_portRangeEnd; }
 
   private:
     /**
@@ -117,6 +138,11 @@ class ActiveNodeParams
      * user-specified name).
      */
     std::string m_nodeName;
+
+    /**
+     * Get ownership of the node before continuing.
+     */
+    bool m_enableNodeOwnership;
 
     /**
      * The number of milliseconds to wait in between node checks.
@@ -138,6 +164,16 @@ class ActiveNodeParams
      * i.e. (wmdev1008:2181,wmdev1007:2181)
      */
     std::string m_zkServerPortList;
+
+    /**
+     * Starting range port (optional).
+     */
+    int32_t m_portRangeStart;
+
+    /**
+     * Ending range port (optional).
+     */
+    int32_t m_portRangeEnd;
 
     /**
      * Output type 

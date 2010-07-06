@@ -375,6 +375,18 @@ class NotifyableArg : public CliCommand
     virtual ~NotifyableArg();
 };
 
+/**
+ * JsonArg
+ */
+class JsonArg : public CliCommand
+{
+  public:
+    JsonArg(Client *client);
+    virtual void action();
+    virtual std::string helpMessage();
+    virtual ~JsonArg();
+};
+
 };	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_GENERALCOMMANDS_H_ */

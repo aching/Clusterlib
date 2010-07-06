@@ -13,10 +13,18 @@ namespace activenode
  */
 static int32_t DefaultCheckMsecs = 15 * 1000;
 
-ActiveNodeParams::ActiveNodeParams() :
-    m_checkMsecs(DefaultCheckMsecs),
-    m_numProcs(0),
-    m_outputType(FILE) 
+/**
+ * Maximum processes 
+ */
+static int32_t MaxProcesses = 64;
+
+ActiveNodeParams::ActiveNodeParams() 
+    : m_enableNodeOwnership(true),
+      m_checkMsecs(DefaultCheckMsecs),
+      m_numProcs(0),
+      m_portRangeStart(-1),
+      m_portRangeEnd(-1),
+      m_outputType(FILE) 
 {
 }
 
@@ -37,12 +45,15 @@ ActiveNodeParams::printUsage(char *exec) const
 " -P  --periodic_check  Milliseconds to wait between node checks\n"
 "                       (default " << DefaultCheckMsecs << ")\n"
 " -N  --node_name       If not set, the node name defaults to the hostname\n"
+" -s  --range_start     If set, the start of the port range\n"
+" -e  --range_end       If set, the end of the port range\n"
+" -O  --no_ownership    Disables getting ownership of the node\n"
 " -o  --output_type     Choose the output type.\n"
 "                       console - console output\n"
 "                       file - file output (default)\n";
 }
 
-void 
+void
 ActiveNodeParams::parseArgs(int argc, char **argv)
 {
     static struct option longopts[] =
@@ -53,6 +64,9 @@ ActiveNodeParams::parseArgs(int argc, char **argv)
         {"num_processes", 1, NULL, 'p'},
         {"periodic_check", 1, NULL, 'P'},
         {"node_name", 1, NULL, 'N'},
+        {"range_start", 1, NULL, 's'},
+        {"range_end", 1, NULL, 'e'},
+        {"no_ownership", 0, NULL, 'O'},
         {"output_type", 1, NULL, 'o'},
         {0,0,0,0}
     };
@@ -61,7 +75,7 @@ ActiveNodeParams::parseArgs(int argc, char **argv)
     int32_t option_index = 0;
     int32_t err = -1;
     int32_t ret = 0;
-    const char *optstring = ":hn:z:p:P:N:o:";
+    const char *optstring = ":hn:z:p:P:N:s:e:Oo:";
 
     /* Parse all standard command line arguments */
     while (1) {
@@ -87,16 +101,38 @@ ActiveNodeParams::parseArgs(int argc, char **argv)
                 break;
             case 'p':
                 m_numProcs = ::atoi(optarg);
+                if ((m_numProcs < 0) || (m_numProcs > MaxProcesses)) {
+                    cout << "Invalid -p option (must be > 0 && < " 
+                         << MaxProcesses << ")" << endl;
+                    ret = -1;
+                }
                 break;
             case 'P':
                 m_checkMsecs = ::atoi(optarg);
                 if (m_checkMsecs <= 0) {
                     cout << "Invalid -P option (must be > 0)" << endl;
-                    exit(-1);
+                    ret = -1;
                 }
                 break;
             case 'N':
                 m_nodeName = optarg;
+                break;
+            case 's':
+                m_portRangeStart = ::atoi(optarg);
+                if (optarg < 0) {
+                    cout << "Invalid -s option (must be > 0)" << endl;
+                    ret = -1;
+                }
+                break;
+            case 'e':
+                m_portRangeEnd = ::atoi(optarg);
+                if (optarg < 0) {
+                    cout << "Invalid -e option (must be > 0)" << endl;
+                    ret = -1;
+                }
+                break;
+            case 'O':
+                m_enableNodeOwnership = false;
                 break;
             case 'o':
                 {
@@ -116,24 +152,21 @@ ActiveNodeParams::parseArgs(int argc, char **argv)
             default:
                 cout << "Option -" << static_cast<char>(optopt)
                      << " is invalid" << endl;
-                exit(-1);
+                ret = -1;
         }
     }
 
     if (m_groupVec.empty()) {
         cout << "Option -n needs to be set" << endl;
-        printUsage(argv[0]);
-        ::exit(-1);
+        ret = -1;
     }
     if (m_zkServerPortList.empty()) {
         cout << "Option -z needs to be set" << endl;
-        printUsage(argv[0]);
-        ::exit(-1);
+        ret = -1;
     }
     if (m_numProcs <= 0) {
         cout << "Option -p needs to be set and be greater than 0" << endl;
-        printUsage(argv[0]);
-        ::exit(-1);
+        ret = -1;
     }
     if (m_nodeName.empty()) {
         m_nodeName = ProcessThreadService::getHostname();
@@ -141,6 +174,10 @@ ActiveNodeParams::parseArgs(int argc, char **argv)
 
     if (m_nodeName.empty()) {
         cout << "Node name is impossibly empty." << endl;
+        ret = -1;
+    }
+
+    if (ret != 0) {
         printUsage(argv[0]);
         ::exit(-1);
     }

@@ -297,58 +297,52 @@ class Locker
 class RdWrLock
 {
   public:
-    RdWrLock()
-    {
-        int ret = pthread_rwlock_init(&m_rwlock, NULL);
-        if (ret != 0) {
-            throw SystemFailureException(
-                "RdWrLock: constructor failed");
-        }
-    }
-    ~RdWrLock()
-    {
-        int ret = pthread_rwlock_destroy(&m_rwlock);
-        if (ret != 0) {
-            throw SystemFailureException(
-                "RdWrLock: destructor failed");
-        }
-    }
+    /**
+     * Constructor.
+     */
+    RdWrLock();
+
+    /**
+     * Destructor.
+     */
+    ~RdWrLock();
+
     /**
      * Get the read lock
      */
-    void acquireRead()
-    {
-        int ret = pthread_rwlock_rdlock(&m_rwlock);
-        if (ret != 0) {
-            throw SystemFailureException("acquireRead: failed");
-        }
-    }
+    void acquireRead();
+
     /**
      * Get the write lock
      */
-    void acquireWrite()
-    {
-        int ret = pthread_rwlock_wrlock(&m_rwlock);
-        if (ret != 0) {
-            throw SystemFailureException("acquireWrite: failed");
-        }
-    }
+    void acquireWrite();
+
     /**
      * Release lock
      */
-    void release()
-    {
-        int ret = pthread_rwlock_unlock(&m_rwlock);
-        if (ret != 0) {
-            throw SystemFailureException("release: failed");
-        }
-    }
+    void release();
+
+  private:
+    /**
+     * No copy constructor allowed.
+     */
+    RdWrLock(const RdWrLock &);
+
+    /**
+     * No assignment allowed.
+     */
+    RdWrLock & operator=(const RdWrLock &);
 
   private:
     /**
      * The lock.
      */
     pthread_rwlock_t m_rwlock;    
+
+    /**
+     * Lock attributes
+     */
+    pthread_rwlockattr_t m_rwlockAttr;
 };
 
 /**

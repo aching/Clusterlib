@@ -45,14 +45,6 @@ RootImpl::getApplication(const string &appName, AccessType accessType)
                                 accessType));
 }
 
-Notifyable *
-RootImpl::getNotifyableFromKey(const string &key)
-{
-    TRACE(CL_LOG, "getNotifyableFromKey");
-
-    return getOps()->getNotifyableFromKey(vector<string>(), key);
-}
-
 NotifyableList
 RootImpl::getChildrenNotifyables()
 {

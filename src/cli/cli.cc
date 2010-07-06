@@ -131,6 +131,8 @@ int main(int argc, char* argv[])
     params->registerCommandByGroup(new StringArg(), argCmds);
     params->registerCommandByGroup(new NotifyableArg(params->getClient()),
                                    argCmds);
+    params->registerCommandByGroup(new JsonArg(params->getClient()),
+                                   argCmds);
 
     /* Keep getting commands until done. */
     while (!params->finished()) {

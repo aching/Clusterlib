@@ -62,7 +62,9 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
      */
     Mutex activeNodeMutex;
     m_activeNode = m_activeNodeGroup->getNode(nodeName, CREATE_IF_NOT_FOUND);
-    m_activeNode->acquireOwnership();
+    if (m_params.getEnableNodeOwnership()) {
+        m_activeNode->acquireOwnership();
+    }
     m_activeNodePeriodicCheck = 
         new ActiveNodePeriodicCheck(m_params.getCheckMsecs(), 
                                     m_activeNode,
@@ -80,9 +82,12 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
         }
     }
     int32_t maxProcessSlots = m_params.getNumProcs();
+
     m_activeNode->acquireLock();
+
     m_activeNode->cachedProcessSlotInfo().setMaxProcessSlots(maxProcessSlots);
     m_activeNode->cachedProcessSlotInfo().publish();
+
     m_activeNode->releaseLock();
     
     Periodic *processUpdater = NULL;
@@ -100,7 +105,9 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
 
 ActiveNode::~ActiveNode()
 {    
-    m_activeNode->releaseOwnership();
+    if (m_params.getEnableNodeOwnership()) {
+        m_activeNode->releaseOwnership();
+    }
 }
 
 Node *
@@ -133,9 +140,12 @@ ActiveNode::run(vector<ClusterlibRPCManager *> &rpcManagerVec)
         rpcClientVec.push_back(
             m_factory->createJSONRPCMethodClient(*rpcManagerVecIt));
     }
+
     m_activeNode->acquireLock();
+
     m_activeNode->cachedProcessSlotInfo().setEnable(true);
     m_activeNode->cachedProcessSlotInfo().publish();
+
     m_activeNode->releaseLock();
 
     /* Wait until a signal to stop */

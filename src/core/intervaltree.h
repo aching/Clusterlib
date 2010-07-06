@@ -80,7 +80,7 @@ class IntervalTreeNode {
      * 
      * @return the data from the constructor
      */
-    virtual D &getData() = 0;
+    virtual const D &getData() const = 0;
 
     /**
      * Get the color of this node
@@ -135,7 +135,7 @@ class IntervalTreeNodeImpl : public IntervalTreeNode<R, D> {
 
     virtual R getEndRangeMax() const;
 
-    virtual D &getData();
+    virtual const D &getData() const;
 
     virtual typename IntervalTreeNode<R, D>::Color getColor() const;
 
@@ -325,7 +325,8 @@ operator<<(std::ostream &stream, const IntervalTreeNodeImpl<R, D> &node)
            << ",e=" << node.getEndRange() << ",m=" << node.getEndRangeMax()
            << ",c=" << node.getColorString(node.getColor()) 
            << ",p=" << node.getParent() << ",(" << &node
-           << "),l=" << node.getLeftChild() << ",r=" << node.getRightChild();
+           << "),l=" << node.getLeftChild() << ",r=" << node.getRightChild()
+           << ",data=" << node.getData();
 
     return stream;
 }
@@ -401,8 +402,8 @@ IntervalTreeNodeImpl<R, D>::setEndRangeMax(R endRangeMax)
 }
 
 template<typename R, typename D>
-D &
-IntervalTreeNodeImpl<R, D>::getData()
+const D &
+IntervalTreeNodeImpl<R, D>::getData() const
 {
     if (isSentinel()) {
         throw Exception("getData: Called on sentinel!");
@@ -604,7 +605,7 @@ class IntervalTree {
                     D data);
 
     /**
-     * Verify the correctness of the tree A sentinel node is valid to
+     * Verify the correctness of the tree.  A sentinel node is valid to
      * check and will return true.
      *
      * @param headNodeP the head to start checking from (if NULL, then 
@@ -733,6 +734,17 @@ class IntervalTree {
     bool empty() const;
 
   private:
+    /**
+     * Compare two IntervalTreeNodeImpl nodes.
+     *
+     * @param firstNodeP Pointer to the first node
+     * @param secondNodeP Pointer to the second node
+     * @return -1 if firstNodeP is less than secondNodeP, 0 if they are equal
+     *         and 1 if firstNodeP is greater than secondNodeP
+     */
+    int32_t compare(const IntervalTreeNodeImpl<R, D> *firstNodeP,
+                    const IntervalTreeNodeImpl<R, D> *secondNodeP) const;
+
     /**
      * Update end range max for a node based on its children.
      *
@@ -886,6 +898,11 @@ IntervalTree<R, D>::nodeSearch(R startRange,
 {
     IntervalTreeNodeImpl<R, D> *xP = getHeadNode();
 
+    IntervalTreeNodeImpl<R, D> tempNode(startRange, 
+                                        endRange, 
+                                        endRange, 
+                                        data);
+    
     while (xP != getSentinelNode()) {
         if ((xP->getStartRange() == startRange) &&
             (xP->getEndRange() == endRange) &&
@@ -893,7 +910,7 @@ IntervalTree<R, D>::nodeSearch(R startRange,
             return xP;
         }
         
-        if (startRange < xP->getStartRange()) {
+        if (compare(&tempNode, xP) == -1) {
             xP = xP->getLeftChildImpl();
         }
         else {
@@ -1028,7 +1045,8 @@ IntervalTree<R, D>::insertNode(R startRange,
      */
     while ((xP != getHeadNode()) && 
            (xP->getParentImpl()->getColor() == IntervalTreeNode<R, D>::RED)) {
-        if (xP->getParentImpl() == xP->getParentImpl()->getParentImpl()->getLeftChildImpl()) {
+        if (xP->getParentImpl() == 
+            xP->getParentImpl()->getParentImpl()->getLeftChildImpl()) {
             yP = xP->getParentImpl()->getParentImpl()->getRightChildImpl();
             if (yP->getColor() == IntervalTreeNode<R, D>::RED) {
                 xP->getParentImpl()->setColor(IntervalTreeNode<R, D>::BLACK);
@@ -1121,6 +1139,40 @@ IntervalTree<R, D>::empty() const
 }
 
 template<typename R, typename D> 
+int32_t
+IntervalTree<R, D>::compare(
+    const IntervalTreeNodeImpl<R, D> *firstNodeP,
+    const IntervalTreeNodeImpl<R, D> *secondNodeP) const
+{
+    /* Primary comparison on startRange */
+    if (firstNodeP->getStartRange() < secondNodeP->getStartRange()) {
+        return -1;
+    }
+    else if (firstNodeP->getStartRange() > secondNodeP->getStartRange()) {
+        return 1;
+    }
+
+    /* Secondary comparison on endRange */
+    if (firstNodeP->getEndRange() < secondNodeP->getEndRange()) {
+        return -1;
+    }
+    else if (firstNodeP->getEndRange() > secondNodeP->getEndRange()) {
+        return 1;
+    }
+
+    /* Tertiary comparison on the data */
+    if (firstNodeP->getData() < secondNodeP->getData()) {
+        return -1;
+    }
+    else if (firstNodeP->getData() > secondNodeP->getData()) {
+        return 1;
+    }
+
+    /* The nodes are identical */
+    return 0;
+}
+
+template<typename R, typename D> 
 void 
 IntervalTree<R, D>::updateEndRangeMax(IntervalTreeNodeImpl<R, D> *nodeP)
 {
@@ -1168,11 +1220,13 @@ IntervalTree<R, D>::checkTree(const IntervalTreeNodeImpl<R, D> *headNodeP,
     }
 
     /* Recurse */
-    if (checkTree(headNodeP->getLeftChildImpl(), depth + 1, maxDepth, nodeCount) 
+    if (checkTree(
+            headNodeP->getLeftChildImpl(), depth + 1, maxDepth, nodeCount) 
         == false) {
         return false;
     }
-    if (checkTree(headNodeP->getRightChildImpl(), depth + 1, maxDepth, nodeCount) 
+    if (checkTree(
+            headNodeP->getRightChildImpl(), depth + 1, maxDepth, nodeCount) 
         == false) {
         return false;
     }
@@ -1214,8 +1268,7 @@ IntervalTree<R, D>::checkTree(const IntervalTreeNodeImpl<R, D> *headNodeP,
 
     /* Check startRange of self against children */
     if ((headNodeP->getLeftChildImpl() != getSentinelNode()) &&
-        (headNodeP->getStartRange() <= 
-         headNodeP->getLeftChildImpl()->getStartRange())) {
+        (compare(headNodeP->getLeftChildImpl(), headNodeP) != -1)) {
         std::ostringstream oss;
         oss << "checkTree: start range '" << headNodeP->getStartRange()
             << "' <= start range '"
@@ -1224,11 +1277,10 @@ IntervalTree<R, D>::checkTree(const IntervalTreeNodeImpl<R, D> *headNodeP,
         return false;
     }
     if ((headNodeP->getRightChildImpl() != getSentinelNode()) &&
-        (headNodeP->getStartRange() > 
-         headNodeP->getRightChildImpl()->getStartRange())) {
+        (compare(headNodeP->getRightChildImpl(), headNodeP) < 0)) {
         std::ostringstream oss;
         oss << "checkTree: start range '" << headNodeP->getStartRange()
-            << "' <= start range '"
+            << "' > start range '"
             << headNodeP->getRightChildImpl()->getStartRange() << "'";
         LOG_ERROR(ITREE_LOG, "%s", oss.str().c_str());
         return false;
@@ -1240,8 +1292,7 @@ IntervalTree<R, D>::checkTree(const IntervalTreeNodeImpl<R, D> *headNodeP,
     }
 
     /* Check startRange of self against parent */
-    if ((headNodeP->getStartRange() >= 
-         headNodeP->getParentImpl()->getStartRange()) &&
+    if ((compare(headNodeP, headNodeP->getParentImpl()) != -1) &&
         (headNodeP->getParentImpl()->getLeftChildImpl() == headNodeP)) {
         std::ostringstream oss;
         oss << "checkTree: start range '" << headNodeP->getStartRange()
@@ -1250,8 +1301,7 @@ IntervalTree<R, D>::checkTree(const IntervalTreeNodeImpl<R, D> *headNodeP,
         LOG_ERROR(ITREE_LOG, "%s", oss.str().c_str());
         return false;
     }
-    if ((headNodeP->getStartRange() < 
-         headNodeP->getParentImpl()->getStartRange()) &&
+    if ((compare(headNodeP, headNodeP->getParentImpl()) < 0) &&
         (headNodeP->getParentImpl()->getRightChildImpl() == headNodeP)) {
         std::ostringstream oss;
         oss << "checkTree: start range '" << headNodeP->getStartRange()
@@ -1328,10 +1378,11 @@ IntervalTree<R, D>::printDepthFirstSearch(
         return;
     }
 
-    printDepthFirstSearch(headNodeP->getLeftChild());
     std::ostringstream oss;
     oss << *(dynamic_cast<const IntervalTreeNodeImpl<R, D> *>(headNodeP));
     LOG_INFO(ITREE_LOG, "%s", oss.str().c_str());
+
+    printDepthFirstSearch(headNodeP->getLeftChild());
     printDepthFirstSearch(headNodeP->getRightChild());
 }
 
@@ -1495,7 +1546,7 @@ IntervalTree<R, D>::insertNodeIntoTree(R startRange,
             xP->setEndRangeMax(zP->getEndRangeMax()); 
         }
 
-        if (zP->getStartRange() < xP->getStartRange()) {
+        if (compare(zP, xP) == -1) {
             xP = xP->getLeftChildImpl();
         }
         else {
@@ -1508,7 +1559,7 @@ IntervalTree<R, D>::insertNodeIntoTree(R startRange,
         setHeadNode(zP);
     }
     else {
-        if (zP->getStartRange() < yP->getStartRange()) {
+        if (compare(zP, yP) == -1) {
             yP->setLeftChild(zP);
         }
         else {

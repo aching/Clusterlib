@@ -74,27 +74,6 @@ const string ClusterlibStrings::PROCESSSLOT_INFO_JSON_OBJECT =
 const string ClusterlibStrings::PROCESSSLOTSUSAGE = "_processSlotsUsage";
 const string ClusterlibStrings::PROCESSSLOTSMAX = "_processSlotsMax";
 
-const string ClusterlibStrings::PROCESSSLOTPORTVEC = "_processSlotPortVec";
-const string ClusterlibStrings::PROCESSSLOTEXECARGS = 
-    "_processSlotExecArgs";
-const string ClusterlibStrings::PROCESSSLOTRUNNINGEXECARGS = 
-    "_processSlotRunningExecArgs";
-const string ClusterlibStrings::PROCESSSLOTPID = "_processSlotPID";
-const string ClusterlibStrings::PROCESSSLOTDESIREDSTATE = 
-    "_processSlotDesiredState";
-const string ClusterlibStrings::PROCESSSLOTCURRENTSTATE = 
-    "_processSlotCurrentState";
-const string ClusterlibStrings::PROCESSSLOTRESERVATION = 
-    "_processSlotReservation";
-
-const string ClusterlibStrings::PROCESSSTATE_UNUSED = "_unused";
-const string ClusterlibStrings::PROCESSSTATE_STARTED = "_started";
-const string ClusterlibStrings::PROCESSSTATE_RUNNING = "_running";
-const string ClusterlibStrings::PROCESSSTATE_STOPPED = "_stopped";
-const string ClusterlibStrings::PROCESSSTATE_FINISHED = "_finished";
-const string ClusterlibStrings::PROCESSSTATE_FAILED = "_failed";
-const string ClusterlibStrings::PROCESSSTATE_INVALID = "_invalid";
-
 const string ClusterlibStrings::JSON_PROCESSSTATE_STATE_KEY = "_state";
 const string ClusterlibStrings::JSON_PROCESSSTATE_MSECS_KEY = "_msecs";
 const string ClusterlibStrings::JSON_PROCESSSTATE_DATE_KEY = "_date";
@@ -113,11 +92,14 @@ const string ClusterlibStrings::PLK_STATE = "_state";
 const string ClusterlibStrings::PLV_STATE_INITIAL = "_initial";
 const string ClusterlibStrings::PLV_STATE_PREPARING = "_preparing";
 const string ClusterlibStrings::PLV_STATE_READY = "_ready";
+const string ClusterlibStrings::PLV_STATE_HALTING = "_halting";
 const string ClusterlibStrings::PLV_STATE_STOPPED = "_stopped";
 const string ClusterlibStrings::PLK_RPCMANAGER_REQ_POSTFIX = 
     " current request";
 const string ClusterlibStrings::PLK_RPCMANAGER_REQ_STATUS_POSTFIX =
     " current request status";
+const string ClusterlibStrings::PLK_PORT_RANGE_START = "_portRangeStart";
+const string ClusterlibStrings::PLK_PORT_RANGE_END = "_portRangeEnd";
 const string ClusterlibStrings::PLK_USED_PORT_JSON_ARRAY = 
     "_usedPortJsonArray";
 

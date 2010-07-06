@@ -64,6 +64,8 @@ class NotifyableImpl
 
     virtual Group *getMyGroup(); 
 
+    virtual Notifyable *getNotifyableFromKey(const std::string &key);
+
     virtual Notifyable::State getState() const;
     
     virtual NameList getPropertyListNames();

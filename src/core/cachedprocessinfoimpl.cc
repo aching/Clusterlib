@@ -120,6 +120,22 @@ CachedProcessInfoImpl::loadDataFromRepository(bool setWatchesOnly)
 }
 
 JSONValue::JSONArray
+CachedProcessInfoImpl::getHostnameArr()
+{
+    Locker l(&getCachedDataLock());
+
+    return m_hostnameArr;
+}
+
+void
+CachedProcessInfoImpl::setHostnameArr(const JSONValue::JSONArray &hostnameArr)
+{
+    Locker l(&getCachedDataLock());
+
+    m_hostnameArr = hostnameArr;
+}
+
+JSONValue::JSONArray
 CachedProcessInfoImpl::getPortArr()
 {
     Locker l(&getCachedDataLock());
@@ -133,6 +149,43 @@ CachedProcessInfoImpl::setPortArr(const JSONValue::JSONArray &portArr)
     Locker l(&getCachedDataLock());
 
     m_portArr = portArr;
+}
+
+JSONValue::JSONArray
+CachedProcessInfoImpl::marshal()
+{
+    TRACE(CL_LOG, "marshal");
+
+    getNotifyable()->throwIfRemoved();
+    
+    Locker l(&getCachedDataLock());
+
+    JSONValue::JSONArray jsonArr;
+    jsonArr.push_back(m_hostnameArr);
+    jsonArr.push_back(m_portArr);
+    
+    return jsonArr;
+}
+
+void
+CachedProcessInfoImpl::unmarshal(const string &encodedJsonArr)
+{
+    TRACE(CL_LOG, "unmarshal");
+
+    getNotifyable()->throwIfRemoved();
+    ostringstream oss;
+
+    Locker l(&getCachedDataLock());
+    
+    JSONValue::JSONArray jsonArr = 
+        JSONCodec::decode(encodedJsonArr).get<JSONValue::JSONArray>();
+    if (jsonArr.size() != 2) {
+        oss.str();
+        oss << "unmarshal: Size should be 2 and is " << jsonArr.size();
+        throw InconsistentInternalStateException(oss.str());
+    }
+    m_hostnameArr = jsonArr[0].get<JSONValue::JSONArray>();
+    m_portArr = jsonArr[1].get<JSONValue::JSONArray>();
 }
 
 };	/* End of 'namespace clusterlib' */

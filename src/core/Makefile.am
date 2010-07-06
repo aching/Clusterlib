@@ -30,6 +30,7 @@ libcluster_a_SOURCES = \
 	queueimpl.cc \
 	processslotimpl.cc \
 	callbackandcontext.cc \
+	shard.cc \
 	notifyableimpl.cc \
 	nodeimpl.cc \
 	groupimpl.cc \

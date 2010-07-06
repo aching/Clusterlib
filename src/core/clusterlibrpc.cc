@@ -127,9 +127,9 @@ ClusterlibRPCRequest::waitMsecsResponse(int64_t msecsTimeout)
         m_response = m_client->getOps()->getIdResponse(m_id);
         return true;
     }
-
-    /* Should never get here. */
-    return false;
+    else {
+        return true;
+    }
 }
 
 const JSONValue &

@@ -473,4 +473,3 @@ class ClusterlibDataDistribution : public MPITestFixture {
 
 /* Registers the fixture into the 'registry' */
 CPPUNIT_TEST_SUITE_REGISTRATION(ClusterlibDataDistribution);
-

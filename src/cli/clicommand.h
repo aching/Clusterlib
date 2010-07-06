@@ -28,7 +28,8 @@ class CliCommand {
         BoolArg = 1,
         IntegerArg,
         StringArg,
-        NotifyableArg
+        NotifyableArg,
+        JsonArg
     };
 
     /**
@@ -48,6 +49,8 @@ class CliCommand {
                 return "StringArg";
             case NotifyableArg:
                 return "NotifyableArg";
+            case JsonArg:
+                return "JsonArg";
             default:
                 return "Unknown";
         }
@@ -110,12 +113,11 @@ class CliCommand {
     bool getBoolArg(int32_t argIndex) 
     {
         if (m_argTypeVec[argIndex] != BoolArg) {
-            std::stringstream ss;
-            ss << argIndex;
-            throw clusterlib::InvalidArgumentsException(
-                "getBoolArg: Index invalid " + ss.str());
+            std::ostringstream oss;
+            oss << "getBoolArg: Invalid index " << argIndex;
+            throw clusterlib::InvalidArgumentsException(oss.str());
         }
-
+        
         checkArgVecIndex(argIndex);
         if (m_argVec[argIndex].compare("true") == 0) {
             return true;
@@ -134,10 +136,9 @@ class CliCommand {
     int32_t getIntArg(int32_t argIndex) 
     {
         if (m_argTypeVec[argIndex] != IntegerArg) {
-            std::stringstream ss;
-            ss << argIndex;
-            throw clusterlib::InvalidArgumentsException(
-                "getIntArg: Index invalid " + ss.str());
+            std::ostringstream oss;
+            oss << "getIntArg: Invalid index " << argIndex;
+            throw clusterlib::InvalidArgumentsException(oss.str());
         }
 
         checkArgVecIndex(argIndex);
@@ -153,10 +154,9 @@ class CliCommand {
     std::string getStringArg(int32_t argIndex) 
     {
         if (m_argTypeVec[argIndex] != StringArg) {
-            std::stringstream ss;
-            ss << argIndex;
-            throw clusterlib::InvalidArgumentsException(
-                "getStringArg: Index invalid " + ss.str());
+            std::ostringstream oss;
+            oss << "getStringArg: Invalid index " << argIndex;
+            throw clusterlib::InvalidArgumentsException(oss.str());
         }
         
         checkArgVecIndex(argIndex);
@@ -172,15 +172,32 @@ class CliCommand {
     clusterlib::Notifyable *getNotifyableArg(int32_t argIndex) 
     {
         if (m_argTypeVec[argIndex] != NotifyableArg) {
-            std::stringstream ss;
-            ss << argIndex;
-            throw clusterlib::InvalidArgumentsException(
-                "getNotifyableArg: Index invalid " + ss.str());
+            std::ostringstream oss;
+            oss << "getNotifyableArg: Invalid index " << argIndex;
+            throw clusterlib::InvalidArgumentsException(oss.str());
         }
 
         checkArgVecIndex(argIndex);
         return getClient()->getRoot()->getNotifyableFromKey(
             m_argVec[argIndex]);
+    }
+
+    /**
+     * Get the argument as a JSONValue.
+     *
+     * @param argIndex the index of the argument to convert
+     * @return the argument as a JSONValue
+     */
+    json::JSONValue getJsonArg(int32_t argIndex) 
+    {
+        if (m_argTypeVec[argIndex] != JsonArg) {
+            std::ostringstream oss;
+            oss << "getJsonArg: Invalid index " << argIndex;
+            throw clusterlib::InvalidArgumentsException(oss.str());
+        }
+
+        checkArgVecIndex(argIndex);
+        return json::JSONCodec::decode(m_argVec[argIndex]);
     }
 
     /**

@@ -23,6 +23,20 @@ namespace clusterlib
 
 const string Notifyable::PID_KEY = "_pid";
 
+const string Notifyable::NOTIFYABLE_STATE_KEY = "_notifyableState";
+const string Notifyable::NOTIFYABLE_STATE_PREPARING_VALUE = 
+    "_notifyableStatePreparing";
+const string Notifyable::NOTIFYABLE_STATE_READY_VALUE = 
+    "_notifyableStateReady";
+const string Notifyable::NOTIFYABLE_STATE_UNAVAILABLE_VALUE = 
+    "_notifyableStateUnavailable";
+const string Notifyable::NOTIFYABLE_STATE_UNUSED_VALUE = 
+    "_notifyableStateUnused";
+const string Notifyable::NOTIFYABLE_STATE_MAINTAIN_VALUE = 
+    "_notifyableStateMaintain";
+const string Notifyable::NOTIFYABLE_STATE_NONE_VALUE = 
+    "_notifyableStateNone";
+
 NameList
 NotifyableImpl::getPropertyListNames() 
 {
@@ -180,6 +194,14 @@ NotifyableImpl::getMyGroup()
     } while ((myGroup == NULL) && (!groupKey.empty()));
 
     return myGroup;
+}
+
+Notifyable *
+NotifyableImpl::getNotifyableFromKey(const string &key)
+{
+    TRACE(CL_LOG, "getNotifyableFromKey");
+
+    return getOps()->getNotifyableFromKey(vector<string>(), key);
 }
 
 Notifyable::State

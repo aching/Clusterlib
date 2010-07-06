@@ -437,8 +437,13 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableAttributesFromKey(
         else if (dynamic_cast<DataDistribution *>(notifyable)) {
             DataDistribution *dataDistribution = 
                 dynamic_cast<DataDistribution *>(notifyable);
-            attributes[idDataDistributionCovered] = 
-                dataDistribution->cachedShards().isCovered();
+            attributes[idDataDistributionHashRangeName] = 
+                dataDistribution->cachedShards().getHashRangeName();
+            if (dataDistribution->cachedShards().getHashRangeName() != 
+                "UnknownHashRange") {
+                attributes[idDataDistributionCovered] = 
+                    dataDistribution->cachedShards().isCovered();
+            }
             attributes[idShardCount] = 
                 dataDistribution->cachedShards().getCount();
             vector<Shard> shardVec = 
@@ -476,7 +481,11 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableAttributesFromKey(
                 dynamic_cast<ProcessSlot *>(notifyable);
             
             attributes[idPrefixEditable + idPrefixDelim +
-                       idProcessSlotPortVec] = 
+                       idProcessSlotHostnameArr] = 
+                JSONCodec::encode(
+                    processSlot->cachedProcessInfo().getHostnameArr());
+            attributes[idPrefixEditable + idPrefixDelim +
+                       idProcessSlotPortArr] = 
                 JSONCodec::encode(
                     processSlot->cachedProcessInfo().getPortArr());
             attributes[idPropertyListSummary] = 
@@ -613,10 +622,12 @@ JSONValue::JSONString MethodAdaptor::setNotifyableAttributesFromKey(
                          0,
                          optionStopProcess.size(),
                          optionStopProcess)) {
-
                 processSlot->cachedDesiredState().set(
                     ProcessSlot::PROCESS_STATE_KEY,
-                    ProcessSlot::PROCESS_STATE_STOPPED_VALUE);
+                    ProcessSlot::PROCESS_STATE_EXIT_VALUE);
+                processSlot->cachedDesiredState().set(
+                    ProcessSlot::PROCESS_STATE_SET_MSECS_KEY,
+                    TimerService::getMsecsTimeString());
                 try {
                     processSlot->cachedDesiredState().publish();
                 }
@@ -1407,7 +1418,7 @@ JSONValue::JSONObject MethodAdaptor::getOneProcessSlotStatus(
         jsonObj[idNotifyableState] = "Running a process";        
     }
     else if (state.get<JSONValue::JSONString>() == 
-             ProcessSlot::PROCESS_STATE_STOPPED_VALUE) {
+             ProcessSlot::PROCESS_STATE_EXIT_VALUE) {
         jsonObj[idNotifyableStatus] = statusReady;
         jsonObj[idNotifyableState] = "Finished a process";
     }        

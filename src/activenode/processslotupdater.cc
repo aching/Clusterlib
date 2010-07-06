@@ -67,8 +67,11 @@ ProcessSlotUpdater::determineAction(Notifyable &notifyable)
              ProcessSlot::PROCESS_STATE_RUN_CONTINUOUSLY_VALUE)) {
             tmpAction = ProcessSlotUpdater::START;
         }
-        else if (desiredState == ProcessSlot::PROCESS_STATE_STOPPED_VALUE) {
-            tmpAction =  ProcessSlotUpdater::STOP;
+        else if (desiredState == ProcessSlot::PROCESS_STATE_EXIT_VALUE) {
+            tmpAction =  ProcessSlotUpdater::KILL;
+        }
+        else if (desiredState == ProcessSlot::PROCESS_STATE_CLEANEXIT_VALUE) {
+            tmpAction =  ProcessSlotUpdater::NONE;
         }
         else {
             throw InconsistentInternalStateException(
@@ -92,7 +95,7 @@ ProcessSlotUpdater::determineAction(Notifyable &notifyable)
                     desiredProcessStateSetMsecs);
             if (!desiredProcessStateSetMsecsFound) {
                 throw InconsistentInternalStateException(
-                    "determineAction: Couldn't find process state set!");
+                    "determineAction: Couldn't find process state set time!");
             }
             else if (currentDesiredProcessStateSetMsecsFound) {
                 /* Current state operating off the wrong desired state? */
@@ -114,12 +117,12 @@ ProcessSlotUpdater::determineAction(Notifyable &notifyable)
                      (desiredState == 
                       ProcessSlot::PROCESS_STATE_RUN_ONCE_VALUE) &&
                      (currentState == 
-                      ProcessSlot::PROCESS_STATE_STOPPED_VALUE)) {
+                      ProcessSlot::PROCESS_STATE_EXIT_VALUE)) {
                 return ProcessSlotUpdater::NONE;
             }
-            else if ((tmpAction == ProcessSlotUpdater::STOP) &&
+            else if ((tmpAction == ProcessSlotUpdater::KILL) &&
                      (currentState == 
-                      ProcessSlot::PROCESS_STATE_STOPPED_VALUE)) {
+                      ProcessSlot::PROCESS_STATE_EXIT_VALUE)) {
                 return ProcessSlotUpdater::NONE;
             }
             else {
@@ -157,6 +160,7 @@ ProcessSlotUpdater::run()
      * Make sure if there was a running process that we see if the
      * status changed.
      */
+    ostringstream msgss;
     JSONValue jsonPid;
     bool foundPid = processSlot->cachedCurrentState().get(
         ProcessSlot::PID_KEY, jsonPid);
@@ -197,7 +201,7 @@ ProcessSlotUpdater::run()
                     ProcessSlot::PID_KEY, JSONValue::JSONInteger(-1));
                 processSlot->cachedCurrentState().set(
                     ProcessSlot::PROCESS_STATE_KEY, 
-                    ProcessSlot::PROCESS_STATE_STOPPED_VALUE);
+                    ProcessSlot::PROCESS_STATE_EXIT_VALUE);
             }
         }
     }
@@ -212,6 +216,8 @@ ProcessSlotUpdater::run()
                 /* Might have to stop first if already running */
                 if ((oldPid > 0) && (oldPid != waitedPid)) {
                     processSlot->stopLocal(oldPid, SIGKILL);
+                    msgss << "Start Action: Stopped old PID " 
+                          << oldPid << endl;
                 }
                 
                 vector<string> addEnv;
@@ -230,29 +236,33 @@ ProcessSlotUpdater::run()
                     processSlot->cachedCurrentState().set(
                         ProcessSlot::PROCESS_STATE_KEY, 
                         ProcessSlot::PROCESS_STATE_RUNNING_VALUE);
+                    msgss << "StartAction: Started new PID " << newPid << endl;
                 }
                 catch (const RepositoryDataMissingException &e) { 
+                    msgss.str("");
+                    msgss << e.what();
                     processSlot->cachedCurrentState().set(
                         ProcessSlot::PROCESS_STATE_KEY, 
                         ProcessSlot::PROCESS_STATE_FAILURE_VALUE);
-                    processSlot->cachedCurrentState().set(
-                        ProcessSlot::PROCESS_STATE_FAILURE_MSG_KEY, 
-                        e.what());
                 }
             }
             break;
-        case STOP:
+        case KILL:
             if ((oldPid > 0) && (oldPid != waitedPid)) {
                 processSlot->stopLocal(oldPid, SIGKILL);
+                msgss << "Kill Action: Stopped old PID " << oldPid << endl;
             }
             processSlot->cachedCurrentState().set(
                 ProcessSlot::PROCESS_STATE_KEY, 
-                ProcessSlot::PROCESS_STATE_STOPPED_VALUE);
+                ProcessSlot::PROCESS_STATE_EXIT_VALUE);
             break;
         default:
             throw InconsistentInternalStateException("run: Invalid action");
     };
 
+    processSlot->cachedCurrentState().set(
+        ProcessSlot::PROCESS_STATE_MSG_KEY, 
+        msgss.str());
     int64_t msecs = TimerService::getCurrentTimeMsecs();
     processSlot->cachedCurrentState().set(
         ProcessSlot::PROCESS_STATE_SET_MSECS_KEY, msecs);
