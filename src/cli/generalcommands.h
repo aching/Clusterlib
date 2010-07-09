@@ -313,6 +313,21 @@ class StopActiveNode : public CliCommand
 };
 
 /**
+ * AggZookeeperState
+ */
+class AggZookeeperState : public CliCommand
+{
+  public:
+    AggZookeeperState(); 
+    virtual void action();
+    virtual std::string helpMessage();
+    virtual ~AggZookeeperState();
+
+  private:
+    CliParams *m_params;
+};
+
+/**
  * Quit
  */
 class Quit : public CliCommand

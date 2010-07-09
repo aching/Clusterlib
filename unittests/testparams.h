@@ -103,10 +103,16 @@ class TestParams {
     std::string m_zkServerPortList;
 
     /**
-     * The name one test fixture.  It is empty if all tests fixtures
+     * The name of one test fixture.  It is empty if all tests fixtures
      * are desired.
      */
     std::string m_testFixtureName;
+
+    /**
+     *  The name of a single test within a test fixture.  If it is not
+     *  empty, then only this test will be run.
+     */
+    std::string m_testName;
 
     /**
      * Output type 

@@ -165,11 +165,23 @@ class JSONRPCRequest
 {
   public:
     /**
-     * Send the request to the destination.
+     * Set the destination.
      *
-     * @param destination implementation-dependent destination
+     * @param destination The implementation-specific destination.
      */
-    virtual void sendRequest(const void *destination) = 0;
+    virtual void setDestination(const json::JSONValue &destination) = 0;
+
+    /**
+     * Get the destination.
+     *
+     * @return The implementation-specific destination.
+     */
+    virtual json::JSONValue getDestination() = 0;
+
+    /**
+     * Send the request to the destination.
+     */
+    virtual void sendRequest() = 0;
 
     /**
      * Wait unconditionally  for the response.

@@ -111,4 +111,4 @@ Factory::getRepository()
     return getOps()->getRepository();
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

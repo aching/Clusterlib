@@ -56,6 +56,8 @@ libcluster_a_SOURCES = \
 	jsonrpcmethodhandler.cc \
 	genericrpc.cc \
 	clusterlibrpc.cc \
+	clusterlibrpcbulkrequest.cc \
+	zookeeperperiodiccheck.cc \
         md5/md5.cc
 SUBDIRS = md5
 

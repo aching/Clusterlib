@@ -41,6 +41,7 @@ namespace zookeeper { namespace ui {
         std::auto_ptr<json::rpc::HttpServerAdaptor> adaptor;
         std::auto_ptr<clusterlib::rpc::json::MethodAdaptor> clusterRpcMethod;
         std::auto_ptr<zookeeper::rpc::json::MethodAdaptor> zookeeperRpcMethod;
+        std::auto_ptr<clusterlib::Periodic> zookeeperPeriodicCheck;
         std::auto_ptr<clusterlib::Factory> clusterFactory;
     };
 }}

@@ -33,7 +33,7 @@ class Group
      * Get the named node.
      * 
      * @param name the name of the node
-     * @param create create the node if doesn't exist
+     * @param accessType The mode of access                                  
      * @return NULL if the named node does not exist and create
      * == false
      * @throw Exception only if tried to create and couldn't create
@@ -52,7 +52,7 @@ class Group
      * Get the named group.
      * 
      * @param name the name of the group
-     * @param create create the group if doesn't exist.
+     * @param accessType The mode of access
      * @return NULL if the group does not exist and create
      * == false, else the Group *.
      * @throw Exception only if tried to create and couldn't create
@@ -71,7 +71,7 @@ class Group
      * Get the named data distribution.
      * 
      * @param name the name of the data distribution
-     * @param create create the data distribution if doesn't exist
+     * @param accessType The mode of access
      * @return NULL if no data distribution exists for this notifyable
      * @throw Exception only if tried to create and couldn't create
      */

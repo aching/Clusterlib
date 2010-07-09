@@ -158,6 +158,6 @@ class Factory
     FactoryOps *m_ops;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_FACTORY_H_ */

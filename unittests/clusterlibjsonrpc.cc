@@ -233,7 +233,8 @@ class ClusterlibJSONRPC : public MPITestFixture {
         cerr << "JSONRPC2: Process " << getRank() << " sending "
              << JSONCodec::encode(testMsgRequest.marshalParams()) << " to "
              << destQueue->getKey() << endl;
-        testMsgRequest.sendRequest(destQueue->getKey().c_str());
+        testMsgRequest.setDestination(destQueue->getKey().c_str());
+        testMsgRequest.sendRequest();
         testMsgRequest.waitResponse();
         JSONValue::JSONObject respObj = testMsgRequest.getResponse();
         cerr << "JSONRPC2: Process " << getRank() << " got response "

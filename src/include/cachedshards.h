@@ -33,7 +33,7 @@ class CachedShards
      * Find the Notifyables that the key maps to.  Sorted by priority (high
      * to low)
      *
-     * @param key the key to find.
+     * @param hashRange The HashRange to find.
      * @return the vector of Notifyable pointer that have this key
      */
     virtual std::vector<Notifyable *> getNotifyables(

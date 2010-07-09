@@ -44,8 +44,10 @@ class CachedKeyValues
      * provide consistent results to the user.
      *
      * @param key the key
-     * @param The value of the given propery if found
+     * @param jsonValue The value of the given propery if found
      * @param searchParent Try the parent for the property as well?
+     * @param propertyListWithKey The resulting PropertyList where the 
+     *        jsonValue came from.
      * @return True if found, false otherwise
      */
     virtual bool get(const std::string &key, 

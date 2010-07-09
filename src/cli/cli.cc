@@ -82,7 +82,9 @@ int main(int argc, char* argv[])
     params->registerCommandByGroup(new GetZnodeChildren(params->getFactory(), 
                                                         params->getClient()),
                                    zkCmds);
-    
+    params->registerCommandByGroup(new AggZookeeperState(),
+                                   zkCmds);
+
     params->registerCommandByGroup(setLogLevelCommand, clusterlibCmds);
     params->registerCommandByGroup(new RemoveNotifyable(params->getClient()),
                                    clusterlibCmds);

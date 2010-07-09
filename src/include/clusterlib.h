@@ -39,6 +39,7 @@
 #include "json.h"
 #include "jsonrpc.h"
 #include "clusterlibrpc.h"
+#include "clusterlibrpcbulkrequest.h"
 #include "genericrpc.h"
 
 #include "clusterlibstrings.h"
@@ -62,5 +63,7 @@
 #include "root.h"
 #include "client.h"
 #include "factory.h"
+
+#include "zookeeperperiodiccheck.h"
 
 #endif	/* !_CL_CLUSTERLIB_H_ */

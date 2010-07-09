@@ -3,6 +3,7 @@
 #include <cppunit/ui/text/TestRunner.h>
 #include "testparams.h"
 #include "clusterlib.h"
+#include <stdexcept>
 
 using namespace std;
 using namespace clusterlib;
@@ -22,15 +23,23 @@ TestParams::printUsage(char *exec) const
         " -o  --output_type     Choose the output type.\n"
         "                       console - console output\n"
         "                       file - file output (default)\n"
-        " -t  --test_fixture    Run a particular test fixture\n"
+        " -t  --test_fixture    Run a particular test fixture or test\n"
         "                       (choices are below)\n";
     /* Get the top level suite from the registry. */
     CppUnit::Test *suite = 
         CppUnit::TestFactoryRegistry::getRegistry().makeTest();
-    for (int32_t i = 0; i < suite->getChildTestCount(); i++) {
+    for (int32_t i = 0; i < suite->getChildTestCount(); ++i) {
         cout <<
             "                       " << suite->getChildTestAt(i)->getName()
              << endl;
+        for (int32_t j = 0; 
+             j < suite->getChildTestAt(i)->getChildTestCount();
+             ++j) {
+            cout <<
+                "                           " 
+                 << suite->getChildTestAt(i)->getChildTestAt(j)->getName()
+                 << endl;
+        }
     }
     cout <<
         " -z  --zk_server_port  Zookeeper server port list \n"
@@ -62,7 +71,6 @@ TestParams::rootParseArgs(int argc, char **argv)
     int32_t err = -1;
     int32_t ret = 0;
     const char *optstring = ":hc:t:o:z:";
-    bool found = false;
 
     /* Parse all standard command line arguments */
     while (1) {
@@ -92,20 +100,11 @@ TestParams::rootParseArgs(int argc, char **argv)
                     /* Get the top level suite from the registry. */
                     CppUnit::Test *suite = 
                         CppUnit::TestFactoryRegistry::getRegistry().makeTest();
-                    found = false;
-                    for (int32_t i = 0; i < suite->getChildTestCount(); i++) {
-                        if (suite->getChildTestAt(i)->getName().compare(
-                                optarg) == 0) {
-                            found = true;
-                            break;
-                        }
+                    try {
+                        m_testFixtureName = suite->findTest(optarg)->getName();
                     }
-                    if (found == true) {
-                        m_testFixtureName = optarg;
-                    }
-                    else {
-                        cout << optarg << " is an unknown test fixture" 
-                             << endl;
+                    catch (const std::invalid_argument &e) {
+                        cout << optarg << " is an unknown test" << endl;
                         ret = -1;
                     }
                 }

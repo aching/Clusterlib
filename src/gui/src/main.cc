@@ -1,4 +1,5 @@
 #include "main.h"
+#include "zookeeperperiodiccheck.h"
 #include "xmlconfig.h"
 #include "mhd_httpd.h"
 #include <cstdlib>
@@ -69,13 +70,15 @@ namespace zookeeper { namespace ui {
         return regex_match(context.client, *allowedHosts) ? ALLOW : DENY;
     }
 
-    void ZooKeeperUIServer::includeHandler(const string &reference, HttpContext *context) {
+    void ZooKeeperUIServer::includeHandler(
+        const string &reference, HttpContext *context) {
         if (reference == "ZKUI_VERSION") {
             context->response.body = gInkBuildStamp;
         } else if (reference == "ZOOKEEPER_SERVERS") {
             context->response.body = config["zookeeper.servers"];
         } else {
-            throw HttpServerException(reference + " include directive is not supported.");
+            throw HttpServerException(reference + 
+                                      " include directive is not supported.");
         }
     }
     
@@ -184,14 +187,22 @@ namespace zookeeper { namespace ui {
         httpd.reset(new microhttpd::MicroHttpServer((uint16_t)atoi(config["httpd.port"].c_str()), config["httpd.rootDirectory"], config["httpd.ipv6"] == "true"));
         rpcManager.reset(new JSONRPCManager());
         adaptor.reset(new HttpServerAdaptor(httpd.get(), rpcManager.get()));
-        clusterFactory.reset(new clusterlib::Factory(config["zookeeper.servers"]));
+        clusterFactory.reset(
+            new clusterlib::Factory(config["zookeeper.servers"]));
+        clusterlib::Client *client = clusterFactory->createClient();
+        zookeeperPeriodicCheck.reset(new clusterlib::ZookeeperPeriodicCheck(
+                                         60*1000,
+                                         config["zookeeper.servers"],
+                                         client->getRoot()));
+        clusterFactory->registerPeriodicThread(*zookeeperPeriodicCheck.get());
         clusterRpcMethod.reset(
             new clusterlib::rpc::json::MethodAdaptor(
                 clusterFactory->createClient()));
         zookeeperRpcMethod.reset(
             new zookeeper::rpc::json::MethodAdaptor(
                 config["zookeeper.servers"]));
-        configurator::Configuration::const_iterator configIter = config.find("httpd.contenttypes");
+        configurator::Configuration::const_iterator configIter = 
+            config.find("httpd.contenttypes");
 
         // Set content type
         if (configIter != config.end()) {
@@ -284,7 +295,9 @@ namespace zookeeper { namespace ui {
         adaptor.reset(NULL);
         zookeeperRpcMethod.reset(NULL);
         clusterRpcMethod.reset(NULL);
+        clusterFactory->cancelPeriodicThread(*zookeeperPeriodicCheck.get());
         clusterFactory.reset(NULL);
+        zookeeperPeriodicCheck.reset(NULL);
         rpcManager->clearMethods();
 
         LOG4CXX_INFO(logger, "Server stopped.");

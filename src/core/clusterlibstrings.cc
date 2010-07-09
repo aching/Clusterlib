@@ -189,4 +189,12 @@ const string ClusterlibStrings::JSONOBJECTKEY_NOTIFYABLEKEY = "_notifyableKey";
 const string ClusterlibStrings::JSONOBJECTKEY_SIGNAL = "_signal";
 const string ClusterlibStrings::JSONOBJECTKEY_TIME = "_time";
 
+const string ClusterlibStrings::ZK_RUOK_STATE_KEY = "Zookeeper ruok";
+const string ClusterlibStrings::ZK_ENVI_STATE_KEY = "Zookeeper environment";
+const string ClusterlibStrings::ZK_REQS_STATE_KEY = "Zookeeper reqs";
+const string ClusterlibStrings::ZK_STAT_STATE_KEY = "Zookeeper statistics";
+const string ClusterlibStrings::ZK_AGG_NODES_STATE_KEY =
+    "Zookeeper aggregate state";
+
+
 };	/* End of 'namespace clusterlib' */

@@ -76,7 +76,7 @@ class CachedState
      *
      * @param historyIndex the state to get the keys for
      * @param key the key
-     * @param The value of the given propery if found
+     * @param jsonValue The value of the given propery if found
      * @return True if found, false otherwise
      */
     virtual bool getHistory(int32_t historyIndex,
@@ -94,14 +94,14 @@ class CachedState
      * provide consistent results to the user.
      *
      * @param key the key
-     * @param The value of the given propery if found
+     * @param jsonValue The value of the given propery if found
      * @return True if found, false otherwise
      */
     virtual bool get(const std::string &key, 
                      json::JSONValue &jsonValue) = 0;
 
     /**
-     * \brief Sets value of the given key for the current state..
+     * \brief Sets value of the given key for the current state.
      * 
      * In most cases, the calling process should hold the lock prior
      * to calling this function to prevent another process or the

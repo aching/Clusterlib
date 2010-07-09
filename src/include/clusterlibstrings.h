@@ -197,6 +197,15 @@ class ClusterlibStrings
     static const std::string JSONOBJECTKEY_SIGNAL;
     static const std::string JSONOBJECTKEY_TIME;
 
+    /*
+     * Known state keys
+     */
+    static const std::string ZK_RUOK_STATE_KEY;
+    static const std::string ZK_ENVI_STATE_KEY;
+    static const std::string ZK_REQS_STATE_KEY;
+    static const std::string ZK_STAT_STATE_KEY;
+    static const std::string ZK_AGG_NODES_STATE_KEY;
+
   private:
     ClusterlibStrings()
     {

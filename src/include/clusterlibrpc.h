@@ -35,12 +35,24 @@ class ClusterlibRPCRequest
     explicit ClusterlibRPCRequest(Client *client, ClientData data = NULL);
 
     /**
-     * Sends request (Implementation specific destination) to a
-     * specific queue.
+     * In ClusterlibRPCRequest, the destination is the receiving queue
+     * of the destination Notifyable.
      *
-     * @param destination pointer to a const char * that is a Queue key
+     * @param destination The Notifyable key of the receiving queue as a 
+     *        JSONString.
      */
-    virtual void sendRequest(const void *destination);
+    virtual void setDestination(const json::JSONValue &destination);
+
+    /**
+     * In ClusterlibRPCRequest, the destination is the receiving queue
+     * of the destination Notifyable.
+     *
+     * @return The Notifyable key of the receiving queue as a 
+     *        JSONString.
+     */
+    virtual json::JSONValue getDestination();
+
+    virtual void sendRequest();
 
     virtual void waitResponse();
 
@@ -110,9 +122,14 @@ class ClusterlibRPCRequest
     ClientImpl *m_client;
 
     /**
-     * The clusterlib root
+     * The clusterlib Root
      */
     Root *m_root;
+
+    /**
+     * The destination Queue
+     */
+    Queue *m_destinationQueue;
 
     /**
      * The JSON-RPC parameters

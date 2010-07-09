@@ -70,7 +70,7 @@ class Node
      * Get the named process slot (only if enabled).
      * 
      * @param name the name of the proccess slot
-     * @param create create the process slot if doesn't exist
+     * @param accessType The mode of access
      * @return NULL if the named process slot does not exist and create
      * == false
      * @throw Exception only if tried to create and couldn't create

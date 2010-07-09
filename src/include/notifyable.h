@@ -155,7 +155,7 @@ class Notifyable
      * name is selected.
      * 
      * @param name the name of the PropertyList to create
-     * @param create create the PropertyList if doesn't exist?
+     * @param accessType The mode of access
      * @return PropertyList pointer or NULL if no PropertyList exists for this 
      * notifyable and create == false
      * @throw Exception if Notifyable is the root or application
@@ -178,7 +178,7 @@ class Notifyable
      * and throw a clusterlib exception.  
      * 
      * @param name the name of the queue to create
-     * @param create create the queue if doesn't exist?
+     * @param accessType The mode of access
      * @return queue pointer or NULL if no queue exists for this 
      * notifyable and create == false
      */

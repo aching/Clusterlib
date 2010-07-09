@@ -891,7 +891,8 @@ JSONRPCCommand::action()
     /* Use the generic request. */
     req.reset(new GenericRequest(getClient(), getNativeArg(1)));
     
-    req->sendRequest(queueKey.c_str());
+    req->setDestination(queueKey.c_str());
+    req->sendRequest();
     req->waitResponse();
     if ((req->getResponseError()).type() != typeid(JSONValue::JSONNull)) {
         throw JSONRPCInvocationException(
@@ -1013,7 +1014,6 @@ StopProcessSlot::helpMessage()
  
 StopProcessSlot::~StopProcessSlot() {}
 
-
 StopActiveNode::StopActiveNode(Client *client) 
     : CliCommand("stopActiveNode", client) 
 {
@@ -1052,6 +1052,54 @@ StopActiveNode::helpMessage()
 }
  
 StopActiveNode::~StopActiveNode() {}
+
+AggZookeeperState::AggZookeeperState()
+    : CliCommand("aggZookeeperState", NULL) 
+{
+    vector<CliCommand::ArgType> argTypeVec;
+    argTypeVec.push_back(CliCommand::StringArg);
+    setArgTypeVec(argTypeVec);
+} 
+
+void
+AggZookeeperState::action() 
+{
+    ZookeeperPeriodicCheck singleCheck(0, getStringArg(0), NULL);
+    singleCheck.run();
+    JSONValue::JSONObject aggStatObj = singleCheck.getAggNodeState();
+    JSONValue::JSONObject::const_iterator aggStatObjIt;
+    for (aggStatObjIt = aggStatObj.begin();
+         aggStatObjIt != aggStatObj.end();
+         ++aggStatObjIt) {
+        cout << aggStatObjIt->first << "=";
+        if (aggStatObjIt->second.type() == typeid(JSONValue::JSONArray)) {
+            JSONValue::JSONArray arr = 
+                aggStatObjIt->second.get<JSONValue::JSONArray>();
+            JSONValue::JSONArray::const_iterator arrIt;
+            for (arrIt = arr.begin(); arrIt != arr.end(); ++arrIt) {
+                cout << arrIt->get<JSONValue::JSONString>();
+                if (arrIt != arr.end() - 1) {
+                    cout << ",";
+                }
+            }
+        }
+        else {
+            cout << aggStatObjIt->second.get<JSONValue::JSONInteger>();
+        }
+        cout << "\n";
+    }
+}
+
+string
+AggZookeeperState::helpMessage()
+{
+    return "Get the aggregate zookeeper instance state.\n"
+        "0 (StringArg) - The comma separated list of servers and ports.\n"
+        "                For example 'wmdev1003:2221,wmdev1004:2221'.\n";
+}
+ 
+AggZookeeperState::~AggZookeeperState() {}
+
 
 Quit::Quit(CliParams *cliParams) 
     : CliCommand("quit", NULL),

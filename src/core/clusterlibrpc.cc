@@ -25,7 +25,8 @@ namespace clusterlib
 
 ClusterlibRPCRequest::ClusterlibRPCRequest(Client *client, 
                                            ClientData data) 
-    : m_gotResponse(false),
+    : m_destinationQueue(NULL),
+      m_gotResponse(false),
       m_data(data)
 {
     TRACE(CL_LOG, "ClusterlibRPCRequest");
@@ -35,20 +36,35 @@ ClusterlibRPCRequest::ClusterlibRPCRequest(Client *client,
 }
 
 void
-ClusterlibRPCRequest::sendRequest(const void *destination)
+ClusterlibRPCRequest::setDestination(const json::JSONValue &destination)
+{
+    TRACE(CL_LOG, "setDestination");
+
+    m_destinationQueue = 
+         dynamic_cast<Queue *>(m_root->getNotifyableFromKey(
+                                   destination.get<JSONValue::JSONString>()));
+    if (m_destinationQueue == NULL) {
+        throw InvalidArgumentsException(
+            string("setDestination: Invalid queue at key ") + 
+            JSONCodec::encode(destination));
+    }
+}
+
+JSONValue
+ClusterlibRPCRequest::getDestination()
+{
+    TRACE(CL_LOG, "getDestination");
+
+    return m_destinationQueue->getKey();
+}
+
+void
+ClusterlibRPCRequest::sendRequest()
 {
     TRACE(CL_LOG, "sendRequest");
 
-    if (destination == NULL) {
+    if (m_destinationQueue == NULL) {
         throw InvalidArgumentsException("sendRequest: Destination is NULL");
-    }
-    const char *queuePtr = reinterpret_cast<const char *>(destination);
-    
-    Queue *queue = 
-        dynamic_cast<Queue *>(m_root->getNotifyableFromKey(queuePtr));
-    if (queue == NULL) {
-        throw InvalidArgumentsException(
-            string("sendRequest: Invalid queue at key ") + queuePtr);
     }
     else {
         /* Ready the response */
@@ -91,9 +107,9 @@ ClusterlibRPCRequest::sendRequest(const void *destination)
                   "sendRequest: Putting request (%s) on queue (%s) "
                   "with id (%s)",
                   JSONCodec::encode(rpcObj).c_str(),
-                  queue->getKey().c_str(),
+                  m_destinationQueue->getKey().c_str(),
                   m_id.c_str());
-        queue->put(JSONCodec::encode(rpcObj));
+        m_destinationQueue->put(JSONCodec::encode(rpcObj));
     }
 }
 
