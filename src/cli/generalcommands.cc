@@ -20,24 +20,28 @@
 #include "generalcommands.h"
 
 using namespace std;
-using namespace clusterlib;
 using namespace json;
 using namespace json::rpc;
 
-namespace clusterlib {
+namespace clusterlib 
+{
+
+const string SetLogLevel::LEVEL_ARG = "level";
 
 SetLogLevel::SetLogLevel()
         : CliCommand("setLogLevel", NULL)
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::IntegerArg);
-    setArgTypeVec(argTypeVec);
+    addArg(SetLogLevel::LEVEL_ARG,
+           "", 
+           "The new log level (0-5), 0 indicates no logging", 
+           IntegerArg, 
+           true);
 }
 
 void
 SetLogLevel::action()
 {
-    int32_t level = getIntArg(0);
+    int32_t level = getArg(LEVEL_ARG).getIntegerArg();
     
     switch (level) {
         case 0:
@@ -79,33 +83,43 @@ SetLogLevel::action()
 string
 SetLogLevel::helpMessage()
 {
-    return "Specify a level between 0 - 5.  0 indicates no logging.";    
+    return "Set the logging level of the top level logger.";
 }
 
-SetLogLevel::~SetLogLevel() {};
+SetLogLevel::~SetLogLevel() 
+{
+}
 
 RemoveNotifyable::RemoveNotifyable(Client *client) 
     : CliCommand("removeNotifyable", client) 
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::NotifyableArg);
-    argTypeVec.push_back(CliCommand::BoolArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::NOTIFYABLE_ARG,
+           "", 
+           "The notifyable to remove", 
+           NotifyableArg, 
+           true);
+    addArg(CliCommand::CHILDREN_ARG,
+           "false", 
+           "True indicates remove the children as well", 
+           BoolArg, 
+           false);
 }
 
 void
 RemoveNotifyable::action() 
 {
-    Notifyable *ntp = getNotifyableArg(0);
+    Notifyable *ntp = getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+        getClient()->getRoot());
     if (ntp == NULL) {
         throw InvalidMethodException(
-            "RemoveNotifyable: Failed to get notifyable for key " +
-            getNativeArg(0));
+            "action: Failed to get notifyable for key " +
+            getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
     
     string key = ntp->getKey();
     string name = ntp->getName();
-    bool removeChildren = getBoolArg(1);
+    bool removeChildren = 
+        getArg(CliCommand::CHILDREN_ARG).getBoolArg();
     ntp->remove(removeChildren);
     cout << "Removed notifyable with name (" 
          << name << ") and key (" << key << ")" << endl;
@@ -114,40 +128,38 @@ RemoveNotifyable::action()
 string
 RemoveNotifyable::helpMessage()
 {
-    return "Remove a notifyable\n"
-        "0 (NotifyableArg) - The notifyable to remove.\n"
-        "1 (BoolArg) - If true, do remove the notifyable even if it has\n"
-        "              children. Otherwise, do not.\n";
+    return "Remove a notifyable with or without children";
 }
 
 RemoveNotifyable::~RemoveNotifyable() {}
 
 GetLockBids::GetLockBids(Client *client) 
-    : CliCommand("getLockBids", client, 0)
+    : CliCommand("getLockBids", client)
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::NotifyableArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::NOTIFYABLE_ARG,
+           getClient()->getRoot()->getKey(),
+           "Locks bids on this object", 
+           NotifyableArg,
+           false);
+    addArg(CliCommand::CHILDREN_ARG,
+           "false", 
+           "True indicates get lock bids of the children too", 
+           BoolArg, 
+           false);
 }
 
 void 
 GetLockBids::action()
 {
-    NotifyableList::const_iterator it;
-    Notifyable *ntp = getClient()->getRoot();
-    if (getArgCount() > 0) {
-        ntp = getNotifyableArg(0);
-        if (ntp == NULL) {
-            throw InvalidMethodException(
-                "GetLockBids: Failed to get notifyable for key " +
-                getNativeArg(0));
-        }
-    }
-    bool children = true;
-    if (getArgCount() > 1) {
-        children = getBoolArg(1);
+    Notifyable *ntp = getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+        getClient()->getRoot());
+    if (ntp == NULL) {
+        throw InvalidMethodException(
+            "GetLockBids: Failed to get notifyable for key " +
+            getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
     
+    bool children = getArg(CliCommand::CHILDREN_ARG).getBoolArg();
     NameList lockBids = ntp->getLockBids(children);
     NameList::const_iterator lockBidsIt;
     for (lockBidsIt = lockBids.begin(); 
@@ -160,49 +172,45 @@ GetLockBids::action()
 string
 GetLockBids::helpMessage()
 {
-    return "Lock bids will be looked for on the NotifyableArg or the "
-        "root if no argument is used.";
+    return "Find the lock bids for a Notifyable and possibly its children.";
 }
 
 GetLockBids::~GetLockBids() {}
 
 GetChildren::GetChildren(Client *client) 
-    : CliCommand("getChildren", client, 0) 
+    : CliCommand("getChildren", client) 
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::NotifyableArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::NOTIFYABLE_ARG,
+           getClient()->getRoot()->getKey(),
+           "The notifyable to get the children", 
+           NotifyableArg,
+           false);
 }
 
 void 
 GetChildren::action() 
 {
-    NotifyableList::const_iterator it;
-    Notifyable *ntp = getClient()->getRoot();
-    if (getArgCount() == 1) {
-        ntp = getNotifyableArg(0);
-        if (ntp == NULL) {
-            throw InvalidMethodException(
-                "GetChildren: Failed to get notifyable for key " +
-                getNativeArg(0));
-        }
+    Notifyable *ntp = getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+        getClient()->getRoot());
+    if (ntp == NULL) {
+        throw InvalidMethodException(
+            "GetChildren: Failed to get notifyable for key " +
+            getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
     
+    NotifyableList::const_iterator nlIt;
     NotifyableList nl = ntp->getMyChildren();
     CliParams *params = CliParams::getInstance();
-    for (it = nl.begin(); it != nl.end(); it++) {
-        cout << (*it)->getKey() << endl;
-        params->addToKeySet((*it)->getKey());
+    for (nlIt = nl.begin(); nlIt != nl.end(); nlIt++) {
+        cout << (*nlIt)->getKey() << endl;
+        params->addToKeySet((*nlIt)->getKey());
     }
 }
 
 string
 GetChildren::helpMessage()
 {
-    return "Children will be looked for under NotifyableArg (the parent)"
-        " or the root if no argument is used.  Optionally, the BoolArg "
-        " may be used to specify if lock bids on child nodes are to be "
-        "displayed as well.";
+    return "Find children on a Notifyable.";
 }
 
 GetChildren::~GetChildren() {}
@@ -210,20 +218,23 @@ GetChildren::~GetChildren() {}
 GetAttributes::GetAttributes(Client *client) 
     : CliCommand("getAttributes", client) 
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::NotifyableArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::NOTIFYABLE_ARG,
+           "",
+           "The notifyable to find the attributes", 
+           NotifyableArg,
+           true);
 }
 
 void
 GetAttributes::action() 
 {
     NotifyableList::const_iterator it;
-    Notifyable *ntp = getNotifyableArg(0);
+    Notifyable *ntp = getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+        getClient()->getRoot());
     if (ntp == NULL) {
         throw InvalidMethodException(
             "GetAttributes: Failed to get notifyable for key " +
-            getNativeArg(0));
+            getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
 
     NameList names;
@@ -375,38 +386,48 @@ GetAttributes::~GetAttributes() {}
 SetCurrentState::SetCurrentState(Client *client) 
     : CliCommand("setCurrentState", client) 
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::NotifyableArg);
-    argTypeVec.push_back(CliCommand::StringArg);
-    argTypeVec.push_back(CliCommand::StringArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::NOTIFYABLE_ARG,
+           "", 
+           "Change current state of this notifyable", 
+           NotifyableArg, 
+           true);
+    addArg(CliCommand::KEY_ARG,
+           "", 
+           "The current state key", 
+           StringArg, 
+           true);
+    addArg(CliCommand::VALUE_ARG,
+           "", 
+           "The new value as a JSONString", 
+           JsonArg, 
+           true);
 }
 
 void
 SetCurrentState::action() 
 {
-    Notifyable *ntp = getNotifyableArg(0);
+    Notifyable *ntp = getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+        getClient()->getRoot());
     if (ntp == NULL) {
         throw InvalidMethodException(
-            "SetCurrentState: Failed to get notifyable for key " +
-            getNativeArg(0));
+            "action: Failed to get notifyable for key " +
+            getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
     
-    ntp->cachedCurrentState().set(getStringArg(1), 
-                                  JSONCodec::decode(getStringArg(2)));
+    ntp->cachedCurrentState().set(getArg(CliCommand::KEY_ARG).getStringArg(), 
+                                  getArg(CliCommand::VALUE_ARG).getJsonArg());
     ntp->cachedCurrentState().publish();
 
     cout << "Set current state for notifyable with name= " 
-         << ntp->getName() << " key='" << getStringArg(1) << "',value='"
-         << getStringArg(2) << "'" << endl;
+         << ntp->getName() << " key='" 
+         << getArg(CliCommand::KEY_ARG).getStringArg() << "',value='"
+         << getArg(CliCommand::VALUE_ARG).getNativeArg() << "'" << endl;
 }
 
 string
 SetCurrentState::helpMessage()
 {
-    return "Set the current state for a notifyable specified by the "
-        "NotifyableArg.  The first StringArg is the state key and the second"
-        " StringArg is the encoded JSONValue (i.e. \"value\").";
+    return "Set a current state key-value for a notifyable.";
 }
 
 SetCurrentState::~SetCurrentState() {}
@@ -414,30 +435,42 @@ SetCurrentState::~SetCurrentState() {}
 SetDesiredState::SetDesiredState(Client *client) 
     : CliCommand("setDesiredState", client) 
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::NotifyableArg);
-    argTypeVec.push_back(CliCommand::StringArg);
-    argTypeVec.push_back(CliCommand::StringArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::NOTIFYABLE_ARG,
+           "", 
+           "Change desired state of this notifyable", 
+           NotifyableArg, 
+           true);
+    addArg(CliCommand::KEY_ARG,
+           "", 
+           "The desired state key", 
+           StringArg, 
+           true);
+    addArg(CliCommand::VALUE_ARG,
+           "", 
+           "The new value as a JSONString", 
+           JsonArg, 
+           true);
 }
 
 void
 SetDesiredState::action() 
 {
-    Notifyable *ntp = getNotifyableArg(0);
+    Notifyable *ntp = getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+        getClient()->getRoot());
     if (ntp == NULL) {
         throw InvalidMethodException(
-            "SetDesiredState: Failed to get notifyable for key " +
-            getNativeArg(0));
+            "action: Failed to get notifyable for key " +
+            getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
     
-    ntp->cachedDesiredState().set(getStringArg(1), 
-                                  JSONCodec::decode(getStringArg(2)));
+    ntp->cachedDesiredState().set(getArg(CliCommand::KEY_ARG).getStringArg(), 
+                                  getArg(CliCommand::VALUE_ARG).getJsonArg());
     ntp->cachedDesiredState().publish();
 
     cout << "Set desired state for notifyable with name= " 
-         << ntp->getName() << " key='" << getStringArg(1) << "',value='"
-         << getStringArg(2) << "'" << endl;
+         << ntp->getName() << " key='" 
+         << getArg(CliCommand::KEY_ARG).getStringArg() << "',value='"
+         << getArg(CliCommand::VALUE_ARG).getNativeArg() << "'" << endl;
 }
 
 string
@@ -451,38 +484,36 @@ SetDesiredState::helpMessage()
 SetDesiredState::~SetDesiredState() {}
 
 AddApplication::AddApplication(Client *client) 
-    : CliCommand("addApplication", client, 0) 
+    : CliCommand("addApplication", client) 
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::NotifyableArg);
-    argTypeVec.push_back(CliCommand::StringArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::NOTIFYABLE_NAME_ARG, 
+           "", 
+           "Name of the new application", 
+           StringArg,
+           true);
 } 
 
 void 
 AddApplication::action() 
 {
     Root *root = getClient()->getRoot();
-    if (getArgCount() == 1) {
-        root = dynamic_cast<Root *>(getNotifyableArg(0));
-    }
     if (root == NULL) {
-        throw Exception("AddApplication failed to get " + getNativeArg(0));
+        throw InconsistentInternalStateException(
+            "action: Failed to get root");
     }
-    Application *application = root->getApplication(getStringArg(1), CREATE_IF_NOT_FOUND);
+    Application *application = root->getApplication(    
+        getArg(NOTIFYABLE_NAME_ARG).getStringArg(), CREATE_IF_NOT_FOUND);
     if (application == NULL) {
         throw InvalidMethodException(
-            "AddApplication: Failed to get application " + 
-            getStringArg(1));
+            "action: Failed to get application " + 
+            getArg(NOTIFYABLE_NAME_ARG).getStringArg());
     }
 }
 
 string 
 AddApplication::helpMessage()
 {
-    return "NotifyableArg is the notifyable "
-        "where the application may be added. StringArg is the "
-        "name of the new application.";
+    return "Add an application.";
 }
  
 AddApplication::~AddApplication() {}
@@ -490,33 +521,42 @@ AddApplication::~AddApplication() {}
 AddGroup::AddGroup(Client *client) 
     : CliCommand("addGroup", client) 
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::NotifyableArg);
-    argTypeVec.push_back(CliCommand::StringArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::NOTIFYABLE_ARG,
+           "", 
+           "Add the group on this notifyable", 
+           NotifyableArg, 
+           true);
+    addArg(CliCommand::NOTIFYABLE_NAME_ARG, 
+           "", 
+           "Name of the new group", 
+           StringArg,
+           true);
 }
 
 void
 AddGroup::action() 
 {
-    Group *group = 
-        dynamic_cast<Group *>(getNotifyableArg(0));
+    Group *group = dynamic_cast<Group *>(
+        getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+            getClient()->getRoot()));
     if (group == NULL) {
-        throw Exception("AddGroup failed to get " + getNativeArg(0));
+        throw InvalidMethodException(
+            "action: Failed to get notifyable for key " +
+            getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
-    group = group->getGroup(getStringArg(1), CREATE_IF_NOT_FOUND);
+    group = group->getGroup(
+        getArg(NOTIFYABLE_NAME_ARG).getStringArg(), CREATE_IF_NOT_FOUND);
     if (group == NULL) {
-        throw InvalidMethodException("AddGroup: Failed to get group " + 
-                                     getStringArg(1));
+        throw InvalidMethodException(
+            "action: Failed to get group " + 
+            getArg(NOTIFYABLE_NAME_ARG).getStringArg());
     }
 }
  
 string
 AddGroup::helpMessage()
 {
-    return "NotifyableArg is the notifyable "
-        "where the group may be added. StringArg is the "
-        "name of the new group.";
+    return "Add a group.";
 }
 
 AddGroup::~AddGroup() {}
@@ -524,36 +564,43 @@ AddGroup::~AddGroup() {}
 AddDataDistribution::AddDataDistribution(Client *client) 
     : CliCommand("addDataDistribution", client) 
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::NotifyableArg);
-    argTypeVec.push_back(CliCommand::StringArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::NOTIFYABLE_ARG,
+           "", 
+           "Add the data distribution on this notifyable", 
+           NotifyableArg, 
+           true);
+    addArg(CliCommand::NOTIFYABLE_NAME_ARG, 
+           "", 
+           "Name of the new data distribution", 
+           StringArg,
+           true);
 } 
 
 void
 AddDataDistribution::action() 
 {
-    Group *group = 
-        dynamic_cast<Group *>(getNotifyableArg(0));
+    Group *group = dynamic_cast<Group *>(
+        getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+            getClient()->getRoot()));
     if (group == NULL) {
-        throw Exception("AddDataDistribution failed to get " + 
-                        getNativeArg(0));
+        throw InvalidMethodException(
+            "action: Failed to get notifyable for key " +
+            getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
     DataDistribution *dataDistribution = 
-        group->getDataDistribution(getStringArg(1), CREATE_IF_NOT_FOUND);
+        group->getDataDistribution(
+            getArg(NOTIFYABLE_NAME_ARG).getStringArg(), CREATE_IF_NOT_FOUND);
     if (dataDistribution == NULL) {
         throw InvalidMethodException(
-            "AddDataDistribution: Failed to get data distribution " + 
-            getStringArg(1));
+            "action: Failed to get data distribution " + 
+            getArg(NOTIFYABLE_NAME_ARG).getStringArg());
     }
 }
  
 string
 AddDataDistribution::helpMessage()
 {
-    return "NotifyableArg is the notifyable "
-        "where the data distribution may be added. StringArg is the "
-        "name of the new data distribution.";
+    return "Add a data distribution.";
 }
  
 AddDataDistribution::~AddDataDistribution() {}
@@ -561,33 +608,43 @@ AddDataDistribution::~AddDataDistribution() {}
 AddNode::AddNode(Client *client) 
     : CliCommand("addNode", client) 
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::NotifyableArg);
-    argTypeVec.push_back(CliCommand::StringArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::NOTIFYABLE_ARG,
+           "", 
+           "Add the node on this notifyable", 
+           NotifyableArg, 
+           true);
+    addArg(CliCommand::NOTIFYABLE_NAME_ARG, 
+           "", 
+           "Name of the new node", 
+           StringArg,
+           true);
 } 
 
 void
 AddNode::action() 
 {
-    Group *group = 
-        dynamic_cast<Group *>(getNotifyableArg(0));
+    Group *group = dynamic_cast<Group *>(
+        getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+            getClient()->getRoot()));
     if (group == NULL) {
-        throw Exception("AddNode failed to get " + getNativeArg(0));
+        throw InvalidMethodException(
+            "action: Failed to get notifyable for key " +
+            getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
-    Node *node = group->getNode(getStringArg(1), CREATE_IF_NOT_FOUND);
+    Node *node = 
+        group->getNode(
+            getArg(NOTIFYABLE_NAME_ARG).getStringArg(), CREATE_IF_NOT_FOUND);
     if (node == NULL) {
-        throw InvalidMethodException("AddNode: Failed to get node " + 
-                                     getStringArg(1));
+        throw InvalidMethodException(
+            "action: Failed to get node " + 
+            getArg(NOTIFYABLE_NAME_ARG).getStringArg());
     }
 }
  
 string
 AddNode::helpMessage()
 {
-    return "NotifyableArg is the notifyable "
-        "where the node may be added. StringArg is the "
-        "name of the new node.";
+    return "Add a node.";
 }
  
 AddNode::~AddNode() {}
@@ -595,35 +652,43 @@ AddNode::~AddNode() {}
 AddPropertyList::AddPropertyList(Client *client) 
     : CliCommand("addPropertyList", client) 
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::NotifyableArg);
-    argTypeVec.push_back(CliCommand::StringArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::NOTIFYABLE_ARG,
+           "", 
+           "Add the property list on this notifyable", 
+           NotifyableArg, 
+           true);
+    addArg(CliCommand::NOTIFYABLE_NAME_ARG, 
+           "", 
+           "Name of the new property list", 
+           StringArg,
+           true);
 }
  
 void
 AddPropertyList::action() 
 {
-    Notifyable *ntp = getNotifyableArg(0);
-    if (ntp == NULL) {
-        throw Exception("AddPropertyList failed to get " + 
-                        getNativeArg(0));
+    Group *group = dynamic_cast<Group *>(
+        getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+            getClient()->getRoot()));
+    if (group == NULL) {
+        throw InvalidMethodException(
+            "action: Failed to get notifyable for key " +
+            getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
     PropertyList *propertyList = 
-        ntp->getPropertyList(getStringArg(1), CREATE_IF_NOT_FOUND);
+        group->getPropertyList(
+            getArg(NOTIFYABLE_NAME_ARG).getStringArg(), CREATE_IF_NOT_FOUND);
     if (propertyList == NULL) {
         throw InvalidMethodException(
-            "AddPropertyList: Failed to get property list " + 
-            getStringArg(1));
+            "action: Failed to get property List " + 
+            getArg(NOTIFYABLE_NAME_ARG).getStringArg());
     }
 }
 
 string
 AddPropertyList::helpMessage()
 {
-    return "NotifyableArg is the notifyable "
-        "where the property list may be added. StringArg is the "
-        "name of the new property list.";
+    return "Add a property list.";
 }
 
 AddPropertyList::~AddPropertyList() {}
@@ -631,26 +696,36 @@ AddPropertyList::~AddPropertyList() {}
 AddQueue::AddQueue(Client *client) 
     : CliCommand("addQueue", client) 
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::NotifyableArg);
-    argTypeVec.push_back(CliCommand::StringArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::NOTIFYABLE_ARG,
+           "", 
+           "Add the queue on this notifyable", 
+           NotifyableArg, 
+           true);
+    addArg(CliCommand::NOTIFYABLE_NAME_ARG, 
+           "", 
+           "Name of the new queue", 
+           StringArg,
+           true);
 } 
 
 void
 AddQueue::action() 
 {
-    Notifyable *ntp = getNotifyableArg(0);
-    if (ntp == NULL) {
-        throw Exception("AddQueue failed to get " + 
-                        getNativeArg(0));
+    Group *group = dynamic_cast<Group *>(
+        getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+            getClient()->getRoot()));
+    if (group == NULL) {
+        throw InvalidMethodException(
+            "action: Failed to get notifyable for key " +
+            getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
     Queue *queue = 
-        ntp->getQueue(getStringArg(1), CREATE_IF_NOT_FOUND);
+        group->getQueue(
+            getArg(NOTIFYABLE_NAME_ARG).getStringArg(), CREATE_IF_NOT_FOUND);
     if (queue == NULL) {
         throw InvalidMethodException(
-            "AddQueue: Failed to get queue " + 
-            getStringArg(1));
+            "action: Failed to get queue " + 
+            getArg(NOTIFYABLE_NAME_ARG).getStringArg());
     }
 }
 
@@ -665,19 +740,22 @@ AddQueue::helpMessage()
 AddQueue::~AddQueue() {}
 
 GetZnode::GetZnode(Factory *factory, Client *client)
-    : CliCommand("getZnode", NULL, 0), m_factory(factory) 
+    : CliCommand("getZnode", NULL), m_factory(factory) 
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::StringArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::ZKNODE_ARG,
+           "", 
+           "The zknode to get", 
+           StringArg, 
+           true);
 }
 
 void
 GetZnode::action() 
 {
-    string zkNodePath = getStringArg(0);
+    string zkNodePath = getArg(CliCommand::ZKNODE_ARG).getStringArg();
     if (zkNodePath.empty()) {
-        throw Exception("action: Failed to get " + getNativeArg(0));
+        throw Exception("action: Failed to get " + 
+                        getArg(CliCommand::ZKNODE_ARG).getNativeArg());
     }
     string zkNodeData;
     bool found = 
@@ -691,25 +769,28 @@ GetZnode::action()
 string
 GetZnode::helpMessage()
 {
-    return "Specify a znode (StringArg) to look up its value";
+    return "Specify a znode to look up its value";
 }
 
 GetZnode::~GetZnode() {}
 
 GetZnodeChildren::GetZnodeChildren(Factory *factory, Client *client)
-    : CliCommand("getZnodeChildren", NULL, 0), m_factory(factory) 
+    : CliCommand("getZnodeChildren", NULL), m_factory(factory) 
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::StringArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::ZKNODE_ARG,
+           "", 
+           "The zknode to get children on", 
+           StringArg, 
+           true);
 }
 
 void
 GetZnodeChildren::action() 
 {
-    string zkNodePath = getStringArg(0);
+    string zkNodePath = getArg(CliCommand::ZKNODE_ARG).getStringArg();
     if (zkNodePath.empty()) {
-        throw Exception("action: Failed to get " + getNativeArg(0));
+        throw Exception("action: Failed to get " + 
+                        getArg(CliCommand::ZKNODE_ARG).getNativeArg());
     }
     vector<string> zkNodeChildren;
     string attributePrefix = "child";
@@ -736,38 +817,44 @@ GetZnodeChildren::~GetZnodeChildren() {}
 string
 GetZnodeChildren::helpMessage()
 {
-    return "Specify a znode (StringArg) to look up its children";
+    return "Specify a znode to look up its children";
 }
 
+const string Help::COMMAND_NAME_ARG = "cmd";
+
 Help::Help(CliParams *cliParams) 
-    : CliCommand("?", NULL, 0),
+    : CliCommand("?", NULL),
       m_params(cliParams)
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::StringArg);
-    setArgTypeVec(argTypeVec);
-} 
+    addArg(Help::COMMAND_NAME_ARG,
+           "", 
+           "Name of the command", 
+           StringArg, 
+           false);
+}
 
 void 
 Help::action() 
 {
-    if (getArgCount() == 0) {
+    if (getArg(Help::COMMAND_NAME_ARG).isDefaultValue() == true) {
         m_params->printCommandNamesByGroup();
+        setArg(Help::COMMAND_NAME_ARG, getCommandName());
+        action();
     }
     else {
         /* Find the command and print out the options for it */
-        CliCommand *command = m_params->getCommandByName(getStringArg(0));
+        CliCommand *command = m_params->getCommandByName(
+            getArg(Help::COMMAND_NAME_ARG).getStringArg());
         if (command == NULL) {
-            cout << "Unknown commmand or arg '" << getStringArg(0) 
+            cout << "Unknown commmand or arg '" 
+                 << getArg(Help::COMMAND_NAME_ARG).getStringArg()
                  << "'" << endl;
         }
         else {
-            cout << "Usage: " << command->getCommandName() << " "
-                 << command->getArgString() << endl;
-            string helpMessage = command->helpMessage();
-            if (!helpMessage.empty()) {
-                cout << helpMessage << endl;;
-            }
+            cout << "Command:    " << command->getCommandName() << endl
+                 << "Usage:      " << command->helpMessage() << endl
+                 << "Parameters: " << endl 
+                 << command->generateArgUsage();
         }
     }
 }
@@ -775,8 +862,8 @@ Help::action()
 string
 Help::helpMessage() 
 {
-    return "Specify a command (i.e. quit) or a parameter type "
-        "(i.e. StringArg).";
+    return "Get the overall command list or information about"
+        " a specific command.";
 }
  
 Help::~Help() {}
@@ -785,23 +872,31 @@ AddAlias::AddAlias(CliParams *cliParams)
     : CliCommand("addAlias", NULL),
       m_params(cliParams)
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::StringArg);
-    argTypeVec.push_back(CliCommand::StringArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::KEY_ARG,
+           "", 
+           "The alias key", 
+           StringArg, 
+           true);
+    addArg(CliCommand::VALUE_ARG,
+           "", 
+           "The new value that replaces the old one", 
+           StringArg, 
+           true);
 } 
 
 void 
 AddAlias::action() 
 {
-    m_params->addAlias(getStringArg(0), getStringArg(1));
+    m_params->addAlias(
+        getArg(CliCommand::KEY_ARG).getStringArg(),
+        getArg(CliCommand::VALUE_ARG).getStringArg());
 }
 
 string
 AddAlias::helpMessage() 
 {
-    return "First StringArg is the new alias, that maps to the second "
-        "StringArg.  For example, 'root' --> '/_clusterlib/1.0/root' ";
+    return "Create an alias for replacing values.  For example, "
+        "for key ntp, 'root' --> '/_clusterlib/1.0/root' ";
 }
  
 AddAlias::~AddAlias() {}
@@ -810,21 +905,23 @@ RemoveAlias::RemoveAlias(CliParams *cliParams)
     : CliCommand("removeAlias", NULL),
       m_params(cliParams)
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::StringArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::KEY_ARG,
+           "", 
+           "The alias key", 
+           StringArg, 
+           true);
 }
 
 void 
 RemoveAlias::action() 
 {
-    m_params->removeAlias(getStringArg(0));
+    m_params->removeAlias(getArg(CliCommand::KEY_ARG).getStringArg());
 }
 
 string
 RemoveAlias::helpMessage() 
 {
-    return "First StringArg is the alias to remove.";
+    return "Remove an alias.";
 }
  
 RemoveAlias::~RemoveAlias() {}
@@ -833,48 +930,67 @@ GetAliasReplacement::GetAliasReplacement(CliParams *cliParams)
     : CliCommand("getAliasReplacement", NULL),
       m_params(cliParams)
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::StringArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::KEY_ARG,
+           "", 
+           "The alias key", 
+           StringArg, 
+           true);
 }
 
 void 
 GetAliasReplacement::action() 
 {
     cout << "AliasReplacement: " 
-         << m_params->getAliasReplacement(getStringArg(0));
+         << m_params->getAliasReplacement(
+             getArg(CliCommand::KEY_ARG).getStringArg());
 }
 
 string
 GetAliasReplacement::helpMessage() 
 {
-    return "First StringArg is the alias to find.";
+    return "Get the alias replacement if it exists.";
 }
  
 GetAliasReplacement::~GetAliasReplacement() {}
+
+const string JSONRPCCommand::REQUEST_ARG = "req";
+const string JSONRPCCommand::PARAM_ARRAY_ARG = "params";
 
 JSONRPCCommand::JSONRPCCommand(Client *client, Queue *respQueue) 
     : CliCommand("jsonRpc", client),
       m_respQueue(respQueue)
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::NotifyableArg);
-    argTypeVec.push_back(CliCommand::StringArg);
-    argTypeVec.push_back(CliCommand::StringArg);
-    setArgTypeVec(argTypeVec); 
+    addArg(CliCommand::NOTIFYABLE_ARG,
+           "", 
+           "The queue to put the request on", 
+           NotifyableArg, 
+           true);
+    addArg(JSONRPCCommand::REQUEST_ARG,
+           "", 
+           "The name of the request", 
+           StringArg, 
+           true);
+    addArg(JSONRPCCommand::PARAM_ARRAY_ARG,
+           "", 
+           "The JSONArray of parameters", 
+           JsonArg,
+           true);
 } 
 
 void
 JSONRPCCommand::action() 
 {
-    Queue *queue = dynamic_cast<Queue *>(getNotifyableArg(0));
+    Queue *queue = dynamic_cast<Queue *>(
+        getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+            getClient()->getRoot()));
     if (queue == NULL) {
         throw Exception("JSONRPCCommand failed to get the queue " +
-                        getNativeArg(0));
+                        getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
 
     JSONValue::JSONObject respObj;
-    JSONValue paramValue = JSONCodec::decode(getNativeArg(2));
+    JSONValue paramValue = 
+        getArg(JSONRPCCommand::PARAM_ARRAY_ARG).getJsonArg();
     /*
      * Add in the response queue to the paramArr.
      */
@@ -886,12 +1002,13 @@ JSONRPCCommand::action()
         m_respQueue->getKey();
     paramArr.clear();
     paramArr.push_back(paramObj);
-    string queueKey = getNativeArg(0);
-    auto_ptr<json::rpc::JSONRPCRequest> req;
+    auto_ptr<GenericRequest> req;
     /* Use the generic request. */
-    req.reset(new GenericRequest(getClient(), getNativeArg(1)));
-    
-    req->setDestination(queueKey.c_str());
+    req.reset(new GenericRequest(
+                  getClient(), 
+                  getArg(JSONRPCCommand::REQUEST_ARG).getNativeArg()));
+    req->setRPCParams(paramArr);
+    req->setDestination(queue->getKey());
     req->sendRequest();
     req->waitResponse();
     if ((req->getResponseError()).type() != typeid(JSONValue::JSONNull)) {
@@ -906,165 +1023,145 @@ JSONRPCCommand::action()
 string
 JSONRPCCommand::helpMessage()
 {
-    return "NotifyableArg is the queue to send the request to.  "
-        "StringArg is the method name.  StringArg is the encoded "
-        "JSON-RPC parameter array.";
+    return "Send a JSON-RPC (GenericRequest).";
 }
 
 JSONRPCCommand::~JSONRPCCommand() {}
 
-StartProcessSlot::StartProcessSlot(Client *client) 
-    : CliCommand("startProcessSlot", client) 
+const string ManageProcessSlot::DESIRED_STATE_ARG = "ds";
+
+ManageProcessSlot::ManageProcessSlot(Client *client) 
+    : CliCommand("manageProcessSlot", client) 
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::NotifyableArg);
-    argTypeVec.push_back(CliCommand::BoolArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::NOTIFYABLE_ARG,
+           "", 
+           "The ProcessSlot to manage", 
+           NotifyableArg, 
+           true);
+    addArg(ManageProcessSlot::DESIRED_STATE_ARG,
+           "", 
+           "0 = run once, 1 = run continous, "
+           "2 = shutdown, 3 = application shutdown", 
+           IntegerArg, 
+           true);
 } 
 
 void
-StartProcessSlot::action() 
+ManageProcessSlot::action() 
 {
     ProcessSlot *processSlot = 
-        dynamic_cast<ProcessSlot * >(getNotifyableArg(0));
+        dynamic_cast<ProcessSlot * >(
+            getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+                getClient()->getRoot()));
     if (processSlot == NULL) {
-        throw Exception("StartProcessSlot failed to get " + 
-                        getNativeArg(0));
+        throw Exception("action: failed to get " + 
+                        getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
 
-    JSONValue::JSONString startState;
-    if (getBoolArg(1) == false) {
-        startState = ProcessSlot::PROCESS_STATE_RUN_ONCE_VALUE;
-    }
-    else {
-        startState = ProcessSlot::PROCESS_STATE_RUN_CONTINUOUSLY_VALUE;
+    JSONValue::JSONString managedState;
+    int32_t desiredState = 
+        getArg(ManageProcessSlot::DESIRED_STATE_ARG).getIntegerArg();
+    switch (desiredState) {
+        case 0:
+            managedState = ProcessSlot::PROCESS_STATE_RUN_ONCE_VALUE;
+            break;
+        case 1:
+            managedState = ProcessSlot::PROCESS_STATE_RUN_CONTINUOUSLY_VALUE;
+            break;
+        case 2:
+            managedState = ProcessSlot::PROCESS_STATE_EXIT_VALUE;
+            break;
+        case 3:
+            managedState = ProcessSlot::PROCESS_STATE_CLEANEXIT_VALUE;
+            break;
+        default:
+            throw Exception(
+                string("action: Invalid argument ") + 
+                getArg(ManageProcessSlot::DESIRED_STATE_ARG).getNativeArg());
     }
 
-    processSlot->acquireLock();
+    NotifyableLocker l(processSlot);
 
     processSlot->cachedDesiredState().set(
         ProcessSlot::PROCESS_STATE_KEY,
-        startState);
+        managedState);
     processSlot->cachedDesiredState().set(
         ProcessSlot::PROCESS_STATE_SET_MSECS_KEY,
         TimerService::getCurrentTimeMsecs());
     processSlot->cachedDesiredState().publish();
-
-    processSlot->releaseLock();
 }
 
 string
-StartProcessSlot::helpMessage()
+ManageProcessSlot::helpMessage()
 {
-    return "Set the desired state to start the process on a ProcessSlot.  "
-        "NotifyableArg is the ProcessSlot notifyable.  BoolArg if true sets"
-        " the state to ProcessSlot::PROCESS_STATE_RUN_CONTINUOUSLY_VALUE, otherwise"
-        " sets the state to ProcessSlot::PROCESS_STATE_RUN_ONCE_VALUE.";
+    return "Manage a ProcessSlot to start/stop.";
 }
  
-StartProcessSlot::~StartProcessSlot() {}
+ManageProcessSlot::~ManageProcessSlot() {}
 
-StopProcessSlot::StopProcessSlot(Client *client) 
-    : CliCommand("stopProcessSlot", client) 
+const string ManageActiveNode::START_ARG = "start";
+
+ManageActiveNode::ManageActiveNode(Client *client) 
+    : CliCommand("manageActiveNode", client) 
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::NotifyableArg);
-    argTypeVec.push_back(CliCommand::BoolArg);
-    setArgTypeVec(argTypeVec);
+    addArg(CliCommand::NOTIFYABLE_ARG,
+           "", 
+           "The ActiveNode notifyable to manage", 
+           NotifyableArg, 
+           true);
+    addArg(ManageActiveNode::START_ARG,
+           "", 
+           "True indicates start, false indicates shutdown", 
+           BoolArg,
+           true);
 } 
 
 void
-StopProcessSlot::action() 
+ManageActiveNode::action() 
 {
-    ProcessSlot *processSlot = 
-        dynamic_cast<ProcessSlot * >(getNotifyableArg(0));
-    if (processSlot == NULL) {
-        throw Exception("StopProcessSlot failed to get " + 
-                        getNativeArg(0));
-    }
-
-    processSlot->acquireLock();
-
-    if (getBoolArg(1) == false) {
-        processSlot->cachedDesiredState().set(
-            ProcessSlot::PROCESS_STATE_KEY,
-            ProcessSlot::PROCESS_STATE_EXIT_VALUE);
-    }
-    else {
-        processSlot->cachedDesiredState().set(
-            ProcessSlot::PROCESS_STATE_KEY,
-            ProcessSlot::PROCESS_STATE_CLEANEXIT_VALUE);
-    }
-    processSlot->cachedDesiredState().set(
-        ProcessSlot::PROCESS_STATE_SET_MSECS_KEY,
-        TimerService::getCurrentTimeMsecs());
-    processSlot->cachedDesiredState().publish();
-
-    processSlot->releaseLock();
-}
-
-string
-StopProcessSlot::helpMessage()
-{
-    return "Set the desired state to stop the process on a ProcessSlot.\n"
-        "0 (NotifyableArg) - The ProcessSlot notifyable.\n"
-        "1 (BoolArg) - If true, do a clean exit (application implemented),\n"
-        "              otherwise, kill the process.\n";
-}
- 
-StopProcessSlot::~StopProcessSlot() {}
-
-StopActiveNode::StopActiveNode(Client *client) 
-    : CliCommand("stopActiveNode", client) 
-{
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::NotifyableArg);
-    argTypeVec.push_back(CliCommand::BoolArg);
-    setArgTypeVec(argTypeVec);
-} 
-
-void
-StopActiveNode::action() 
-{
-    Node *node = dynamic_cast<Node * >(getNotifyableArg(0));
+    Node *node = dynamic_cast<Node * >(
+        getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+            getClient()->getRoot()));
     if (node == NULL) {
-        throw Exception("StopActiveNode failed to get " + 
-                        getNativeArg(0));
+        throw Exception("action: failed to get " + 
+                        getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
-    node->acquireLock();
 
-    bool shutdown = true;
-    if (getArgCount() > 1) {
-        shutdown = getBoolArg(1);
-    }
+    NotifyableLocker l(node);
+
+    bool start = getArg(ManageActiveNode::START_ARG).getBoolArg();
     node->cachedDesiredState().set(
-        Node::ACTIVENODE_SHUTDOWN, shutdown);
+        Node::ACTIVENODE_SHUTDOWN, !start);
     node->cachedDesiredState().publish();
-
-    node->releaseLock();
 }
 
 string
-StopActiveNode::helpMessage()
+ManageActiveNode::helpMessage()
 {
-    return "Shutdown an ActiveNode.  NotifyableArg is the Node notifyable. "
-        " BoolArg is optional, if not set, defaults to true";
+    return "Manage an ActiveNode.";
 }
  
-StopActiveNode::~StopActiveNode() {}
+ManageActiveNode::~ManageActiveNode() {}
+
+const string AggZookeeperState::ZKSERVER_LIST_ARG = "zklist";
 
 AggZookeeperState::AggZookeeperState()
     : CliCommand("aggZookeeperState", NULL) 
 {
-    vector<CliCommand::ArgType> argTypeVec;
-    argTypeVec.push_back(CliCommand::StringArg);
-    setArgTypeVec(argTypeVec);
-} 
+    addArg(AggZookeeperState::ZKSERVER_LIST_ARG,
+           "", 
+           "The comma-separated list of zookeeper servers", 
+           StringArg, 
+           true);
+}
 
 void
 AggZookeeperState::action() 
 {
-    ZookeeperPeriodicCheck singleCheck(0, getStringArg(0), NULL);
+    ZookeeperPeriodicCheck singleCheck(
+        0, 
+        getArg(AggZookeeperState::ZKSERVER_LIST_ARG).getStringArg(),
+        NULL);
     singleCheck.run();
     JSONValue::JSONObject aggStatObj = singleCheck.getAggNodeState();
     JSONValue::JSONObject::const_iterator aggStatObjIt;
@@ -1093,9 +1190,7 @@ AggZookeeperState::action()
 string
 AggZookeeperState::helpMessage()
 {
-    return "Get the aggregate zookeeper instance state.\n"
-        "0 (StringArg) - The comma separated list of servers and ports.\n"
-        "                For example 'wmdev1003:2221,wmdev1004:2221'.\n";
+    return "Get the aggregate zookeeper instance state.";
 }
  
 AggZookeeperState::~AggZookeeperState() {}
@@ -1103,7 +1198,7 @@ AggZookeeperState::~AggZookeeperState() {}
 
 Quit::Quit(CliParams *cliParams) 
     : CliCommand("quit", NULL),
-      m_params(cliParams) { } 
+      m_params(cliParams) {} 
 
 void
 Quit::action() 
@@ -1192,8 +1287,8 @@ NotifyableArg::helpMessage()
  
 NotifyableArg::~NotifyableArg() {}
 
-JsonArg::JsonArg(Client *client) 
-    : CliCommand("jsonArg", client) {}
+JsonArg::JsonArg() 
+    : CliCommand("jsonArg", NULL) {}
 
 void
 JsonArg::action() 
@@ -1204,7 +1299,7 @@ JsonArg::action()
 string
 JsonArg::helpMessage()
 {
-    return "Valid values: Any key that is a valid json (i.e. \"hi\")";
+    return "Valid values: A valid json string (i.e. \"hi\")";
 }
  
 JsonArg::~JsonArg() {}

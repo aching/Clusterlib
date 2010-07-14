@@ -110,13 +110,8 @@ class RootImpl
         throw InvalidMethodException("Someone called the RootImpl "
                                        "default constructor!");
     }
-
-    /**
-     * The registered name of this object.
-     */
-    static std::string m_registeredName;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_ROOTIMPL_H_ */

@@ -213,14 +213,53 @@ CliParams::parseArgs(int argc, char **argv)
     }
 }
 
-/** Split the line into tokens and respect 'TOKEN' tokens */
-static vector<string> getTokensFromString(string input)
+/**
+ * Split the line into tokens and respect 'TOKEN' tokens.
+ * Specifically looks for a command in the beginning and then
+ * arguments in the form:
+ * '<cmd> -arg1=value1 -arg2=value2 arg3='value3.1 value3.2'. 
+ * Tokens separated by ' are only allowed for 'values'.
+ *
+ * @param input The input string to parse.
+ * @param commandName Returned command name.
+ * @param argValueVec Returned argument value vector.
+ */
+static void parseCommandLine(const string &input, 
+                             string &commandName,
+                             vector<pair<string, string> > &argValueVec)
 {
-    vector<string> resVec;
-
+    ostringstream oss;
     size_t index = 0;
-    bool quoteToken = false;
     size_t startTokenIndex = string::npos;
+
+    commandName.clear();
+    while (index != input.size()) {
+        if (input[index] == ' ') {
+            if (startTokenIndex != string::npos) {
+                commandName = input.substr(startTokenIndex,
+                                           index - startTokenIndex);
+                break;
+            }
+        }
+        else if (startTokenIndex == string::npos) {
+            startTokenIndex = index;
+        }
+        ++index;
+    }
+    if (startTokenIndex != string::npos) {
+        commandName = input.substr(startTokenIndex, index - startTokenIndex);
+    }
+    if (commandName.empty()) {
+        oss.str("");
+        oss << "parseCommandLine; Couldn't find commandName in input ("
+            << input << ")";
+        throw InvalidArgumentsException(oss.str());
+    }
+
+    bool quoteToken = false;
+    string arg;
+    startTokenIndex = string::npos;
+    argValueVec.clear();
     while (index != input.size()) {
         if (input[index] == '\'') {
             if (quoteToken == false) {
@@ -228,19 +267,67 @@ static vector<string> getTokensFromString(string input)
                 startTokenIndex = index + 1;
             }
             else {
-                resVec.push_back(input.substr(startTokenIndex, 
-                                              index - startTokenIndex));
-                quoteToken = false;
+                if (!arg.empty()) {
+                    oss.str("");
+                    oss << "parseCommandLine: ' cannot be used for keys, "
+                        << "index = " << index;
+                    throw InvalidArgumentsException(oss.str());
+                }
+                argValueVec.push_back(make_pair<string, string>(
+                                          arg, 
+                                          input.substr(
+                                              startTokenIndex, 
+                                              index - startTokenIndex)));
+                arg.clear();
                 startTokenIndex = string::npos;
             }
         }
         else if (input[index] == ' ') {
             if (quoteToken == false) {
                 if (startTokenIndex != string::npos) {
-                    resVec.push_back(input.substr(startTokenIndex, 
-                                                  index - startTokenIndex));
+                    if (arg.empty()) {
+                        oss.str("");
+                        oss << "parseCommandLine: Cannot have space in key";
+                        throw InvalidArgumentsException(oss.str());
+                    }
+
+                    argValueVec.push_back(make_pair<string, string>(
+                                              arg, 
+                                              input.substr(
+                                                  startTokenIndex, 
+                                                  index - startTokenIndex)));
+                    arg.clear();
                     startTokenIndex = string::npos;
                 }
+            }
+        }
+        else if (input[index] == '=') {
+            if (quoteToken == false) {
+                if (startTokenIndex == string::npos) {
+                    oss.str("");
+                    oss << "parseCommandLine: token cannot start with =";
+                    throw InvalidArgumentsException(oss.str());
+                }
+                if (!arg.empty()) {
+                    oss.str("");
+                    oss << "parseCommandLine: Impossible that previous arg "
+                        << "(" << arg << ") is still here";
+                    throw InvalidArgumentsException(oss.str());
+                }
+                arg = input.substr(startTokenIndex,
+                                   index - startTokenIndex);
+                startTokenIndex = string::npos;
+            }
+        }
+        else if (input[index] == '-') {
+            if (quoteToken == false) {
+                if (!arg.empty()) {
+                    oss.str("");
+                    oss << "parseCommandLine: Impossible that previous arg "
+                        << "(" << arg << ") is still here";
+                    throw InvalidArgumentsException(oss.str());
+                }
+                startTokenIndex = index + 1;
             }
         }
         else {
@@ -250,24 +337,35 @@ static vector<string> getTokensFromString(string input)
         }
         ++index;
     }
-    if (quoteToken != false) {
+    if (quoteToken == true) {
         ostringstream oss;
-        oss << "getTokensFromString: Missing ' terminator in input: " << input;
+        oss << "parseCommandLine: Missing ' terminator in input: " << input;
         throw InvalidArgumentsException(oss.str());
     }
     if (startTokenIndex != string::npos) {
-        resVec.push_back(input.substr(startTokenIndex, 
-                                      index - startTokenIndex));
+        if (arg.empty()) {
+            argValueVec.push_back(make_pair<string, string>(
+                                      input.substr(
+                                          startTokenIndex,
+                                          index - startTokenIndex),
+                                      string()));
+        }
+        else {
+            argValueVec.push_back(make_pair<string, string>(
+                                      arg, 
+                                      input.substr(
+                                          startTokenIndex, 
+                                          index - startTokenIndex)));
+        }
     }
-
-    return resVec;
 }
 
 void
 CliParams::parseAndRunLine()
 {        
     cout << endl;
-    vector<string> components;
+    string commandName;
+    vector<pair<string, string> > argValueVec;
 
     if (m_listCommands) {
         printCommandNamesByGroup();
@@ -282,76 +380,61 @@ CliParams::parseAndRunLine()
         if (m_line && *m_line) {
             add_history(m_line);
         }
-        components = getTokensFromString(m_line);
+        parseCommandLine(m_line, commandName, argValueVec);
         /* Clean up. */
         if (m_line) {
             free(m_line);
             m_line = NULL;
         }        
 #else
-        char lineString[4096];
+        const int32_t lineStringSize = 4096;
+        char lineString[lineStringSize];
         cout << generateWelcomeMessage();
-        cin.getline(lineString, 4096);
-        components = getTokensFromString(lineString);
+        cin.getline(lineString, lineStringSize);
+        parseCommandLine(lineString, commandName, argValueVec);
 #endif
     }
     else {
-
-        components = getTokensFromString(m_command);
+        parseCommandLine(m_command, commandName, argValueVec);
         setFinished();
     }
 
-    /* Get rid of any empty arguments. */
-    bool foundEmpty = true;
-    vector<string>::iterator it;
-    while (foundEmpty == true) {
-        foundEmpty = false;
-        for (it = components.begin(); it != components.end(); it++) {
-            if (it->empty()) {
-                components.erase(it);
-                foundEmpty = true;
-                break;
-            }
-        }
-    }
-
-    if (components.size() == 0) {
-        cout << "Invalid empty line: " << endl;
-    }
-    else {
-        CliCommand *command = getCommandByName(components[0]);
-        if (command != NULL) {
-            components.erase(components.begin());
-            cout << endl;
-            
-            /* Change all tokens to aliases if not removeTokenAlias command */
-            if (command->getCommandName().compare("removeTokenAlias")) {
-                map<string, string>::const_iterator aliasReplacementMapIt;
-                for (it = components.begin(); it != components.end(); ++it) {
-                    aliasReplacementMapIt = m_aliasReplacementMap.find(*it);
-                    if (aliasReplacementMapIt != m_aliasReplacementMap.end()) {
-                        cout << "Note: Replacing token '"
-                             << *it << "' with alias '" 
-                             << aliasReplacementMapIt->second << "'" << endl;
-                        *it = aliasReplacementMapIt->second;
-                    }
+    CliCommand *command = getCommandByName(commandName);
+    if (command != NULL) {
+        cout << endl;
+        
+        /* Change all tokens to aliases if not removeTokenAlias command */
+        if (command->getCommandName().compare("removeTokenAlias")) {
+            vector<pair<string, string> >::iterator argValueVecIt;
+            map<string, string>::const_iterator aliasReplacementMapIt;
+            for (argValueVecIt = argValueVec.begin();
+                 argValueVecIt != argValueVec.end();
+                 ++argValueVecIt) {
+                aliasReplacementMapIt = m_aliasReplacementMap.find(
+                    argValueVecIt->first);
+                if (aliasReplacementMapIt != m_aliasReplacementMap.end()) {
+                    cout << "Note: Setting value of key '"
+                         << argValueVecIt->first << "' with alias '" 
+                         << aliasReplacementMapIt->second << "'" << endl;
+                    argValueVecIt->second = aliasReplacementMapIt->second;
                 }
             }
-
-            try {
-                command->setArgVec(components);
-                command->action();
-            }
-            catch (const clusterlib::Exception &ex) {
-                cout << "Command '" << command->getCommandName() << "' failed "
-                     << "with error: " << ex.what() << endl;
-            }
         }
-        else {
-            cout << "Command '" << components[0] << "' not found" 
-                      << endl;
-                    
+        
+        try {
+            command->setArg(argValueVec);
+            command->checkArgs();
+            command->action();
+            command->resetArgs();
         }
+        catch (const clusterlib::Exception &ex) {
+            cout << "Command '" << command->getCommandName() << "' failed "
+                 << "with error: " << ex.what() << endl;
+            command->resetArgs();
+        }
+    }
+    else {
+        cout << "Command '" << commandName << "' not found" << endl;
     }
 }
 

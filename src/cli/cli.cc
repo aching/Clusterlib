@@ -44,11 +44,9 @@ int main(int argc, char* argv[])
      * Force the log level to be set to 0, special case for a command.
      */
     SetLogLevel *setLogLevelCommand = new SetLogLevel;
-    vector<string> logLevelArgVec;
     stringstream logLevelSs;
     logLevelSs << params->getLogLevel();
-    logLevelArgVec.push_back(logLevelSs.str());
-    setLogLevelCommand->setArgVec(vector<string>(logLevelArgVec));
+    setLogLevelCommand->setArg(SetLogLevel::LEVEL_ARG, logLevelSs.str());
     setLogLevelCommand->action();
 
     /*
@@ -114,11 +112,9 @@ int main(int argc, char* argv[])
                                    clusterlibCmds);
     params->registerCommandByGroup(new SetDesiredState(params->getClient()),
                                    clusterlibCmds);
-    params->registerCommandByGroup(new StartProcessSlot(params->getClient()),
+    params->registerCommandByGroup(new ManageProcessSlot(params->getClient()),
                                    clusterlibCmds);
-    params->registerCommandByGroup(new StopProcessSlot(params->getClient()),
-                                   clusterlibCmds);
-    params->registerCommandByGroup(new StopActiveNode(params->getClient()),
+    params->registerCommandByGroup(new ManageActiveNode(params->getClient()),
                                    clusterlibCmds);
     
     params->registerCommandByGroup(new AddAlias(params), cliCmds);
@@ -133,12 +129,16 @@ int main(int argc, char* argv[])
     params->registerCommandByGroup(new StringArg(), argCmds);
     params->registerCommandByGroup(new NotifyableArg(params->getClient()),
                                    argCmds);
-    params->registerCommandByGroup(new JsonArg(params->getClient()),
-                                   argCmds);
+    params->registerCommandByGroup(new JsonArg(), argCmds);
 
     /* Keep getting commands until done. */
     while (!params->finished()) {
-        params->parseAndRunLine();
+        try {
+            params->parseAndRunLine();
+        }
+        catch (const clusterlib::Exception &e) {
+            cout << e.what();
+        }
     }
     
     /* Clean up */

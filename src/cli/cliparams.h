@@ -14,6 +14,9 @@
 
 #include "clicommand.h"
 
+namespace clusterlib
+{
+
 /**
  * CLI test parameters.  This is a singleton class per the Gamma
  * method.
@@ -300,5 +303,7 @@ class CliParams {
     /** Single instance */
     static CliParams *m_params;
 };
+
+}
 
 #endif	/* !_CL_CLIPARAMS_H_ */

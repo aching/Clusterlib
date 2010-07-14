@@ -59,6 +59,6 @@ class ApplicationImpl
     }
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_APPLICATIONIMPL_H_ */

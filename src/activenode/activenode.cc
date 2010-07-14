@@ -83,13 +83,14 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
     }
     int32_t maxProcessSlots = m_params.getNumProcs();
 
-    m_activeNode->acquireLock();
+    {
+        NotifyableLocker l(m_activeNode);
 
-    m_activeNode->cachedProcessSlotInfo().setMaxProcessSlots(maxProcessSlots);
-    m_activeNode->cachedProcessSlotInfo().publish();
+        m_activeNode->cachedProcessSlotInfo().setMaxProcessSlots(
+            maxProcessSlots);
+        m_activeNode->cachedProcessSlotInfo().publish();
+    }
 
-    m_activeNode->releaseLock();
-    
     Periodic *processUpdater = NULL;
     for (int32_t i = 0; i < m_params.getNumProcs(); i++) {
         ostringstream oss;
@@ -141,12 +142,12 @@ ActiveNode::run(vector<ClusterlibRPCManager *> &rpcManagerVec)
             m_factory->createJSONRPCMethodClient(*rpcManagerVecIt));
     }
 
-    m_activeNode->acquireLock();
+    {
+        NotifyableLocker l(m_activeNode);
 
-    m_activeNode->cachedProcessSlotInfo().setEnable(true);
-    m_activeNode->cachedProcessSlotInfo().publish();
-
-    m_activeNode->releaseLock();
+        m_activeNode->cachedProcessSlotInfo().setEnable(true);
+        m_activeNode->cachedProcessSlotInfo().publish();
+    }
 
     /* Wait until a signal to stop */
     m_predMutexCond.predWaitMsecs(-1);

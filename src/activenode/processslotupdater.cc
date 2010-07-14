@@ -147,7 +147,7 @@ ProcessSlotUpdater::run()
             "run: processSlot is NULL");
     }
 
-    processSlot->acquireLock();
+    NotifyableLocker l(processSlot);
 
     LOG_DEBUG(CL_LOG,
               "run: current state = %s, desired state = %s",

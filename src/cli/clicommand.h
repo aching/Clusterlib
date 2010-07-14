@@ -16,11 +16,32 @@
 #include <getopt.h>
 #include <sstream>
 
+namespace clusterlib
+{
+
 /**
  * A cli command.
  */
 class CliCommand {
   public:
+    /** Name of the notifyable argument */
+    static const std::string NOTIFYABLE_ARG;
+
+    /** Name of the notifyable name argument */
+    static const std::string NOTIFYABLE_NAME_ARG;
+
+    /** Name of the children argument */
+    static const std::string CHILDREN_ARG;
+
+    /** Name of thhe key argument */
+    static const std::string KEY_ARG;
+
+    /** Name of the value argument */
+    static const std::string VALUE_ARG;
+
+    /** Name of the zookeeper node argument */
+    static const std::string ZKNODE_ARG;
+
     /** 
      * The type of the the arguments (how they will be converted).
      */
@@ -29,8 +50,12 @@ class CliCommand {
         IntegerArg,
         StringArg,
         NotifyableArg,
-        JsonArg
+        JsonArg,
+        UnknownArg
     };
+
+    /** Unknown argument help message */
+    static const std::string UNKNOWN_ARG_HELP_MSG;
 
     /**
      * Get an ArgType as a string.
@@ -38,187 +63,173 @@ class CliCommand {
      * @param argType the type of CLI argument
      * @return the CLI argument as a string
      */
-    static std::string getArgTypeAsString(ArgType argType) 
-    {
-        switch (argType) {
-            case BoolArg:
-                return "BoolArg";
-            case IntegerArg:
-                return "IntegerArg";
-            case StringArg:
-                return "StringArg";
-            case NotifyableArg:
-                return "NotifyableArg";
-            case JsonArg:
-                return "JsonArg";
-            default:
-                return "Unknown";
-        }
-    }
+    static std::string getArgTypeAsString(ArgType argType);
 
     /**
-     * Get the arguments are a put together string.
+     * All the metadata associated with an argument from a command.
+     */
+    class CliArg {
+      public:
+        /**
+         * Constructor for unnamed arguments.
+         */
+        CliArg();
+
+        /**
+         * Constructor.
+         *
+         * @param defaultValue The default value of the argument.
+         * @param helpMsg How to use this argument.
+         * @param argType The argument type
+         * @param required If true, this object is required.
+         */
+        CliArg(const std::string &defaultValue, 
+               const std::string &helpMsg,
+               ArgType argType, 
+               bool required);
+
+        /**
+         * Set the value.
+         *
+         * @param value The new value.
+         */
+        void setValue(const std::string &value);
+
+        /**
+         * Get the argument as a native string (no type checking).
+         *
+         * @return The native argument.
+         */
+        const std::string &getNativeArg() const; 
+
+        /**
+         * Get the help message for this argument.
+         *
+         * @return The help message.
+         */
+        const std::string &getHelpMsg() const;
+
+        /**
+         * Get the argument as a booleen.
+         *
+         * @return the argument as a boolean
+         */
+        bool getBoolArg() const; 
+
+        /**
+         * Get the argument as a int64_t.
+         *
+         * @return the argument as a int64_t
+         */
+        int64_t getIntegerArg() const;
+
+        /**
+         * Get the argument as a string.
+         *
+         * @return the argument as a string
+         */
+        const std::string &getStringArg() const;
+
+        /**
+         * Get the argument as a Notifyable.
+         *
+         * @param root The Clusterlib root.
+         * @return the argument as a Notifyable * or NULL if cannot be found.
+         */
+        Notifyable *getNotifyableArg(Root *root) const;
+
+        /**
+         * Get the argument as a JSONValue.
+         *
+         * @param argIndex the index of the argument to convert
+         * @return the argument as a JSONValue
+         */
+        json::JSONValue getJsonArg() const;
+
+        /**
+         * Get the ArgType of this object.
+         *
+         * @return The ArgType of this object.
+         */
+        ArgType getArgType() const;
+               
+        /**
+         * Get whether the argument is required.
+         *
+         * @return True if the argument is required, false otherwise.
+         */
+        bool isRequired() const;
+
+        /**
+         * Get whether the argument is still the default value.
+         *
+         * @return True if the argument is still the default value, false
+         *         otherwise.
+         */        
+        bool isDefaultValue() const;
+
+        /**
+         * Reset to the default settings.
+         */
+        void reset();
+
+      private:
+        /** The default value as a string. */
+        std::string m_defaultValue;
+
+        /** The set value as a string */
+        std::string m_value;
+
+        /** Help message on how to use this argument */
+        std::string m_helpMsg;
+
+        /** The type of this argument. */
+        ArgType m_argType;
+
+        /** Required or optional */
+        bool m_required;
+
+        /** Was the value replaced - false (or is it still default) */
+        bool m_default;
+    };
+
+    /**
+     * Set the arguments for this command.
      *
-     * @return the arguments of a command (space separated)
+     * @param argValueVec The pairs of name, value for each argument.
      */
-    std::string getArgString()
-    {
-        std::string ret;
-        std::vector<ArgType>::const_iterator it;
-        for (it = m_argTypeVec.begin(); it != m_argTypeVec.end(); it++) {
-            ret.append(getArgTypeAsString(*it));
-            ret.append(" ");
-        }
-        if (m_minArgCount != -1) {
-            std::stringstream ss;
-            ss << "- " << m_minArgCount << " of " 
-               << m_argTypeVec.size() << " args required";
-            ret.append(ss.str());
-        }
-        
-        return ret;
-    }
+    void setArg(
+        const std::vector<std::pair<std::string, std::string> > &argValueVec);
 
     /**
-     * Set the argument vector for this command.  Check to make sure
-     * its a valid size.
+     * Set one argument for this command.
      *
-     * @param argVec
+     * @param arg The argument
+     * @param value The value
      */
-    void setArgVec(const std::vector<std::string> &argVec)
-    {
-        m_argVec = argVec;
-        checkArgCount();
-    }
+    void setArg(
+        const std::string &arg,
+        const std::string &value);
 
     /**
-     * Get the argument in its native 'string' format.
-     *
-     * @param argIndex the index of the argument in the vector that
-     *        was passed in.
-     * @return the 'native' string of the argument
+     * Check to make sure that all the required arguments are set.
      */
-    std::string getNativeArg(int32_t argIndex)
-    {
-        checkArgVecIndex(argIndex);
-        return m_argVec[argIndex];
-    }
+    void checkArgs();
 
     /**
-     * Get the argument as a booleen.
-     *
-     * @param argIndex the index of the argument to convert
-     * @return the argument as a boolean
+     * Reset the arguments to the default state for this commmand.
      */
-    bool getBoolArg(int32_t argIndex) 
-    {
-        if (m_argTypeVec[argIndex] != BoolArg) {
-            std::ostringstream oss;
-            oss << "getBoolArg: Invalid index " << argIndex;
-            throw clusterlib::InvalidArgumentsException(oss.str());
-        }
-        
-        checkArgVecIndex(argIndex);
-        if (m_argVec[argIndex].compare("true") == 0) {
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
-
-    /**
-     * Get the argument as a int32_t.
-     *
-     * @param argIndex the index of the argument to convert
-     * @return the argument as a int32_t
-     */
-    int32_t getIntArg(int32_t argIndex) 
-    {
-        if (m_argTypeVec[argIndex] != IntegerArg) {
-            std::ostringstream oss;
-            oss << "getIntArg: Invalid index " << argIndex;
-            throw clusterlib::InvalidArgumentsException(oss.str());
-        }
-
-        checkArgVecIndex(argIndex);
-        return ::atoi(m_argVec[argIndex].c_str());
-    }
-
-    /**
-     * Get the argument as a string.
-     *
-     * @param argIndex the index of the argument to convert
-     * @return the argument as a string
-     */
-    std::string getStringArg(int32_t argIndex) 
-    {
-        if (m_argTypeVec[argIndex] != StringArg) {
-            std::ostringstream oss;
-            oss << "getStringArg: Invalid index " << argIndex;
-            throw clusterlib::InvalidArgumentsException(oss.str());
-        }
-        
-        checkArgVecIndex(argIndex);
-        return m_argVec[argIndex];
-    }
-
-    /**
-     * Get the argument as a Notifyable.
-     *
-     * @param argIndex the index of the argument to convert
-     * @return the argument as a Notifyable * or NULL if cannot be found.
-     */
-    clusterlib::Notifyable *getNotifyableArg(int32_t argIndex) 
-    {
-        if (m_argTypeVec[argIndex] != NotifyableArg) {
-            std::ostringstream oss;
-            oss << "getNotifyableArg: Invalid index " << argIndex;
-            throw clusterlib::InvalidArgumentsException(oss.str());
-        }
-
-        checkArgVecIndex(argIndex);
-        return getClient()->getRoot()->getNotifyableFromKey(
-            m_argVec[argIndex]);
-    }
-
-    /**
-     * Get the argument as a JSONValue.
-     *
-     * @param argIndex the index of the argument to convert
-     * @return the argument as a JSONValue
-     */
-    json::JSONValue getJsonArg(int32_t argIndex) 
-    {
-        if (m_argTypeVec[argIndex] != JsonArg) {
-            std::ostringstream oss;
-            oss << "getJsonArg: Invalid index " << argIndex;
-            throw clusterlib::InvalidArgumentsException(oss.str());
-        }
-
-        checkArgVecIndex(argIndex);
-        return json::JSONCodec::decode(m_argVec[argIndex]);
-    }
-
-    /**
-     * Set up the argument type vector.
-     * 
-     * @param argTypeVec the vector of argument types
-     */
-    void setArgTypeVec(std::vector<ArgType> argTypeVec)
-    {
-        m_argTypeVec = argTypeVec;
-    }
+    void resetArgs();
 
     /**
      * Constructor
      */
     CliCommand(std::string command, 
-               clusterlib::Client *client, 
-               int32_t minArgCount = -1) 
+               Client *client,
+               bool allowUnknownArgs = false)
         : m_command(command),
           m_client(client),
-          m_minArgCount(minArgCount) {}
+          m_allowUnknownArgs(allowUnknownArgs) {}
 
     /**
      * Get the command name
@@ -232,7 +243,7 @@ class CliCommand {
      * 
      * @return the clusterlib client pointer
      */
-    clusterlib::Client *getClient() { return m_client; }
+    Client *getClient() { return m_client; }
 
     /**
      * Subclasses commands must define the action to take.  If there
@@ -245,10 +256,7 @@ class CliCommand {
      *
      * @return the message to print when asked about usage.
      */
-    virtual std::string helpMessage()
-    {
-        return std::string();
-    }
+    virtual std::string helpMessage() = 0;
 
     /**
      * Virtual destructor.
@@ -256,67 +264,42 @@ class CliCommand {
     virtual ~CliCommand() {}
 
     /**
-     * Get the argument count
+     * Add a new parameter to the command.
      *
-     * @return the size of the argument vector
+     * @param argName The name of the argument.
+     * @param defaultValue The default value of the argument.
+     * @param helpMsg How to use this argument.
+     * @param argType The argument type
+     * @param required If true, this object is required.
      */
-    size_t getArgCount() 
-    {
-        return m_argVec.size();
-    }
-    
-  private:
-    /** 
-     *  Make sure the argument vector index is valid.
-     */
-    void checkArgVecIndex(int32_t argIndex) 
-    {
-        if ((argIndex >= static_cast<int32_t>(m_argVec.size())) ||
-            (argIndex < 0)) {
-            std::ostringstream oss;
-            oss << "checkArgVecIndex: argIndex = " << argIndex
-                << " and argVec.size = " << m_argVec.size();
-            throw clusterlib::InvalidArgumentsException(oss.str());
-        }
-    }
+    void addArg(const std::string &argName,
+                const std::string &defaultValue,
+                const std::string &helpMsg,
+                ArgType argType,
+                bool required);
 
     /**
-     * Make sure the argument count is valid.
+     * Get the argument.
+     *
+     * @param argName The name of the argument to get.
      */
-    void checkArgCount() 
-    {
-        if (m_minArgCount == -1) {
-            if (m_argVec.size() != m_argTypeVec.size()) {
-                std::ostringstream oss;
-                oss << "checkArgCount: Expected size = ";
-                oss << m_argTypeVec.size();
-                oss << " and actual size = ";
-                oss << m_argVec.size() << " args = ";
-                std::vector<std::string>::const_iterator argVecIt;
-                for (argVecIt = m_argVec.begin(); 
-                     argVecIt != m_argVec.end(); 
-                     ++argVecIt) {
-                    oss << *argVecIt << ",";
-                }
-                throw clusterlib::InvalidArgumentsException(oss.str());
-            }
-        }
-        else {
-            if ((m_argVec.size() > m_argTypeVec.size()) ||
-                (static_cast<int32_t>(m_argVec.size()) 
-                 < m_minArgCount)) {
-                std::ostringstream oss;
-                oss << "checkArgCount: Expected size >= ";
-                oss << m_minArgCount;
-                oss << " and <= ";
-                oss << m_argTypeVec.size();
-                oss << " and actual size = ";
-                oss << m_argVec.size();
-                throw clusterlib::InvalidArgumentsException(oss.str());
-            }
-        }
-    }
+    const CliArg &getArg(const std::string &argName) const;
 
+    /**
+     *  Generate a string that contains the help messages for all the
+     *  arguments.
+     *
+     * @return The generated string.
+     */
+    std::string generateArgUsage();
+
+    /**
+     * Allow unknown arguments?
+     *
+     * @return True if unknown arguments are allowed.
+     */
+    bool allowUnknownArgs();
+    
   private:
     /**
      * Name of the command
@@ -326,22 +309,19 @@ class CliCommand {
     /** 
      * The client of the clusterlib instance 
      */
-    clusterlib::Client *m_client;
+    Client *m_client;
 
     /**
-     * Vector of arguments types
+     * The map of arguments for this object.
      */
-    std::vector<ArgType> m_argTypeVec;
+    std::map<std::string, CliArg> m_argMap;
 
     /**
-     * Vector of actual arguments
+     * Allow unknown arguments to be added on the command line?
      */
-    std::vector<std::string> m_argVec;
-
-    /**
-     * Minimum number of arguments allowed
-     */
-    int32_t m_minArgCount;
+    bool m_allowUnknownArgs;
 };
+
+}
 
 #endif	/* !_CL_CLICOMMAND_H_ */

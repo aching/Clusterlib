@@ -13,7 +13,8 @@
 #ifndef	_CL_GENERALCOMMANDS_H_
 #define _CL_GENERALCOMMANDS_H_
 
-namespace clusterlib {
+namespace clusterlib 
+{
 
 /**
  * Set the logging level for the clusterlib library.
@@ -21,6 +22,9 @@ namespace clusterlib {
 class SetLogLevel : public CliCommand
 {
   public:
+    /** Name of the level argument */
+    static const std::string LEVEL_ARG;
+
     SetLogLevel();
     virtual void action();
     virtual std::string helpMessage();
@@ -207,12 +211,16 @@ class GetZnodeChildren : public CliCommand
 class Help : public CliCommand
 {
   public:
+    /** Name of the application argument */
+    static const std::string COMMAND_NAME_ARG;
+
     Help(CliParams *cliParams);
     virtual void action();
     virtual std::string helpMessage();
     virtual ~Help();
 
   private:
+    /** Pointer to params to get help. */
     CliParams *m_params;
 };
 
@@ -267,49 +275,49 @@ class GetAliasReplacement : public CliCommand
 class JSONRPCCommand : public CliCommand
 {
   public:
+    /** Name of the request argument */
+    static const std::string REQUEST_ARG;
+    /** Name of the params array argument */
+    static const std::string PARAM_ARRAY_ARG;
+
     JSONRPCCommand(Client *client, Queue *respQueue);
     virtual void action();
     virtual std::string helpMessage();
     virtual ~JSONRPCCommand();
 
   private:
+    /** The queue to put the response on. */
     Queue *m_respQueue;
 };
 
 /**
- * Start a running process.
+ * Manage a process slot.
  */
-class StartProcessSlot : public CliCommand
+class ManageProcessSlot : public CliCommand
 {
   public:
-    StartProcessSlot(Client *client);
+    /** Name of the desired state argument */
+    static const std::string DESIRED_STATE_ARG;
+
+    ManageProcessSlot(Client *client);
     virtual void action();
     virtual std::string helpMessage();
-    virtual ~StartProcessSlot();
+    virtual ~ManageProcessSlot();
 };
 
 /**
- * Stop a running process.
+ * Manage an ActiveNode
  */
-class StopProcessSlot : public CliCommand
+class ManageActiveNode : public CliCommand
 {
   public:
-    StopProcessSlot(Client *client);
-    virtual void action();
-    virtual std::string helpMessage();
-    virtual ~StopProcessSlot();
-};
+    /** Name of the start argument */
+    static const std::string START_ARG;
 
-/**
- * Shutdown an ActiveNode
- */
-class StopActiveNode : public CliCommand
-{
-  public:
-    StopActiveNode(Client *client);
+    ManageActiveNode(Client *client);
     virtual void action();
     virtual std::string helpMessage();
-    virtual ~StopActiveNode();
+    virtual ~ManageActiveNode();
 };
 
 /**
@@ -318,13 +326,13 @@ class StopActiveNode : public CliCommand
 class AggZookeeperState : public CliCommand
 {
   public:
+    /** Name of the zookeeper server list argument */
+    static const std::string ZKSERVER_LIST_ARG;
+
     AggZookeeperState(); 
     virtual void action();
     virtual std::string helpMessage();
     virtual ~AggZookeeperState();
-
-  private:
-    CliParams *m_params;
 };
 
 /**
@@ -396,12 +404,12 @@ class NotifyableArg : public CliCommand
 class JsonArg : public CliCommand
 {
   public:
-    JsonArg(Client *client);
+    JsonArg();
     virtual void action();
     virtual std::string helpMessage();
     virtual ~JsonArg();
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_GENERALCOMMANDS_H_ */

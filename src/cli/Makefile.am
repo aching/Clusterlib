@@ -23,6 +23,7 @@ cli_LDADD = \
 cli_SOURCES = \
 	generalcommands.cc \
 	cliparams.cc \
+	clicommand.cc \
 	cli.cc
 
 CXXFLAGS = @BASE_CXXFLAGS@

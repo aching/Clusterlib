@@ -72,7 +72,7 @@ ZookeeperPeriodicCheck::run()
         }
 
         if (getNotifyable() != NULL) {
-            m_nodeVec[i]->acquireLock();
+            NotifyableLocker l(m_nodeVec[i]);
 
             m_nodeVec[i]->cachedCurrentState().set(
                 Node::HEALTH_KEY, 
@@ -87,8 +87,6 @@ ZookeeperPeriodicCheck::run()
             m_nodeVec[i]->cachedCurrentState().set(
                 ClusterlibStrings::ZK_STAT_STATE_KEY, statRes);
             m_nodeVec[i]->cachedCurrentState().publish();
-
-            m_nodeVec[i]->releaseLock();
         }
     }
 
@@ -100,7 +98,7 @@ ZookeeperPeriodicCheck::run()
     m_aggNodeStateObj["Total Node Count"] = m_hostPortVec.size();
 
     if (getNotifyable() != NULL) {
-        m_application->acquireLock();
+        NotifyableLocker l(m_application);
 
         m_application->cachedCurrentState().set(
             ClusterlibStrings::ZK_AGG_NODES_STATE_KEY, 
@@ -112,8 +110,6 @@ ZookeeperPeriodicCheck::run()
             ClusterlibStrings::STATE_SET_MSECS_AS_DATE, 
             TimerService::getMsecsTimeString(currentMsecs));
         m_application->cachedCurrentState().publish();
-        
-        m_application->releaseLock();
     }
 }
 

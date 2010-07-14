@@ -36,6 +36,7 @@ unittests_SOURCES = \
 	clusterlibqueue.cc \
 	clusterlibprocessslot.cc \
 	clusterlibintervaltree.cc \
+	clusterlibprocessthreadservice.cc \
 	clusterlibendevent.cc \
 	clusterlibclient.cc \
 	clusterlibpropertylist.cc \

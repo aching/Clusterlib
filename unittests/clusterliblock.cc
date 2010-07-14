@@ -18,6 +18,7 @@ class ClusterlibLock : public MPITestFixture {
     CPPUNIT_TEST(testLock21);
     CPPUNIT_TEST(testLock22);
     CPPUNIT_TEST(testLock23);
+    CPPUNIT_TEST(testLock24);
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -176,6 +177,23 @@ class ClusterlibLock : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(_group0->acquireLockWaitMsecs(0LL) == false);
             barrier(_factory, true);
         }
+    }
+
+    /** 
+     * Test many processes to lock/unlock the group with the
+     * NotifyableLocker.
+     */
+    void testLock24()
+    {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testLock24");
+        
+        MPI_CPPUNIT_ASSERT(_group0);
+        NotifyableLocker l(_group0);
+        MPI_CPPUNIT_ASSERT(l.hasLock() == true);
     }
 
   private:

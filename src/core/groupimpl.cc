@@ -147,4 +147,4 @@ GroupImpl::initializeCachedRepresentation()
      */
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

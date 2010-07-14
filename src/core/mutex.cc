@@ -283,4 +283,39 @@ PredMutexCond::predWaitMsecs(int64_t msecTimeout)
     }
 }
 
+NotifyableLocker::NotifyableLocker(Notifyable *notifyable, int64_t waitMsecs)
+    : m_notifyable(notifyable),
+      m_hasLock(false)
+{
+    if (m_notifyable == NULL) {
+        throw InvalidArgumentsException("NotifyableLocker: NULL notifyable");
+    }
+
+    acquireLock(waitMsecs);
+}
+
+bool
+NotifyableLocker::acquireLock(int64_t waitMsecs)
+{
+    if (m_hasLock) {
+        throw InvalidMethodException("acquireLock: Already has the lock");
+    }
+
+    m_hasLock = m_notifyable->acquireLockWaitMsecs(waitMsecs);
+    return m_hasLock;
+}
+
+bool
+NotifyableLocker::hasLock()
+{
+    return m_hasLock;
+}
+
+NotifyableLocker::~NotifyableLocker()
+{
+    if (m_hasLock) {
+        m_notifyable->releaseLock();
+    }
+}
+
 }

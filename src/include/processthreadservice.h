@@ -22,7 +22,7 @@ class ProcessThreadService
 {
   public:
     /**
-     * Starts up a process 
+     * Starts up a process (no stdin, stdout, stderr redirection)
      * 
      * @param addEnv the additional environment variables
      * @param path the path to execute the command from
@@ -44,7 +44,7 @@ class ProcessThreadService
     static bool waitPid(pid_t processId, int32_t &returnCode);
 
     /**
-     * Try to execute and wait for a single commamnd.
+     * Try to execute and wait for a single command (no fd redirection).
      *
      * @param addEnv the additional environment variables
      * @param path the path to execute the command from
@@ -59,6 +59,46 @@ class ProcessThreadService
                              const std::string &cmd,
                              pid_t &processId,
                              int32_t &returnCode);
+
+    /**
+     * Starts up a process and duplicate stdin, stdout, and stderr fds.
+     * 
+     * @param addEnv the additional environment variables
+     * @param path the path to execute the command from
+     * @param cmd the command to execute
+     * @param stdin If not NULL, is set to the stdin fd (write only)
+     * @param stdout If not NULL, is set to the stdout fd (read only)
+     * @param stderr If not NULL, is set to the stderr fd (read only)
+     * @return the process id of the newly created process
+     */
+    static pid_t forkExec(const std::vector<std::string> &addEnv, 
+                          const std::string &path, 
+                          const std::string &cmd,
+                          int *stdin,
+                          int *stdout,
+                          int *stderr);
+
+    /**
+     * Try to execute and wait for a single command (and collect
+     * stdout, stderr).
+     *
+     * @param addEnv the additional environment variables
+     * @param path the path to execute the command from
+     * @param cmd the command to execute
+     * @param processId the process id that was created
+     * @param returnCode the return code (valid only if the return is true)
+     * @param stdoutOutput the string output from the stdout fd
+     * @param stderrOutput the string output from the stderr fd
+     * @return true if returned normally, false if stopped in a 
+     *         non-expected way
+     */
+    static bool forkExecWait(const std::vector<std::string> &addEnv, 
+                             const std::string &path, 
+                             const std::string &cmd,
+                             pid_t &processId,
+                             int32_t &returnCode,
+                             std::string &stdoutOutput,
+                             std::string &stderrOutput);
 
     /**
      * Get hostname string.  Helper function.

@@ -31,12 +31,12 @@ class ClusterlibHealthCheck : public MPITestFixture {
             if (notifyable == NULL) {
                 return;
             }
-            notifyable->acquireLock();
+
+            NotifyableLocker l(notifyable);
+
              notifyable->cachedCurrentState().set(
                 Node::HEALTH_KEY, getHealth());
             notifyable->cachedCurrentState().publish();
-            
-            notifyable->releaseLock();
         }
         
         void setHealth(const string &health)

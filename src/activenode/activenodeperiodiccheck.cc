@@ -47,7 +47,7 @@ ActiveNodePeriodicCheck::run()
     bool shutdownFound = false;
     JSONValue jsonShutdown;
     
-    getNotifyable()->acquireLock();
+    NotifyableLocker l(getNotifyable());
 
     getNotifyable()->cachedCurrentState().set(
         Notifyable::PID_KEY, ProcessThreadService::getPid());
@@ -64,8 +64,6 @@ ActiveNodePeriodicCheck::run()
         Node::HEALTH_SET_MSECS_AS_DATE_KEY, 
         TimerService::getMsecsTimeString(msecs));
     getNotifyable()->cachedCurrentState().publish();
-
-    getNotifyable()->releaseLock();
 
     LOG_DEBUG(CL_LOG, 
               "run: pid=%" PRId32 ", shutdown=%s", 

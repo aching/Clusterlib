@@ -21,8 +21,6 @@ using namespace std;
 namespace clusterlib
 {
 
-string RootImpl::m_registeredName = "root";
-
 NameList
 RootImpl::getApplicationNames()
 {

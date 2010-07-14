@@ -489,7 +489,67 @@ class PredMutexCond
     int32_t refCount;
 };
 
-};	/* End of 'namespace clusterlib' */
+/**
+ * RAII for Notifyable locks.
+ */
+class NotifyableLocker
+{
+  public:
+    /**
+     * Constructor that acquires the lock.
+     * 
+     * @param notifyable The notifyable that will be locked
+     * @param waitMsecs Amount of time to wait for the lock. -1 means forever
+     *        0 means do not wait at all.  If -1, this will only finish if the 
+     *        lock was acquired.
+     */
+    NotifyableLocker(Notifyable *notifyable, int64_t waitMsecs = -1);
+
+    /**
+     * Try to get the lock.  If it was already acquired, throws an exception.
+     *
+     * @param waitMsecs Amount of time to wait for the lock. -1 means forever
+     *        0 means do not wait at all.  If -1, this will only finish if the 
+     *        lock was acquired.
+     * @return True is the lock was acquired this time.
+     * @throws InvalidMethodException
+     */
+    bool acquireLock(int64_t waitMsecs = -1);
+
+    /**
+     * Does it have the lock?  Only useful when a timeout was used in
+     * the constructor.
+     *
+     * @return True if it has the lock, false otherwise.
+     */
+    bool hasLock();
+
+    /**
+     * Get the Notifyable back.
+     *
+     * @param Return the internal Notifyable pointer.
+     */
+    Notifyable *getNotifyable();
+
+    /**
+     * Destructor that releases the lock.
+     */
+    ~NotifyableLocker();
+
+  private:
+    /**
+     * The notifyable that is being locked.
+     */
+    Notifyable *m_notifyable;
+
+    /**
+     * Was the lock acquired?
+     */
+    bool m_hasLock;
+};
+
+
+}	/* End of 'namespace clusterlib' */
         
 #endif /* _CL_MUTEX_H_ */
 

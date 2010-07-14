@@ -27,7 +27,7 @@ struct NameRef {
      */
     int refCount;
 
-    /*
+    /**
      * Who actually has the lock
      */
     std::string lockOwner;
@@ -441,6 +441,6 @@ class NotifyableImpl
     CachedStateImpl m_cachedDesiredState;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_NOTIFYABLEIMPL_H_ */
