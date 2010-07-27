@@ -93,9 +93,13 @@ class ClusterlibStrings
     static const std::string PLK_STATE;
     static const std::string PLV_STATE_INITIAL;
     static const std::string PLV_STATE_PREPARING;
+    static const std::string PLV_STATE_RUNNING;
     static const std::string PLV_STATE_READY;
+    static const std::string PLV_STATE_REMOVED;
+    static const std::string PLV_STATE_COMPLETED;
     static const std::string PLV_STATE_HALTING;
     static const std::string PLV_STATE_STOPPED;
+    static const std::string PLV_STATE_FAILED;
 
     static const std::string PLK_RPCMANAGER_REQ_POSTFIX;
     static const std::string PLK_RPCMANAGER_REQ_STATUS_POSTFIX;

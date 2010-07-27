@@ -50,6 +50,12 @@ const string ProcessSlot::PROCESS_STATE_CLEANEXIT_VALUE =
     "_processStateCleanexit";
 const string ProcessSlot::PROCESS_STATE_FAILURE_VALUE = "_processStateFailure";
 
+const string ProcessSlot::PROCESS_STATE_TOTAL_STARTS_KEY = 
+    "_processStateTotalStarts";
+
+const string ProcessSlot::PROCESS_STATE_MAX_STARTS_KEY = 
+    "_processStateMaxStarts";
+
 const string ProcessSlot::PROCESS_STATE_MSG_KEY = 
     "_processStateMsg";
 
@@ -71,6 +77,35 @@ const string ProcessSlot::BINARY_STATE_BUSY_VALUE =
     "_binaryStateBusy";
 const string ProcessSlot::BINARY_STATE_HALTING_VALUE = 
     "_binaryStateHalting";
+
+bool
+ProcessSlot::isCurrentStateFromDesiredState(ProcessSlot *processSlot)
+{
+    TRACE(CL_LOG, "isCurrentStateFromDesiredState");
+
+    JSONValue desiredStateSetValue;
+    bool foundDesiredStateSetMsecs = processSlot->cachedCurrentState().get(
+        ProcessSlot::DESIRED_PROCESS_STATE_SET_MSECS_KEY, 
+        desiredStateSetValue);
+    if (foundDesiredStateSetMsecs == false) {
+        return false;
+    }
+
+    JSONValue processStateSetValue;
+    bool foundProcessStateSetMsecs = processSlot->cachedDesiredState().get(
+        ProcessSlot::PROCESS_STATE_SET_MSECS_KEY,
+        processStateSetValue);
+    if (foundProcessStateSetMsecs == false) {
+        return false;
+    }
+    
+    if (desiredStateSetValue.get<JSONValue::JSONInteger>() ==
+        processStateSetValue.get<JSONValue::JSONInteger>()) {
+        return true;
+    }
+
+    return false;
+}
 
 CachedProcessInfo &
 ProcessSlotImpl::cachedProcessInfo()

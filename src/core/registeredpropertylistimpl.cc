@@ -38,7 +38,7 @@ RegisteredPropertyListImpl::isValidName(const string &name) const
     if ((name.compare(ClusterlibStrings::DEFAULTPROPERTYLIST)) &&
         (!NotifyableKeyManipulator::isValidNotifyableName(name))) {
         LOG_WARN(CL_LOG,
-                 "isValidName: Illegal PropertyList name %s",
+                 "isValidName: Illegal PropertyList name '%s'",
                  name.c_str());
         return false;
     }

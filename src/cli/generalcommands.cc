@@ -984,7 +984,7 @@ JSONRPCCommand::action()
         getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
             getClient()->getRoot()));
     if (queue == NULL) {
-        throw Exception("JSONRPCCommand failed to get the queue " +
+        throw Exception("action: failed to get the queue " +
                         getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
 

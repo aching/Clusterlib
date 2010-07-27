@@ -88,12 +88,16 @@ const string ClusterlibStrings::KEYVAL_JSON_OBJECT = "_keyvalJsonObject";
 const string ClusterlibStrings::PROCESSINFO_JSON_OBJECT = 
     "_processInfoJsonObject";
 
-const string ClusterlibStrings::PLK_STATE = "_state";
-const string ClusterlibStrings::PLV_STATE_INITIAL = "_initial";
-const string ClusterlibStrings::PLV_STATE_PREPARING = "_preparing";
-const string ClusterlibStrings::PLV_STATE_READY = "_ready";
-const string ClusterlibStrings::PLV_STATE_HALTING = "_halting";
-const string ClusterlibStrings::PLV_STATE_STOPPED = "_stopped";
+const string ClusterlibStrings::PLK_STATE = "_plkState";
+const string ClusterlibStrings::PLV_STATE_INITIAL = "_plvInitial";
+const string ClusterlibStrings::PLV_STATE_PREPARING = "_plvPreparing";
+const string ClusterlibStrings::PLV_STATE_RUNNING = "_plvRunning";
+const string ClusterlibStrings::PLV_STATE_READY = "_plvReady";
+const string ClusterlibStrings::PLV_STATE_REMOVED = "_plvRemoved";
+const string ClusterlibStrings::PLV_STATE_COMPLETED = "_plvCompleted";
+const string ClusterlibStrings::PLV_STATE_HALTING = "_plvHalting";
+const string ClusterlibStrings::PLV_STATE_STOPPED = "_plvStopped";
+const string ClusterlibStrings::PLV_STATE_FAILED = "_pvsFailed";
 const string ClusterlibStrings::PLK_RPCMANAGER_REQ_POSTFIX = 
     " current request";
 const string ClusterlibStrings::PLK_RPCMANAGER_REQ_STATUS_POSTFIX =

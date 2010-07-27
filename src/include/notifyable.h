@@ -51,6 +51,11 @@ class Notifyable
     static const std::string NOTIFYABLE_STATE_UNUSED_VALUE;
 
     /**
+     * Used to denote the notifyable state: maintaining (current state only)
+     */
+    static const std::string NOTIFYABLE_STATE_MAINTAINING_VALUE;
+
+    /**
      * Used to denote the notifyable state: maintain (desired state only)
      */
     static const std::string NOTIFYABLE_STATE_MAINTAIN_VALUE;

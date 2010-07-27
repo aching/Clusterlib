@@ -32,6 +32,8 @@ const string Notifyable::NOTIFYABLE_STATE_UNAVAILABLE_VALUE =
     "_notifyableStateUnavailable";
 const string Notifyable::NOTIFYABLE_STATE_UNUSED_VALUE = 
     "_notifyableStateUnused";
+const string Notifyable::NOTIFYABLE_STATE_MAINTAINING_VALUE = 
+    "_notifyableStateMaintaining";
 const string Notifyable::NOTIFYABLE_STATE_MAINTAIN_VALUE = 
     "_notifyableStateMaintain";
 const string Notifyable::NOTIFYABLE_STATE_NONE_VALUE = 

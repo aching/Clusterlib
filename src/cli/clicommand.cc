@@ -13,6 +13,7 @@ const string CliCommand::CHILDREN_ARG = "child";
 const string CliCommand::KEY_ARG = "key";
 const string CliCommand::VALUE_ARG = "value";
 const string CliCommand::ZKNODE_ARG = "zknode";
+const string CliCommand::FORCE_ARG = "force";
 
 const string CliCommand::UNKNOWN_ARG_HELP_MSG = "Unknown argument";
 
@@ -21,19 +22,20 @@ CliCommand::getArgTypeAsString(ArgType argType)
 {
     switch (argType) {
         case BoolArg:
-            return "BoolArg";
+            return "Bool";
         case IntegerArg:
-            return "IntegerArg";
+            return "Integer";
         case StringArg:
-            return "StringArg";
+            return "String";
         case NotifyableArg:
-            return "NotifyableArg";
+            return "Notifyable";
         case JsonArg:
-            return "JsonArg";
+            return "Json";
         case UnknownArg:
-            return "UnknownArg";
-        default:
             return "Unknown";
+        default:
+            throw InvalidArgumentsException(
+                "getArgTypeAsString: Invalid argType");
     }
 }
 
@@ -66,6 +68,16 @@ CliCommand::CliArg::setValue(const string &value)
 
     m_value = value;
     m_default = false;
+}
+
+void
+CliCommand::CliArg::promoteDefaultValue()
+{
+    if (m_default == false) {
+        throw InvalidMethodException("promoteDefaultValue: Not default!");
+    }
+
+    m_value = m_defaultValue;
 }
 
 const string &
@@ -151,6 +163,12 @@ CliCommand::CliArg::getArgType() const
     return m_argType;
 }
 
+const string &
+CliCommand::CliArg::getDefaultValue() const
+{
+    return m_defaultValue;
+}
+
 bool
 CliCommand::CliArg::isRequired() const
 {
@@ -215,10 +233,15 @@ CliCommand::checkArgs()
     ostringstream oss;
     map<string, CliArg>::iterator argMapIt;
     for (argMapIt = m_argMap.begin(); argMapIt != m_argMap.end(); ++argMapIt) {
-        if (argMapIt->second.isDefaultValue() && 
-            argMapIt->second.isRequired()) {
-            oss << "Missing required argument '" << argMapIt->first 
-                << "'" << endl;
+        if (argMapIt->second.isDefaultValue()) {
+            if (argMapIt->second.isRequired()) {
+                oss << "Missing required argument '" << argMapIt->first 
+                    << "'" << endl;
+            }
+            else {
+                /* Promote the default value to the value */
+                argMapIt->second.promoteDefaultValue();
+            }
         }
     }
     if (!oss.str().empty()) {
@@ -246,6 +269,12 @@ CliCommand::resetArgs()
     for (argMapIt = m_argMap.begin(); argMapIt != m_argMap.end(); ++argMapIt) {
         argMapIt->second.reset();
     }
+}
+
+const map<string, CliCommand::CliArg> &
+CliCommand::getArgMap() const
+{
+    return m_argMap;
 }
 
 void
@@ -286,10 +315,11 @@ CliCommand::generateArgUsage()
     string res;
     ostringstream oss;
 
-    const int32_t columnWidth = 15;
+    const int32_t columnWidth = 12;
     oss << left << setw(columnWidth) << "Name"
         << left << setw(columnWidth) << "Type"
         << left << setw(columnWidth) << "Required"
+        << left << setw(columnWidth) << "Default"
         << left << setw(columnWidth) << "Usage" << endl;
     res.append(oss.str());
 
@@ -302,6 +332,9 @@ CliCommand::generateArgUsage()
             << getArgTypeAsString(argMapIt->second.getArgType())
             << left << setw(columnWidth) 
             << (argMapIt->second.isRequired() ? "yes" : "optional")
+            << left << setw(columnWidth)
+            << (!argMapIt->second.isRequired() ? 
+                argMapIt->second.getDefaultValue() : "N/A")
             << left << setw(columnWidth)
             << argMapIt->second.getHelpMsg() << endl;
         res.append(oss.str());

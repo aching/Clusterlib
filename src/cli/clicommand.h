@@ -22,7 +22,8 @@ namespace clusterlib
 /**
  * A cli command.
  */
-class CliCommand {
+class CliCommand 
+{
   public:
     /** Name of the notifyable argument */
     static const std::string NOTIFYABLE_ARG;
@@ -33,7 +34,7 @@ class CliCommand {
     /** Name of the children argument */
     static const std::string CHILDREN_ARG;
 
-    /** Name of thhe key argument */
+    /** Name of the key argument */
     static const std::string KEY_ARG;
 
     /** Name of the value argument */
@@ -41,6 +42,9 @@ class CliCommand {
 
     /** Name of the zookeeper node argument */
     static const std::string ZKNODE_ARG;
+
+    /** Name of the force argument */
+    static const std::string FORCE_ARG;
 
     /** 
      * The type of the the arguments (how they will be converted).
@@ -94,6 +98,11 @@ class CliCommand {
          * @param value The new value.
          */
         void setValue(const std::string &value);
+
+        /**
+         * Copy the default value to the set value.
+         */
+        void promoteDefaultValue();
 
         /**
          * Get the argument as a native string (no type checking).
@@ -152,6 +161,13 @@ class CliCommand {
          * @return The ArgType of this object.
          */
         ArgType getArgType() const;
+
+        /**
+         * Get the default value.
+         *
+         * @return Default value as a string.
+         */
+        const std::string &getDefaultValue() const;
                
         /**
          * Get whether the argument is required.
@@ -220,6 +236,11 @@ class CliCommand {
      * Reset the arguments to the default state for this commmand.
      */
     void resetArgs();
+
+    /**
+     * Get the argument map (for readline).
+     */
+    const std::map<std::string, CliArg> &getArgMap() const;
 
     /**
      * Constructor
@@ -299,7 +320,7 @@ class CliCommand {
      * @return True if unknown arguments are allowed.
      */
     bool allowUnknownArgs();
-    
+
   private:
     /**
      * Name of the command

@@ -8,7 +8,8 @@ METASOURCES = AUTO
 lib_LIBRARIES = libcli.a
 libcli_a_SOURCES = \
 	generalcommands.cc \
-	cliparams.cc
+	cliparams.cc \
+	clicommand.cc
 bin_PROGRAMS = cli
 cli_LDADD = \
 	$(top_builddir)/src/core/libcluster.a \

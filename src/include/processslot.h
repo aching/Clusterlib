@@ -104,6 +104,19 @@ class ProcessSlot
     static const std::string PROCESS_STATE_SET_MSECS_AS_DATE_KEY;
 
     /**
+     * The number of times the process has been started with the
+     * most recent desired process state.
+     */
+    static const std::string PROCESS_STATE_TOTAL_STARTS_KEY;
+
+    /**
+     * The maximum number of times that a process may be started if in
+     * PROCESS_STATE_RUN_CONTINUOUSLY_VALUE mode (-1 indicates
+     * forever).
+     */
+    static const std::string PROCESS_STATE_MAX_STARTS_KEY;
+
+    /**
      * Used to denote the running process state (current state only)
      */
     static const std::string BINARY_STATE_KEY;
@@ -139,6 +152,17 @@ class ProcessSlot
      * @return A reference to the cached process info.
      */
     virtual CachedProcessInfo &cachedProcessInfo() = 0;
+
+    /**
+     * Checks whether the current state of a ProcessSlot resulted from
+     * the desired state without holding the distributed lock.  The
+     * user may do this if desired.
+     *
+     * @param processSlot ProcessSlot that will be checked
+     * @return True if the desired state results from the current state, 
+     *         otherwise false
+     */
+    static bool isCurrentStateFromDesiredState(ProcessSlot *processSlot);
 
     /**
      * Destructor.

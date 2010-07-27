@@ -73,7 +73,7 @@ ClusterlibRPCBulkRequest::waitAll(
                 if ((*requestVecIt)->getResponseError().type() !=
                     typeid(JSONValue::JSONNull)) {
                     oss.str("");
-                    oss << "waitAll: request to recving queue "
+                    oss << "waitAll: request to receiving queue "
                         << JSONCodec::encode((*requestVecIt)->getDestination())
                         << " failed: "
                         << JSONCodec::encode((*requestVecIt)->getResponse());

@@ -189,10 +189,8 @@ class NotifyableKeyManipulator
     static std::string createQueueParentKey(
         const std::string &queueKey);
 
-
     static std::string createShardsKey(const std::string &distKey);
     static std::string createKeyValsKey(const std::string &propListkey);
-
 
     static std::string createProcessSlotsUsageKey(
         const std::string &notifyableKey);

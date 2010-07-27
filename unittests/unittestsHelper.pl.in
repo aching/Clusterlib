@@ -242,7 +242,7 @@ sub startZookeeper()
 	&setSystemCmdPrintExec("mkdir $zookeeperServerDir");
 	print "\nWriting $zookeeperCfg...\n";
 	&setCmdPrintExec("open(FH, \"> $zookeeperCfg\")");
-	&setCmdPrintExec("print FH \"tickTime=4000\n\"");
+	&setCmdPrintExec("print FH \"tickTime=10000\n\"");
 	&setCmdPrintExec("print FH \"dataDir=$zookeeperServerDir\n\"");
 	&setCmdPrintExec("print FH \"clientPort=$zookeeperClientPort\n\"");
 	&setCmdPrintExec("print FH \"initLimit=4\n\"");

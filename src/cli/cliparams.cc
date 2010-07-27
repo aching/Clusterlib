@@ -1,5 +1,6 @@
 #include "clusterlibinternal.h"
 #include "cliparams.h"
+#include "generalcommands.h"
 #include <stdlib.h> 
 #include "cliformat.h"
 
@@ -11,6 +12,7 @@
 
 using namespace std;
 using namespace clusterlib;
+using namespace boost;
 
 #ifndef NO_TAB_COMPLETION
 /** 
@@ -31,6 +33,22 @@ commandCompletion(const char *text, int iteration)
 
     static map<string, string>::iterator aliasReplacementMapIt;
 
+    static map<string, CliCommand::CliArg>::const_iterator argMapIt;
+
+    static CliCommand *cliCommand = NULL;
+
+    /* Is this a command? */
+    string currentLine(rl_line_buffer);
+    size_t firstSpace = currentLine.find_first_of(' ');
+    bool isCommand = (firstSpace == string::npos);
+    if (!isCommand) {
+        cliCommand = params->getCommandByName(
+            currentLine.substr(0, firstSpace));
+    }
+    else {
+        cliCommand = NULL;
+    }
+
     /* Initialize the static members in the first iteration */
     if (iteration == 0) {
         keySetIt = params->getKeySet()->begin();
@@ -39,10 +57,14 @@ commandCompletion(const char *text, int iteration)
         commandIt = groupIt->second.begin();
 
         aliasReplacementMapIt = params->getAliasReplacementMap()->begin();
+
+        if (cliCommand != NULL) {
+            argMapIt = cliCommand->getArgMap().begin();
+        }
     }
 
-    /* Look for a Notifyable key */
-    if (text && (text[0] == '/')) {
+    /* Look for a Notifyable key if not at the beginning */
+    if ((rl_point > 0) && text && (text[0] == '/')) {
         if (atLeastOneResult == false) {
             /* No results last time, let's find some */
             string chopText(text);
@@ -95,34 +117,55 @@ commandCompletion(const char *text, int iteration)
         }
     }
 
-    /* Look for a matching command */
-    while (groupIt != params->getGroupCommandMap()->end()) {
-        while (commandIt != groupIt->second.end()) {
-            if (commandIt->first.compare(0, strlen(text), text) == 0) {
-                map<string, CliCommand *>::iterator returnIt = commandIt;
-                ++commandIt;
-                if (commandIt == groupIt->second.end()) {
-                    ++groupIt;
-                    commandIt = groupIt->second.begin();
+    /*
+     * Look for a matching command only if at the beginning of the
+     * line or if it is a Help command.
+     */
+    if ((cliCommand == NULL) || (dynamic_cast<Help *>(cliCommand) != NULL)) {
+        while (groupIt != params->getGroupCommandMap()->end()) {
+            while (commandIt != groupIt->second.end()) {
+                if (commandIt->first.compare(0, strlen(text), text) == 0) {
+                    map<string, CliCommand *>::iterator returnIt = commandIt;
+                    ++commandIt;
+                    if (commandIt == groupIt->second.end()) {
+                        ++groupIt;
+                        commandIt = groupIt->second.begin();
+                    }
+                    return strdup(returnIt->first.c_str());
                 }
-                return strdup(returnIt->first.c_str());
+                ++commandIt;
             }
-            ++commandIt;
+            ++groupIt;
+            commandIt = groupIt->second.begin();
         }
-        ++groupIt;
-        commandIt = groupIt->second.begin();
-    }
-    
-    /* Look for a matching aliases */
-    while (aliasReplacementMapIt != params->getAliasReplacementMap()->end()) {
-        if (aliasReplacementMapIt->first.compare(0, strlen(text), text) == 0) {
-            map<string, string>::iterator returnIt = aliasReplacementMapIt;
-            ++aliasReplacementMapIt;
-            return strdup(returnIt->first.c_str());
-        }
-        ++aliasReplacementMapIt;
     }
 
+    /* Look for a matching aliases */
+    if (!isCommand) {
+        while (aliasReplacementMapIt != 
+               params->getAliasReplacementMap()->end()) {
+            const string &res = aliasReplacementMapIt->first;
+            ++aliasReplacementMapIt;            
+            if (res.compare(0, strlen(text), text)== 0) {
+                return strdup(res.c_str());
+            }
+        }
+    }
+
+    /* 
+     * Look for matching arguments when there is a valid command and a
+     * value isn't being worked on.
+     */
+    if ((cliCommand != NULL) && (*currentLine.rbegin() != '=')) {
+        while (argMapIt != cliCommand->getArgMap().end()) {
+            const string &res = argMapIt->first;
+            ++argMapIt;
+            if (res.compare(0, strlen(text), text) == 0) {
+                return strdup(res.c_str());
+            }
+        }
+    }
+    
     return NULL;
 }
 #endif
@@ -155,6 +198,7 @@ CliParams::printUsage(char *exec) const
 " -h  --help            Display this help and exit.\n"
 " -l  --list_cmds       List all available commands.\n"
 " -z  --zk_server_port  Zookeeper server port list \n"
+" -a  --add_alias       Add an alias in the form 'key=value'\n"
 " -d  --debug_level     Set the debug level 0-5 (default 0)\n"
 " -c  --command         Run a command.  Spaces delimit arguments\n";
 }
@@ -167,6 +211,7 @@ CliParams::parseArgs(int argc, char **argv)
         {"help", no_argument, NULL, 'h'},
         {"zk_server_port_list", required_argument, NULL, 'z'},
         {"list_cmds", no_argument, NULL, 'l'},
+        {"add_alias", no_argument, NULL, 'a'},
         {"command", required_argument, NULL, 'c'},
         {0,0,0,0}
     };
@@ -174,7 +219,7 @@ CliParams::parseArgs(int argc, char **argv)
     /* Index of current long option into opt_lng array */
     int32_t option_index = 0;
     int32_t err = -1;
-    const char *optstring = ":hz:d:lc:";
+    const char *optstring = ":hz:d:la:c:";
 
     /* Parse all standard command line arguments */
     while (1) {
@@ -195,6 +240,17 @@ CliParams::parseArgs(int argc, char **argv)
             case 'l':
                 m_listCommands = true;
                 break;
+            case 'a':
+                {
+                    vector<string> keyValueVec;
+                    split(keyValueVec, optarg, is_any_of("="));
+                    if (keyValueVec.size() != 2) {
+                        cout << "Option -a is not in the format 'key=value'"
+                             << endl;
+                    }
+                    addAlias(keyValueVec[0], keyValueVec[1]);
+                }
+                break;
             case 'c':
                 m_command = optarg;
                 break;
@@ -207,7 +263,7 @@ CliParams::parseArgs(int argc, char **argv)
     }
 
     if (m_zkServerPortList.empty()) {
-        cout << "Option -z needs to be set" << endl;;
+        cout << "Option -z needs to be set" << endl;
         printUsage(argv[0]);
         ::exit(-1);
     }
@@ -217,7 +273,7 @@ CliParams::parseArgs(int argc, char **argv)
  * Split the line into tokens and respect 'TOKEN' tokens.
  * Specifically looks for a command in the beginning and then
  * arguments in the form:
- * '<cmd> -arg1=value1 -arg2=value2 arg3='value3.1 value3.2'. 
+ * '<cmd> arg1=value1 arg2=value2 arg3='value3.1 value3.2' arg4. 
  * Tokens separated by ' are only allowed for 'values'.
  *
  * @param input The input string to parse.
@@ -257,83 +313,77 @@ static void parseCommandLine(const string &input,
     }
 
     bool quoteToken = false;
+    bool argValueReady = false;
     string arg;
+    string value;
     startTokenIndex = string::npos;
     argValueVec.clear();
     while (index != input.size()) {
-        if (input[index] == '\'') {
-            if (quoteToken == false) {
-                quoteToken = true;
-                startTokenIndex = index + 1;
-            }
-            else {
-                if (!arg.empty()) {
+        switch (input[index]) {
+            case '\'':
+                if (quoteToken == false) {
+                    quoteToken = true;
+                    startTokenIndex = index + 1;
+                }
+                else {
+                    value = 
+                        input.substr(startTokenIndex, index - startTokenIndex);
+                    startTokenIndex = string::npos;
+                    quoteToken = false;
+                    argValueReady = true;
+                }
+                if (arg.empty()) {
                     oss.str("");
-                    oss << "parseCommandLine: ' cannot be used for keys, "
+                    oss << "parseCommandLine: ' cannot be used for arg, "
                         << "index = " << index;
                     throw InvalidArgumentsException(oss.str());
                 }
-                argValueVec.push_back(make_pair<string, string>(
-                                          arg, 
-                                          input.substr(
-                                              startTokenIndex, 
-                                              index - startTokenIndex)));
-                arg.clear();
-                startTokenIndex = string::npos;
-            }
-        }
-        else if (input[index] == ' ') {
-            if (quoteToken == false) {
-                if (startTokenIndex != string::npos) {
-                    if (arg.empty()) {
+                break;
+            case ' ':
+                if (quoteToken == false) {
+                    if (startTokenIndex != string::npos) {
+                        if (arg.empty()) {
+                            oss.str("");
+                            oss << "parseCommandLine: "
+                                << "Cannot have space in arg or value";
+                            throw InvalidArgumentsException(oss.str());
+                        }
+                        value = input.substr(startTokenIndex, 
+                                             index - startTokenIndex);
+                        startTokenIndex = string::npos;
+                        argValueReady = true;
+                    }
+                }
+                break;
+            case '=':
+                if (quoteToken == false) {
+                    if (startTokenIndex == string::npos) {
                         oss.str("");
-                        oss << "parseCommandLine: Cannot have space in key";
+                        oss << "parseCommandLine: token cannot start with =";
                         throw InvalidArgumentsException(oss.str());
                     }
-
-                    argValueVec.push_back(make_pair<string, string>(
-                                              arg, 
-                                              input.substr(
-                                                  startTokenIndex, 
-                                                  index - startTokenIndex)));
-                    arg.clear();
-                    startTokenIndex = string::npos;
+                    if (!arg.empty()) {
+                        oss.str("");
+                        oss << "parseCommandLine: Impossible that previous "
+                            << "arg " << "(" << arg << ") is still here";
+                        throw InvalidArgumentsException(oss.str());
+                    }
+                    arg = input.substr(startTokenIndex,
+                                       index - startTokenIndex);
+                    startTokenIndex = index + 1;
                 }
-            }
-        }
-        else if (input[index] == '=') {
-            if (quoteToken == false) {
+                break;
+            default:
                 if (startTokenIndex == string::npos) {
-                    oss.str("");
-                    oss << "parseCommandLine: token cannot start with =";
-                    throw InvalidArgumentsException(oss.str());
+                    startTokenIndex = index;
                 }
-                if (!arg.empty()) {
-                    oss.str("");
-                    oss << "parseCommandLine: Impossible that previous arg "
-                        << "(" << arg << ") is still here";
-                    throw InvalidArgumentsException(oss.str());
-                }
-                arg = input.substr(startTokenIndex,
-                                   index - startTokenIndex);
-                startTokenIndex = string::npos;
-            }
+                break;
         }
-        else if (input[index] == '-') {
-            if (quoteToken == false) {
-                if (!arg.empty()) {
-                    oss.str("");
-                    oss << "parseCommandLine: Impossible that previous arg "
-                        << "(" << arg << ") is still here";
-                    throw InvalidArgumentsException(oss.str());
-                }
-                startTokenIndex = index + 1;
-            }
-        }
-        else {
-            if (startTokenIndex == string::npos) {
-                startTokenIndex = index;
-            }
+        if (argValueReady) {
+            argValueVec.push_back(make_pair<string, string>(arg, value));
+            arg.clear();
+            value.clear();
+            argValueReady = false;
         }
         ++index;
     }
@@ -411,7 +461,7 @@ CliParams::parseAndRunLine()
                  argValueVecIt != argValueVec.end();
                  ++argValueVecIt) {
                 aliasReplacementMapIt = m_aliasReplacementMap.find(
-                    argValueVecIt->first);
+                    argValueVecIt->second);
                 if (aliasReplacementMapIt != m_aliasReplacementMap.end()) {
                     cout << "Note: Setting value of key '"
                          << argValueVecIt->first << "' with alias '" 

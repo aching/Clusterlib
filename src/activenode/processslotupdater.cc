@@ -197,11 +197,20 @@ ProcessSlotUpdater::run()
                 throw SystemFailureException(oss.str());
             }
             else {
+                if (WIFEXITED(stat_loc)) {
+                    msgss << "PID " << waitedPid << " exited with "
+                          << WEXITSTATUS(stat_loc);
+                    processSlot->cachedCurrentState().set(
+                        ProcessSlot::PROCESS_STATE_KEY, 
+                        ProcessSlot::PROCESS_STATE_EXIT_VALUE);
+                }
+                else {
+                    processSlot->cachedCurrentState().set(
+                        ProcessSlot::PROCESS_STATE_KEY, 
+                        ProcessSlot::PROCESS_STATE_FAILURE_VALUE);
+                }
                 processSlot->cachedCurrentState().set(
                     ProcessSlot::PID_KEY, JSONValue::JSONInteger(-1));
-                processSlot->cachedCurrentState().set(
-                    ProcessSlot::PROCESS_STATE_KEY, 
-                    ProcessSlot::PROCESS_STATE_EXIT_VALUE);
             }
         }
     }
@@ -220,23 +229,55 @@ ProcessSlotUpdater::run()
                           << oldPid << endl;
                 }
                 
+                bool found = false;
+                JSONValue jsonValue;
                 vector<string> addEnv;
                 string path;
                 string command;
+                int64_t totalStarts = 1;
+                int64_t maxStarts = -1;
                 try {
-                    processSlot->getExecArgs(processSlot->cachedDesiredState(),
-                                             addEnv,
-                                             path, 
-                                             command);
-                    pid_t newPid = processSlot->startLocal(
-                        addEnv, path, command);
-                    processSlot->cachedCurrentState().set(
-                        ProcessSlot::PID_KEY, 
-                        JSONValue::JSONInteger(newPid));
-                    processSlot->cachedCurrentState().set(
-                        ProcessSlot::PROCESS_STATE_KEY, 
+                    found = processSlot->cachedDesiredState().get(
+                        ProcessSlot::PROCESS_STATE_MAX_STARTS_KEY, jsonValue);
+                    if (found) {
+                        maxStarts = jsonValue.get<JSONValue::JSONInteger>();
+                    }
+                    found = processSlot->cachedCurrentState().get(
+                        ProcessSlot::PROCESS_STATE_TOTAL_STARTS_KEY, 
+                        jsonValue);
+                    if (found) {
+                        totalStarts = 
+                            jsonValue.get<JSONValue::JSONInteger>() + 1;
+                    }
+
+                    if ((maxStarts != -1) && (totalStarts > maxStarts)) {
+                        processSlot->cachedCurrentState().set(
+                            ProcessSlot::PROCESS_STATE_KEY,
+                            ProcessSlot::PROCESS_STATE_FAILURE_VALUE);
+                        msgss << "StartAction: total starts " << totalStarts 
+                              << " > max starts" << maxStarts << endl;;
+                    }
+                    else {
+                        processSlot->cachedCurrentState().set(
+                            ProcessSlot::PROCESS_STATE_TOTAL_STARTS_KEY,
+                            totalStarts);
+
+                        processSlot->getExecArgs(
+                            processSlot->cachedDesiredState(),
+                            addEnv,
+                            path, 
+                            command);
+                        pid_t newPid = processSlot->startLocal(
+                            addEnv, path, command);
+                        processSlot->cachedCurrentState().set(
+                            ProcessSlot::PID_KEY, 
+                            JSONValue::JSONInteger(newPid));
+                        processSlot->cachedCurrentState().set(
+                            ProcessSlot::PROCESS_STATE_KEY, 
                         ProcessSlot::PROCESS_STATE_RUNNING_VALUE);
-                    msgss << "StartAction: Started new PID " << newPid << endl;
+                        msgss << "StartAction: Started new PID " 
+                              << newPid << endl;
+                    }
                 }
                 catch (const RepositoryDataMissingException &e) { 
                     msgss.str("");
@@ -279,8 +320,6 @@ ProcessSlotUpdater::run()
             jsonDesiredProcessStateSetMsecs);
     }
     processSlot->cachedCurrentState().publish();
-
-    processSlot->releaseLock();
 } 
 
 }
