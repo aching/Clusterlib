@@ -1,16 +1,11 @@
-#include <clusterlib.h>
+#include "gui.h"
 #include "clusterlib_jsonrpc_adaptor.h"
-#include <iomanip>
 
 using namespace json;
 using namespace json::rpc;
-using namespace log4cxx;
 using namespace std;
 
 namespace clusterlib { namespace rpc { namespace json {
-
-LoggerPtr MethodAdaptor::m_logger(
-    Logger::getLogger("clusterlib.rpc.json.MethodAdaptor"));
 
 MethodAdaptor::MethodAdaptor(clusterlib::Client *f) 
     : m_client(f),
@@ -315,11 +310,13 @@ JSONValue::JSONArray MethodAdaptor::getApplications() {
         try {
             Application *child = m_root->getApplication(*iter);
             appIds.push_back(getNotifyableId(child));
-        } catch (const ::clusterlib::Exception &ex) {
+        } 
+        catch (const ::clusterlib::Exception &ex) {
             // Ignore any application that cannot be retrieved
-            LOG4CXX_WARN(m_logger, 
-                         "Application " << *iter << " missing (" <<
-                         ex.what() << ")");
+            LOG_WARN(GUI_LOG, 
+                     "Application %s missing (%s)",
+                     iter->c_str(),
+                     ex.what());
         }
     }
     
@@ -541,9 +538,11 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableAttributesFromKey(
         }
         
         return attributes;
-    } catch (const ::clusterlib::Exception &ex) {
-        LOG4CXX_WARN(m_logger, 
-                         "Getting notifyable failed (" << ex.what() << ")");
+    } 
+    catch (const ::clusterlib::Exception &ex) {
+        LOG_WARN(GUI_LOG, 
+                 "Getting notifyable failed (%s)",
+                 ex.what());
         throw JSONRPCInvocationException(ex.what());
     }
 }
@@ -695,9 +694,11 @@ JSONValue::JSONString MethodAdaptor::setNotifyableAttributesFromKey(
             }
         }
         return string("0");
-    } catch (const ::clusterlib::Exception &ex) {
-        LOG4CXX_WARN(m_logger, 
-                     "Getting notifyable failed (" << ex.what() << ")");
+    } 
+    catch (const ::clusterlib::Exception &ex) {
+        LOG_WARN(GUI_LOG, 
+                 "Getting notifyable failed (%s)",
+                 ex.what());
         throw JSONRPCInvocationException(ex.what());
     }
 }
@@ -774,9 +775,11 @@ JSONValue::JSONString MethodAdaptor::removeNotifyableAttributesFromKey(
             }
         }
         return string("0");
-    } catch (const ::clusterlib::Exception &ex) {
-        LOG4CXX_WARN(m_logger, 
-                     "Getting notifyable failed (" << ex.what() << ")");
+    } 
+    catch (const ::clusterlib::Exception &ex) {
+        LOG_WARN(GUI_LOG, 
+                 "Getting notifyable failed (%s)",
+                 ex.what());
         throw JSONRPCInvocationException(ex.what());
     }
 }
@@ -932,9 +935,11 @@ JSONValue::JSONObject MethodAdaptor::getNotifyableChildrenFromKey(
         children["queues"] = queues;
 
         return children;
-    } catch (const ::clusterlib::Exception &ex) {
-        LOG4CXX_WARN(m_logger, 
-                     "Getting notifyable failed (" << ex.what() << ")");
+    } 
+    catch (const ::clusterlib::Exception &ex) {
+        LOG_WARN(GUI_LOG, 
+                 "Getting notifyable failed (%s)",
+                 ex.what());
         throw JSONRPCInvocationException(ex.what());
     }
 }
@@ -1074,10 +1079,11 @@ JSONValue::JSONString MethodAdaptor::addNotifyableFromKey(
                 "Cannot get Notifyable from key " + key);
         }
         return notifyable->getKey();
-    } catch (const ::clusterlib::Exception &ex) {
-        LOG4CXX_WARN(m_logger, 
-                     "addNotifyableFromKey: Getting notifyable failed (" 
-                     << ex.what() << ")");
+    } 
+    catch (const ::clusterlib::Exception &ex) {
+        LOG_WARN(GUI_LOG, 
+                 "addNotifyableFromKey: Getting notifyable failed (%s)",
+                 ex.what());
         throw JSONRPCInvocationException(ex.what());
     }
 }
@@ -1094,9 +1100,11 @@ JSONValue::JSONString MethodAdaptor::removeNotifyableFromKey(
         }
         notifyable->remove(removeChildren);
         return string("0");
-    } catch (const ::clusterlib::Exception &ex) {
-        LOG4CXX_WARN(m_logger,
-                     "removeNotifyableFromKey: " << ex.what());
+    } 
+    catch (const ::clusterlib::Exception &ex) {
+        LOG_WARN(GUI_LOG,
+                 "removeNotifyableFromKey: %s",
+                 ex.what());
         throw JSONRPCInvocationException(ex.what());
     }
 }
@@ -1157,9 +1165,11 @@ JSONValue::JSONObject MethodAdaptor::getApplication(
         result["status"] = getOneApplicationStatus(application);
 
         return result;
-    } catch (const ::clusterlib::Exception &ex) {
-        LOG4CXX_WARN(m_logger, 
-                     "Getting application failed (" << ex.what() << ")");
+    } 
+    catch (const ::clusterlib::Exception &ex) {
+        LOG_WARN(GUI_LOG, 
+                 "Getting application failed (%s)",
+                 ex.what());
         throw JSONRPCInvocationException(ex.what());
     }
 }
@@ -1218,8 +1228,9 @@ JSONValue::JSONObject MethodAdaptor::getGroup(
         result["status"] = getOneGroupStatus(group);
 
         return result;
-    } catch (const ::clusterlib::Exception &ex) {
-        LOG4CXX_WARN(m_logger, "Getting group failed (" << ex.what() << ")");
+    } 
+    catch (const ::clusterlib::Exception &ex) {
+        LOG_WARN(GUI_LOG, "Getting group failed (%s)", ex.what());
         throw JSONRPCInvocationException(ex.what());
     }
 }
@@ -1269,10 +1280,11 @@ JSONValue::JSONObject MethodAdaptor::getDataDistribution(
         result["status"] = getOneDataDistributionStatus(distribution);
 
         return result;
-    } catch (const ::clusterlib::Exception &ex) {
-        LOG4CXX_WARN(m_logger, 
-                     "Getting data distribution failed (" << 
-                     ex.what() << ")");
+    } 
+    catch (const ::clusterlib::Exception &ex) {
+        LOG_WARN(GUI_LOG, 
+                 "Getting data distribution failed (%s)",
+                 ex.what());
         throw JSONRPCInvocationException(ex.what());
     }
 }
@@ -1292,8 +1304,9 @@ JSONValue::JSONObject MethodAdaptor::getNode(
         result["properties"] = getPropertyList(node->getPropertyList());
 
         return result;
-    } catch (const ::clusterlib::Exception &ex) {
-        LOG4CXX_WARN(m_logger, "Getting node failed (" << ex.what() << ")");
+    } 
+    catch (const ::clusterlib::Exception &ex) {
+        LOG_WARN(GUI_LOG, "Getting node failed (%s)", ex.what());
         throw JSONRPCInvocationException(ex.what());
     }
 }
@@ -1311,9 +1324,10 @@ JSONValue::JSONObject MethodAdaptor::getPropertyList(
         result["properties"] = getPropertyList(propertyList);
 
         return result;
-    } catch (const ::clusterlib::Exception &ex) {
-        LOG4CXX_WARN(m_logger, 
-                     "Getting propertyList failed (" << ex.what() << ")");
+    }
+    catch (const ::clusterlib::Exception &ex) {
+        LOG_WARN(GUI_LOG, 
+                 "Getting propertyList failed (%s)", ex.what());
         throw JSONRPCInvocationException(ex.what());
     }
 }
@@ -1352,10 +1366,11 @@ JSONValue::JSONObject MethodAdaptor::getOneNotifyableStatus(
         else {
             throw JSONRPCInvocationException("Invalid notifyable type");
         }
-    } catch (const ::clusterlib::Exception &ex) {
-        LOG4CXX_WARN(
-            m_logger,
-            "getOneNotifyableStatus: Failed (" << ex.what() << ")");
+    } 
+    catch (const ::clusterlib::Exception &ex) {
+        LOG_WARN(GUI_LOG,
+                 "getOneNotifyableStatus: Failed (%s)", 
+                 ex.what());
         throw JSONRPCInvocationException(ex.what());
     }        
 }
@@ -1612,8 +1627,9 @@ JSONValue::JSONArray MethodAdaptor::getApplicationStatus(
                 getOneApplicationStatus(
                     dynamic_cast<Application*>(
                         getNotifyable(id, idTypeApplication))));
-        } catch (const ::clusterlib::Exception &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
+        } 
+        catch (const ::clusterlib::Exception &ex) {
+            LOG_WARN(GUI_LOG, "Invalid ID (%s)", ex.what());
         }
     }
 
@@ -1631,8 +1647,9 @@ JSONValue::JSONArray MethodAdaptor::getNodeStatus(
             status.push_back(
                 getOneNodeStatus(dynamic_cast<Node*>(
                                      getNotifyable(id, idTypeNode))));
-        } catch (const ::clusterlib::Exception &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
+        } 
+        catch (const ::clusterlib::Exception &ex) {
+            LOG_WARN(GUI_LOG, "Invalid ID (%s)", ex.what());
         }
     }
 
@@ -1651,8 +1668,9 @@ JSONValue::JSONArray MethodAdaptor::getProcessSlotStatus(
                 getOneProcessSlotStatus(
                     dynamic_cast<ProcessSlot*>(
                         getNotifyable(id, idTypeProcessSlot))));
-        } catch (const ::clusterlib::Exception &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
+        } 
+        catch (const ::clusterlib::Exception &ex) {
+            LOG_WARN(GUI_LOG, "Invalid ID (%s)", ex.what());
         }
     }
 
@@ -1670,8 +1688,9 @@ JSONValue::JSONArray MethodAdaptor::getGroupStatus(
             status.push_back(
                 getOneGroupStatus(dynamic_cast<Group*>(
                                       getNotifyable(id, idTypeGroup))));
-        } catch (const ::clusterlib::Exception &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
+        }
+        catch (const ::clusterlib::Exception &ex) {
+            LOG_WARN(GUI_LOG, "Invalid ID (%s)", ex.what());
         }
     }
 
@@ -1690,8 +1709,9 @@ JSONValue::JSONArray MethodAdaptor::getDataDistributionStatus(
                 getOneDataDistributionStatus(
                     dynamic_cast<DataDistribution*>(
                         getNotifyable(id, idTypeDataDistribution))));
-        } catch (const ::clusterlib::Exception &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
+        }
+        catch (const ::clusterlib::Exception &ex) {
+            LOG_WARN(GUI_LOG, "Invalid ID (%s)", ex.what());
         }
     }
 
@@ -1710,8 +1730,9 @@ JSONValue::JSONArray MethodAdaptor::getPropertyListStatus(
                 getOnePropertyListStatus(
                     dynamic_cast<PropertyList*>(
                         getNotifyable(id, idTypePropertyList))));
-        } catch (const ::clusterlib::Exception &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
+        }
+        catch (const ::clusterlib::Exception &ex) {
+            LOG_WARN(GUI_LOG, "Invalid ID (%s)", ex.what());
         }
     }
         
@@ -1730,8 +1751,9 @@ JSONValue::JSONArray MethodAdaptor::getQueueStatus(
                 getOneQueueStatus(
                     dynamic_cast<Queue*>(
                         getNotifyable(id, idTypeQueue))));
-        } catch (const ::clusterlib::Exception &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid ID (" << ex.what() << ")");
+        }
+        catch (const ::clusterlib::Exception &ex) {
+            LOG_WARN(GUI_LOG, "Invalid ID (%s)", ex.what());
         }
     }
         
@@ -1746,8 +1768,9 @@ JSONValue::JSONArray MethodAdaptor::getShardStatus(
          it++) {
         try {
             status.push_back(getOneShardStatus(*it));
-        } catch (const ::clusterlib::Exception &ex) {
-            LOG4CXX_WARN(m_logger, "Invalid shard (" << ex.what() << ")");
+        }
+        catch (const ::clusterlib::Exception &ex) {
+            LOG_WARN(GUI_LOG, "Invalid shard (%s)", ex.what());
         }
     }
     return status;

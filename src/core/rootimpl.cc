@@ -63,42 +63,4 @@ RootImpl::initializeCachedRepresentation()
     TRACE(CL_LOG, "initializeCachedRepresentation");
 }
 
-string
-RootImpl::generateKey(const string &parentKey, const string &name) const
-{
-    return NotifyableKeyManipulator::createRootKey();
-}
-
-bool
-RootImpl::isValidName(const string &name) const
-{
-    TRACE(CL_LOG, "isValidName");
-
-    /* Name is not used for the root */
-    return true;
-}
-
-NotifyableImpl *
-RootImpl::createNotifyable(const string &notifyableName,
-                           const string &notifyableKey,
-                           NotifyableImpl *parent,
-                           FactoryOps &factoryOps)
-{
-    return new RootImpl(&factoryOps,
-                        notifyableKey,
-                        notifyableName);
-}
-
-vector<string>
-RootImpl::generateRepositoryList(const std::string &notifyableName,
-                                 const std::string &notifyableKey)
-{
-    vector<string> resVec;
-    resVec.push_back(notifyableKey);
-    resVec.push_back(
-        NotifyableKeyManipulator::createApplicationChildrenKey(notifyableKey));
-
-    return resVec;
-}
-
 };	/* End of 'namespace clusterlib' */

@@ -86,20 +86,6 @@ class RootImpl
                                      " repository entries");
     }
 
-    virtual std::string generateKey(const std::string &parentKey,
-                                    const std::string &name) const;
-
-    virtual bool isValidName(const std::string &name) const;
-
-    virtual NotifyableImpl *createNotifyable(const std::string &notifyableName,
-                                             const std::string &notifyableKey,
-                                             NotifyableImpl *parent,
-                                             FactoryOps &factoryOps);
-
-    virtual std::vector<std::string> generateRepositoryList(
-        const std::string &notifyableName,
-        const std::string &notifyableKey);
-
   private:
     /*
      * The default constructor is private so no one can call it.

@@ -1,9 +1,5 @@
 #ifndef _INCLUDED_CLUSTERLIB_JSONRPC_ADAPTOR_H_
 #define _INCLUDED_CLUSTERLIB_JSONRPC_ADAPTOR_H_
-#include "jsonrpc_httpd_adaptor.h"
-#include <memory>
-#include <clusterlib.h>
-#include <log4cxx/logger.h>
 
 namespace clusterlib { namespace rpc { namespace json {
 
@@ -244,5 +240,7 @@ class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod {
 
     std::string m_name;
 };
+
 }}}
+
 #endif

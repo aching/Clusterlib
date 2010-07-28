@@ -167,12 +167,6 @@ class ZKWatcherEvent
     
     /**
      * \brief Constructor.
-     * 
-     * @param type the type of this event
-     * @param state the state of this event
-     * @param path the corresponding path, may be empty for some event 
-     *             types
-     * @param context the user specified context; possibly NULL
      */
     ZKWatcherEvent() : 
         m_type(-1), m_state(-1), m_path(""), mp_context(NULL) {}
@@ -403,7 +397,7 @@ class ZooKeeperAdapter
     void reconnect();
         
     /**
-     * \brief Disconnects from the ZK and unregisters {@link #mp_zkHandle}. 
+     * \brief Disconnects from the ZK and unregisters.
      *
      * @param final if true, no reconnection will be allowed.
      */
@@ -550,9 +544,7 @@ class ZooKeeperAdapter
      *                in a corresponding {@link ZKWatcherEvent} at later time; 
      *                not used if <code>listener</code> is <code>NULL</code>
      * @param stat the optional node statistics to be filled in by ZK
-     * @param exists true if the node exists, false otherwise
-     * 
-     * @return if exists (data will not be set)
+     * @return True if exists (data will not be set)
      * @throw ZooKeeperException if the operation has failed
      */
     bool getNodeData(const std::string &path, 

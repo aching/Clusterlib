@@ -58,6 +58,7 @@ libcluster_a_SOURCES = \
 	clusterlibrpc.cc \
 	clusterlibrpcbulkrequest.cc \
 	zookeeperperiodiccheck.cc \
+	log.cc \
         md5/md5.cc
 SUBDIRS = md5
 

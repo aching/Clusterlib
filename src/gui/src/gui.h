@@ -13,6 +13,7 @@
 
 #include <string>
 #include <vector>
+#include <list>
 #include <map>
 #include <algorithm>
 #include <iostream>
@@ -21,12 +22,14 @@
 #include <sys/time.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <iomanip>
 
 #include "log.h"
-#include "forwarddecls.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include "clusterlib.h"
+#include "microhttpserver.h"
+#include "httpd.h"
 
 DEFINE_LOGGER(GUI_LOG, "gui")
 

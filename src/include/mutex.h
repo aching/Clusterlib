@@ -527,7 +527,7 @@ class NotifyableLocker
     /**
      * Get the Notifyable back.
      *
-     * @param Return the internal Notifyable pointer.
+     * @return Return the internal Notifyable pointer.
      */
     Notifyable *getNotifyable();
 

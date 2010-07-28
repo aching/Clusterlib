@@ -150,7 +150,6 @@ class CliCommand
         /**
          * Get the argument as a JSONValue.
          *
-         * @param argIndex the index of the argument to convert
          * @return the argument as a JSONValue
          */
         json::JSONValue getJsonArg() const;

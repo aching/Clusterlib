@@ -38,7 +38,7 @@ class SafeNotifyableMap {
      * At this point, the memory of the notifyable is owned by
      * SafeNotifyableMap and will be removed during destruction.
      *
-     * @param ntp the pointer to the notifyable to insert
+     * @param notifyable Pointer to the notifyable to insert
      */
     void uniqueInsert(NotifyableImpl &notifyable);
 

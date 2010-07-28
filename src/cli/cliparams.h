@@ -59,7 +59,8 @@ class CliParams {
     /**
      * Register a command.
      *
-     * @param the command to register (should be allocated with new)
+     * @param command Command to register (should be allocated with new)
+     * @param groupName Name of the group to register the commmand under
      */
     void registerCommandByGroup(CliCommand *command, 
                                 const std::string &groupName);

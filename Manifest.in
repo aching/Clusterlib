@@ -7,6 +7,9 @@
 @SOURCE_PATH@/src/activenode        		/include/activenode
 - *.h
 
+@SOURCE_PATH@/src/gui/src        		/include/gui
+- *.h
+
 @SOURCE_PATH@/unittests	        		/include/unittests
 - *.h
 
@@ -19,17 +22,26 @@
 @BUILD_PATH@/src/activenode			/lib
 - libactivenode.a
 
+@BUILD_PATH@/src/gui/src/			/lib
+- libzkui.a
+
 @BUILD_PATH@/unittests				/lib
 - libunittests.a
 
 @BUILD_PATH@/src/cli				/bin
 - cli
 
+@BUILD_PATH@/src/activenode			/bin
+- activenode
+
 @BUILD_PATH@/src/gui/src			/bin
 - zkuiserver
 
-@BUILD_PATH@/src/gui/conf			/conf
-- config.xml
+@SOURCE_PATH@/src/gui/conf			/conf
+- config.xml.in
+
+@SOURCE_PATH@/src/gui/webroot			/webroot
+- *
 
 @SOURCE_PATH@/misc				/conf
 - log4cxx.cfg
