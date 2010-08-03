@@ -12,7 +12,6 @@ my $zookeeperDir = '@ZOOKEEPER_PATH@';
 my $buildDir = '@BUILD_PATH@';
 my $zookeeperServerDir = "$buildDir\/zookeeperServerDir";
 my $zookeeperClientPort = "2221";
-my $zookeeperServerPort = "2222";
 my $zookeeperCfg = "$zookeeperServerDir\/zoo\.cfg";
 my $zookeeperOut = "$zookeeperServerDir\/out";
 my $zookeeperExec = "java -cp $zookeeperDir\/lib/zookeeper-@ZOOKEEPER_VERSION@.jar:$zookeeperDir\/lib/log4j-1.2.15.jar:conf org.apache.zookeeper.server.quorum.QuorumPeerMain $zookeeperCfg";
@@ -247,8 +246,6 @@ sub startZookeeper()
 	&setCmdPrintExec("print FH \"clientPort=$zookeeperClientPort\n\"");
 	&setCmdPrintExec("print FH \"initLimit=4\n\"");
 	&setCmdPrintExec("print FH \"syncLimit=4\n\"");
-	&setCmdPrintExec("print FH \"electionAlg=0\n\"");
-	&setCmdPrintExec("print FH \"server\.0=$hostname\:$zookeeperServerPort\n\"");
 	&setCmdPrintExec('close FH');
 	&setSystemCmdPrintExec("chmod 700 $zookeeperCfg");
 	print "\nStarting up zookeeper ($zookeeperExec) for user $user...\n";

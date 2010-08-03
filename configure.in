@@ -212,7 +212,7 @@ AC_SUBST(MPICH_LIB)
 
 ### ZooKeeper ###
 
-ZOOKEEPER_VERSION="1.0.0"
+ZOOKEEPER_VERSION="3.2.2"
 
 AC_MSG_CHECKING(location of ZooKeeper headers and libraries)
 AC_ARG_WITH(zookeeper_root,
@@ -223,7 +223,7 @@ AC_ARG_WITH(zookeeper_root,
         ;;
     esac ],
   [
-        with_zookeeper_root="/usr/releng/internal/zookeeper/zookeeper-$ZOOKEEPER_VERSION"
+        with_zookeeper_root="/usr/releng/internal/zookeeper/zookeeper-1.0.0"
   ]
 )
 AC_MSG_RESULT($with_zookeeper_root)
