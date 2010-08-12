@@ -68,8 +68,8 @@ commandCompletion(const char *text, int iteration)
         if (atLeastOneResult == false) {
             /* No results last time, let's find some */
             string chopText(text);
-            Root *root = params->getClient()->getRoot();
-            string rootKey(root->getKey());
+            shared_ptr<Root> rootSP = params->getClient()->getRoot();
+            string rootKey(rootSP->getKey());
             /*
              * Algorithm: 
              * 
@@ -85,17 +85,17 @@ commandCompletion(const char *text, int iteration)
                      chopIt != params->getKeySet()->end();
                      ++chopIt) {
                     if (chopIt->compare(chopText) == 0) {
-                        Notifyable *ntp = 
-                            root->getNotifyableFromKey(chopText);
-                        if (ntp == NULL) {
+                        shared_ptr<Notifyable> notifyableSP = 
+                            rootSP->getNotifyableFromKey(chopText);
+                        if (notifyableSP == NULL) {
                             params->removeFromKeySet(chopText);
                         }
                         else {
-                            NotifyableList nl = ntp->getMyChildren();
+                            NotifyableList nl = notifyableSP->getMyChildren();
                             NotifyableList::const_iterator nlIt;
                             for (nlIt = nl.begin(); 
                                  nlIt != nl.end(); 
-                                 nlIt++) {
+                                 ++nlIt) {
                                 params->addToKeySet((*nlIt)->getKey());
                             }
                         }
