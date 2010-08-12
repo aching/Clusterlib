@@ -63,7 +63,8 @@ class JSONRPCParamsException
 /**
  * Defines a state which can be persisted across calls.
  */
-class PersistableState {
+class PersistableState
+{
   public:
     virtual ~PersistableState() {}
 };
@@ -75,7 +76,8 @@ class PersistableState {
  * transfered to the persistence. The persistence will free the
  * pointer as necessary (set, erase, etc).
  */
-class StatePersistence {
+class StatePersistence
+{
   public:
     virtual ~StatePersistence() {}
     /**
@@ -105,7 +107,8 @@ class StatePersistence {
 /**
  * Abstract base class to be inherited by JSONRPCMethod and JSONRPCRequest
  */
-class JSONRPC {
+class JSONRPC
+{
   public:
     /**
      * Destructor
@@ -246,7 +249,8 @@ class JSONRPCRequest
  * incoming JSON-RPC object. The result will be wrapped according
  * to JSON-RPC specification 1.0.
  */
-class JSONRPCManager {
+class JSONRPCManager
+{
   public:
     /**
      * Registers the RPC method. Each RPC method should have

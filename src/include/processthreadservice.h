@@ -11,8 +11,7 @@
 #ifndef	_CL_PROCESSTHREADSERVICE_H_
 #define	_CL_PROCESSTHREADSERVICE_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * This class provides a static functions to help manipulate processes

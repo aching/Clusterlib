@@ -12,18 +12,18 @@
 #ifndef _CL_SHARD_H_
 #define _CL_SHARD_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition and implementation of class Shard.
  */
-class Shard {
+class Shard
+{
   public:
     /**
      * Get the Root pointer.
      */
-    Root *getRoot() const;
+    boost::shared_ptr<Root> getRoot() const;
 
     /**
      * Get the start of the range (inclusive)
@@ -44,7 +44,7 @@ class Shard {
      *
      * @return the Notifyable * asssociated with this Shard (NULL if none)
      */
-    Notifyable *getNotifyable() const;
+    boost::shared_ptr<Notifyable> getNotifyable() const;
 
     /**
      * Get the Notifyable key
@@ -63,7 +63,7 @@ class Shard {
     /**
      * Constructor.
      */
-    Shard(Root *root,
+    Shard(const boost::shared_ptr<Root> &rootSP,
           const HashRange &startRange, 
           const HashRange &endRange, 
           std::string notifyableKey, 
@@ -91,7 +91,7 @@ class Shard {
 
   private:
     /** Clusterlib root (used to get the Notifyable at runtime) */
-    mutable Root *m_root;
+    mutable boost::shared_ptr<Root> m_rootSP;
 
     /** Start of the range */
     HashRange *m_startRange;

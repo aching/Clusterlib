@@ -13,8 +13,7 @@
 #ifndef	_CL_DATADISTRIBUTION_H_
 #define _CL_DATADISTRIBUTION_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class DataDistribution.
@@ -36,6 +35,6 @@ class DataDistribution
     virtual ~DataDistribution() {}
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_DATADISTRIBUTION_H_ */

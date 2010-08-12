@@ -11,13 +11,13 @@
 #ifndef	_CL_HEALTHCHECKER_H_
 #define	_CL_HEALTHCHECKER_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * \brief Represents a health report of a cluster node.
  */
-class HealthReport {
+class HealthReport
+{
     public:
         
         /**
@@ -225,5 +225,5 @@ class HealthChecker
     int64_t m_msecsAllowedPerHealthCheck;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 #endif	/* !_CL_HEALTHCHECKER_H_ */

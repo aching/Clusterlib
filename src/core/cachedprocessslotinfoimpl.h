@@ -12,8 +12,7 @@
 #ifndef	_CL_CACHEDPROCESSSLOTINFOIMPL_H_
 #define _CL_CACHEDPROCESSSLOTINFOIMPl_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class CachedProcessSlotInfoImpl
@@ -45,7 +44,7 @@ class CachedProcessSlotInfoImpl
     /**
      * Constructor.
      */
-    explicit CachedProcessSlotInfoImpl(NotifyableImpl *ntp);
+    explicit CachedProcessSlotInfoImpl(NotifyableImpl *notifyable);
 
     /**
      * Destructor.
@@ -60,6 +59,6 @@ class CachedProcessSlotInfoImpl
     ::json::JSONValue::JSONArray m_processSlotInfoArr;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_CACHEDPROCESSSLOTINFOIMPL_H_ */

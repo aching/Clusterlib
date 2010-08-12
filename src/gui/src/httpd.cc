@@ -147,7 +147,7 @@ void
 HttpServer::cleanExpiredSession() 
 {
     time_t expiration = time(NULL) - sessionLife;
-    std::map<std::string, HttpSession*>::iterator iter = sessionMap.begin();
+    map<string, HttpSession*>::iterator iter = sessionMap.begin();
     while (iter != sessionMap.end()) {
         if (iter->second->lastAccess < expiration) {
             sessionMap.erase(iter++);

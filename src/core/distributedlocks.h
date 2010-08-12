@@ -11,8 +11,7 @@
 #ifndef	_CL_DISTRIBUTEDLOCKS_H_
 #define	_CL_DISTRIBUTEDLOCKS_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of DistributedLocks
@@ -31,12 +30,12 @@ class DistributedLocks
      * Root.  The lock can be used to prevent any thread from
      * interfering with operations on this NotifyableImpl.
      *
-     * @param ntp is the Notifyable to be locked.
+     * @param pNotifyableSP is the Notifyable to be locked.
      * @param lockName is the name of the lock
      * @return true if the lock was acquired, false otherwise
      * @throw Exception if the Notifyable doesn't exist
      */
-    void acquire(Notifyable *ntp, 
+    void acquire(const boost::shared_ptr<Notifyable> &pNotifyableSP, 
                  const std::string &lockName);
 
     /**
@@ -46,13 +45,13 @@ class DistributedLocks
      *
      * @param msecTimeout -1 for wait forever, 0 for return immediately, 
      *        otherwise the number of milliseconds to wait for the lock.
-     * @param ntp is the Notifyable to be locked.
+     * @param pNotifyableSP is the Notifyable to be locked.
      * @param lockName is the name of the lock
      * @return true if the lock was acquired, false otherwise
      * @throw Exception if the Notifyable doesn't exist
      */
     bool acquireWaitMsecs(int64_t msecTimeout, 
-                          Notifyable *ntp, 
+                          const boost::shared_ptr<Notifyable> &pNotifyableSP, 
                           const std::string &lockName);
 
     /**
@@ -62,38 +61,40 @@ class DistributedLocks
      *
      * @param usecTimeout -1 for wait forever, 0 for return immediately, 
      *        otherwise the number of microseconds to wait for the lock.
-     * @param ntp is the Notifyable to be locked.
+     * @param pNotifyableSP is the Notifyable to be locked.
      * @param lockName is the name of the lock
      * @return true if the lock was acquired, false otherwise
      * @throw Exception if the Notifyable doesn't exist
      */
     bool acquireWaitUsecs(int64_t usecTimeout, 
-                          Notifyable *ntp, 
+                          const boost::shared_ptr<Notifyable> &pNotifyableSP, 
                           const std::string &lockName);
 
     /**
      * Try to unlock this Notifyable.
      *
-     * @param ntp is the Notifyable to be unlocked.
+     * @param pNotifyableSP is the Notifyable to be unlocked.
      * @param lockName is the name of the lock
      * @throw Exception if there is an unrecoverable problem
      */
-    void release(Notifyable *ntp, const std::string &lockName);
+    void release(const boost::shared_ptr<Notifyable> &pNotifyableSP, 
+                 const std::string &lockName);
 
     /**
      * Does this thread have a lock on this Notifyable?
      *
-     * @param ntp the Notifyable that is being checked
+     * @param pNotifyableSP the Notifyable that is being checked
      * @param lockName the name of the lock
      * @return true if the thread has the lock
      */
-    bool hasLock(Notifyable *ntp, const std::string &lockName);
+    bool hasLock(const boost::shared_ptr<Notifyable> &pNotifyableSP, 
+                 const std::string &lockName);
 
     /**
      * Get the current lock owner information.  This is mainly for
      * debugging, since this information can change at any point.
      *
-     * @param ntp the Notifyable that is being checked
+     * @param pNotifyableSP the Notifyable that is being checked
      * @param lockName the name of the lock
      * @param id if a valid pointer and an owner exists, the id of 
      *        the owner
@@ -101,7 +102,7 @@ class DistributedLocks
      *        since the epoch when the owner tried to become the owner
      * @return true if there is an owner
      */
-    bool getInfo(Notifyable *ntp,
+    bool getInfo(const boost::shared_ptr<Notifyable> &pNotifyableSP,
                  const std::string &lockName,
                  std::string *id = NULL,
                  int64_t *msecs = NULL);

@@ -13,13 +13,10 @@
 #include "clusterlibinternal.h"
 #include <limits>
 
-#define LOG_LEVEL LOG_WARN
-#define MODULE_NAME "ClusterLib"
-
 using namespace std;
+using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 const string Notifyable::PID_KEY = "_pid";
 
@@ -51,19 +48,37 @@ NotifyableImpl::getPropertyListNames()
         CachedObjectChangeHandlers::PROPERTYLISTS_CHANGE);
 }
 
-PropertyList *
-NotifyableImpl::getPropertyList(const string &name, AccessType accessType)
+bool
+NotifyableImpl::getPropertyListWaitMsecs(
+    const string &name,
+    AccessType accessType,
+    int64_t msecTimeout,
+    shared_ptr<PropertyList> *pPropertyListSP) 
 {
-    TRACE(CL_LOG, "getPropertyList");
+    TRACE(CL_LOG, "getPropertyListWaitMsecs");
 
     throwIfRemoved();
 
-    return dynamic_cast<PropertyList *>(
-        getOps()->getNotifyable(
-            this,
-            ClusterlibStrings::REGISTERED_PROPERTYLIST_NAME,
-            name,
-            accessType));
+    shared_ptr<NotifyableImpl> notifyableSP;
+    bool completed = getOps()->getNotifyableWaitMsecs(
+        shared_from_this(),
+        ClusterlibStrings::REGISTERED_PROPERTYLIST_NAME,
+        name,
+        accessType,
+        msecTimeout,
+        &notifyableSP);
+
+    *pPropertyListSP = dynamic_pointer_cast<PropertyList>(notifyableSP);
+    return completed;
+}
+
+shared_ptr<PropertyList>
+NotifyableImpl::getPropertyList(const string &name,
+                                AccessType accessType)
+{
+    shared_ptr<PropertyList> propertyListSP;
+    getPropertyListWaitMsecs(name, accessType, -1, &propertyListSP);
+    return propertyListSP;
 }
 
 NameList
@@ -78,29 +93,40 @@ NotifyableImpl::getQueueNames()
         CachedObjectChangeHandlers::QUEUES_CHANGE);
 }
 
-Queue *
-NotifyableImpl::getQueue(const std::string &queueName, AccessType accessType)
+bool
+NotifyableImpl::getQueueWaitMsecs(
+    const string &name,
+    AccessType accessType,
+    int64_t msecTimeout,
+    shared_ptr<Queue> *pQueueSP) 
 {
-    TRACE(CL_LOG, "getQueue");
+    TRACE(CL_LOG, "getQueueWaitMsecs");
 
     throwIfRemoved();
 
-    return dynamic_cast<Queue *>(
-        getOps()->getNotifyable(this,
-                                ClusterlibStrings::REGISTERED_QUEUE_NAME,
-                                queueName,
-                                accessType));
+    shared_ptr<NotifyableImpl> notifyableSP;
+    bool completed = getOps()->getNotifyableWaitMsecs(
+        shared_from_this(),
+        ClusterlibStrings::REGISTERED_QUEUE_NAME,
+        name,
+        accessType,
+        msecTimeout,
+        &notifyableSP);
+
+    *pQueueSP = dynamic_pointer_cast<Queue>(notifyableSP);
+    return completed;
 }
 
-void
-NotifyableImpl::releaseRef()
+shared_ptr<Queue>
+NotifyableImpl::getQueue(const string &name,
+                                AccessType accessType)
 {
-    TRACE(CL_LOG, "releaseRef");
-
-    removeFromRemovedNotifyablesIfReleased(true);
+    shared_ptr<Queue> queueSP;
+    getQueueWaitMsecs(name, accessType, -1, &queueSP);
+    return queueSP;
 }
 
-Notifyable *
+shared_ptr<Notifyable>
 NotifyableImpl::getMyParent() const
 {
     TRACE(CL_LOG, "getMyParent");
@@ -112,7 +138,7 @@ NotifyableImpl::getMyParent() const
                                         getKey());
     }
 
-    return dynamic_cast<Notifyable *>(mp_parent);
+    return dynamic_pointer_cast<Notifyable>(mp_parent);
 }
 
 NotifyableList
@@ -128,28 +154,30 @@ NotifyableImpl::getMyChildren()
      */
     NotifyableList tmpList, finalList;
     tmpList = getOps()->getNotifyableList(
-        this,
+        shared_from_this(),
         ClusterlibStrings::REGISTERED_PROPERTYLIST_NAME,
         getPropertyListNames(),
         LOAD_FROM_REPOSITORY);
     finalList.insert(finalList.end(), tmpList.begin(), tmpList.end());
     tmpList = getOps()->getNotifyableList(
-        this,
+        shared_from_this(),
         ClusterlibStrings::REGISTERED_QUEUE_NAME,
         getQueueNames(),
         LOAD_FROM_REPOSITORY);
     finalList.insert(finalList.end(), tmpList.begin(), tmpList.end());
-
+    
     tmpList = getChildrenNotifyables();
     finalList.insert(finalList.end(), tmpList.begin(), tmpList.end());
 
     return finalList;
 }
 
-Application *
-NotifyableImpl::getMyApplication()
+bool
+NotifyableImpl::getMyApplicationWaitMsecs(
+    int64_t msecTimeout,
+    shared_ptr<Application> *pApplicationSP)
 {
-    TRACE(CL_LOG, "getMyApplication");
+    TRACE(CL_LOG, "getMyApplicationWaitMsecs");
 
     throwIfRemoved();
 
@@ -159,51 +187,114 @@ NotifyableImpl::getMyApplication()
      * An application is its own application, according to the
      * semantics implemented below.
      */
-    string appKey = getKey();
-    Application *myApp = NULL;
+    bool completed = false;
+    string applicationKey = getKey();
+    shared_ptr<NotifyableImpl> notifyableSP;
     do {
-        myApp = dynamic_cast<Application *>(
-            getOps()->getNotifyableFromKey(
-                vector<string>(1, 
-                               ClusterlibStrings::REGISTERED_APPLICATION_NAME),
-                appKey, 
-                LOAD_FROM_REPOSITORY));
-        appKey = NotifyableKeyManipulator::removeObjectFromKey(appKey);
-    }  while ((myApp == NULL) && (!appKey.empty()));
+        completed = getOps()->getNotifyableFromKeyWaitMsecs(
+            vector<string>(1, 
+                           ClusterlibStrings::REGISTERED_APPLICATION_NAME),
+            applicationKey, 
+            LOAD_FROM_REPOSITORY,
+            msecTimeout,
+            &notifyableSP);
+        *pApplicationSP = dynamic_pointer_cast<Application>(notifyableSP);
+        applicationKey = 
+            NotifyableKeyManipulator::removeObjectFromKey(applicationKey);
+    }  while ((*pApplicationSP == NULL) && (!applicationKey.empty()));
 
-    return myApp;
+    return completed;
 }
 
-Group *
-NotifyableImpl::getMyGroup()
+shared_ptr<Application>
+NotifyableImpl::getMyApplication()
 {
-    TRACE(CL_LOG, "getMyGroup");
+    TRACE(CL_LOG, "getMyApplication");
+
+    shared_ptr<Application> applicationSP;
+    getMyApplicationWaitMsecs(-1, &applicationSP);
+    return applicationSP;
+}
+
+bool
+NotifyableImpl::getMyGroupWaitMsecs(
+    int64_t msecTimeout,
+    shared_ptr<Group> *pGroupSP)
+{
+    TRACE(CL_LOG, "getMyGroupWaitMsecs");
+
+    if (pGroupSP == NULL) {
+        throw InvalidArgumentsException(
+            "getMyGroupWaitMsecs: pGroupSP == NULL");
+    }
 
     throwIfRemoved();
 
     /*
      * Try to find the object.
+     *
+     * An group is its own group, according to the
+     * semantics implemented below.
      */
+    bool completed = false;
     string groupKey = getKey();
-    Group *myGroup = NULL;
+    shared_ptr<NotifyableImpl> notifyableSP;
     do {
         groupKey = NotifyableKeyManipulator::removeObjectFromKey(groupKey);
-        myGroup = dynamic_cast<Group *>(
-            getOps()->getNotifyableFromKey(
-                vector<string>(1, ClusterlibStrings::REGISTERED_GROUP_NAME),
-                groupKey, 
-                LOAD_FROM_REPOSITORY));
-    } while ((myGroup == NULL) && (!groupKey.empty()));
+        completed = getOps()->getNotifyableFromKeyWaitMsecs(
+            vector<string>(1, 
+                           ClusterlibStrings::REGISTERED_GROUP_NAME),
+            groupKey, 
+            LOAD_FROM_REPOSITORY,
+            msecTimeout,
+            &notifyableSP);
+        *pGroupSP = dynamic_pointer_cast<Group>(notifyableSP);
+    }  while ((*pGroupSP == NULL) && (!groupKey.empty()));
 
-    return myGroup;
+    return completed;
 }
 
-Notifyable *
-NotifyableImpl::getNotifyableFromKey(const string &key)
+shared_ptr<Group>
+NotifyableImpl::getMyGroup()
 {
-    TRACE(CL_LOG, "getNotifyableFromKey");
+    TRACE(CL_LOG, "getMyGroup");
 
-    return getOps()->getNotifyableFromKey(vector<string>(), key);
+    shared_ptr<Group> groupSP;
+    getMyGroupWaitMsecs(-1, &groupSP);
+    return groupSP;
+}
+
+bool
+NotifyableImpl::getNotifyableFromKeyWaitMsecs(
+    const string &key,
+    int64_t msecTimeout,
+    shared_ptr<Notifyable> *pNotifyableSP)
+{
+    TRACE(CL_LOG, "getNotifyableFromKeyWaitMsecs");
+
+    shared_ptr<NotifyableImpl> notifyableSP;
+    bool completed =  getOps()->getNotifyableFromKeyWaitMsecs(
+        vector<string>(), 
+        key,
+        LOAD_FROM_REPOSITORY,
+        msecTimeout,
+        &notifyableSP);
+
+    *pNotifyableSP = dynamic_pointer_cast<Notifyable>(notifyableSP);
+    return completed;
+}
+
+shared_ptr<Notifyable> 
+NotifyableImpl::getNotifyableFromKey(const string &key) 
+{
+    TRACE(CL_LOG, "getNotifyableFromKeyWaitMsecs");
+    
+    shared_ptr<Notifyable> notifyableSP;
+
+    getNotifyableFromKeyWaitMsecs(key,
+                                  -1,
+                                  &notifyableSP);
+    return notifyableSP;
 }
 
 Notifyable::State
@@ -219,24 +310,24 @@ NotifyableImpl::getState() const
     return m_state;
 }
 
-Mutex *
+const Mutex &
 NotifyableImpl::getSyncLock() const
 {
     TRACE(CL_LOG, "getSyncLock");
 
     LOG_DEBUG(CL_LOG, "getSyncLock: For notifyable %s", getKey().c_str());
 
-    return &m_syncLock;
+    return m_syncLock;
 }
 
-Mutex *
-NotifyableImpl::getSyncDistLock()
+const Mutex &
+NotifyableImpl::getSyncDistLock() const
 {
     TRACE(CL_LOG, "getSyncDistLock");
 
     LOG_DEBUG(CL_LOG, "getSyncDistLock: For notifyable %s", getKey().c_str());
 
-    return &m_syncDistLock;
+    return m_syncDistLock;
 }
 
 string
@@ -300,7 +391,7 @@ NotifyableImpl::acquireLockWaitMsecs(int64_t msecTimeout, bool acquireChildren)
      */
     bool gotLock = false;
     NotifyableList ntList, tmpNtList;
-    ntList.push_back(this);
+    ntList.push_back(dynamic_pointer_cast<Notifyable>(shared_from_this()));
     uint32_t ntListIndex = 0;
     do {
         if (curUsecTimeout != -1) {
@@ -338,20 +429,7 @@ NotifyableImpl::acquireLockWaitMsecs(int64_t msecTimeout, bool acquireChildren)
         }
     }
 
-    /* Release notifyables from getChildren() */
-    NotifyableList::iterator ntIt;
-    for (ntIt = ntList.begin(); ntIt != ntList.end(); ntIt++) {
-        if (*ntIt != this) {
-            (*ntIt)->releaseRef();
-        }
-    }
-
-    if (gotLock) {
-        return true;
-    }
-    else {
-        return false;
-    }
+    return gotLock;
 }
 
 void 
@@ -364,7 +442,7 @@ NotifyableImpl::releaseLock(bool releaseChildren)
               getKey().c_str()); 
     if (releaseChildren == true) {
         NotifyableList ntList, tmpNtList;
-        ntList.push_back(this);
+        ntList.push_back(shared_from_this());
         uint32_t ntListIndex = 0;
         do {
             LOG_DEBUG(CL_LOG, 
@@ -396,18 +474,10 @@ NotifyableImpl::releaseLock(bool releaseChildren)
             ntList.insert(ntList.end(), tmpNtList.begin(), tmpNtList.end()); 
             ntListIndex++;
         } while (ntListIndex != ntList.size());
-
-        /* Release notifyables from getChildren() */
-        NotifyableList::iterator ntIt;
-        for (ntIt = ntList.begin(); ntIt != ntList.end(); ntIt++) {
-            if (*ntIt != this) {
-                (*ntIt)->releaseRef();
-            }
-        }
     }
     else {
         getOps()->getDistributedLocks()->release(
-            this,
+            shared_from_this(),
             ClusterlibStrings::NOTIFYABLELOCK);
     }
 }
@@ -419,20 +489,20 @@ NotifyableImpl::hasLock()
 
     throwIfRemoved();
 
-    return getOps()->getDistributedLocks()->
-        hasLock(this, ClusterlibStrings::NOTIFYABLELOCK);
+    return getOps()->getDistributedLocks()->hasLock(
+        shared_from_this(), ClusterlibStrings::NOTIFYABLELOCK);
 }
 
 bool
-NotifyableImpl::getLockInfo(std::string *id, 
+NotifyableImpl::getLockInfo(string *id, 
                             int64_t *msecs)
 {
     TRACE(CL_LOG, "getLockInfo");
 
     throwIfRemoved();
 
-    return getOps()->getDistributedLocks()->
-        getInfo(this, ClusterlibStrings::NOTIFYABLELOCK, id, msecs);
+    return getOps()->getDistributedLocks()->getInfo(
+        shared_from_this(), ClusterlibStrings::NOTIFYABLELOCK, id, msecs);
 }
 
 void
@@ -442,7 +512,7 @@ NotifyableImpl::acquireOwnership()
     
      getOps()->getDistributedLocks()->acquireWaitUsecs(
          -1,
-         this,
+         shared_from_this(),
          ClusterlibStrings::OWNERSHIP_LOCK);
 }
 
@@ -451,9 +521,9 @@ NotifyableImpl::acquireOwnershipWaitMsecs(int64_t msecTimeout)
 {
     TRACE(CL_LOG, "acquireOwnershipWaitMsecs");
 
-    return getOps()->getDistributedLocks()->acquireWaitUsecs(
-        msecTimeout * 1000,
-        this,
+    return getOps()->getDistributedLocks()->acquireWaitMsecs(
+        msecTimeout,
+        shared_from_this(),
         ClusterlibStrings::OWNERSHIP_LOCK);
 }
 
@@ -463,7 +533,7 @@ NotifyableImpl::releaseOwnership()
     TRACE(CL_LOG, "releaseOwnership");
 
     getOps()->getDistributedLocks()->release(
-        this,
+        shared_from_this(),
         ClusterlibStrings::OWNERSHIP_LOCK);
 }
 
@@ -474,20 +544,20 @@ NotifyableImpl::hasOwnership()
 
     throwIfRemoved();
 
-    return getOps()->getDistributedLocks()->
-        hasLock(this, ClusterlibStrings::OWNERSHIP_LOCK);
+    return getOps()->getDistributedLocks()->hasLock(
+        shared_from_this(), ClusterlibStrings::OWNERSHIP_LOCK);
 }
 
 bool
-NotifyableImpl::getOwnershipInfo(std::string *id, 
+NotifyableImpl::getOwnershipInfo(string *id, 
                                  int64_t *msecs)
 {
     TRACE(CL_LOG, "getOwnershipInfo");
 
     throwIfRemoved();
 
-    return getOps()->getDistributedLocks()->
-        getInfo(this, ClusterlibStrings::OWNERSHIP_LOCK, id, msecs);
+    return getOps()->getDistributedLocks()->getInfo(
+        shared_from_this(), ClusterlibStrings::OWNERSHIP_LOCK, id, msecs);
 }
 
 /*
@@ -536,7 +606,7 @@ NotifyableImpl::remove(bool removeChildren)
 
     throwIfRemoved();
 
-    Notifyable *parent = getMyParent();
+    shared_ptr<Notifyable> parent = getMyParent();
     if (parent == NULL) {
         throw InvalidMethodException(
             "remove: Can not remove a Notifyable that has no parent");
@@ -573,7 +643,7 @@ NotifyableImpl::remove(bool removeChildren)
      * 'external' event thread. 
      */
 
-    getMyParent()->acquireLock();
+    parent->acquireLock();
     acquireLock(removeChildren);
 
     try {
@@ -588,7 +658,7 @@ NotifyableImpl::remove(bool removeChildren)
                     "remove: Tried to remove a Notifyable "
                     "with children");
             }
-            getOps()->removeCachedNotifyable(this);
+            getOps()->removeCachedNotifyable(shared_from_this());
             removeRepositoryEntries();
             
             /* Must release locks before try to clean up from removed cache */
@@ -596,11 +666,10 @@ NotifyableImpl::remove(bool removeChildren)
             releaseLock(removeChildren);
 
             getOps()->synchronize();
-            removeFromRemovedNotifyablesIfReleased(false);
         }
         else {
             NotifyableList ntList, tmpNtList;
-            ntList.push_back(this);
+            ntList.push_back(shared_from_this());
             uint32_t ntListIndex = 0;
             do {
                 LOG_DEBUG(CL_LOG, 
@@ -621,12 +690,13 @@ NotifyableImpl::remove(bool removeChildren)
             for (revNtListIt = ntList.rbegin(); 
                  revNtListIt != ntList.rend(); 
                  revNtListIt++) {
-                NotifyableImpl *curNtp = 
-                    dynamic_cast<NotifyableImpl *>(*revNtListIt);
+                shared_ptr<NotifyableImpl> curNtp = 
+                    dynamic_pointer_cast<NotifyableImpl>(*revNtListIt);
                 LOG_DEBUG(CL_LOG, 
                           "remove: removing %s", 
                           curNtp->getKey().c_str()); 
-                getOps()->removeCachedNotifyable(curNtp);
+                getOps()->removeCachedNotifyable(
+                    shared_ptr<NotifyableImpl>(curNtp));
                 curNtp->removeRepositoryEntries(); 
             }
 
@@ -634,16 +704,7 @@ NotifyableImpl::remove(bool removeChildren)
             parent->releaseLock();
             releaseLock(removeChildren);
 
-            /* Release notifyables from getChildren() */
-            for (revNtListIt = ntList.rbegin(); 
-                 revNtListIt != ntList.rend(); 
-                 revNtListIt++) {
-                if (*revNtListIt != this) {
-                    (*revNtListIt)->releaseRef();
-                }
-            }
             getOps()->synchronize();
-            removeFromRemovedNotifyablesIfReleased(false); 
         }    
     } 
     catch (Exception &e) {
@@ -666,6 +727,26 @@ CachedState &
 NotifyableImpl::cachedDesiredState()
 {
     return m_cachedDesiredState;
+}
+
+NotifyableImpl::NotifyableImpl(FactoryOps *fp,
+                               const string &key,
+                               const string &name,
+                               const shared_ptr<NotifyableImpl> &parent)
+    : mp_f(fp),
+      m_key(key),
+      m_name(name),
+      mp_parent(parent),
+      m_state(Notifyable::READY),
+      m_safeNotifyableMap(NULL),
+      m_cachedCurrentState(this, 
+                           CachedStateImpl::CURRENT_STATE),
+      m_cachedDesiredState(this,
+                           CachedStateImpl::DESIRED_STATE) 
+{
+    // Note that m_cachedCurrentState and m_cachedDesiredState cannot
+    // get the shared_from_this() since it isn't ready until after the
+    // contructor.
 }
 
 void
@@ -803,101 +884,6 @@ NotifyableImpl::getDistributedLockOwnerCount(const string &lockName)
     return lockIt->second.refCount;
 }
 
-void
-NotifyableImpl::incrRefCount()
-{
-    TRACE(CL_LOG, "incrRefCount");
-
-    Locker l1(getRefCountLock());
-    if ((m_refCount < 0) || 
-        (m_refCount == numeric_limits<int32_t>::max())) {
-        throw InconsistentInternalStateException(
-            std::string("incrRefCount: Impossible that reference ") +
-                "count for Notifyable " + getKey().c_str() + 
-            " is <= 0 or maxed out!");
-    }
-    
-    m_refCount++;
-
-    LOG_DEBUG(CL_LOG, 
-              "incrRefCount: Notifyable (%s) now has %d references",
-              getKey().c_str(),
-              m_refCount);
-}
-
-void
-NotifyableImpl::decrRefCount()
-{
-    TRACE(CL_LOG, "decrRefCount");
-    
-    Locker l1(getRefCountLock());
-    if (m_refCount <= 0) {
-        throw InconsistentInternalStateException(
-            std::string("decrRefCount: Impossible that reference count") +
-            " for Notifyable " + getKey().c_str() + " is <= 0!");
-    }
-
-    m_refCount--;
-
-    LOG_DEBUG(CL_LOG, 
-              "decrRefCount: Notifyable (%s) now has %d references",
-              getKey().c_str(),
-              m_refCount);
-}
-
-void
-NotifyableImpl::removeFromRemovedNotifyablesIfReleased(bool decrRefCount)
-{
-    TRACE(CL_LOG, "removeFromRemovedNotifyablesIfReleased");
-
-    getSyncLock()->acquire();
-
-    if (decrRefCount == true) {
-        NotifyableImpl::decrRefCount();
-    }
-
-    /* 
-     * If the object was removed and the reference count == 0, then no
-     * user has a valid pointer to it and no one will be able to get
-     * another pointer to it.  It is safe to remove this object from
-     * the removed object cache.
-     */
-    if ((getRefCount() == 0) && (getState() == REMOVED)) {
-        Locker l2(getOps()->getRemovedNotifyablesLock());
-        set<Notifyable *> *notifyableSet = 
-            getOps()->getRemovedNotifyables();
-        set<Notifyable *>::iterator it = notifyableSet->find(this);
-        if (it == notifyableSet->end()) {
-            throw InconsistentInternalStateException(
-                string("release: Couldn't find notifyable ") + 
-                getKey().c_str() + " in removed notifyables list to release!");
-        }
-        LOG_DEBUG(CL_LOG, 
-                  "removeFromRemovedNotifyablesIfReleased: Cleaned up (%s)",
-                  getKey().c_str());
-        notifyableSet->erase(it);
-        getSyncLock()->release();
-        delete this;
-    }
-    else {
-        LOG_DEBUG(CL_LOG, 
-                  "removeFromRemovedNotifyablesIfReleased: Did not "
-                  "clean up (%s) with %d references",
-                  getKey().c_str(),
-                  getRefCount());
-        getSyncLock()->release();
-    }
-}
-
-Mutex *
-NotifyableImpl::getRefCountLock()
-{
-    TRACE(CL_LOG, "getRefCountLock");
-
-    return &m_refCountLock;
-}
-
-
 string
 NotifyableImpl::createStateJSONArrayKey(const string &notifyableKey,
                                         CachedStateImpl::StateType stateType)
@@ -920,4 +906,4 @@ NotifyableImpl::createStateJSONArrayKey(const string &notifyableKey,
     return res;
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

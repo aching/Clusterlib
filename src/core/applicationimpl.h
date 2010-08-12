@@ -12,8 +12,7 @@
 #ifndef	_CL_APPLICATIONIMPL_H_
 #define _CL_APPLICATIONIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class ApplicationImpl.
@@ -23,7 +22,13 @@ class ApplicationImpl
       public virtual GroupImpl
 {
   public:
-    virtual Group *getMyGroup();
+    virtual bool getMyGroupWaitMsecs(
+        int64_t msecTimeout,
+        boost::shared_ptr<Group> *pGroupSP)
+    {
+        throw InvalidMethodException(
+            "Application cannot be a part of a Group!");
+    }
 
     /*
      * Internal functions not used by outside clients
@@ -35,7 +40,7 @@ class ApplicationImpl
     ApplicationImpl(FactoryOps *fp,
                     const std::string &key, 
                     const std::string &name, 
-                    NotifyableImpl *root)
+                    boost::shared_ptr<NotifyableImpl> root)
         : NotifyableImpl(fp, key, name, root),
           GroupImpl(fp, key, name, root) {}
 
@@ -48,15 +53,9 @@ class ApplicationImpl
 
   private:
     /**
-     * The default constructor is private so no one can call it.
+     * Do not call the default constructor
      */
-    ApplicationImpl()
-        : NotifyableImpl(NULL, "", "", NULL),
-          GroupImpl(NULL, "", "", NULL)
-    {
-        throw InvalidMethodException("Someone called the ApplicationImpl "
-                                     "default constructor!");
-    }
+    ApplicationImpl();
 };
 
 }	/* End of 'namespace clusterlib' */

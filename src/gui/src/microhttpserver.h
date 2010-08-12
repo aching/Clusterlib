@@ -9,7 +9,8 @@
 
 namespace httpd { namespace microhttpd {
 
-class MicroHttpServer : public virtual HttpServer {
+class MicroHttpServer : public virtual HttpServer
+{
   public:
     MicroHttpServer(uint16_t port, 
                     const std::string &rootDirectory, 

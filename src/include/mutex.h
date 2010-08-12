@@ -17,27 +17,26 @@ namespace clusterlib {
 /*
  * Forward decl of Cond.
  */
-class Cond;
-
+class Cond; 
+    
 /**
  * Encapsulates a mutex object.
  */
 class Mutex
 {
     friend class Cond;
-
+    
   public:
     /**
      * Constructor.
      */
-    Mutex() 
-        : refCount(0)
+    Mutex() : refCount(0)
     {
         pthread_mutexattr_init(&m_mutexAttr);
         pthread_mutexattr_settype(&m_mutexAttr, PTHREAD_MUTEX_RECURSIVE_NP);
         pthread_mutex_init(&mutex, &m_mutexAttr);
     }
-
+    
     /**
      * Destructor.
      */
@@ -46,52 +45,56 @@ class Mutex
         pthread_mutex_destroy(&mutex);
         pthread_mutexattr_destroy(&m_mutexAttr);
     }
-
+    
     /**
      * Acquire the mutex.
      */
-    void acquire();
+    void acquire() const;
 
     /**
      * Release the mutex.
      */
-    void release();
-    int32_t tryLock()
+    void release() const;
+
+    int32_t tryLock() const
     {
         return pthread_mutex_trylock(&mutex);
     }
+
     int32_t getRefCount() const
     {
         return refCount;
     }
-    void incrRefCount()
+
+    void incrRefCount() const
     {
-        refCount++;
+        ++refCount;
     }
-    void decrRefCount()
+    
+    void decrRefCount() const
     {
-        refCount--;
+        --refCount;
     }
     
   private:
-    void lock();
-
-    void unlock();
-
+    void lock() const;
+    
+    void unlock() const;
+    
     /**
-     * No copy constructor allowed.
+     * No copy construction allowed.
      */
     Mutex(const Mutex &);
-
+    
     /**
      * No assignment allowed.
      */
     Mutex & operator=(const Mutex &);
 
   private:
-    pthread_mutex_t mutex;
+    mutable pthread_mutex_t mutex;
     pthread_mutexattr_t m_mutexAttr;
-    int32_t refCount;
+    mutable int32_t refCount;
 };
 
 /**
@@ -120,7 +123,7 @@ class Cond
      *
      * @param mutex the mutex to wait on
      */
-    void wait(Mutex& mutex);
+    void wait(const Mutex &mutex) const;
 
     /**
      * Wait for the conditional to be signaled.
@@ -130,7 +133,7 @@ class Cond
      *        -1 means wait forever, 0 means return immediately
      * return true if the conditional was signaled, false if timed out
      */
-    bool waitUsecs(Mutex& mutex, int64_t usecTimeout);
+    bool waitUsecs(const Mutex &mutex, int64_t usecTimeout) const;
     
     /**
      * Wait for the conditional to be signaled.
@@ -140,14 +143,14 @@ class Cond
      *        -1 means wait forever, 0 means return immediately
      * return true if the conditional was signaled, false if timed out
      */
-    bool waitMsecs(Mutex& mutex, int64_t msecTimeout);
+    bool waitMsecs(Mutex& mutex, int64_t msecTimeout) const;
     
-    void signal()
+    void signal() const
     {
         pthread_cond_signal(&m_cond);
     }
 
-    void signal_all()
+    void signal_all() const
     {
         pthread_cond_broadcast(&m_cond);
     }
@@ -164,7 +167,10 @@ class Cond
     Cond & operator=(const Cond &);
 
   private:
-    pthread_cond_t m_cond;
+    /**
+     * Pthread conditional.
+     */
+    mutable pthread_cond_t m_cond;
 };
 
 /**
@@ -262,13 +268,20 @@ class Locker
 {
   public:
     /**
-     * Constructor locks the passed mutex.
+     * Constructor locks the passed mutex pointer.
      * 
-     * @param mp pointer to the underlying Mutex
+     * @param mp Pointer to the underlying Mutex
      */
-    Locker(Mutex *mp);
+    Locker(const Mutex *mp);
 
-    /*
+    /**
+     * Constructor locks the passed mutex reference.
+     * 
+     * @param mr Reference to the underlying Mutex
+     */
+    Locker(const Mutex &mr);
+
+    /**
      * Destructor unlocks the mutex.
      */
     ~Locker();
@@ -281,14 +294,14 @@ class Locker
     Locker()
     {
         throw InvalidMethodException("Someone called the "
-                                       "Locker default constructor!");
+                                     "Locker default constructor!");
     }
 
   private:
-    /*
+    /**
      * Hold onto the mutex being locked.
      */
-    Mutex *mp_lock;
+    const Mutex *mp_lock;
 };
 
 /**
@@ -310,21 +323,21 @@ class RdWrLock
     /**
      * Get the read lock
      */
-    void acquireRead();
+    void acquireRead() const;
 
     /**
      * Get the write lock
      */
-    void acquireWrite();
+    void acquireWrite() const;
 
     /**
      * Release lock
      */
-    void release();
-
+    void release() const;
+    
   private:
     /**
-     * No copy constructor allowed.
+     * No copy construction allowed.
      */
     RdWrLock(const RdWrLock &);
 
@@ -337,7 +350,7 @@ class RdWrLock
     /**
      * The lock.
      */
-    pthread_rwlock_t m_rwlock;    
+    mutable pthread_rwlock_t m_rwlock;    
 
     /**
      * Lock attributes
@@ -364,7 +377,7 @@ class RdWrLocker
     /**
      * Constructor locks the passed mutex.
      */
-    RdWrLocker(RdWrLock *lock, RdWrType type) 
+    RdWrLocker(const RdWrLock *lock, RdWrType type) 
         : mp_lock(lock)
     {
         if ((mp_lock == NULL) ||
@@ -404,22 +417,30 @@ class RdWrLocker
     /**
      * The read write lock
      */
-    RdWrLock *mp_lock;
+    const RdWrLock *mp_lock;
 };
 
 class ReadLocker : public RdWrLocker
 {
   public:
-    ReadLocker(RdWrLock *lock) : RdWrLocker(lock, RdWrLocker::READLOCK) {}
+    ReadLocker(const RdWrLock *lock) 
+        : RdWrLocker(lock, RdWrLocker::READLOCK) {}
 
+    ReadLocker(const RdWrLock &lock) 
+        : RdWrLocker(&lock, RdWrLocker::READLOCK) {}
+    
     virtual ~ReadLocker() {}
 };
 
 class WriteLocker : public RdWrLocker
 {
   public:
-    WriteLocker(RdWrLock *lock) : RdWrLocker(lock, RdWrLocker::WRITELOCK) {}
+    WriteLocker(const RdWrLock *lock) 
+        : RdWrLocker(lock, RdWrLocker::WRITELOCK) {}
 
+    WriteLocker(const RdWrLock &lock) 
+        : RdWrLocker(&lock, RdWrLocker::WRITELOCK) {}
+    
     virtual ~WriteLocker() {}
 };
 
@@ -440,7 +461,7 @@ class PredMutexCond
      * false before calling either the predWait and predSignal
      * functions on either thread.
      */
-    void predSignal();
+    void predSignal() const;
 
     /**
      * Wait on a predicate to be changed by another thread.  This is a
@@ -453,7 +474,7 @@ class PredMutexCond
      * @return false if the function timed out, true if predicate changed
      *         (always true if it returns and the timeout == -1)
      */
-    bool predWaitUsecs(int64_t usecTimeout);
+    bool predWaitUsecs(int64_t usecTimeout) const;
 
     /**
      * Wait on a predicate to be changed by another thread.  This is a
@@ -466,27 +487,43 @@ class PredMutexCond
      * @return false if the function timed out, true if predicate changed
      *         (always true if it returns and the timeout == -1)
      */
-    bool predWaitMsecs(int64_t msecTimeout);
+    bool predWaitMsecs(int64_t msecTimeout) const;
 
+    int32_t getRefCount() const
+    {
+        return m_refCount;
+    }
+
+    void incrRefCount() const
+    {
+        ++m_refCount;
+    }
+
+    void decrRefCount() const
+    {
+        --m_refCount;
+    }
+
+  private:
     /**
      * Has the predicate been satified?
      */
-    bool pred;
+    mutable bool m_pred;
 
     /**
      * Used with conditional
      */
-    Mutex mutex;
+    Mutex m_mutex;
 
     /**
      * Used to signal betwen threads
      */
-    Cond cond;
+    Cond m_cond;
 
     /**
-     * Could be more than one thread waiting on this conditional
+     * User-controlled reference count.
      */
-    int32_t refCount;
+    mutable int32_t m_refCount;
 };
 
 /**
@@ -503,7 +540,9 @@ class NotifyableLocker
      *        0 means do not wait at all.  If -1, this will only finish if the 
      *        lock was acquired.
      */
-    NotifyableLocker(Notifyable *notifyable, int64_t waitMsecs = -1);
+    NotifyableLocker(
+        const boost::shared_ptr<Notifyable> &notifyable, 
+        int64_t waitMsecs = -1);
 
     /**
      * Try to get the lock.  If it was already acquired, throws an exception.
@@ -529,7 +568,7 @@ class NotifyableLocker
      *
      * @return Return the internal Notifyable pointer.
      */
-    Notifyable *getNotifyable();
+    boost::shared_ptr<Notifyable> &getNotifyable();
 
     /**
      * Destructor that releases the lock.
@@ -540,14 +579,13 @@ class NotifyableLocker
     /**
      * The notifyable that is being locked.
      */
-    Notifyable *m_notifyable;
+    boost::shared_ptr<Notifyable> m_notifyableSP;
 
     /**
      * Was the lock acquired?
      */
     bool m_hasLock;
 };
-
 
 }	/* End of 'namespace clusterlib' */
         

@@ -6,8 +6,10 @@
 #include "testparams.h"
 #include <iomanip>
 #include <time.h>
+#include "clusterlib.h"
 
 using namespace std;
+using namespace boost;
 
 /* Global test parameters to be used in all tests */
 TestParams globalTestParams;

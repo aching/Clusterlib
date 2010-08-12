@@ -13,10 +13,10 @@
 #include "clusterlibinternal.h"
 
 using namespace std;
+using namespace boost;
 using namespace json;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 int32_t
 CachedDataImpl::getVersion()
@@ -76,13 +76,19 @@ CachedDataImpl::getStats(int64_t *czxid,
     }
 }
 
-CachedDataImpl::CachedDataImpl(NotifyableImpl *ntp)
-    : m_notifyable(ntp) 
+CachedDataImpl::CachedDataImpl(NotifyableImpl *notifyable)
+    : m_notifyable(notifyable)
 {
     Locker l(&getCachedDataLock());
 
     memset(&m_stat, 0, sizeof(m_stat));
     m_stat.version = ClusterlibInts::INITIAL_ZK_VERSION;
+}
+
+shared_ptr<NotifyableImpl>
+CachedDataImpl::getNotifyable()
+{
+    return m_notifyable->shared_from_this();
 }
 
 FactoryOps *
@@ -128,4 +134,4 @@ CachedDataImpl::updateStat(const Stat &stat)
     }
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

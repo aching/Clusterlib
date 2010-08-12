@@ -12,8 +12,7 @@
 #ifndef	_CL_CACHEDSHARDS_H_
 #define _CL_CACHEDSHARDS_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class CachedShards
@@ -36,8 +35,7 @@ class CachedShards
      * @param hashRange The HashRange to find.
      * @return the vector of Notifyable pointer that have this key
      */
-    virtual std::vector<Notifyable *> getNotifyables(
-        const HashRange &hashRange) = 0;
+    virtual NotifyableList getNotifyables(const HashRange &hashRange) = 0;
     
     /**
      * Return the number of shards in this cached data distribution.
@@ -68,12 +66,12 @@ class CachedShards
      *
      * @param start the start of the range (inclusive)
      * @param end the end of the range (inclusive)
-     * @param ntp the notifyable that will handle this range
+     * @param notifyableSP Notifyable that will handle this range
      * @param priority the priority of this shard (-1 is reserved, do not use)
      */
     virtual void insert(const HashRange &start,
                         const HashRange &end,
-                        Notifyable *ntp,
+                        const boost::shared_ptr<Notifyable> &notifyableSP,
                         int32_t priority = 0) = 0;
     
     /**
@@ -81,12 +79,14 @@ class CachedShards
      * start range that match the correct notifyable and/or priority if
      * specified.
      *
-     * @param ntp the notifyable to filter on (NULL turns off filter)
+     * @param notifyableSP Notifyable to filter on (NULL turns off filter)
      * @param priority the priority filter (-1 turns off filter)
      * @return a vector of shards in the distribution
      */
-    virtual std::vector<Shard> getAllShards(const Notifyable *ntp = NULL,
-                                            int32_t priority = -1) = 0;
+    virtual std::vector<Shard> getAllShards(
+        const boost::shared_ptr<Notifyable> &notifyableSP = 
+        boost::shared_ptr<Notifyable>(),
+        int32_t priority = -1) = 0;
 
     /**
      * Remove a shard (administrative).  Needs to be published to make
@@ -110,6 +110,6 @@ class CachedShards
     virtual ~CachedShards() {}
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_CACHEDSHARDS_H_ */

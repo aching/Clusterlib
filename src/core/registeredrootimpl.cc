@@ -13,9 +13,9 @@
 #include "clusterlibinternal.h"
 
 using namespace std;
+using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 const string &
 RegisteredRootImpl::registeredName() const
@@ -43,21 +43,22 @@ RegisteredRootImpl::isValidName(const string &name) const
     }
 }
 
-NotifyableImpl *
+shared_ptr<NotifyableImpl>
 RegisteredRootImpl::createNotifyable(const string &notifyableName,
                                      const string &notifyableKey,
-                                     NotifyableImpl *parent,
+                                     const shared_ptr<NotifyableImpl> &parent,
                                      FactoryOps &factoryOps) const
 {
-    return new RootImpl(&factoryOps,
-                        notifyableKey,
-                        notifyableName);
+    return dynamic_pointer_cast<NotifyableImpl>(
+        shared_ptr<Root>(new RootImpl(&factoryOps,
+                                      notifyableKey,
+                                      notifyableName)));
 }
 
 vector<string>
 RegisteredRootImpl::generateRepositoryList(
-    const std::string &notifyableName,
-    const std::string &notifyableKey) const
+    const string &notifyableName,
+    const string &notifyableKey) const
 {
     vector<string> resVec;
     resVec.push_back(notifyableKey);
@@ -104,11 +105,13 @@ RegisteredRootImpl::isValidKey(const vector<string> &components,
     return true;    
 }
 
-NotifyableImpl *
+bool
 RegisteredRootImpl::getObjectFromComponents(
     const vector<string> &components,
     int32_t elements, 
-    AccessType accessType)
+    AccessType accessType,
+    int64_t msecTimeout,
+    shared_ptr<NotifyableImpl> *pNotifyableSP)
 {
     TRACE(CL_LOG, "getObjectFromComponents");
 
@@ -124,7 +127,7 @@ RegisteredRootImpl::getObjectFromComponents(
                   "getRootFromComponents: Couldn't find key"
                   " with %d elements",
                   elements);
-        return NULL;
+        return shared_ptr<NotifyableImpl>();
     }
 
     LOG_DEBUG(CL_LOG, 
@@ -138,14 +141,13 @@ RegisteredRootImpl::getObjectFromComponents(
      * handleNotifyableRemovedChange is being called, but it doesn't
      * exist fully yet.
      */
-    RootImpl *root =
-        dynamic_cast<RootImpl *>(
-            getOps()->getNotifyable(NULL,
-                                    ClusterlibStrings::REGISTERED_ROOT_NAME,
-                                    components.at(elements - 1),
-                                    CACHED_ONLY));
-
-    return root;
+    return getOps()->getNotifyableWaitMsecs(
+        shared_ptr<NotifyableImpl>(),
+        ClusterlibStrings::REGISTERED_ROOT_NAME,
+        components.at(elements - 1),
+        CACHED_ONLY,
+        msecTimeout,
+        pNotifyableSP);
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

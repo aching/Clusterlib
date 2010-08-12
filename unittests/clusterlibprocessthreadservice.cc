@@ -6,8 +6,10 @@ extern TestParams globalTestParams;
 
 using namespace clusterlib;
 using namespace std;
+using namespace boost;
 
-class ClusterlibProcessThreadService : public MPITestFixture {
+class ClusterlibProcessThreadService : public MPITestFixture
+{
     CPPUNIT_TEST_SUITE(ClusterlibProcessThreadService);
     CPPUNIT_TEST(testProcessThreadService1);
     CPPUNIT_TEST(testProcessThreadService2);
@@ -88,7 +90,6 @@ class ClusterlibProcessThreadService : public MPITestFixture {
         MPI_CPPUNIT_ASSERT(!stdoutOutput.empty());
         MPI_CPPUNIT_ASSERT(stderrOutput.empty());
     }
-
 };
 
 /* Registers the fixture into the 'registry' */

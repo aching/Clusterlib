@@ -11,8 +11,7 @@
 #ifndef	_CL_REGISTEREDNODEIMPL_H_
 #define _CL_REGISTEREDNODEIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Implementation of interfaces for a RegisteredNodeImpl.
@@ -26,10 +25,10 @@ class RegisteredNodeImpl
     virtual std::string generateKey(const std::string &parentKey,
                                     const std::string &name) const;
 
-    virtual NotifyableImpl *createNotifyable(
+    virtual boost::shared_ptr<NotifyableImpl> createNotifyable(
         const std::string &notifyableName,
         const std::string &notifyableKey,
-        NotifyableImpl *parent,
+        const boost::shared_ptr<NotifyableImpl> &parent,
         FactoryOps &factoryOps) const;
 
     virtual std::vector<std::string> generateRepositoryList(
@@ -38,11 +37,6 @@ class RegisteredNodeImpl
     
     virtual bool isValidKey(const std::vector<std::string> &components, 
                             int32_t elements = -1);
-
-    virtual NotifyableImpl *getObjectFromComponents(
-        const std::vector<std::string> &components,
-        int32_t elements = -1, 
-        AccessType accessType = LOAD_FROM_REPOSITORY);
 
     /**
      * Constructor
@@ -56,6 +50,6 @@ class RegisteredNodeImpl
     virtual ~RegisteredNodeImpl() {}
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_REGISTEREDNOTIFYABLE_H_ */

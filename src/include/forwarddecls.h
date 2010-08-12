@@ -12,8 +12,7 @@
 #ifndef	_CL_FORWARDDECLS_H_
 #define	_CL_FORWARDDECLS_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /*
  * Define the types associated with a hash function.
@@ -80,7 +79,6 @@ class JSONRPCResponseHandler;
 class Mutex;
 class Node;
 class NodeImpl;
-class NodeAddress;
 class Notifyable;
 class NotifyableImpl;
 class Periodic;
@@ -120,19 +118,11 @@ class UserEventPayload;
 /*
  * Vectors of pointers to these classes.
  */
-typedef std::vector<ApplicationImpl *>		ApplicationImplList;
-typedef std::vector<ClientImpl *>		ClientImplList;
-typedef std::vector<DataDistributionImpl *>	DataDistributionImplList;
-typedef std::vector<Factory *>			FactoryList;
-typedef std::vector<FactoryOps *>		FactoryOpsList;
-typedef std::vector<GroupImpl *>		GroupImplList;
-typedef std::vector<HealthChecker *>		HealthCheckerList;
-typedef std::vector<std::string>		NameList;
-typedef std::vector<NodeImpl *>			NodeImplList;
-typedef	std::vector<NodeAddress *>		NodeAddressList;
-typedef std::vector<Notifyable *>               NotifyableList;
-typedef std::vector<Server *>			ServerList;
-typedef std::vector<Shard *>			ShardList;
+typedef std::vector<ClientImpl *>		    ClientImplList;
+typedef std::vector<HealthChecker *>	            HealthCheckerList;
+typedef std::vector<std::string>                    NameList;
+typedef std::vector<boost::shared_ptr<Notifyable> > NotifyableList;
+typedef std::vector<Shard *>			    ShardList;
     
 /*
  * Maps of pointers to these classes.
@@ -202,12 +192,12 @@ typedef uint32_t ServerFlags;
 #define SF_CREATEREG	(1<<1)		/* Create in cluster if
                                          * it doesn't exist? */
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 namespace zk {
 
 class ZooKeeperAdapter;
 
-};	/* End of 'namespace zk' */
+}	/* End of 'namespace zk' */
 
 #endif	/* !_CL_FORWARDDECLS_H_ */

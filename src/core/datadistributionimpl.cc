@@ -10,7 +10,6 @@
  * ============================================================================
  */
 
-#define LOG_LEVEL LOG_WARN
 #define MODULE_NAME "DataDistribution"
 
 #include <limits>
@@ -21,8 +20,7 @@ using namespace std;
 using namespace boost;
 using namespace json;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 CachedShards &
 DataDistributionImpl::cachedShards()
@@ -30,10 +28,11 @@ DataDistributionImpl::cachedShards()
     return m_cachedShards;
 }
 
-DataDistributionImpl::DataDistributionImpl(FactoryOps *fp,
-                                           const string &key,
-                                           const string &name,
-                                           GroupImpl *parentGroup)
+DataDistributionImpl::DataDistributionImpl(
+    FactoryOps *fp,
+    const string &key,
+    const string &name,
+    const shared_ptr<NotifyableImpl> &parentGroup)
     : NotifyableImpl(fp, key, name, parentGroup),
       m_cachedShards(this)
 {
@@ -77,4 +76,4 @@ DataDistributionImpl::~DataDistributionImpl()
 {
 }
 
-};       /* End of 'namespace clusterlib' */
+}       /* End of 'namespace clusterlib' */

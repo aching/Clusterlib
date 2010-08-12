@@ -10,12 +10,12 @@
 #include <sstream>
 
 using namespace std;
+using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 void
-Cond::wait(Mutex &mutex)
+Cond::wait(const Mutex &mutex) const
 {
     TRACE(CL_LOG, "wait");
     
@@ -28,7 +28,7 @@ Cond::wait(Mutex &mutex)
 }
 
 bool
-Cond::waitUsecs(Mutex &mutex, int64_t usecTimeout)
+Cond::waitUsecs(const Mutex &mutex, int64_t usecTimeout) const
 {
     TRACE(CL_LOG, "waitUsecs");
 
@@ -60,7 +60,7 @@ Cond::waitUsecs(Mutex &mutex, int64_t usecTimeout)
 }
 
 bool
-Cond::waitMsecs(Mutex &mutex, int64_t msecTimeout)
+Cond::waitMsecs(Mutex &mutex, int64_t msecTimeout) const
 {
     TRACE(CL_LOG, "waitMsecs");
 
@@ -73,7 +73,7 @@ Cond::waitMsecs(Mutex &mutex, int64_t msecTimeout)
 }
 
 void
-Mutex::acquire()
+Mutex::acquire() const
 {
     TRACE(CL_LOG, "acquire");
 
@@ -81,7 +81,7 @@ Mutex::acquire()
 }
 
 void
-Mutex::release()
+Mutex::release() const
 {
     TRACE(CL_LOG, "release");
 
@@ -89,7 +89,7 @@ Mutex::release()
 }
 
 void
-Mutex::lock()
+Mutex::lock() const
 {
     TRACE(CL_LOG, "lock");
 
@@ -101,7 +101,7 @@ Mutex::lock()
 }
 
 void
-Mutex::unlock()
+Mutex::unlock() const
 {
     TRACE(CL_LOG, "unlock");
 
@@ -112,7 +112,7 @@ Mutex::unlock()
     }
 }
 
-Locker::Locker(Mutex *mp)
+Locker::Locker(const Mutex *mp)
 {
     TRACE(CL_LOG, "Locker");
 
@@ -120,12 +120,20 @@ Locker::Locker(Mutex *mp)
     mp_lock = mp;
 }
 
+Locker::Locker(const Mutex &mr)
+{
+    TRACE(CL_LOG, "Locker");
+
+    mr.acquire();
+    mp_lock = &mr;
+}
+
 Locker::~Locker()
 {
     mp_lock->release();
 }
 
-RdWrLock::RdWrLock()
+RdWrLock::RdWrLock() 
 {
     int ret = pthread_rwlockattr_init(&m_rwlockAttr);
     if (ret != 0) {
@@ -171,7 +179,7 @@ RdWrLock::~RdWrLock()
 }
 
 void
-RdWrLock::acquireRead()
+RdWrLock::acquireRead() const
 {        
     int ret = pthread_rwlock_rdlock(&m_rwlock);
     if (ret != 0) {
@@ -183,7 +191,7 @@ RdWrLock::acquireRead()
 }
 
 void 
-RdWrLock::acquireWrite()
+RdWrLock::acquireWrite() const
 {
     int ret = pthread_rwlock_wrlock(&m_rwlock);
     if (ret != 0) {
@@ -195,7 +203,7 @@ RdWrLock::acquireWrite()
 }
 
 void 
-RdWrLock::release()
+RdWrLock::release() const
 {
     int ret = pthread_rwlock_unlock(&m_rwlock);
     if (ret != 0) {
@@ -206,25 +214,25 @@ RdWrLock::release()
     }
 }
 
-PredMutexCond::PredMutexCond()         
-    : pred(false),
-      refCount(0) 
+PredMutexCond::PredMutexCond()
+    : m_pred(false),
+      m_refCount(0)
 {
     TRACE(CL_LOG, "PredMutexCond");
 }
 
 void
-PredMutexCond::predSignal()
+PredMutexCond::predSignal() const
 {
     TRACE(CL_LOG, "predSignal");
 
-    Locker l1(&mutex);
-    pred = true;
-    cond.signal();
+    Locker l1(&m_mutex);
+    m_pred = true;
+    m_cond.signal();
 }
 
 bool
-PredMutexCond::predWaitUsecs(int64_t usecTimeout)
+PredMutexCond::predWaitUsecs(int64_t usecTimeout) const
 {
     TRACE(CL_LOG, "predWaitUsecs");
 
@@ -240,14 +248,14 @@ PredMutexCond::predWaitUsecs(int64_t usecTimeout)
     if (usecTimeout != -1) {
         maxUsecs = TimerService::getCurrentTimeUsecs() + usecTimeout;
     }
-    mutex.acquire();
-    while (pred == false) {
+    m_mutex.acquire();
+    while (m_pred == false) {
         LOG_TRACE(CL_LOG,
                   "predWaitUsecs: About to wait for a maximum of %" PRId64
                   " usecs", 
                   usecTimeout);
         if (usecTimeout == -1) {
-            cond.wait(mutex);
+            m_cond.wait(m_mutex);
         }
         else {
             /* Don't let curUsecTimeout go negative. */
@@ -259,19 +267,19 @@ PredMutexCond::predWaitUsecs(int64_t usecTimeout)
                       " usecs (%" PRId64 " secs originally)", 
                       curUsecTimeout,
                       usecTimeout);
-            cond.waitUsecs(mutex, curUsecTimeout);
+            m_cond.waitUsecs(m_mutex, curUsecTimeout);
             if (TimerService::compareTimeUsecs(maxUsecs) >= 0) {
-                mutex.release();
+                m_mutex.release();
                 return false;
             }
         }
     }
-    mutex.release();
+    m_mutex.release();
     return true;
 }
 
 bool
-PredMutexCond::predWaitMsecs(int64_t msecTimeout)
+PredMutexCond::predWaitMsecs(int64_t msecTimeout) const
 {
     TRACE(CL_LOG, "predWaitMsecs");
     
@@ -283,11 +291,12 @@ PredMutexCond::predWaitMsecs(int64_t msecTimeout)
     }
 }
 
-NotifyableLocker::NotifyableLocker(Notifyable *notifyable, int64_t waitMsecs)
-    : m_notifyable(notifyable),
+NotifyableLocker::NotifyableLocker(
+    const shared_ptr<Notifyable> &notifyableSP, int64_t waitMsecs)
+    : m_notifyableSP(notifyableSP),
       m_hasLock(false)
 {
-    if (m_notifyable == NULL) {
+    if (m_notifyableSP == NULL) {
         throw InvalidArgumentsException("NotifyableLocker: NULL notifyable");
     }
 
@@ -301,7 +310,7 @@ NotifyableLocker::acquireLock(int64_t waitMsecs)
         throw InvalidMethodException("acquireLock: Already has the lock");
     }
 
-    m_hasLock = m_notifyable->acquireLockWaitMsecs(waitMsecs);
+    m_hasLock = m_notifyableSP->acquireLockWaitMsecs(waitMsecs);
     return m_hasLock;
 }
 
@@ -314,7 +323,7 @@ NotifyableLocker::hasLock()
 NotifyableLocker::~NotifyableLocker()
 {
     if (m_hasLock) {
-        m_notifyable->releaseLock();
+        m_notifyableSP->releaseLock();
     }
 }
 

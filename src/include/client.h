@@ -14,8 +14,7 @@
 #ifndef _CL_CLIENT_H_
 #define _CL_CLIENT_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * This class must be subclassed to define
@@ -158,11 +157,11 @@ class UserEventHandler
      *        notifyable to run the event handler once as soon as it is 
      *        registered by a clusterlib client
      */
-    UserEventHandler(Notifyable *np,
+    UserEventHandler(const boost::shared_ptr<Notifyable> &notifyableSP,
                      Event mask,
                      ClientData cd,
                      bool initialRun = false)
-        : mp_np(np),
+        : m_notifyableSP(notifyableSP),
           m_mask(mask),
           m_cd(cd),
           m_initialRun(initialRun) {}
@@ -279,12 +278,18 @@ class UserEventHandler
     /*
      * Accessors.
      */
-    Notifyable *getNotifyable() { return mp_np; }
+    const boost::shared_ptr<Notifyable> &getNotifyable() 
+    {
+        return m_notifyableSP;
+    }
     Event getMask() { return m_mask; }
     ClientData getClientData() { return m_cd; }
     bool getInitialRun() { return m_initialRun; }
 
-    void setNotifyable(Notifyable *np) { mp_np = np; }
+    void setNotifyable(const boost::shared_ptr<Notifyable> &notifyableSP) 
+    {
+        m_notifyableSP = notifyableSP;
+    }
     void setMask(Event e) { m_mask = e; }
     void setClienData(ClientData cd) { m_cd = cd; }
 
@@ -373,7 +378,7 @@ class UserEventHandler
     /**
      * The Notifyable this handler is for.
      */
-    Notifyable *mp_np;
+    boost::shared_ptr<Notifyable> m_notifyableSP;
 
     /**
      * The events (a mask) that this handler is for.
@@ -411,9 +416,9 @@ class Client
      * \brief Get the root node that contains all applications and can be
      * used for registering event handlers on.
      * 
-     * @return the root node
+     * @return Root pointer.
      */
-    virtual Root *getRoot() = 0;
+    virtual boost::shared_ptr<Root> getRoot() = 0;
 
     /**
      * \brief Register a timer handler to be called after a specified delay.
@@ -454,6 +459,6 @@ class Client
     virtual ~Client() {}
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CLUSTERCLIENT_H_ */

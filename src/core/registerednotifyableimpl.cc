@@ -16,14 +16,13 @@
 using namespace std;
 using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 void
 RegisteredNotifyableImpl::setSafeNotifyableMap(
     SafeNotifyableMap &safeNotifyableMap) 
 {
-    Locker l(&getLock());
+    WriteLocker l(&getRdWrLock());
 
     m_safeNotifyableMap = &safeNotifyableMap;
 }
@@ -31,16 +30,16 @@ RegisteredNotifyableImpl::setSafeNotifyableMap(
 SafeNotifyableMap *
 RegisteredNotifyableImpl::getSafeNotifyableMap()
 {
-    Locker l(&getLock());
+    ReadLocker l(&getRdWrLock());
 
     return m_safeNotifyableMap;
 }
 
-NotifyableImpl *
+shared_ptr<NotifyableImpl>
 RegisteredNotifyableImpl::loadNotifyableFromRepository(
     const string &notifyableName,
     const string &notifyableKey,
-    NotifyableImpl *parent)
+    const shared_ptr<NotifyableImpl> &parent)
 {
     TRACE(CL_LOG, "loadNotifyableFromRepository");
 
@@ -74,7 +73,7 @@ RegisteredNotifyableImpl::loadNotifyableFromRepository(
             false,
             true);
         if (!exists) {
-            return NULL;
+            return shared_ptr<NotifyableImpl>();
         }
     }
     return createNotifyable(notifyableName, notifyableKey, parent, *getOps());
@@ -135,21 +134,113 @@ RegisteredNotifyableImpl::isValidKey(const string &key)
     return isValidKey(components, -1);
 }
 
-NotifyableImpl *
-RegisteredNotifyableImpl::getObjectFromKey(const string &key,
-                                           AccessType accessType)
+bool
+RegisteredNotifyableImpl::getObjectFromKey(
+    const string &key,
+    AccessType accessType,
+    int64_t msecTimeout,
+    shared_ptr<NotifyableImpl> *pNotifyableSP)
 {
     TRACE(CL_LOG, "getObjectFromKey");
 
     vector<string> components;
     split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
-    return getObjectFromComponents(components, -1, accessType);
+    return getObjectFromComponents(
+        components, -1, accessType, msecTimeout, pNotifyableSP);
 }
 
-Mutex &
-RegisteredNotifyableImpl::getLock()
+bool
+RegisteredNotifyableImpl::getObjectFromComponents(
+    const vector<string> &components,
+    int32_t elements, 
+    AccessType accessType,
+    int64_t msecTimeout,
+    shared_ptr<NotifyableImpl> *pNotifyableSP)
 {
-    return m_mutex;
+    TRACE(CL_LOG, "getObjectFromComponents");
+
+    if (pNotifyableSP == NULL) {
+        throw InvalidArgumentsException(
+            "getObjectFromComponents: NULL pNotifyableSP");
+    }
+    pNotifyableSP->reset();
+
+    /* 
+     * Set to the full size of the vector.
+     */
+    if (elements == -1) {
+        elements = components.size();
+    }
+
+    if (!isValidKey(components, elements)) {
+        LOG_DEBUG(CL_LOG, 
+                  "getObjectFromComponents: Couldn't find key"
+                  " with %d elements",
+                  elements);
+        return false;
+    }
+
+    int32_t parentGroupCount = 
+        NotifyableKeyManipulator::removeObjectFromComponents(components, 
+                                                             elements);
+    if (parentGroupCount == -1) {
+        return false;
+    }
+
+    shared_ptr<NotifyableImpl> parent;
+    bool finished = getOps()->getNotifyableFromComponents(
+        getRegisteredParentNameVec(),
+        components, 
+        parentGroupCount, 
+        accessType, 
+        msecTimeout,
+        &parent);
+    if ((finished == false) || (parent == NULL)) {
+        LOG_WARN(CL_LOG, "getObjectFromComponents: Tried to get "
+                 "parent with name %s",
+                 components.at(parentGroupCount - 1).c_str());
+        return false;
+    }
+
+    LOG_DEBUG(CL_LOG, 
+              "getObjectFromComponents: parent key = %s, "
+              "application name = %s", 
+              parent->getKey().c_str(),
+              components.at(elements - 1).c_str());
+    return getOps()->getNotifyableWaitMsecs(
+        parent,
+        registeredName(),
+        components.at(elements - 1),
+        accessType,
+        msecTimeout,
+        pNotifyableSP);
 }
 
-};	/* End of 'namespace clusterlib' */
+const vector<string> &
+RegisteredNotifyableImpl::getRegisteredParentNameVec() const
+{
+    TRACE(CL_LOG, "getRegisteredParentNameVec");
+
+    ReadLocker l(getRdWrLock());
+
+    return m_registeredParentNameVec;
+}
+
+void
+RegisteredNotifyableImpl::setRegisteredParentNameVec(
+    const vector<string> &registeredParentNameVec)
+{
+    TRACE(CL_LOG, "setRegisteredParentNameVec");
+
+    WriteLocker l(getRdWrLock());
+
+    m_registeredParentNameVec = registeredParentNameVec;
+}
+
+const RdWrLock &
+RegisteredNotifyableImpl::getRdWrLock() const
+{
+    return m_rdWrLock;
+}
+
+}	/* End of 'namespace clusterlib' */

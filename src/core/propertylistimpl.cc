@@ -13,15 +13,11 @@
 #include "clusterlibinternal.h"
 #include <boost/regex.hpp>
 
-#define LOG_LEVEL LOG_WARN
-#define MODULE_NAME "ClusterLib"
-
 using namespace std;
 using namespace boost;
 using namespace json;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 CachedKeyValues &
 PropertyListImpl::cachedKeyValues()
@@ -29,12 +25,24 @@ PropertyListImpl::cachedKeyValues()
     return m_cachedKeyValues;
 }
 
-PropertyList *
-PropertyListImpl::getPropertyList(const string &name,
-                                  AccessType accessType)
+bool
+PropertyListImpl::getPropertyListWaitMsecs(
+    const string &name,
+    AccessType accessType,
+    int64_t msecTimeout,
+    shared_ptr<PropertyList> *pPropertyListSP)
 {
     throw InvalidMethodException(
-        "getPropertyList() called on a PropertyList object!");
+        "getPropertyListWaitMsecs() called on a PropertyList object!");
+}
+
+PropertyListImpl::PropertyListImpl(FactoryOps *fp,
+                                   const string &key,
+                                   const string &name,
+                                   const shared_ptr<NotifyableImpl> &parent)
+    : NotifyableImpl(fp, key, name, parent),
+      m_cachedKeyValues(this)
+{
 }
 
 NotifyableList
@@ -66,4 +74,4 @@ PropertyListImpl::createKeyValJsonObjectKey(const string &propertyListKey)
     return res;
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

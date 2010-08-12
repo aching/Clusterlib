@@ -172,6 +172,8 @@ AC_SUBST(BOOST_PATH)
 AC_SUBST(BOOST_LIB_PATH)
 AC_SUBST(BOOST_INCLUDES)
 AC_SUBST(BOOST_LIB)
+# Note that BOOST_LIB is only required for the zkuiserver since it
+# uses regex.  Otherwise, applications using clusterlib need not link in boost.
 
 ### MPICH ###
 

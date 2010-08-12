@@ -12,8 +12,7 @@
 #ifndef	_CL_GROUPIMPL_H_
 #define _CL_GROUPIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /*
  * Definition of class Group.
@@ -25,19 +24,39 @@ class GroupImpl
   public:
     virtual NameList getNodeNames();
 
-    virtual Node *getNode(
-        const std::string &name, AccessType accessType = LOAD_FROM_REPOSITORY);
+    virtual bool getNodeWaitMsecs(
+        const std::string &name,
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<Node> *pNodeSP);
+
+    virtual boost::shared_ptr<Node> getNode(
+        const std::string &name,
+        AccessType accessType);
 
     virtual NameList getGroupNames();
 
-    virtual Group *getGroup(const std::string &name, 
-                            AccessType accessType = LOAD_FROM_REPOSITORY);
+    virtual bool getGroupWaitMsecs(
+        const std::string &name,
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<Group> *pGroupSP);
+
+    virtual boost::shared_ptr<Group> getGroup(
+        const std::string &name,
+        AccessType accessType);
 
     virtual NameList getDataDistributionNames();
 
-    virtual DataDistribution *getDataDistribution(
+    virtual bool getDataDistributionWaitMsecs(
         const std::string &name,
-        AccessType accessType = LOAD_FROM_REPOSITORY);
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<DataDistribution> *pDataDistributionSP);
+
+    virtual boost::shared_ptr<DataDistribution> getDataDistribution(
+        const std::string &name,
+        AccessType accessType);
 
     /*
      * Internal functions not used by outside clients
@@ -49,7 +68,7 @@ class GroupImpl
     GroupImpl(FactoryOps *f,
               const std::string &key,
               const std::string &name,
-              NotifyableImpl *parent)
+              boost::shared_ptr<NotifyableImpl> parent)
         : NotifyableImpl(f, key, name, parent) {}
 
     /*
@@ -65,14 +84,9 @@ class GroupImpl
     /*
      * Make the default constructor private so it cannot be called.
      */
-    GroupImpl()
-        : NotifyableImpl(NULL, "", "", NULL)
-    {
-        throw InvalidMethodException("Someone called the GroupImpl default "
-                                       "constructor!");
-    }
+    GroupImpl();
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_GROUPIMPL_H_ */

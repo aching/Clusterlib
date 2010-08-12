@@ -11,11 +11,20 @@
 #ifndef	_CL_CLUSTERLIB_H_
 #define	_CL_CLUSTERLIB_H_
 
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/enable_shared_from_this.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/any.hpp>
 #include <string>
 #include <vector>
+#include <deque>
 #include <map>
 #include <algorithm>
 #include <iostream>
+#include <typeinfo>
+#include <limits>
+
 #include <pthread.h>
 #include <errno.h>
 #include <sys/time.h>

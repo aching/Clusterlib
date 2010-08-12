@@ -13,14 +13,10 @@
 
 #include "clusterlibinternal.h"
 
-#define LOG_LEVEL LOG_WARN
-#define MODULE_NAME "ClusterLib"
-
 using namespace std;
 using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /*
  * Handle existence change for preceding lock node. This is called
@@ -77,4 +73,4 @@ InternalChangeHandlers::handlePrecLockNodeExistsChange(int32_t etype,
     return EN_NOEVENT;
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

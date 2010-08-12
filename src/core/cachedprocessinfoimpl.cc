@@ -13,13 +13,13 @@
 #include "clusterlibinternal.h"
 
 using namespace std;
+using namespace boost;
 using namespace json;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
-CachedProcessInfoImpl::CachedProcessInfoImpl(NotifyableImpl *ntp)
-    : CachedDataImpl(ntp) 
+CachedProcessInfoImpl::CachedProcessInfoImpl(NotifyableImpl *notifyable)
+    : CachedDataImpl(notifyable) 
 {
 }
 
@@ -188,4 +188,4 @@ CachedProcessInfoImpl::unmarshal(const string &encodedJsonArr)
     m_portArr = jsonArr[1].get<JSONValue::JSONArray>();
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

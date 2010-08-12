@@ -12,8 +12,7 @@
 #ifndef	_CL_ROOTIMPL_H_
 #define _CL_ROOTIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class RootImpl.
@@ -25,31 +24,40 @@ class RootImpl
   public:
     virtual NameList getApplicationNames();
 
-    virtual Application *getApplication(
-        const std::string &appName,
-        AccessType accessType = LOAD_FROM_REPOSITORY);
+    virtual bool getApplicationWaitMsecs(
+        const std::string &name,
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<Application> *pApplicationSP);
 
-    virtual Notifyable *getMyParent() const
+    virtual boost::shared_ptr<Application> getApplication(
+        const std::string &name,
+        AccessType accessType);
+
+    virtual boost::shared_ptr<Notifyable> getMyParent() const
     {
         throw InvalidMethodException("RootImpl does not have a parent");
     }
     
-    virtual Application *getMyApplication()
+    virtual boost::shared_ptr<Application> getMyApplication(
+        int64_t msecTimeout)
     {
         throw InvalidMethodException(
             "RootImpl not is part of an application");
     }
 
-    virtual Group *getMyGroup()
+    virtual boost::shared_ptr<Group> getMyGroup(int64_t msecTimeout)
     {
         throw InvalidMethodException("RootImpl is not part of a group");
     }
 
-    virtual PropertyList *getPropertyList(
-        std::string name,
-        AccessType accessType = LOAD_FROM_REPOSITORY)
+    virtual bool getPropertyListWaitMsecs(
+        const std::string &name,
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<PropertyList> *pPropertyListSP)
     {
-        throw InvalidMethodException("RootImpl cannot have properties");
+        throw InvalidMethodException("RootImpl cannot have PropertyList");
     }
 
     virtual void remove(bool removeChildren = false) 
@@ -72,7 +80,7 @@ class RootImpl
     RootImpl(FactoryOps *fp,
              const std::string &key,
              const std::string &name)
-        : NotifyableImpl(fp, key, name, NULL) {}
+        : NotifyableImpl(fp, key, name, boost::shared_ptr<NotifyableImpl>()) {}
 
     virtual ~RootImpl() {};
 
@@ -88,14 +96,9 @@ class RootImpl
 
   private:
     /*
-     * The default constructor is private so no one can call it.
+     * Do not call the default constructor.
      */
-    RootImpl()
-        : NotifyableImpl(NULL, "", "", NULL)
-    {
-        throw InvalidMethodException("Someone called the RootImpl "
-                                       "default constructor!");
-    }
+    RootImpl();
 };
 
 }	/* End of 'namespace clusterlib' */

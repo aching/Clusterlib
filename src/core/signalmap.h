@@ -14,7 +14,8 @@ namespace clusterlib {
 /**
  * Manages multiple PredMutexCond objects that are keyed by a string.
  */
-class SignalMap {
+class SignalMap
+{
   public:
     /** 
      * Add a new PredMutexCond to the map if it does not exist.  The

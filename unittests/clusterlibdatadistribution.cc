@@ -5,12 +5,14 @@
 extern TestParams globalTestParams;
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 using namespace json;
 
 const string appName = "unittests-datadistribution-app";
 
-class ClusterlibDataDistribution : public MPITestFixture {
+class ClusterlibDataDistribution : public MPITestFixture
+{
     CPPUNIT_TEST_SUITE(ClusterlibDataDistribution);
     CPPUNIT_TEST(testDataDistribution1);
     CPPUNIT_TEST(testDataDistribution2);
@@ -63,7 +65,7 @@ class ClusterlibDataDistribution : public MPITestFixture {
                                     "testDataDistribution1");
         
         if (isMyRank(0)) {
-            DataDistribution *dist = _app0->getDataDistribution(
+            shared_ptr<DataDistribution> dist = _app0->getDataDistribution(
                 "dd0", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(dist);
         }
@@ -82,8 +84,8 @@ class ClusterlibDataDistribution : public MPITestFixture {
                                     "testDataDistribution2");
 
         if (isMyRank(0)) {
-            DataDistribution *dist = _app0->getDataDistribution(
-                "dd0");
+            shared_ptr<DataDistribution> dist = _app0->getDataDistribution(
+                "dd0", LOAD_FROM_REPOSITORY);
             if (dist != NULL) {
                 dist->remove();
             }
@@ -94,10 +96,10 @@ class ClusterlibDataDistribution : public MPITestFixture {
             dist->acquireLock();
             dist->cachedShards().insert(Uint64HashRange(0), 
                                         Uint64HashRange(999), 
-                                        NULL);
+                                        shared_ptr<Notifyable>());
             dist->cachedShards().insert(Uint64HashRange(1000),
                                         Uint64HashRange(1999),
-                                        NULL);
+                                        shared_ptr<Notifyable>());
             int32_t shardCount = dist->cachedShards().getCount();
             cerr << "testDataDistribution2: shardCount = " << shardCount
                  << endl;
@@ -105,7 +107,7 @@ class ClusterlibDataDistribution : public MPITestFixture {
             dist->cachedShards().clear();
             dist->cachedShards().insert(Uint64HashRange(2000),
                                         Uint64HashRange(2999),
-                                        NULL);
+                                        shared_ptr<Notifyable>());
             MPI_CPPUNIT_ASSERT(dist->cachedShards().getCount() == 1);
             dist->cachedShards().publish();
             dist->releaseLock();
@@ -123,8 +125,8 @@ class ClusterlibDataDistribution : public MPITestFixture {
                                     true, 
                                     "testDataDistribution3");
         if (isMyRank(0)) {
-            DataDistribution *dist = _app0->getDataDistribution(
-                "dd0");
+            shared_ptr<DataDistribution> dist = _app0->getDataDistribution(
+                "dd0", LOAD_FROM_REPOSITORY);
             if (dist != NULL) {
                 dist->remove();
             }
@@ -135,19 +137,19 @@ class ClusterlibDataDistribution : public MPITestFixture {
             dist->acquireLock();
             dist->cachedShards().insert(Uint64HashRange(0), 
                                         Uint64HashRange(999),
-                                        NULL);
+                                        shared_ptr<Notifyable>());
             dist->cachedShards().insert(Uint64HashRange(1000),
                                         Uint64HashRange(1999),
-                                        NULL);
+                                        shared_ptr<Notifyable>());
             dist->cachedShards().insert(Uint64HashRange(2000),
                                         Uint64HashRange(2999),
-                                        NULL);
+                                        shared_ptr<Notifyable>());
             dist->cachedShards().publish();
             MPI_CPPUNIT_ASSERT(dist->cachedShards().isCovered() == false);
             dist->cachedShards().insert(
                 Uint64HashRange(3000), 
                 Uint64HashRange(numeric_limits<uint64_t>::max()),
-                NULL);
+                shared_ptr<Notifyable>());
             dist->cachedShards().publish();
             MPI_CPPUNIT_ASSERT(dist->cachedShards().getCount() == 4);
             MPI_CPPUNIT_ASSERT(dist->cachedShards().isCovered() == true);
@@ -166,8 +168,8 @@ class ClusterlibDataDistribution : public MPITestFixture {
                                     true, 
                                     "testDataDistribution4");
         if (isMyRank(0)) {
-            DataDistribution *dist = _app0->getDataDistribution(
-                "dd0");
+            shared_ptr<DataDistribution> dist = _app0->getDataDistribution(
+                "dd0", LOAD_FROM_REPOSITORY);
             if (dist != NULL) {
                 dist->remove();
             }
@@ -178,19 +180,19 @@ class ClusterlibDataDistribution : public MPITestFixture {
             dist->acquireLock();
             dist->cachedShards().insert(Uint64HashRange(0),
                                         Uint64HashRange(999),
-                                        NULL);
+                                        shared_ptr<Notifyable>());
             dist->cachedShards().insert(Uint64HashRange(1000),
                                         Uint64HashRange(1999),
-                                        NULL);
+                                        shared_ptr<Notifyable>());
             dist->cachedShards().insert(Uint64HashRange(2000), 
                                         Uint64HashRange(2999),
-                                        NULL);
+                                        shared_ptr<Notifyable>());
             dist->cachedShards().insert(Uint64HashRange(3000), 
                                         Uint64HashRange(3999), 
-                                        NULL);
+                                        shared_ptr<Notifyable>());
             dist->cachedShards().insert(Uint64HashRange(4000), 
                                         Uint64HashRange(4999), 
-                                        NULL);
+                                        shared_ptr<Notifyable>());
 
             vector<Shard> shardVec = dist->cachedShards().getAllShards();
             MPI_CPPUNIT_ASSERT(dist->cachedShards().getCount() == 5);
@@ -257,8 +259,8 @@ class ClusterlibDataDistribution : public MPITestFixture {
                                     "testDataDistribution5");
         
         if (isMyRank(0)) {
-            DataDistribution *dist = _app0->getDataDistribution(
-                "dd0");
+            shared_ptr<DataDistribution> dist = _app0->getDataDistribution(
+                "dd0", LOAD_FROM_REPOSITORY);
             if (dist != NULL) {
                 dist->remove();
             }
@@ -266,15 +268,15 @@ class ClusterlibDataDistribution : public MPITestFixture {
                 "dd0", CREATE_IF_NOT_FOUND);
             dist->acquireLock();
             MPI_CPPUNIT_ASSERT(dist);
-            Node *n0 = _app0->getNode("n0", CREATE_IF_NOT_FOUND);
+            shared_ptr<Node> n0 = _app0->getNode("n0", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(n0);
-            Node *n1 = _app0->getNode("n1", CREATE_IF_NOT_FOUND);
+            shared_ptr<Node> n1 = _app0->getNode("n1", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(n1);
-            Node *n2 = _app0->getNode("n2", CREATE_IF_NOT_FOUND);
+            shared_ptr<Node> n2 = _app0->getNode("n2", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(n2);
 
             Uint64HashRange hashPoint(6719722671305337462LL);
-            vector<Notifyable *> ntpVec = dist->cachedShards().getNotifyables(
+            NotifyableList ntpVec = dist->cachedShards().getNotifyables(
                 hashPoint);
 
             MPI_CPPUNIT_ASSERT(ntpVec.size() == 0);
@@ -327,7 +329,8 @@ class ClusterlibDataDistribution : public MPITestFixture {
                                     "testDataDistribution6");
         
         if (isMyRank(0)) {
-            DataDistribution *dist = _app0->getDataDistribution("dd0");
+            shared_ptr<DataDistribution> dist = 
+                _app0->getDataDistribution("dd0", LOAD_FROM_REPOSITORY);
             if (dist != NULL) {
                 dist->remove();
             }
@@ -336,11 +339,11 @@ class ClusterlibDataDistribution : public MPITestFixture {
             dist->acquireLock();
 
             MPI_CPPUNIT_ASSERT(dist);
-            Node *n0 = _app0->getNode("n0", CREATE_IF_NOT_FOUND);
+            shared_ptr<Node> n0 = _app0->getNode("n0", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(n0);
-            Node *n1 = _app0->getNode("n1", CREATE_IF_NOT_FOUND);
+            shared_ptr<Node> n1 = _app0->getNode("n1", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(n1);
-            Node *n2 = _app0->getNode("n2", CREATE_IF_NOT_FOUND);
+            shared_ptr<Node> n2 = _app0->getNode("n2", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(n2);
 
             dist->cachedShards().clear();
@@ -359,14 +362,15 @@ class ClusterlibDataDistribution : public MPITestFixture {
         }
         else {
             barrier(_factory, true);
-            DataDistribution *dist = _app0->getDataDistribution(
+            shared_ptr<DataDistribution> dist = _app0->getDataDistribution(
                 "dd0", CREATE_IF_NOT_FOUND);
             dist->acquireLock();
             vector<Shard> shardVec = dist->cachedShards().getAllShards();
             MPI_CPPUNIT_ASSERT(shardVec.size() == 3);
             for (vector<Shard>::iterator shardVecIt = shardVec.begin();
                  shardVecIt != shardVec.end(); ++shardVecIt) {
-                Node *node = dynamic_cast<Node *>(shardVecIt->getNotifyable());
+                shared_ptr<Node> node = dynamic_pointer_cast<Node>(
+                    shardVecIt->getNotifyable());
                 MPI_CPPUNIT_ASSERT(node);
                 cerr << "parent = " 
                      << node->getMyParent()->getName()
@@ -393,7 +397,7 @@ class ClusterlibDataDistribution : public MPITestFixture {
         string plk = "distkey";
 
         if (isMyRank(0)) {
-            DataDistribution *dist = _app0->getDataDistribution("dd0");
+            shared_ptr<DataDistribution> dist = _app0->getDataDistribution("dd0", LOAD_FROM_REPOSITORY);
             if (dist != NULL) {
                 dist->remove();
             }
@@ -401,17 +405,17 @@ class ClusterlibDataDistribution : public MPITestFixture {
                 "dd0", CREATE_IF_NOT_FOUND);
             dist->acquireLock();
             MPI_CPPUNIT_ASSERT(dist);
-            Node *n0 = _app0->getNode("n0", CREATE_IF_NOT_FOUND);
+            shared_ptr<Node> n0 = _app0->getNode("n0", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(n0);
-            ProcessSlot *p0 = n0->getProcessSlot("s0", CREATE_IF_NOT_FOUND);
+            shared_ptr<ProcessSlot> p0 = n0->getProcessSlot("s0", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(p0);
-            Node *n1 = _app0->getNode("n1", CREATE_IF_NOT_FOUND);
+            shared_ptr<Node> n1 = _app0->getNode("n1", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(n1);
-            ProcessSlot *p1 = n1->getProcessSlot("s1", CREATE_IF_NOT_FOUND);
+            shared_ptr<ProcessSlot> p1 = n1->getProcessSlot("s1", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(p1);
-            Node *n2 = _app0->getNode("n2", CREATE_IF_NOT_FOUND);
+            shared_ptr<Node> n2 = _app0->getNode("n2", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(n2);
-            ProcessSlot *p2 = n2->getProcessSlot("s2", CREATE_IF_NOT_FOUND);
+            shared_ptr<ProcessSlot> p2 = n2->getProcessSlot("s2", CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(p2);
 
             dist->cachedShards().clear();
@@ -426,7 +430,7 @@ class ClusterlibDataDistribution : public MPITestFixture {
                                         p2);
             dist->cachedShards().publish();
             dist->releaseLock();
-            PropertyList *pl = _app0->getPropertyList(
+            shared_ptr<PropertyList> pl = _app0->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST, CREATE_IF_NOT_FOUND);
             pl->acquireLock();
             pl->cachedKeyValues().set(plk, dist->getKey());
@@ -436,24 +440,25 @@ class ClusterlibDataDistribution : public MPITestFixture {
         }
         else {
             barrier(_factory, true);
-            Root *root = _client0->getRoot();
+            shared_ptr<Root> root = _client0->getRoot();
             MPI_CPPUNIT_ASSERT(root);
-            PropertyList *pl = _app0->getPropertyList();
+            shared_ptr<PropertyList> pl = _app0->getPropertyList(ClusterlibStrings::DEFAULTPROPERTYLIST, LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(pl);
             pl->acquireLock();
             JSONValue jsonValuePlk;
             pl->cachedKeyValues().get(plk, jsonValuePlk);
             pl->releaseLock();
-            DataDistribution *dist = dynamic_cast<DataDistribution *>(
-                root->getNotifyableFromKey(
-                    jsonValuePlk.get<JSONValue::JSONString>()));
+            shared_ptr<DataDistribution> dist(
+                dynamic_pointer_cast<DataDistribution>(
+                    root->getNotifyableFromKey(
+                    jsonValuePlk.get<JSONValue::JSONString>())));
             MPI_CPPUNIT_ASSERT(dist);
             dist->acquireLock();
             vector<Shard> shardVec = dist->cachedShards().getAllShards();
             MPI_CPPUNIT_ASSERT(shardVec.size() == 3);
             for (vector<Shard>::iterator shardVecIt = shardVec.begin();
                  shardVecIt != shardVec.end(); ++shardVecIt) {
-                ProcessSlot *ps = dynamic_cast<ProcessSlot *>(
+                shared_ptr<ProcessSlot> ps = dynamic_pointer_cast<ProcessSlot>(
                     shardVecIt->getNotifyable());
                 MPI_CPPUNIT_ASSERT(ps);
                 cerr << "parent = " 
@@ -468,7 +473,7 @@ class ClusterlibDataDistribution : public MPITestFixture {
   private:
     Factory *_factory;
     Client *_client0;
-    Application *_app0;
+    shared_ptr<Application> _app0;
 };
 
 /* Registers the fixture into the 'registry' */

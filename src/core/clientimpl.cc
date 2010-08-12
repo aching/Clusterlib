@@ -12,23 +12,30 @@
 
 #include "clusterlibinternal.h"
 
-#define LOG_LEVEL LOG_WARN
-#define MODULE_NAME "ClusterLib"
-
 using namespace std;
+using namespace boost;
 using namespace json;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
-Root *
+shared_ptr<Root>
 ClientImpl::getRoot()
 {
-    return dynamic_cast<Root *>(
-        getOps()->getNotifyable(NULL, 
+
+    shared_ptr<NotifyableImpl> base;
+
+    base = 
+        getOps()->getNotifyable(shared_ptr<NotifyableImpl>(), 
                                 ClusterlibStrings::REGISTERED_ROOT_NAME,
                                 ClusterlibStrings::ROOT,
-                                CACHED_ONLY));
+                                CACHED_ONLY);
+    shared_ptr<Root> root =  dynamic_pointer_cast<Root>(base);
+    if (root == NULL) {
+        throw InconsistentInternalStateException("");
+    }
+    else {
+        return root;
+    }
 }
 
 void
@@ -330,8 +337,9 @@ ClientImpl::cancelHandler(UserEventHandler *uehp)
 }
 
 void
-ClientImpl::registerJSONRPCResponseHandler(Queue *responseQueue,
-                                           Queue *completedQueue)
+ClientImpl::registerJSONRPCResponseHandler(
+    const shared_ptr<Queue> &responseQueueSP,
+    const shared_ptr<Queue> &completedQueueSP)
 {
     TRACE(CL_LOG, "registerJSONRPCResponseHandler");
 
@@ -340,8 +348,8 @@ ClientImpl::registerJSONRPCResponseHandler(Queue *responseQueue,
             "registerJSONRPCResponseHandler: Already registered!");
     }
     m_jsonRPCResponseHandler = new JSONRPCResponseHandler(
-        responseQueue,
-        completedQueue,
+        responseQueueSP,
+        completedQueueSP,
         this,
         getOps()->getResponseSignalMap());
 
@@ -422,4 +430,4 @@ ClientImpl::cancelTimer(TimerId id)
     return mp_f->cancelTimer(id);
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

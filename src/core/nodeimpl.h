@@ -12,8 +12,7 @@
 #ifndef	_CL_NODEIMPL_H_
 #define _CL_NODEIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class NodeImpl.
@@ -27,9 +26,15 @@ class NodeImpl
 
     virtual NameList getProcessSlotNames();
 
-    virtual ProcessSlot *getProcessSlot(
-        const std::string &processSlotName, 
-        AccessType accessType = LOAD_FROM_REPOSITORY);
+    virtual bool getProcessSlotWaitMsecs(
+        const std::string &name,
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<ProcessSlot> *pProcessSlotSP);
+
+    virtual boost::shared_ptr<ProcessSlot> getProcessSlot(
+        const std::string &name,
+        AccessType accessType);
 
     /*
      * Internal functions not used by outside clients
@@ -41,9 +46,8 @@ class NodeImpl
     NodeImpl(FactoryOps *fp,
              const std::string &key,
              const std::string &name,
-             GroupImpl *group)
+             boost::shared_ptr<NotifyableImpl> group)
         : NotifyableImpl(fp, key, name, group),
-          mp_group(group),
           m_cachedProcessSlotInfo(this) {}
 
     /**
@@ -66,28 +70,17 @@ class NodeImpl
 
   private:
     /*
-     * Make the default constructor private so it cannot be called.
+     * Do not call the default constructor
      */
-    NodeImpl()
-        : NotifyableImpl(NULL, "", "", NULL),
-          m_cachedProcessSlotInfo(this)
-    {
-        throw InvalidMethodException("Someone called the Node default "
-                                       "constructor!");
-    }
+    NodeImpl();
 
   private:
-    /**
-     * The group this node is in.
-     */
-    GroupImpl *mp_group;
-
     /**
      * The cached process slot information
      */
     CachedProcessSlotInfoImpl m_cachedProcessSlotInfo;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_NODEIMPL_H_ */

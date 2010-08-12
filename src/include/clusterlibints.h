@@ -11,8 +11,7 @@
 #ifndef	_CL_CLUSTERLIBINTS_H_
 #define	_CL_CLUSTERLIBINTS_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * How do you want to access the Notifyable?

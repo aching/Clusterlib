@@ -46,7 +46,8 @@
  *      available processes
  *    - Make sure to set minSize to -1.  singleProcessMode is irrelevant.
  */
-class MPITestFixture : public CppUnit::TestFixture {
+class MPITestFixture : public CppUnit::TestFixture
+{
   public:
     /**
      * Constructor.
@@ -132,9 +133,10 @@ class MPITestFixture : public CppUnit::TestFixture {
             if (m_updateClPropertyList) {
                 /* Make sure all updates have been seen! */
                 factory->synchronize();
-                clusterlib::Root *root = factory->createClient()->getRoot();
-                clusterlib::PropertyList *propList =
-                    root->getPropertyList(
+                boost::shared_ptr<clusterlib::Root> rootSP = 
+                    factory->createClient()->getRoot();
+                boost::shared_ptr<clusterlib::PropertyList> propertyListSP =
+                    rootSP->getPropertyList(
                         m_clPropertyList, 
                         clusterlib::CREATE_IF_NOT_FOUND);
                 bool done = false;
@@ -146,9 +148,9 @@ class MPITestFixture : public CppUnit::TestFixture {
                     try {
                         json::JSONValue jsonValue;
 
-                        propList->acquireLock();
+                        propertyListSP->acquireLock();
 
-                        bool exists = propList->cachedKeyValues().get(
+                        bool exists = propertyListSP->cachedKeyValues().get(
                             genTestKey(), jsonValue);
                         std::string value;
                         if (exists) {
@@ -157,14 +159,15 @@ class MPITestFixture : public CppUnit::TestFixture {
                         }
                         value.append(" ");
                         value.append(genPropertyListId());
-                        propList->cachedKeyValues().set(genTestKey(), value);
-                        propList->cachedKeyValues().publish();
+                        propertyListSP->cachedKeyValues().set(
+                            genTestKey(), value);
+                        propertyListSP->cachedKeyValues().publish();
                         done = true;
 
-                        propList->releaseLock();  
+                        propertyListSP->releaseLock();  
                     }
                     catch (const clusterlib::PublishVersionException &e) {
-                        propList->releaseLock();
+                        propertyListSP->releaseLock();
                     }
                 }
             }
@@ -186,10 +189,11 @@ class MPITestFixture : public CppUnit::TestFixture {
         assert(factory);
 
         if (m_updateClPropertyList) {
-            clusterlib::Root *root = factory->createClient()->getRoot();
-            clusterlib::PropertyList *propList =
-                root->getPropertyList(m_clPropertyList, 
-                                      clusterlib::CREATE_IF_NOT_FOUND);
+            boost::shared_ptr<clusterlib::Root> rootSP = 
+                factory->createClient()->getRoot();
+            boost::shared_ptr<clusterlib::PropertyList> propertyListSP =
+                rootSP->getPropertyList(m_clPropertyList, 
+                                        clusterlib::CREATE_IF_NOT_FOUND);
             std::stringstream ss;
             ss << " " << m_rank << ":" << m_hostname;
             bool done = false;
@@ -201,9 +205,9 @@ class MPITestFixture : public CppUnit::TestFixture {
                 try {
                     json::JSONValue jsonValue;
 
-                    propList->acquireLock();
+                    propertyListSP->acquireLock();
 
-                    bool exists = propList->cachedKeyValues().get(
+                    bool exists = propertyListSP->cachedKeyValues().get(
                         genTestKey(), jsonValue);
                     std::string value;
                     if (exists) {
@@ -212,15 +216,16 @@ class MPITestFixture : public CppUnit::TestFixture {
                     size_t index = value.find(genPropertyListId());
                     if (index != std::string::npos) {
                         value.erase(index, genPropertyListId().size());
-                        propList->cachedKeyValues().set(genTestKey(), value);
-                        propList->cachedKeyValues().publish();
+                        propertyListSP->cachedKeyValues().set(
+                            genTestKey(), value);
+                        propertyListSP->cachedKeyValues().publish();
                     }
                     done = true;
 
-                    propList->releaseLock();
+                    propertyListSP->releaseLock();
                 }
                 catch (const clusterlib::PublishVersionException &e) {
-                    propList->releaseLock();
+                    propertyListSP->releaseLock();
                 }
             }
         }

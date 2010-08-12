@@ -32,13 +32,13 @@ class InitZooKeeperLogging
 
 using namespace std;
 
-namespace zk
-{
+namespace zk {
 
 /**
  * \brief This class provides logic for checking if a request can be retried.
  */
-class RetryHandler {
+class RetryHandler
+{
   public:
     RetryHandler(const ZooKeeperConfig &zkConfig)
         : m_zkConfig(zkConfig)
@@ -141,7 +141,6 @@ void zkWatcher(zhandle_t *zhp,
                   path);
     }
 }
-
 
 // =======================================================================
 
@@ -805,7 +804,6 @@ ZooKeeperAdapter::setState(AdapterState newState)
     }
 }
 
-
 //TODO move this code to verifyConnection so reconnect()
 //is called from one place only
 void
@@ -1253,6 +1251,7 @@ ZooKeeperAdapter::getNodeChildren(const string &path,
         absPath.append(children.data[i]); 
         nodeList.push_back(absPath);
     }
+
     /*
      * Make sure the order is always deterministic.  Note: Is this
      * necessary?

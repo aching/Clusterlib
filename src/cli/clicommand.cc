@@ -3,9 +3,9 @@
 #include <iomanip>
 
 using namespace std;
+using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 const string CliCommand::NOTIFYABLE_ARG = "ntp";
 const string CliCommand::NOTIFYABLE_NAME_ARG = "ntpName";
@@ -135,15 +135,15 @@ CliCommand::CliArg::getStringArg() const
     return m_value;
 }
 
-Notifyable *
-CliCommand::CliArg::getNotifyableArg(Root *root) const
+shared_ptr<Notifyable>
+CliCommand::CliArg::getNotifyableArg(const shared_ptr<Root> &rootSP) const
 {
     if (m_argType != NotifyableArg) {
         throw InvalidMethodException(string("getStringArg: Called on type ") +
                                      getArgTypeAsString(m_argType));
     }
 
-    return root->getNotifyableFromKey(m_value);
+    return rootSP->getNotifyableFromKey(m_value);
 }
 
 json::JSONValue

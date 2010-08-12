@@ -17,15 +17,17 @@
 #include "activenodeperiodiccheck.h"
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 using namespace json;
 
 namespace activenode {
 
-ActiveNodePeriodicCheck::ActiveNodePeriodicCheck(int64_t msecsFrequency,
-                                                 Notifyable *notifyable,
-                                                 PredMutexCond &predMutexCond)
-    : Periodic(msecsFrequency, notifyable),
+ActiveNodePeriodicCheck::ActiveNodePeriodicCheck(
+    int64_t msecsFrequency,
+    const shared_ptr<Node> &nodeSP,
+    PredMutexCond &predMutexCond)
+    : Periodic(msecsFrequency, nodeSP),
       m_predMutexCond(predMutexCond)
 {
 }

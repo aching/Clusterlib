@@ -13,13 +13,13 @@
 #include "clusterlibinternal.h"
 
 using namespace std;
+using namespace boost;
 using namespace json;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
-CachedKeyValuesImpl::CachedKeyValuesImpl(NotifyableImpl *ntp)
-    : CachedDataImpl(ntp) 
+CachedKeyValuesImpl::CachedKeyValuesImpl(NotifyableImpl *notifyable)
+    : CachedDataImpl(notifyable) 
 {
 }
 
@@ -138,48 +138,50 @@ bool
 CachedKeyValuesImpl::get(
     const JSONValue::JSONString &key, 
     JSONValue &jsonValue,
-    bool searchParent, 
-    PropertyList **propertyListWithKey)
+    bool searchParent,
+    int64_t ancestorMsecTimeout,
+    shared_ptr<PropertyList> *pUsedProperyListSP)
 {
     TRACE(CL_LOG, "get");
     
     getNotifyable()->throwIfRemoved();
 
-    Locker l(&getCachedDataLock());
-    JSONValue::JSONObject::const_iterator ssIt = m_keyValues.find(key);
-    if (ssIt != m_keyValues.end()) {
-        LOG_DEBUG(CL_LOG,
-                  "get: Found key (%s) with val (%s) "
-                  "in PropertyList key (%s), version (%d)",
-                  key.c_str(),
-                  JSONCodec::encode(ssIt->second).c_str(),
-                  getNotifyable()->getKey().c_str(),
-                  getVersion());
-        jsonValue = ssIt->second;
-        if (propertyListWithKey != NULL) {
-            *propertyListWithKey = 
-                dynamic_cast<PropertyList *>(getNotifyable());
+    {
+        Locker l(&getCachedDataLock());
+
+        JSONValue::JSONObject::const_iterator ssIt = m_keyValues.find(key);
+        if (ssIt != m_keyValues.end()) {
+            LOG_DEBUG(CL_LOG,
+                      "get: Found key (%s) with val (%s) "
+                      "in PropertyList key (%s), version (%d)",
+                      key.c_str(),
+                      JSONCodec::encode(ssIt->second).c_str(),
+                      getNotifyable()->getKey().c_str(),
+                      getVersion());
+            jsonValue = ssIt->second;
+            if (pUsedProperyListSP != NULL) {
+                *pUsedProperyListSP = 
+                    dynamic_pointer_cast<PropertyList>(getNotifyable());
+            }
+            return true;
         }
-        return true;
-    }
-    else if (searchParent == false) {
-        LOG_DEBUG(CL_LOG,
-                  "get: Did not find key (%s) "
-                  "in PropertyList key (%s), version (%d)",
-                  key.c_str(),
-                  getNotifyable()->getKey().c_str(),
-                  getVersion());
-        /*
-         * Don't try the parent if not explicit
-         */
-        return false;
+        else if (searchParent == false) {
+            LOG_DEBUG(CL_LOG,
+                      "get: Did not find key (%s) "
+                      "in PropertyList key (%s), version (%d)",
+                      key.c_str(),
+                      getNotifyable()->getKey().c_str(),
+                      getVersion());
+            return false;
+        }
     }
 
     /*
-     * Key manipulation should only be done in clusterlib.cc, therefore
-     * this should move to clusterlib.cc.
+     * Key manipulation should only be done in
+     * notifyablekeymanipulator.cc, therefore this code should be
+     * moved.  Note that getting parent data is only best effort.
      */
-    PropertyList *prop = NULL;
+    shared_ptr<NotifyableImpl> notifyableSP;
     string parentKey = getNotifyable()->getKey();
     do {
         /*
@@ -206,16 +208,24 @@ CachedKeyValuesImpl::get(
                   parentKey.c_str(),
                   getNotifyable()->getKey().c_str());
         
-        prop = dynamic_cast<PropertyList *>(
-            getOps()->getNotifyableFromKey(
-                vector<string>(
-                    1, 
-                    ClusterlibStrings::REGISTERED_PROPERTYLIST_NAME), 
-                parentKey));
-    } while (prop == NULL);
+        getOps()->getNotifyableFromKeyWaitMsecs(
+            vector<string>(
+                1, 
+                ClusterlibStrings::REGISTERED_PROPERTYLIST_NAME), 
+            parentKey,
+            CACHED_ONLY,
+            ancestorMsecTimeout,
+            &notifyableSP);
+    } while (notifyableSP == NULL);
     
-    return prop->cachedKeyValues().get(
-        key, jsonValue, searchParent, propertyListWithKey);
+    shared_ptr<PropertyList> propertyListSP = 
+        dynamic_pointer_cast<PropertyList>(notifyableSP);
+    if (pUsedProperyListSP != NULL) {
+        *pUsedProperyListSP = propertyListSP;
+    }
+    
+    return propertyListSP->cachedKeyValues().get(
+        key, jsonValue, searchParent, ancestorMsecTimeout, pUsedProperyListSP);
 }
 
 void
@@ -243,4 +253,4 @@ CachedKeyValuesImpl::clear()
     m_keyValues.clear();
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

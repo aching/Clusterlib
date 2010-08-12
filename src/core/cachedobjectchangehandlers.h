@@ -11,8 +11,7 @@
 #ifndef	_CL_CACHEDOBJECTCHANGEHANDLERS_H_
 #define	_CL_CACHEDOBJECTCHANGEHANDLERS_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * The class for all cached object handlers.
@@ -61,221 +60,239 @@ class CachedObjectChangeHandlers
     /**
      * Handle notifyable removed change.
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleNotifyableRemovedChange(NotifyableImpl *ntp,
-                                        int32_t etype,
-                                        const std::string &key);
+    Event handleNotifyableRemovedChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Handle current state changes on notifyables.
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleCurrentStateChange(NotifyableImpl *ntp,
-                                   int32_t etype,
-                                   const std::string &key);
+    Event handleCurrentStateChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Handle desired state changes on notifyables.
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleDesiredStateChange(NotifyableImpl *ntp,
-                                   int32_t etype,
-                                   const std::string &key);
+    Event handleDesiredStateChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Handle changes in the set of applications.
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleApplicationsChange(NotifyableImpl *ntp,
-                                   int32_t etype,
-                                   const std::string &key);
+    Event handleApplicationsChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Handle changes in the set of groups in
      * a group.
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleGroupsChange(NotifyableImpl *ntp,
-                             int32_t etype,
-                             const std::string &key);
+    Event handleGroupsChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Handle changes in the set of data distributions
      * in a group.
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleDataDistributionsChange(NotifyableImpl *ntp,
-                                        int32_t etype,
-                                        const std::string &key);
+    Event handleDataDistributionsChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Handle changes in the set of nodes in a group.
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleNodesChange(NotifyableImpl *ntp,
-                            int32_t etype,
-                            const std::string &key);
+    Event handleNodesChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Handle changes in the set of process slots in a node.
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleProcessSlotsChange(NotifyableImpl *ntp,
-                                   int32_t etype,
-                                   const std::string &key);
+    Event handleProcessSlotsChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Handle changes in the usage of process slots in a node.
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleProcessSlotsUsageChange(NotifyableImpl *ntp,
-                                        int32_t etype,
-                                        const std::string &key);
+    Event handleProcessSlotsUsageChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Handle changes in the port vector of a process slot.
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleProcessSlotProcessInfoChange(NotifyableImpl *ntp,
-                                         int32_t etype,
-                                         const std::string &key);
+    Event handleProcessSlotProcessInfoChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Handle changes in the set of property lists in a notifyable.
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handlePropertyListsChange(NotifyableImpl *ntp,
-                                 int32_t etype,
-                                 const std::string &key);
+    Event handlePropertyListsChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Handle changes in a property list value.
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handlePropertyListValueChange(NotifyableImpl *ntp,
-                                      int32_t etype,
-                                      const std::string &key);
+    Event handlePropertyListValueChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Handle changes in shards of a distribution.
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleDataDistributionShardsChange(NotifyableImpl *ntp,
-                                             int32_t etype,
-                                             const std::string &key);
+    Event handleDataDistributionShardsChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Handle a change in the process slot information for
      * a node.
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleNodeProcessSlotInfoChange(NotifyableImpl *ntp,
-                                          int32_t etype,
-                                          const std::string &key);
+    Event handleNodeProcessSlotInfoChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Handle changes in synchronization of a zookeeper key.
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleSynchronizeChange(NotifyableImpl *ntp,
-                                  int32_t etype,
-                                  const std::string &key);
+    Event handleSynchronizeChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Handle change of a preceding lock node exists event.
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handlePrecLockNodeExistsChange(NotifyableImpl *ntp,
-                                         int32_t etype,
-                                         const std::string &key);
+    Event handlePrecLockNodeExistsChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Handle changes in the set of queues in a notifyable
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleQueuesChange(NotifyableImpl *ntp,
-                             int32_t etype,
-                             const std::string &key);
+    Event handleQueuesChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Handle child change of a queue parent.
      *
-     * @param ntp the notifyable pointer
+     * @param notifyableSP the notifyable pointer
      * @param etype the event mask on this notifyable
      * @param key the actual key that the event was on
      * @return the user-level event that will be processed by the user.
      */
-    Event handleQueueChildChange(NotifyableImpl *ntp,
-                                 int32_t etype,
-                                 const std::string &key);
+    Event handleQueueChildChange(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &key);
 
     /**
      * Get the CachedObjectEventHandler for the appropriate change event
@@ -427,6 +444,6 @@ class CachedObjectChangeHandlers
     CachedObjectEventHandler m_queueChildChangeHandler;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_CACHEDOBJECTCHANGEHANDLERS_H_ */

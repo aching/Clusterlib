@@ -12,8 +12,7 @@
 #ifndef	_CL_ROOT_H_
 #define _CL_ROOT_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class Root.
@@ -30,24 +29,41 @@ class Root
     virtual NameList getApplicationNames() = 0;
 
     /**
-     * Get the named application.
+     * Get the name Application.
+     *
+     * @param name Name of the Application to create
+     * @param accessType Mode of access
+     * @param msecTimeout Amount of msecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediately
+     * @param pApplicationSP Pointer to that pApplicationSP if it exists, 
+     *                  otherwise NULL.
+     * @return True if the operation finished before the timeout
+     * @throw Exception if Notifyable is the root or application
+     */
+    virtual bool getApplicationWaitMsecs(
+        const std::string &name,
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<Application> *pApplicationSP) = 0;
+
+    /**
+     * Get the named Application (no timeout).
      * 
-     * @param appName the name of the application to get
-     * @param accessType The mode of access
-     * @return NULL if the named application does not exist and create
-     *         == false
+     * @param name Name of the Application to get
+     * @param accessType Mode of access
+     * @return NULL if the named Application does not exist
      * @throw Exception only if tried to create and couldn't create
      */
-    virtual Application *getApplication(
-        const std::string &appName,
-        AccessType accessType = LOAD_FROM_REPOSITORY) = 0;
+    virtual boost::shared_ptr<Application> getApplication(
+        const std::string &name,
+        AccessType accessType) = 0;
 
     /*
      * Destructor.
      */
-    virtual ~Root() {};
+    virtual ~Root() {}
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_ROOT_H_ */

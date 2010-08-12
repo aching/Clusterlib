@@ -7,11 +7,12 @@ using namespace boost;
 using namespace json;
 using namespace json::rpc;
 
-class MockMethod : public JSONRPCMethod {
+class MockMethod : public JSONRPCMethod
+{
   public:
     MockMethod() : name("MockMethod") {}
 
-    virtual const std::string &getName() const
+    virtual const string &getName() const
     {
         return name;
     }
@@ -34,11 +35,12 @@ class MockMethod : public JSONRPCMethod {
     string name;
 };
 
-class MockErrorMethod : public JSONRPCMethod {
+class MockErrorMethod : public JSONRPCMethod
+{
   public:
     MockErrorMethod() : name("MockErrorMethod") {}
 
-    virtual const std::string &getName() const
+    virtual const string &getName() const
     {
         return name;
     }

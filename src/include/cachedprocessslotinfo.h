@@ -12,8 +12,7 @@
 #ifndef	_CL_CACHEDPROCESSSLOTINFO_H_
 #define _CL_CACHEDPROCESSSLOTINFO_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class CachedProcessSlotInfo
@@ -59,6 +58,6 @@ class CachedProcessSlotInfo
     virtual ~CachedProcessSlotInfo() {}
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_CACHEDPROCESSSLOTINFO_H_ */

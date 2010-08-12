@@ -43,14 +43,14 @@ class ActiveNode
      *
      * @return the pointer to the active node
      */
-    clusterlib::Node *getActiveNode();
+    const boost::shared_ptr<clusterlib::Node> &getActiveNode();
 
     /**
      * Get the root pointer.
      *
      * @return the pointer to the root
      */
-    clusterlib::Root *getRoot();
+    const boost::shared_ptr<clusterlib::Root> &getRoot();
 
     /**
      * Start the loop of running the active node with the number of
@@ -89,17 +89,17 @@ class ActiveNode
     /**
      * The clusterlib root
      */
-    clusterlib::Root *m_root;
+    boost::shared_ptr<clusterlib::Root> m_rootSP;
 
     /**
      * The group that has the active node
      */
-    clusterlib::Group *m_activeNodeGroup;
+    boost::shared_ptr<clusterlib::Group> m_activeNodeGroupSP;
 
     /**
      * The clusterlib node that represents this physical node
      */
-    clusterlib::Node *m_activeNode;
+    boost::shared_ptr<clusterlib::Node> m_activeNodeSP;
 
     /**
      * The vector of all the handler pointers

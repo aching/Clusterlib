@@ -13,9 +13,9 @@
 #include "clusterlibinternal.h"
 
 using namespace std;
+using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 const string &
 RegisteredPropertyListImpl::registeredName() const
@@ -47,22 +47,24 @@ RegisteredPropertyListImpl::isValidName(const string &name) const
     }
 }
 
-NotifyableImpl *
-RegisteredPropertyListImpl::createNotifyable(const string &notifyableName,
-                                             const string &notifyableKey,
-                                             NotifyableImpl *parent,
-                                             FactoryOps &factoryOps) const
+shared_ptr<NotifyableImpl>
+RegisteredPropertyListImpl::createNotifyable(
+    const string &notifyableName,
+    const string &notifyableKey,
+    const shared_ptr<NotifyableImpl> &parent,
+    FactoryOps &factoryOps) const
 {
-    return new PropertyListImpl(&factoryOps,
-                                notifyableKey,
-                                notifyableName,
-                                parent);
+    return dynamic_pointer_cast<NotifyableImpl>(
+        shared_ptr<NotifyableImpl>(new PropertyListImpl(&factoryOps,
+                                                        notifyableKey,
+                                                        notifyableName,
+                                                        parent)));
 }
 
 vector<string>
 RegisteredPropertyListImpl::generateRepositoryList(
-    const std::string &notifyableName,
-    const std::string &notifyableKey) const
+    const string &notifyableName,
+    const string &notifyableKey) const
 {
     vector<string> resVec;
     resVec.push_back(notifyableKey);
@@ -125,60 +127,4 @@ RegisteredPropertyListImpl::isValidKey(const vector<string> &components,
     return true;        
 }
 
-NotifyableImpl *
-RegisteredPropertyListImpl::getObjectFromComponents(
-    const vector<string> &components,
-    int32_t elements, 
-    AccessType accessType)
-{
-    TRACE(CL_LOG, "getObjectFromComponents");
-
-    /* 
-     * Set to the full size of the vector.
-     */
-    if (elements == -1) {
-        elements = components.size();
-    }
-
-   if (!isValidKey(components, elements)) {
-        LOG_DEBUG(CL_LOG, 
-                  "getObjectFromComponents: Couldn't find key"
-                  " with %d elements",
-                  elements);
-        return NULL;
-    }
-    
-    int32_t parentGroupCount = 
-        NotifyableKeyManipulator::removeObjectFromComponents(components, 
-                                                             elements);
-    if (parentGroupCount == -1) {
-        return NULL;
-    }
-    NotifyableImpl *parent = getOps()->getNotifyableFromComponents(
-        vector<string>(), components, parentGroupCount, accessType);
-    if (parent == NULL) {
-        LOG_WARN(CL_LOG, "getObjectFromComponents: Tried to get "
-                 "parent with name %s",
-                 components.at(parentGroupCount - 1).c_str());
-        return NULL;
-    }
-
-    LOG_DEBUG(CL_LOG, 
-              "getObjectFromComponents: parent key = %s, "
-              "property list name = %s", 
-              parent->getKey().c_str(),
-              components.at(elements - 1).c_str());
-
-    PropertyListImpl *propertyList = dynamic_cast<PropertyListImpl *>(
-        getOps()->getNotifyable(
-            parent,
-            ClusterlibStrings::REGISTERED_PROPERTYLIST_NAME,
-            components.at(elements - 1),
-            accessType));
-    if (dynamic_cast<Root *>(parent) == NULL) {
-        parent->releaseRef();
-    }
-    return propertyList;
-}
-
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

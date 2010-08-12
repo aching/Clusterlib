@@ -6,6 +6,7 @@
 #include "clusterlib.h"
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 
 class MyTimerHandler
@@ -81,33 +82,35 @@ main(int ac, char **av)
 
         cerr << "After sleep in main thread." << endl;
 
-        Application *app = 
+        shared_ptr<Application> applicationSP = 
             c->getRoot()->getApplication("app", CREATE_IF_NOT_FOUND);
-        cerr << "app = " << app << endl;
-        Group *grp = app->getGroup("grp", CREATE_IF_NOT_FOUND);
+        cerr << "app = " << applicationSP << endl;
+        shared_ptr<Group> groupSP = 
+            applicationSP->getGroup("grp", CREATE_IF_NOT_FOUND);
 
-        app = c->getRoot()->getApplication("foo", CREATE_IF_NOT_FOUND);
-        cerr << "app = " << app << endl;
+        applicationSP = 
+            c->getRoot()->getApplication("foo", CREATE_IF_NOT_FOUND);
+        cerr << "app = " << applicationSP << endl;
 
-        grp = app->getGroup("bar", CREATE_IF_NOT_FOUND);
-        Node *node = grp->getNode("zop", CREATE_IF_NOT_FOUND);
-        DataDistribution *dst = app->getDataDistribution(
+        groupSP = applicationSP->getGroup("bar", CREATE_IF_NOT_FOUND);
+        shared_ptr<Node> nodeSP = groupSP->getNode("zop", CREATE_IF_NOT_FOUND);
+        shared_ptr<DataDistribution> dst = applicationSP->getDataDistribution(
             "dist",
             CREATE_IF_NOT_FOUND);
 
-        Application *app1 = dst->getMyApplication();
-        if (app != app1) {
+        shared_ptr<Application> application1SP = dst->getMyApplication();
+        if (applicationSP != application1SP) {
             throw
                 Exception("app->dist->app non-equivalence");
         }
-        Group *grp1 = node->getMyGroup();
-        if (grp != grp1) {
+        shared_ptr<Group> group1SP = nodeSP->getMyGroup();
+        if (groupSP != group1SP) {
             throw
                 Exception(
 		    "group->node->group non-equivalence");
         }
-        app1 = grp->getMyApplication();
-        if (app != app1) {
+        application1SP = groupSP->getMyApplication();
+        if (applicationSP != application1SP) {
             throw
                Exception("app->group->app non-equivalence");
         }

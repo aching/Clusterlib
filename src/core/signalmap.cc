@@ -14,8 +14,7 @@
 
 using namespace std;
 
-namespace clusterlib
-{
+namespace clusterlib {
     
 void
 SignalMap::addRefPredMutexCond(const string &key)
@@ -38,9 +37,9 @@ SignalMap::addRefPredMutexCond(const string &key)
                  "addRefPredMutexCond: Key (%s) already exists and has "
                  "refcount (%d)",
                  key.c_str(),
-                 it->second->refCount);
+                 it->second->getRefCount());
     }
-    it->second->refCount++;
+    it->second->incrRefCount();
 }
 
 void SignalMap::removeRefPredMutexCond(const string &key)
@@ -56,12 +55,12 @@ void SignalMap::removeRefPredMutexCond(const string &key)
         throw InconsistentInternalStateException(
             "removeRefPredMutexCond: Can not find key to remove ref");
     }
-    if (it->second->refCount == 0) {
+    if (it->second->getRefCount() == 0) {
         throw InconsistentInternalStateException(
             string("removeRefPredMutexCond: Ref count is 0 for key ") + key);
     }
-    it->second->refCount--;
-    if (it->second->refCount == 0) {
+    it->second->decrRefCount();
+    if (it->second->getRefCount() == 0) {
         if (it->second == NULL) {
             throw InconsistentInternalStateException(
                 string("removeRefPredMutexCond: No PredMutexCond for key ") +
@@ -114,7 +113,7 @@ bool SignalMap::waitUsecsPredMutexCond(const string &key, int64_t usecTimeout)
                 string("waitUsecsPredMutexCond: Cannot wait on missing key") +
                 key);
         }
-        if (it->second->refCount == 0) {
+        if (it->second->getRefCount() == 0) {
             throw InconsistentInternalStateException(
                 string("waitUsecsPredMutexCond: Ref count is 0 for key ") + 
                 key);
@@ -123,4 +122,4 @@ bool SignalMap::waitUsecsPredMutexCond(const string &key, int64_t usecTimeout)
     return it->second->predWaitUsecs(usecTimeout);
 }
 
-};
+}

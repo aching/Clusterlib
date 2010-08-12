@@ -14,17 +14,20 @@
 #include "safenotifyablemap.h"
 
 using namespace std;
+using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
     
-NotifyableImpl *
+shared_ptr<NotifyableImpl>
 SafeNotifyableMap::getNotifyable(const string &notifyableKey)
 {
-    map<string, NotifyableImpl *>::const_iterator ntpMapIt = 
+    map<string, shared_ptr<NotifyableImpl> >::const_iterator ntpMapIt = 
         m_ntpMap.find(notifyableKey);
+    LOG_DEBUG(CL_LOG,
+              "getNotifyable: Looking for key=%s",
+              notifyableKey.c_str());
     if (ntpMapIt == m_ntpMap.end()) {
-        return NULL;
+        return shared_ptr<NotifyableImpl>();
     }
     else {
         return ntpMapIt->second;
@@ -32,30 +35,36 @@ SafeNotifyableMap::getNotifyable(const string &notifyableKey)
 }
 
 void
-SafeNotifyableMap::uniqueInsert(NotifyableImpl &notifyable)
+SafeNotifyableMap::uniqueInsert(const shared_ptr<NotifyableImpl> &notifyableSP)
 {
-    map<std::string, NotifyableImpl *>::const_iterator ntpMapIt = 
-        m_ntpMap.find(notifyable.getKey());
+    map<string, shared_ptr<NotifyableImpl> >::const_iterator ntpMapIt = 
+        m_ntpMap.find(notifyableSP->getKey());
     if (ntpMapIt != m_ntpMap.end()) {
         ostringstream oss;
         oss << "uniqueInsert: Cache entry already exists for key=" 
-            << notifyable.getKey();
+            << notifyableSP->getKey();
         throw InconsistentInternalStateException(oss.str());
     }
     else {
-        m_ntpMap[notifyable.getKey()] = &notifyable;
+        m_ntpMap.insert(make_pair<string, shared_ptr<NotifyableImpl> >(
+                            notifyableSP->getKey(), 
+                            notifyableSP));
+        LOG_DEBUG(CL_LOG,
+                  "uniqueInsert: Adding name=%s, key=%s",
+                  notifyableSP->getName().c_str(),
+                  notifyableSP->getKey().c_str());
     }
 }
 
 void
-SafeNotifyableMap::erase(NotifyableImpl &notifyable)
+SafeNotifyableMap::erase(const shared_ptr<NotifyableImpl> &notifyableSP)
 {
-    map<std::string, NotifyableImpl *>::iterator ntpMapIt = 
-        m_ntpMap.find(notifyable.getKey());
+    map<string, shared_ptr<NotifyableImpl> >::iterator ntpMapIt = 
+        m_ntpMap.find(notifyableSP->getKey());
     if (ntpMapIt == m_ntpMap.end()) {
         ostringstream oss;
         oss << "uniqueInsert: Cache entry for key=" 
-            << notifyable.getKey() << " doesn't exist!";
+            << notifyableSP->getKey() << " doesn't exist!";
         throw InconsistentInternalStateException(oss.str());
     }
     else {
@@ -63,22 +72,14 @@ SafeNotifyableMap::erase(NotifyableImpl &notifyable)
     }
 }
 
-Mutex &
-SafeNotifyableMap::getLock()
+const Mutex &
+SafeNotifyableMap::getLock() const
 {
     return m_ntpMapLock;
 }
 
 SafeNotifyableMap::~SafeNotifyableMap()
 {
-    Locker l(&getLock());
-
-    map<string, NotifyableImpl *>::iterator ntpMapIt;
-    while (!m_ntpMap.empty()) {
-        ntpMapIt = m_ntpMap.begin();
-        delete ntpMapIt->second;
-        m_ntpMap.erase(ntpMapIt);
-    }
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

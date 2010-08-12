@@ -7,10 +7,12 @@ extern TestParams globalTestParams;
 
 using namespace clusterlib;
 using namespace std;
+using namespace boost;
 
 const string appName = "unittests-queue-app";
 
-class ClusterlibQueue : public MPITestFixture {
+class ClusterlibQueue : public MPITestFixture
+{
     CPPUNIT_TEST_SUITE(ClusterlibQueue);
     CPPUNIT_TEST(testQueue1);
     CPPUNIT_TEST(testQueue2);
@@ -25,10 +27,7 @@ class ClusterlibQueue : public MPITestFixture {
     ClusterlibQueue() 
         : MPITestFixture(globalTestParams),
           _factory(NULL),
-          _client0(NULL),
-          _app0(NULL),
-          _group0(NULL),
-          _queue0(NULL) {}
+          _client0(NULL) {}
     
     /* Runs prior to each test */
     virtual void setUp() 
@@ -72,8 +71,7 @@ class ClusterlibQueue : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(_queue0);
             _queue0->put(data);
             MPI_CPPUNIT_ASSERT(_queue0->size() == 1);
-            string value;
-            _queue0->take(value);
+            string value = _queue0->take();
             MPI_CPPUNIT_ASSERT(value == data);
             MPI_CPPUNIT_ASSERT(_queue0->size() == 0);
         }
@@ -167,7 +165,7 @@ class ClusterlibQueue : public MPITestFixture {
         barrier(_factory, true);
 
         if (isMyRank(0)) {
-            _queue0 = _group0->getQueue(name);
+            _queue0 = _group0->getQueue(name, LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(_queue0);
             /*
              * Wait a half a second first - in most case, put() will
@@ -177,10 +175,9 @@ class ClusterlibQueue : public MPITestFixture {
             _queue0->put(data);
         }
         else if (isMyRank(1)) {
-            _queue0 = _group0->getQueue(name);
+            _queue0 = _group0->getQueue(name, LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(_queue0);
-            string newData;
-            _queue0->take(newData);
+            string newData = _queue0->take();
             MPI_CPPUNIT_ASSERT(newData.compare(data) == 0);
         }
     }
@@ -214,14 +211,13 @@ class ClusterlibQueue : public MPITestFixture {
 
         /* Half put() and half take() */
         if ((getRank() % 2) == 0) {
-            _queue0 = _group0->getQueue(name);
+            _queue0 = _group0->getQueue(name, LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(_queue0);
-            string newData;
-            _queue0->take(newData);
+            string newData = _queue0->take();
             MPI_CPPUNIT_ASSERT(newData.compare(data) == 0);
         }
         else {
-            _queue0 = _group0->getQueue(name);
+            _queue0 = _group0->getQueue(name, LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(_queue0);
             usleep(500000);
             _queue0->put(data);
@@ -251,7 +247,7 @@ class ClusterlibQueue : public MPITestFixture {
         
         bool found = false;
         if (isMyRank(0)) {
-            _queue0 = _group0->getQueue(name);
+            _queue0 = _group0->getQueue(name, LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(_queue0);
             /* Shouldn't be found in 1 msecs */
             string newData;
@@ -261,7 +257,7 @@ class ClusterlibQueue : public MPITestFixture {
                   << ") data (" << data << ")" << endl;
         }
         if (isMyRank(1)) {
-            _queue0 = _group0->getQueue(name);
+            _queue0 = _group0->getQueue(name, LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(_queue0);
             /*
              * Wait a half a second first - in most case, put() will
@@ -286,9 +282,9 @@ class ClusterlibQueue : public MPITestFixture {
   private:
     Factory *_factory;
     Client *_client0;
-    Application *_app0;
-    Group *_group0;
-    Queue *_queue0;
+    shared_ptr<Application> _app0;
+    shared_ptr<Group> _group0;
+    shared_ptr<Queue> _queue0;
 };
 
 /* Registers the fixture into the 'registry' */

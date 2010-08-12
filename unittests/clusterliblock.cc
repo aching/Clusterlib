@@ -1,16 +1,18 @@
 #include "testparams.h"
 #include "MPITestFixture.h"
-#include "clusterlibinternal.h"
+#include "clusterlib.h"
 
 extern TestParams globalTestParams;
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 
 const string appName = "unittests-lock-app";
 const string groupName = "lock-group";
 
-class ClusterlibLock : public MPITestFixture {
+class ClusterlibLock : public MPITestFixture
+{
     CPPUNIT_TEST_SUITE(ClusterlibLock);
     CPPUNIT_TEST(testLock1);
     CPPUNIT_TEST(testLock2);
@@ -199,8 +201,8 @@ class ClusterlibLock : public MPITestFixture {
   private:
     Factory *_factory;
     Client *_client0;
-    Application *_app0;
-    Group *_group0;
+    shared_ptr<Application> _app0;
+    shared_ptr<Group> _group0;
 };
 
 /* Registers the fixture into the 'registry' */

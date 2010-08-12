@@ -12,8 +12,7 @@
 #ifndef	_CL_UINT64HASHRANGE_H_
 #define _CL_UINT64HASHRANGE_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 class Uint64HashRange 
     : public HashRange

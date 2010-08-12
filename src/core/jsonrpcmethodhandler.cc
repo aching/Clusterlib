@@ -20,8 +20,7 @@ using namespace json::rpc;
 /* Wait up to 1 second for a queue element */
 static const uint64_t recvQueueMsecTimeOut = 1000;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 void 
 JSONRPCMethodHandler::handleUserEvent(Event e)

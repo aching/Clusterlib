@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 
 void
@@ -217,10 +218,11 @@ TestParams::resetClPropertyList()
 {
     if (m_updateClPropertyList) {
 	Factory *factory = new Factory(getZkServerPortList());
-        Root *root = factory->createClient()->getRoot();
-        PropertyList *propertyList = root->getPropertyList(m_clPropertyList);
-        if (propertyList != NULL) {
-            propertyList->remove();
+        shared_ptr<Root> rootSP = factory->createClient()->getRoot();
+        shared_ptr<PropertyList> propertyListSP = 
+            rootSP->getPropertyList(m_clPropertyList, LOAD_FROM_REPOSITORY);
+        if (propertyListSP != NULL) {
+            propertyListSP->remove();
         }
     }
 }

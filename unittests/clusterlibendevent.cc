@@ -4,12 +4,14 @@
 extern TestParams globalTestParams;
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 using namespace json;
 
 const string appName = "unittests-endevent-app";
 
-class ClusterlibEndEvent : public MPITestFixture {
+class ClusterlibEndEvent : public MPITestFixture
+{
     CPPUNIT_TEST_SUITE(ClusterlibEndEvent);
     CPPUNIT_TEST(testEndEvent1);
     CPPUNIT_TEST_SUITE_END();
@@ -18,27 +20,27 @@ class ClusterlibEndEvent : public MPITestFixture {
     class HealthUpdater : public Periodic {
       public:
         HealthUpdater(int64_t msecsFrequency, 
-                      Notifyable *notifyable, 
+                      const shared_ptr<Notifyable> &notifyableSP, 
                       ClientData *clientData)
-            : Periodic(msecsFrequency, notifyable, clientData) {}
+            : Periodic(msecsFrequency, notifyableSP, clientData) {}
         
         virtual void run() 
         {
-            Notifyable *notifyable = getNotifyable();
+            shared_ptr<Notifyable> notifyableSP = getNotifyable();
             
-            assert(notifyable != NULL);
+            assert(notifyableSP != NULL);
             
             JSONValue jsonHealth;
-            notifyable->cachedCurrentState().get(Node::HEALTH_KEY, jsonHealth);
+            notifyableSP->cachedCurrentState().get(
+                Node::HEALTH_KEY, jsonHealth);
         }    
     };
 
     ClusterlibEndEvent() 
         : MPITestFixture(globalTestParams),
           _factory(NULL),
-          _client(NULL),
-          _app(NULL) {}
-    
+          _client(NULL) {}
+
     /**
      * Runs prior to each test 
      */
@@ -50,13 +52,15 @@ class ClusterlibEndEvent : public MPITestFixture {
 	_client = _factory->createClient();
 	MPI_CPPUNIT_ASSERT(_client != NULL);
         if (isMyRank(0)) {
-            _app = _client->getRoot()->getApplication(appName);
+            _app = _client->getRoot()->getApplication(appName,
+                                                      LOAD_FROM_REPOSITORY);
             if (_app != NULL) {
                 _app->remove(true);
             }
         }
         barrier(_factory, true);
-	_app = _client->getRoot()->getApplication(appName, CREATE_IF_NOT_FOUND);
+	_app = _client->getRoot()->getApplication(
+            appName, CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_app != NULL);
     }
 
@@ -86,7 +90,7 @@ class ClusterlibEndEvent : public MPITestFixture {
         stringstream ss;
         ss << "node" << getRank();
         
-        Node *myNode = _app->getNode(ss.str(), CREATE_IF_NOT_FOUND);
+        shared_ptr<Node> myNode = _app->getNode(ss.str(), CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(myNode != NULL);
         myNode->acquireOwnership();
         HealthUpdater updater(1, myNode, NULL);
@@ -105,7 +109,7 @@ class ClusterlibEndEvent : public MPITestFixture {
   private:
     Factory *_factory;
     Client *_client;
-    Application *_app;
+    shared_ptr<Application> _app;
 };
 
 /* Registers the fixture into the 'registry' */

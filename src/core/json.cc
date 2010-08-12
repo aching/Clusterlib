@@ -602,4 +602,4 @@ namespace json {
 
         return object;
     }
-};
+}

@@ -10,7 +10,7 @@ using namespace std;
 namespace httpd { namespace microhttpd {
 
 MicroHttpServer::MicroHttpServer(uint16_t port, 
-                                 const std::string &rootDirectory, 
+                                 const string &rootDirectory, 
                                  bool ipv6) 
     : HttpServer(port, rootDirectory, ipv6), httpDaemon(NULL) 
 {

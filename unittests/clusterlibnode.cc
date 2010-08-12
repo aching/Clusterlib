@@ -7,10 +7,12 @@ extern TestParams globalTestParams;
 
 using namespace clusterlib;
 using namespace std;
+using namespace boost;
 
 const string appName = "unittests-node-app";
 
-class ClusterlibNode : public MPITestFixture {
+class ClusterlibNode : public MPITestFixture
+{
     CPPUNIT_TEST_SUITE(ClusterlibNode);
     CPPUNIT_TEST(testNode1);
     CPPUNIT_TEST_SUITE_END();
@@ -20,9 +22,9 @@ class ClusterlibNode : public MPITestFixture {
     ClusterlibNode() 
         : MPITestFixture(globalTestParams),
           _factory(NULL),
-          _client0(NULL),
-          _app0(NULL),
-          _node0(NULL) {}
+          _client0(NULL) 
+    {
+    }
     
     /* Runs prior to each test */
     virtual void setUp() 
@@ -32,7 +34,9 @@ class ClusterlibNode : public MPITestFixture {
 	MPI_CPPUNIT_ASSERT(_factory != NULL);
 	_client0 = _factory->createClient();
 	MPI_CPPUNIT_ASSERT(_client0 != NULL);
-	_app0 = _client0->getRoot()->getApplication(
+        _root = _client0->getRoot();
+        MPI_CPPUNIT_ASSERT(_root != NULL);
+	_app0 = _root->getApplication(
             appName, CREATE_IF_NOT_FOUND);
 	MPI_CPPUNIT_ASSERT(_app0 != NULL);
     }
@@ -70,8 +74,9 @@ class ClusterlibNode : public MPITestFixture {
   private:
     Factory *_factory;
     Client *_client0;
-    Application *_app0;
-    Node *_node0;
+    shared_ptr<Root> _root;
+    shared_ptr<Application> _app0;
+    shared_ptr<Node> _node0;
 };
 
 /* Registers the fixture into the 'registry' */

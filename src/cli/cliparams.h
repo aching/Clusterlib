@@ -14,14 +14,14 @@
 
 #include "clicommand.h"
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * CLI test parameters.  This is a singleton class per the Gamma
  * method.
  */
-class CliParams {
+class CliParams
+{
   public:
     static CliParams *getInstance() 
     {

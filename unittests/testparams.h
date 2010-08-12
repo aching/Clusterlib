@@ -5,7 +5,8 @@
 /**
  * Global test parameters class to be shared with all tests
  */
-class TestParams {
+class TestParams
+{
   public:
     enum OutputType {
         CONSOLE,

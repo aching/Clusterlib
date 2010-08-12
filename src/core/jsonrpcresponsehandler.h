@@ -14,8 +14,7 @@
 #ifndef _CL_JSONRPCRESPONSEHANDLER_H_
 #define _CL_JSONRPCRESPONSEHANDLER_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Handle JSON-RPC responses in the response queue.
@@ -26,13 +25,13 @@ class JSONRPCResponseHandler : public UserEventHandler
     /**
      * Constructor.
      */
-    JSONRPCResponseHandler(Queue *respQueue,
-                           Queue *completedQueue,
+    JSONRPCResponseHandler(const boost::shared_ptr<Queue> &respQueueSP,
+                           const boost::shared_ptr<Queue> &completedQueueSP,
                            Client *client,
                            SignalMap *responseSignalMap)
-        : UserEventHandler(respQueue, EN_QUEUECHILDCHANGE, NULL, true),
-          m_respQueue(respQueue),
-          m_completedQueue(completedQueue),
+        : UserEventHandler(respQueueSP, EN_QUEUECHILDCHANGE, NULL, true),
+          m_respQueueSP(respQueueSP),
+          m_completedQueueSP(completedQueueSP),
           m_responseSignalMap(responseSignalMap) 
     {
         m_client = dynamic_cast<ClientImpl *>(client);
@@ -44,12 +43,12 @@ class JSONRPCResponseHandler : public UserEventHandler
     /**
      * The response queue for JSON-RPC responses.
      */
-    Queue *m_respQueue;
+    boost::shared_ptr<Queue> m_respQueueSP;
 
     /**
      * The completed queue for JSON-RPC responses (or errors).
      */
-    Queue *m_completedQueue;
+    boost::shared_ptr<Queue> m_completedQueueSP;
 
     /**
      * The clusterlib client for this handler.

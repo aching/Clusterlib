@@ -20,11 +20,11 @@
 #include "generalcommands.h"
 
 using namespace std;
+using namespace boost;
 using namespace json;
 using namespace json::rpc;
 
-namespace clusterlib 
-{
+namespace clusterlib  {
 
 const string SetLogLevel::LEVEL_ARG = "level";
 
@@ -108,19 +108,20 @@ RemoveNotifyable::RemoveNotifyable(Client *client)
 void
 RemoveNotifyable::action() 
 {
-    Notifyable *ntp = getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
-        getClient()->getRoot());
-    if (ntp == NULL) {
+    shared_ptr<Notifyable> notifyableSP = 
+        getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+            getClient()->getRoot());
+    if (notifyableSP == NULL) {
         throw InvalidMethodException(
             "action: Failed to get notifyable for key " +
             getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
     
-    string key = ntp->getKey();
-    string name = ntp->getName();
+    string key = notifyableSP->getKey();
+    string name = notifyableSP->getName();
     bool removeChildren = 
         getArg(CliCommand::CHILDREN_ARG).getBoolArg();
-    ntp->remove(removeChildren);
+    notifyableSP->remove(removeChildren);
     cout << "Removed notifyable with name (" 
          << name << ") and key (" << key << ")" << endl;
 }
@@ -151,16 +152,17 @@ GetLockBids::GetLockBids(Client *client)
 void 
 GetLockBids::action()
 {
-    Notifyable *ntp = getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
-        getClient()->getRoot());
-    if (ntp == NULL) {
+    shared_ptr<Notifyable> notifyableSP = 
+        getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+            getClient()->getRoot());
+    if (notifyableSP == NULL) {
         throw InvalidMethodException(
             "GetLockBids: Failed to get notifyable for key " +
             getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
     
     bool children = getArg(CliCommand::CHILDREN_ARG).getBoolArg();
-    NameList lockBids = ntp->getLockBids(children);
+    NameList lockBids = notifyableSP->getLockBids(children);
     NameList::const_iterator lockBidsIt;
     for (lockBidsIt = lockBids.begin(); 
          lockBidsIt != lockBids.end();
@@ -190,16 +192,17 @@ GetChildren::GetChildren(Client *client)
 void 
 GetChildren::action() 
 {
-    Notifyable *ntp = getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
-        getClient()->getRoot());
-    if (ntp == NULL) {
+    shared_ptr<Notifyable> notifyableSP = 
+        getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+            getClient()->getRoot());
+    if (notifyableSP == NULL) {
         throw InvalidMethodException(
             "GetChildren: Failed to get notifyable for key " +
             getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
     
     NotifyableList::const_iterator nlIt;
-    NotifyableList nl = ntp->getMyChildren();
+    NotifyableList nl = notifyableSP->getMyChildren();
     CliParams *params = CliParams::getInstance();
     for (nlIt = nl.begin(); nlIt != nl.end(); nlIt++) {
         cout << (*nlIt)->getKey() << endl;
@@ -229,9 +232,10 @@ void
 GetAttributes::action() 
 {
     NotifyableList::const_iterator it;
-    Notifyable *ntp = getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
-        getClient()->getRoot());
-    if (ntp == NULL) {
+    shared_ptr<Notifyable> notifyableSP = 
+        getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+            getClient()->getRoot());
+    if (notifyableSP == NULL) {
         throw InvalidMethodException(
             "GetAttributes: Failed to get notifyable for key " +
             getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
@@ -240,102 +244,110 @@ GetAttributes::action()
     NameList names;
     NameList::const_iterator nameIt;
     CliParams *params = CliParams::getInstance();
-    if (dynamic_cast<Root *>(ntp) != NULL) {
+    if (dynamic_pointer_cast<Root>(notifyableSP) != NULL) {
         CliFormat::attributeOut("type", "Root");
-        Root *root = dynamic_cast<Root *>(ntp);
-        names = root->getApplicationNames();
+        shared_ptr<Root> rootSP = dynamic_pointer_cast<Root>(notifyableSP);
+        names = rootSP->getApplicationNames();
         if (!names.empty()) {
             for (nameIt = names.begin(); nameIt != names.end(); nameIt++) {
                 params->addToKeySet(
-                    root->getApplication(*nameIt)->getKey());
+                    rootSP->getApplication(
+                        *nameIt, LOAD_FROM_REPOSITORY)->getKey());
             }
             CliFormat::attributeOut("applications", names);
         }
     }
-    else if (dynamic_cast<Group *>(ntp) != NULL) {
-        if (dynamic_cast<Application *>(ntp) != NULL) {
+    else if (dynamic_pointer_cast<Group>(notifyableSP) != NULL) {
+        if (dynamic_pointer_cast<Application>(notifyableSP) != NULL) {
             CliFormat::attributeOut("type", "Application");
         }
         else {
             CliFormat::attributeOut("type", "Group");
         }
-        Group *group = dynamic_cast<Group *>(ntp);
-        names = group->getGroupNames();
+        shared_ptr<Group> groupSP = dynamic_pointer_cast<Group>(notifyableSP);
+        names = groupSP->getGroupNames();
         if (!names.empty()) {
             CliFormat::attributeOut("groups", names);
             for (nameIt = names.begin(); nameIt != names.end(); nameIt++) {
                 params->addToKeySet(
-                    group->getGroup(*nameIt)->getKey());
+                    groupSP->getGroup(*nameIt,
+                                      LOAD_FROM_REPOSITORY)->getKey());
             }
         }
-        names = group->getDataDistributionNames();
+        names = groupSP->getDataDistributionNames();
         if (!names.empty()) {
             CliFormat::attributeOut("data distributions", names);
             for (nameIt = names.begin(); nameIt != names.end(); nameIt++) {
                 params->addToKeySet(
-                    group->getDataDistribution(*nameIt)->getKey());
+                    groupSP->getDataDistribution(
+                        *nameIt,
+                        LOAD_FROM_REPOSITORY)->getKey());
             }
         }
-        names = group->getNodeNames();
+        names = groupSP->getNodeNames();
         if (!names.empty()) {
             CliFormat::attributeOut("nodes", names);
             for (nameIt = names.begin(); nameIt != names.end(); nameIt++) {
                 params->addToKeySet(
-                    group->getNode(*nameIt)->getKey());
+                    groupSP->getNode(*nameIt,
+                                     LOAD_FROM_REPOSITORY)->getKey());
             }
         }
     }
-    else if (dynamic_cast<DataDistribution *>(ntp) != NULL) {
+    else if (dynamic_pointer_cast<DataDistribution>(notifyableSP) != NULL) {
         CliFormat::attributeOut("type", "Data Distribution");
-        DataDistribution *dataDistribution = 
-            dynamic_cast<DataDistribution *>(ntp);
-        CliFormat::attributeOut("covered", 
-                                dataDistribution->cachedShards().isCovered());
+        shared_ptr<DataDistribution> dataDistributionSP = 
+            dynamic_pointer_cast<DataDistribution>(notifyableSP);
+        CliFormat::attributeOut(
+            "covered", 
+            dataDistributionSP->cachedShards().isCovered());
     }
-    else if (dynamic_cast<Node *>(ntp) != NULL) {
+    else if (dynamic_pointer_cast<Node>(notifyableSP) != NULL) {
         CliFormat::attributeOut("type", "Node");
-        Node *node = dynamic_cast<Node *>(ntp);
+        shared_ptr<Node> nodeSP = dynamic_pointer_cast<Node>(notifyableSP);
         bool useProcessSlots = false;
         int32_t maxProcessSlots = -1;
-        useProcessSlots = node->cachedProcessSlotInfo().getEnable();
-        maxProcessSlots = node->cachedProcessSlotInfo().getMaxProcessSlots();
+        useProcessSlots = nodeSP->cachedProcessSlotInfo().getEnable();
+        maxProcessSlots = nodeSP->cachedProcessSlotInfo().getMaxProcessSlots();
         CliFormat::attributeOut("use process slots", useProcessSlots);
         CliFormat::attributeOut("max process slots", maxProcessSlots);
 
-        names = node->getProcessSlotNames();
+        names = nodeSP->getProcessSlotNames();
         if (!names.empty()) {
             for (nameIt = names.begin(); nameIt != names.end(); nameIt++) {
                 params->addToKeySet(
-                    node->getProcessSlot(*nameIt)->getKey());
+                    nodeSP->getProcessSlot(*nameIt,
+                                           LOAD_FROM_REPOSITORY)->getKey());
             }
             CliFormat::attributeOut("process slots", names);
         }
     }
-    else if (dynamic_cast<ProcessSlot *>(ntp)) {
+    else if (dynamic_pointer_cast<ProcessSlot>(notifyableSP)) {
         CliFormat::attributeOut("type", "Process Slot");
-        ProcessSlot *processSlot = dynamic_cast<ProcessSlot *>(ntp);
+        shared_ptr<ProcessSlot> processSlotSP = 
+            dynamic_pointer_cast<ProcessSlot>(notifyableSP);
         CliFormat::attributeOut(
             "port arr", 
             json::JSONCodec::encode(
-                processSlot->cachedProcessInfo().getPortArr()));
+                processSlotSP->cachedProcessInfo().getPortArr()));
     }
-    else if (dynamic_cast<Queue *>(ntp)) {
+    else if (dynamic_pointer_cast<Queue>(notifyableSP)) {
         CliFormat::attributeOut("type", "Queue");
-        Queue *queue = dynamic_cast<Queue *>(ntp);
+        shared_ptr<Queue> queueSP = dynamic_pointer_cast<Queue>(notifyableSP);
         CliFormat::attributeOut("size", 
-                                json::JSONCodec::encode(queue->size()));
+                                json::JSONCodec::encode(queueSP->size()));
     }
-    else if (dynamic_cast<PropertyList *>(ntp) != NULL) {
+    else if (dynamic_pointer_cast<PropertyList>(notifyableSP) != NULL) {
         CliFormat::attributeOut("type", "Property List");
-        PropertyList *propertyList = 
-            dynamic_cast<PropertyList *>(ntp);
+        shared_ptr<PropertyList> propertyListSP = 
+            dynamic_pointer_cast<PropertyList>(notifyableSP);
         vector<JSONValue::JSONString> keyVec = 
-            propertyList->cachedKeyValues().getKeys();
+            propertyListSP->cachedKeyValues().getKeys();
         for (vector<JSONValue::JSONString>::const_iterator it = keyVec.begin();
              it != keyVec.end();
              ++it) {
             JSONValue jsonValue;
-            bool found = propertyList->cachedKeyValues().get(*it, jsonValue);
+            bool found = propertyListSP->cachedKeyValues().get(*it, jsonValue);
             if (found) {
                 CliFormat::attributeOut(
                     *it, jsonValue.get<JSONValue::JSONString>());
@@ -347,12 +359,14 @@ GetAttributes::action()
      * All notifyables can have property lists (if not a property
      * list)
      */
-    if (dynamic_cast<PropertyList *>(ntp) == NULL) {
-        names = ntp->getPropertyListNames();
+    if (dynamic_pointer_cast<PropertyList>(notifyableSP) == NULL) {
+        names = notifyableSP->getPropertyListNames();
         if (!names.empty()) {
             for (nameIt = names.begin(); nameIt != names.end(); nameIt++) {
                 params->addToKeySet(
-                    ntp->getPropertyList(*nameIt)->getKey());
+                    notifyableSP->getPropertyList(
+                        *nameIt,
+                        LOAD_FROM_REPOSITORY)->getKey());
             }
             CliFormat::attributeOut("property lists", names);
         }
@@ -360,13 +374,15 @@ GetAttributes::action()
 
     CliFormat::attributeOut(
         "current state", 
-        JSONCodec::encode(ntp->cachedCurrentState().getHistoryArray()));
+        JSONCodec::encode(
+            notifyableSP->cachedCurrentState().getHistoryArray()));
     CliFormat::attributeOut(
         "desired state", 
-        JSONCodec::encode(ntp->cachedDesiredState().getHistoryArray()));
+        JSONCodec::encode(
+            notifyableSP->cachedDesiredState().getHistoryArray()));
     string id;
     int64_t msecs;
-    bool hasOwner = ntp->getOwnershipInfo(&id, &msecs);
+    bool hasOwner = notifyableSP->getOwnershipInfo(&id, &msecs);
     CliFormat::attributeOut("has owner", hasOwner); 
     if (hasOwner) {
         CliFormat::attributeOut("owner id", id);
@@ -406,20 +422,22 @@ SetCurrentState::SetCurrentState(Client *client)
 void
 SetCurrentState::action() 
 {
-    Notifyable *ntp = getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+    shared_ptr<Notifyable> notifyableSP = 
+        getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
         getClient()->getRoot());
-    if (ntp == NULL) {
+    if (notifyableSP == NULL) {
         throw InvalidMethodException(
             "action: Failed to get notifyable for key " +
             getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
     
-    ntp->cachedCurrentState().set(getArg(CliCommand::KEY_ARG).getStringArg(), 
-                                  getArg(CliCommand::VALUE_ARG).getJsonArg());
-    ntp->cachedCurrentState().publish();
+    notifyableSP->cachedCurrentState().set(
+        getArg(CliCommand::KEY_ARG).getStringArg(), 
+        getArg(CliCommand::VALUE_ARG).getJsonArg());
+    notifyableSP->cachedCurrentState().publish();
 
     cout << "Set current state for notifyable with name= " 
-         << ntp->getName() << " key='" 
+         << notifyableSP->getName() << " key='" 
          << getArg(CliCommand::KEY_ARG).getStringArg() << "',value='"
          << getArg(CliCommand::VALUE_ARG).getNativeArg() << "'" << endl;
 }
@@ -455,20 +473,21 @@ SetDesiredState::SetDesiredState(Client *client)
 void
 SetDesiredState::action() 
 {
-    Notifyable *ntp = getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
+    shared_ptr<Notifyable> notifyableSP = getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
         getClient()->getRoot());
-    if (ntp == NULL) {
+    if (notifyableSP == NULL) {
         throw InvalidMethodException(
             "action: Failed to get notifyable for key " +
             getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
     
-    ntp->cachedDesiredState().set(getArg(CliCommand::KEY_ARG).getStringArg(), 
-                                  getArg(CliCommand::VALUE_ARG).getJsonArg());
-    ntp->cachedDesiredState().publish();
+    notifyableSP->cachedDesiredState().set(
+        getArg(CliCommand::KEY_ARG).getStringArg(), 
+        getArg(CliCommand::VALUE_ARG).getJsonArg());
+    notifyableSP->cachedDesiredState().publish();
 
     cout << "Set desired state for notifyable with name= " 
-         << ntp->getName() << " key='" 
+         << notifyableSP->getName() << " key='" 
          << getArg(CliCommand::KEY_ARG).getStringArg() << "',value='"
          << getArg(CliCommand::VALUE_ARG).getNativeArg() << "'" << endl;
 }
@@ -496,14 +515,14 @@ AddApplication::AddApplication(Client *client)
 void 
 AddApplication::action() 
 {
-    Root *root = getClient()->getRoot();
-    if (root == NULL) {
+    shared_ptr<Root> rootSP = getClient()->getRoot();
+    if (rootSP == NULL) {
         throw InconsistentInternalStateException(
             "action: Failed to get root");
     }
-    Application *application = root->getApplication(    
+    shared_ptr<Application> applicationSP = rootSP->getApplication(    
         getArg(NOTIFYABLE_NAME_ARG).getStringArg(), CREATE_IF_NOT_FOUND);
-    if (application == NULL) {
+    if (applicationSP == NULL) {
         throw InvalidMethodException(
             "action: Failed to get application " + 
             getArg(NOTIFYABLE_NAME_ARG).getStringArg());
@@ -536,17 +555,17 @@ AddGroup::AddGroup(Client *client)
 void
 AddGroup::action() 
 {
-    Group *group = dynamic_cast<Group *>(
+    shared_ptr<Group> groupSP = dynamic_pointer_cast<Group>(
         getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
             getClient()->getRoot()));
-    if (group == NULL) {
+    if (groupSP == NULL) {
         throw InvalidMethodException(
             "action: Failed to get notifyable for key " +
             getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
-    group = group->getGroup(
+    groupSP = groupSP->getGroup(
         getArg(NOTIFYABLE_NAME_ARG).getStringArg(), CREATE_IF_NOT_FOUND);
-    if (group == NULL) {
+    if (groupSP == NULL) {
         throw InvalidMethodException(
             "action: Failed to get group " + 
             getArg(NOTIFYABLE_NAME_ARG).getStringArg());
@@ -579,18 +598,18 @@ AddDataDistribution::AddDataDistribution(Client *client)
 void
 AddDataDistribution::action() 
 {
-    Group *group = dynamic_cast<Group *>(
+    shared_ptr<Group> groupSP = dynamic_pointer_cast<Group>(
         getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
             getClient()->getRoot()));
-    if (group == NULL) {
+    if (groupSP == NULL) {
         throw InvalidMethodException(
             "action: Failed to get notifyable for key " +
             getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
-    DataDistribution *dataDistribution = 
-        group->getDataDistribution(
+    shared_ptr<DataDistribution> dataDistributionSP = 
+        groupSP->getDataDistribution(
             getArg(NOTIFYABLE_NAME_ARG).getStringArg(), CREATE_IF_NOT_FOUND);
-    if (dataDistribution == NULL) {
+    if (dataDistributionSP == NULL) {
         throw InvalidMethodException(
             "action: Failed to get data distribution " + 
             getArg(NOTIFYABLE_NAME_ARG).getStringArg());
@@ -623,18 +642,18 @@ AddNode::AddNode(Client *client)
 void
 AddNode::action() 
 {
-    Group *group = dynamic_cast<Group *>(
+    shared_ptr<Group> groupSP = dynamic_pointer_cast<Group>(
         getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
             getClient()->getRoot()));
-    if (group == NULL) {
+    if (groupSP == NULL) {
         throw InvalidMethodException(
             "action: Failed to get notifyable for key " +
             getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
-    Node *node = 
-        group->getNode(
+    shared_ptr<Node> nodeSP = 
+        groupSP->getNode(
             getArg(NOTIFYABLE_NAME_ARG).getStringArg(), CREATE_IF_NOT_FOUND);
-    if (node == NULL) {
+    if (nodeSP == NULL) {
         throw InvalidMethodException(
             "action: Failed to get node " + 
             getArg(NOTIFYABLE_NAME_ARG).getStringArg());
@@ -667,18 +686,18 @@ AddPropertyList::AddPropertyList(Client *client)
 void
 AddPropertyList::action() 
 {
-    Group *group = dynamic_cast<Group *>(
+    shared_ptr<Group> groupSP = dynamic_pointer_cast<Group>(
         getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
             getClient()->getRoot()));
-    if (group == NULL) {
+    if (groupSP == NULL) {
         throw InvalidMethodException(
             "action: Failed to get notifyable for key " +
             getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
-    PropertyList *propertyList = 
-        group->getPropertyList(
+    shared_ptr<PropertyList> propertyListSP = 
+        groupSP->getPropertyList(
             getArg(NOTIFYABLE_NAME_ARG).getStringArg(), CREATE_IF_NOT_FOUND);
-    if (propertyList == NULL) {
+    if (propertyListSP == NULL) {
         throw InvalidMethodException(
             "action: Failed to get property List " + 
             getArg(NOTIFYABLE_NAME_ARG).getStringArg());
@@ -711,18 +730,18 @@ AddQueue::AddQueue(Client *client)
 void
 AddQueue::action() 
 {
-    Group *group = dynamic_cast<Group *>(
+    shared_ptr<Group> groupSP = dynamic_pointer_cast<Group>(
         getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
             getClient()->getRoot()));
-    if (group == NULL) {
+    if (groupSP == NULL) {
         throw InvalidMethodException(
             "action: Failed to get notifyable for key " +
             getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
-    Queue *queue = 
-        group->getQueue(
+    shared_ptr<Queue> queueSP = 
+        groupSP->getQueue(
             getArg(NOTIFYABLE_NAME_ARG).getStringArg(), CREATE_IF_NOT_FOUND);
-    if (queue == NULL) {
+    if (queueSP == NULL) {
         throw InvalidMethodException(
             "action: Failed to get queue " + 
             getArg(NOTIFYABLE_NAME_ARG).getStringArg());
@@ -896,7 +915,7 @@ string
 AddAlias::helpMessage() 
 {
     return "Create an alias for replacing values.  For example, "
-        "for key ntp, 'root' --> '/_clusterlib/1.0/root' ";
+        "for key notifyableSP, 'root' --> '/_clusterlib/1.0/root' ";
 }
  
 AddAlias::~AddAlias() {}
@@ -956,9 +975,10 @@ GetAliasReplacement::~GetAliasReplacement() {}
 const string JSONRPCCommand::REQUEST_ARG = "req";
 const string JSONRPCCommand::PARAM_ARRAY_ARG = "params";
 
-JSONRPCCommand::JSONRPCCommand(Client *client, Queue *respQueue) 
+JSONRPCCommand::JSONRPCCommand(Client *client, 
+                               const shared_ptr<Queue> &respQueueSP) 
     : CliCommand("jsonRpc", client),
-      m_respQueue(respQueue)
+      m_respQueueSP(respQueueSP)
 {
     addArg(CliCommand::NOTIFYABLE_ARG,
            "", 
@@ -980,10 +1000,10 @@ JSONRPCCommand::JSONRPCCommand(Client *client, Queue *respQueue)
 void
 JSONRPCCommand::action() 
 {
-    Queue *queue = dynamic_cast<Queue *>(
+    shared_ptr<Queue> queueSP = dynamic_pointer_cast<Queue>(
         getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
             getClient()->getRoot()));
-    if (queue == NULL) {
+    if (queueSP == NULL) {
         throw Exception("action: failed to get the queue " +
                         getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
@@ -999,7 +1019,7 @@ JSONRPCCommand::action()
     JSONValue::JSONObject paramObj = 
         paramArr[0].get<JSONValue::JSONObject>();
     paramObj[ClusterlibStrings::JSONOBJECTKEY_RESPQUEUEKEY] = 
-        m_respQueue->getKey();
+        m_respQueueSP->getKey();
     paramArr.clear();
     paramArr.push_back(paramObj);
     auto_ptr<GenericRequest> req;
@@ -1008,7 +1028,7 @@ JSONRPCCommand::action()
                   getClient(), 
                   getArg(JSONRPCCommand::REQUEST_ARG).getNativeArg()));
     req->setRPCParams(paramArr);
-    req->setDestination(queue->getKey());
+    req->setDestination(queueSP->getKey());
     req->sendRequest();
     req->waitResponse();
     if ((req->getResponseError()).type() != typeid(JSONValue::JSONNull)) {
@@ -1049,11 +1069,11 @@ ManageProcessSlot::ManageProcessSlot(Client *client)
 void
 ManageProcessSlot::action() 
 {
-    ProcessSlot *processSlot = 
-        dynamic_cast<ProcessSlot * >(
+    shared_ptr<ProcessSlot> processSlotSP = 
+        dynamic_pointer_cast<ProcessSlot>(
             getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
                 getClient()->getRoot()));
-    if (processSlot == NULL) {
+    if (processSlotSP == NULL) {
         throw Exception("action: failed to get " + 
                         getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
@@ -1080,15 +1100,15 @@ ManageProcessSlot::action()
                 getArg(ManageProcessSlot::DESIRED_STATE_ARG).getNativeArg());
     }
 
-    NotifyableLocker l(processSlot);
+    NotifyableLocker l(processSlotSP);
 
-    processSlot->cachedDesiredState().set(
+    processSlotSP->cachedDesiredState().set(
         ProcessSlot::PROCESS_STATE_KEY,
         managedState);
-    processSlot->cachedDesiredState().set(
+    processSlotSP->cachedDesiredState().set(
         ProcessSlot::PROCESS_STATE_SET_MSECS_KEY,
         TimerService::getCurrentTimeMsecs());
-    processSlot->cachedDesiredState().publish();
+    processSlotSP->cachedDesiredState().publish();
 }
 
 string
@@ -1119,20 +1139,20 @@ ManageActiveNode::ManageActiveNode(Client *client)
 void
 ManageActiveNode::action() 
 {
-    Node *node = dynamic_cast<Node * >(
+    shared_ptr<Node> nodeSP = dynamic_pointer_cast<Node>(
         getArg(CliCommand::NOTIFYABLE_ARG).getNotifyableArg(
             getClient()->getRoot()));
-    if (node == NULL) {
+    if (nodeSP == NULL) {
         throw Exception("action: failed to get " + 
                         getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
 
-    NotifyableLocker l(node);
+    NotifyableLocker l(nodeSP);
 
     bool start = getArg(ManageActiveNode::START_ARG).getBoolArg();
-    node->cachedDesiredState().set(
+    nodeSP->cachedDesiredState().set(
         Node::ACTIVENODE_SHUTDOWN, !start);
-    node->cachedDesiredState().publish();
+    nodeSP->cachedDesiredState().publish();
 }
 
 string
@@ -1161,7 +1181,7 @@ AggZookeeperState::action()
     ZookeeperPeriodicCheck singleCheck(
         0, 
         getArg(AggZookeeperState::ZKSERVER_LIST_ARG).getStringArg(),
-        NULL);
+        shared_ptr<Root>());
     singleCheck.run();
     JSONValue::JSONObject aggStatObj = singleCheck.getAggNodeState();
     JSONValue::JSONObject::const_iterator aggStatObjIt;

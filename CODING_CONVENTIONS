@@ -40,6 +40,8 @@ should be changed as necessary.
 
 Here is an example that illustrates all of the following
 
+namespace clusterlib {
+
 class ServerImpl
     : public virtual Server, 
       public virtual ClientImpl

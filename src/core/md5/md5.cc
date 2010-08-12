@@ -16,7 +16,6 @@
    MD5C.C - RSA Data Security, Inc., MD5 message-digest algorithm
    MDDRIVER.C - test driver for MD2, MD4 and MD5
 
-
    Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
 rights reserved.
 
@@ -41,17 +40,12 @@ documentation and/or software.
  */
 
 
-
-
 using namespace std;
 
 #include "md5.h"
 
 #include <assert.h>
 #include <strings.h>
-
-
-
 
 
 // MD5 simple initialization method
@@ -61,8 +55,6 @@ MD5::MD5(){
   init();
 
 }
-
-
 
 
 // MD5 block update operation. Continues an MD5 message-digest
@@ -88,7 +80,6 @@ void MD5::update (uint1 *input, uint4 input_length) {
 
   count[1] += ((uint4)input_length >> 29);
 
-
   buffer_space = 64 - buffer_index;  // how much space is left in buffer
 
   // Transform as many times as possible.
@@ -107,12 +98,9 @@ void MD5::update (uint1 *input, uint4 input_length) {
   else
     input_index=0;     // so we can buffer the whole input
 
-
   // and here we do the buffering:
   memcpy(buffer+buffer_index, input+input_index, input_length-input_index);
 }
-
-
 
 // MD5 update for files.
 // Like above, except that it works on files (and uses above as a primitive.)
@@ -128,9 +116,6 @@ void MD5::update(FILE *file){
   fclose (file);
 
 }
-
-
-
 
 
 
@@ -152,9 +137,6 @@ void MD5::update(istream& stream){
 
 
 
-
-
-
 // MD5 update for ifstreams.
 // Like update for files; see above.
 
@@ -173,12 +155,8 @@ void MD5::update(ifstream& stream){
 
 
 
-
-
-
 // MD5 finalization. Ends an MD5 message-digest operation, writing the
 // the message digest and zeroizing the context.
-
 
 void MD5::finalize (){
 
@@ -217,16 +195,12 @@ void MD5::finalize (){
 }
 
 
-
-
 MD5::MD5(FILE *file){
 
   init();  // must be called be all constructors
   update(file);
   finalize ();
 }
-
-
 
 
 MD5::MD5(istream& stream){
@@ -236,16 +210,12 @@ MD5::MD5(istream& stream){
   finalize();
 }
 
-
-
 MD5::MD5(ifstream& stream){
 
   init();  // must called by all constructors
   update (stream);
   finalize();
 }
-
-
 
 unsigned char *MD5::raw_digest(){
 
@@ -260,8 +230,6 @@ unsigned char *MD5::raw_digest(){
   memcpy(s, digest, 16);
   return s;
 }
-
-
 
 char *MD5::hex_digest(){
 
@@ -283,9 +251,6 @@ char *MD5::hex_digest(){
 }
 
 
-
-
-
 ostream& operator<<(ostream &stream, MD5 context){
 
   stream << context.hex_digest();
@@ -293,11 +258,7 @@ ostream& operator<<(ostream &stream, MD5 context){
 }
 
 
-
-
 // PRIVATE METHODS:
-
-
 
 void MD5::init(){
   finalized=0;  // we just started!
@@ -312,8 +273,6 @@ void MD5::init(){
   state[2] = 0x98badcfe;
   state[3] = 0x10325476;
 }
-
-
 
 // Constants for MD5Transform routine.
 // Although we could use C++ style constants, defines are actually better,
@@ -335,8 +294,6 @@ void MD5::init(){
 #define S42 10
 #define S43 15
 #define S44 21
-
-
 
 
 // MD5 basic transformation. Transforms state based on block.
@@ -430,8 +387,6 @@ void MD5::transform (uint1 block[64]){
 
 }
 
-
-
 // Encodes input (UINT4) into output (unsigned char). Assumes len is
 // a multiple of 4.
 void MD5::encode (uint1 *output, uint4 *input, uint4 len) {
@@ -447,8 +402,6 @@ void MD5::encode (uint1 *output, uint4 *input, uint4 len) {
 }
 
 
-
-
 // Decodes input (unsigned char) into output (UINT4). Assumes len is
 // a multiple of 4.
 void MD5::decode (uint4 *output, uint1 *input, uint4 len){
@@ -461,9 +414,6 @@ void MD5::decode (uint4 *output, uint1 *input, uint4 len){
 }
 
 
-
-
-
 // Note: Replace "for loop" with standard memcpy if possible.
 void MD5::memcpy (uint1 *output, uint1 *input, uint4 len){
 
@@ -472,8 +422,6 @@ void MD5::memcpy (uint1 *output, uint1 *input, uint4 len){
   for (i = 0; i < len; i++)
     output[i] = input[i];
 }
-
-
 
 // Note: Replace "for loop" with standard memset if possible.
 void MD5::memset (uint1 *output, uint1 value, uint4 len){
@@ -484,15 +432,11 @@ void MD5::memset (uint1 *output, uint1 value, uint4 len){
     output[i] = value;
 }
 
-
-
 // ROTATE_LEFT rotates x left n bits.
 
 inline unsigned int MD5::rotate_left  (uint4 x, uint4 n){
   return (x << n) | (x >> (32-n))  ;
 }
-
-
 
 
 // F, G, H and I are basic MD5 functions.
@@ -513,11 +457,8 @@ inline unsigned int MD5::I            (uint4 x, uint4 y, uint4 z){
   return y ^ (x | ~z);
 }
 
-
-
 // FF, GG, HH, and II transformations for rounds 1, 2, 3, and 4.
 // Rotation is separate from addition to prevent recomputation.
-
 
 inline void MD5::FF(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x, 
 		    uint4  s, uint4 ac){

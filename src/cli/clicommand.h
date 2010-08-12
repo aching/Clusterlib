@@ -16,8 +16,7 @@
 #include <getopt.h>
 #include <sstream>
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * A cli command.
@@ -142,10 +141,11 @@ class CliCommand
         /**
          * Get the argument as a Notifyable.
          *
-         * @param root The Clusterlib root.
+         * @param rootSP The Clusterlib root.
          * @return the argument as a Notifyable * or NULL if cannot be found.
          */
-        Notifyable *getNotifyableArg(Root *root) const;
+        boost::shared_ptr<Notifyable> getNotifyableArg(
+            const boost::shared_ptr<Root> &rootSP) const;
 
         /**
          * Get the argument as a JSONValue.

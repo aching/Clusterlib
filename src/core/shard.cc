@@ -12,14 +12,14 @@
 #include "clusterlibinternal.h"
 
 using namespace std;
+using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
-Root *
+shared_ptr<Root>
 Shard::getRoot() const
 {
-    return m_root;
+    return m_rootSP;
 }
 
 HashRange &
@@ -40,14 +40,14 @@ Shard::getEndRange() const
     return *m_endRange;
 }
 
-Notifyable *
+shared_ptr<Notifyable>
 Shard::getNotifyable() const
 {
     if (m_notifyableKey.empty()) {
-        return NULL;
+        return shared_ptr<Notifyable>();
     }
     else {
-        return m_root->getNotifyableFromKey(m_notifyableKey);
+        return m_rootSP->getNotifyableFromKey(m_notifyableKey);
     }
 }
 
@@ -63,12 +63,12 @@ Shard::getPriority() const
     return m_priority;
 }
 
-Shard::Shard(Root *root,
+Shard::Shard(const shared_ptr<Root> &rootSP,
              const HashRange &startRange, 
              const HashRange &endRange, 
-             std::string notifyableKey, 
+             string notifyableKey, 
              int32_t priority)
-    : m_root(root),
+    : m_rootSP(rootSP),
       m_startRange(&(startRange.create())),
       m_endRange(&(endRange.create())),
       m_notifyableKey(notifyableKey),
@@ -79,15 +79,14 @@ Shard::Shard(Root *root,
 }
 
 Shard::Shard()
-    : m_root(NULL),
-      m_startRange(NULL),
+    : m_startRange(NULL),
       m_endRange(NULL),
       m_priority(-1) 
 {
 }
 
 Shard::Shard(const Shard &other)
-    : m_root(other.getRoot()),
+    : m_rootSP(other.getRoot()),
       m_startRange(&(other.getStartRange().create())),
       m_endRange(&(other.getEndRange().create())),
       m_notifyableKey(other.getNotifyableKey()),
@@ -118,7 +117,7 @@ Shard::operator= (const Shard &other)
         m_endRange = &(other.getEndRange().create());
         *m_endRange = other.getEndRange();
     }
-    m_root = other.getRoot();
+    m_rootSP = other.getRoot();
     m_notifyableKey = other.getNotifyableKey();
     m_priority = other.getPriority();
     

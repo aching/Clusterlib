@@ -13,26 +13,22 @@
 #include "clusterlibinternal.h"
 #include "clusterlibrpc.h"
 
-#define LOG_LEVEL LOG_WARN
-#define MODULE_NAME "ClusterLib"
-
 using namespace std;
+using namespace boost;
 using namespace json;
 using namespace json::rpc;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 ClusterlibRPCRequest::ClusterlibRPCRequest(Client *client, 
                                            ClientData data) 
-    : m_destinationQueue(NULL),
-      m_gotResponse(false),
+    : m_gotResponse(false),
       m_data(data)
 {
     TRACE(CL_LOG, "ClusterlibRPCRequest");
 
     m_client = dynamic_cast<ClientImpl *>(client);
-    m_root = m_client->getRoot();
+    m_rootSP = m_client->getRoot();
 }
 
 void
@@ -40,10 +36,10 @@ ClusterlibRPCRequest::setDestination(const json::JSONValue &destination)
 {
     TRACE(CL_LOG, "setDestination");
 
-    m_destinationQueue = 
-         dynamic_cast<Queue *>(m_root->getNotifyableFromKey(
-                                   destination.get<JSONValue::JSONString>()));
-    if (m_destinationQueue == NULL) {
+    m_destinationQueueSP = 
+         dynamic_pointer_cast<Queue>(m_rootSP->getNotifyableFromKey(
+             destination.get<JSONValue::JSONString>()));
+    if (m_destinationQueueSP == NULL) {
         throw InvalidArgumentsException(
             string("setDestination: Invalid queue at key ") + 
             JSONCodec::encode(destination));
@@ -55,7 +51,7 @@ ClusterlibRPCRequest::getDestination()
 {
     TRACE(CL_LOG, "getDestination");
 
-    return m_destinationQueue->getKey();
+    return m_destinationQueueSP->getKey();
 }
 
 void
@@ -63,7 +59,7 @@ ClusterlibRPCRequest::sendRequest()
 {
     TRACE(CL_LOG, "sendRequest");
 
-    if (m_destinationQueue == NULL) {
+    if (m_destinationQueueSP == NULL) {
         throw InvalidArgumentsException("sendRequest: Destination is NULL");
     }
     else {
@@ -107,9 +103,9 @@ ClusterlibRPCRequest::sendRequest()
                   "sendRequest: Putting request (%s) on queue (%s) "
                   "with id (%s)",
                   JSONCodec::encode(rpcObj).c_str(),
-                  m_destinationQueue->getKey().c_str(),
+                  m_destinationQueueSP->getKey().c_str(),
                   m_id.c_str());
-        m_destinationQueue->put(JSONCodec::encode(rpcObj));
+        m_destinationQueueSP->put(JSONCodec::encode(rpcObj));
     }
 }
 
@@ -272,26 +268,26 @@ ClusterlibRPCRequest::isValidJSONRPCRequest(
 }
 
 ClusterlibRPCManager::ClusterlibRPCManager(
-    Root *root,
-    Queue *recvQueue,
-    Queue *completedQueue,
+    const shared_ptr<Root> &rootSP,
+    const shared_ptr<Queue> &recvQueueSP,
+    const shared_ptr<Queue> &completedQueueSP,
     int32_t completedQueueMaxSize,
-    PropertyList *rPCMethodHandlerPropertylist)
-    : m_root(root),
-      m_recvQueue(recvQueue),
-      m_completedQueue(completedQueue),
+    const shared_ptr<PropertyList> &rpcMethodHandlerPropertyListSP)
+    : m_rootSP(rootSP),
+      m_recvQueueSP(recvQueueSP),
+      m_completedQueueSP(completedQueueSP),
       m_completedQueueMaxSize(completedQueueMaxSize),
-      m_RPCMethodHandlerPropertyList(rPCMethodHandlerPropertylist) 
+      m_RPCMethodHandlerPropertyListSP(rpcMethodHandlerPropertyListSP) 
 {
-    if (m_root == NULL) {
+    if (m_rootSP == NULL) {
         throw InvalidArgumentsException(
             "ClusterlibRPCManager: No valid root");
     }
-    if (m_recvQueue == NULL) {
+    if (m_recvQueueSP == NULL) {
         throw InvalidArgumentsException(
             "ClusterlibRPCManager: No valid recv queue");
     }
-    if (m_completedQueue == NULL) {
+    if (m_completedQueueSP == NULL) {
         throw InvalidArgumentsException(
             "ClusterlibRPCManager: No valid completed queue");
     }    
@@ -308,9 +304,9 @@ ClusterlibRPCMethod::setMethodStatus(const string &status,
 {
     TRACE(CL_LOG, "setMethodStatus");
 
-    PropertyList *propertyList = 
+    const shared_ptr<PropertyList> &propertyListSP = 
         getRPCManager()->getRPCMethodHandlerPropertyList();
-    if (propertyList == NULL) {
+    if (propertyListSP == NULL) {
         return false;
     }
 
@@ -327,12 +323,12 @@ ClusterlibRPCMethod::setMethodStatus(const string &status,
     bool found = false;
     string encodedJsonArr;
     while ((maxRetries == -1) || (retries <= maxRetries)) {
-        gotLock = propertyList->acquireLockWaitMsecs(100);
+        gotLock = propertyListSP->acquireLockWaitMsecs(100);
         if (gotLock) {
             allStatusArr.clear();
             lastStatusArr.clear();
             found = 
-                propertyList->cachedKeyValues().get(statusKey, jsonValue);
+                propertyListSP->cachedKeyValues().get(statusKey, jsonValue);
             if (found) {
                 allStatusArr = jsonValue.get<JSONValue::JSONArray>();
             }
@@ -348,12 +344,12 @@ ClusterlibRPCMethod::setMethodStatus(const string &status,
                     static_cast<int32_t>(allStatusArr.size()))) {
                 allStatusArr.pop_front();
             }
-            propertyList->cachedKeyValues().set(
+            propertyListSP->cachedKeyValues().set(
                 statusKey, 
                 allStatusArr);
             try {
-                propertyList->cachedKeyValues().publish();
-                propertyList->releaseLock();
+                propertyListSP->cachedKeyValues().publish();
+                propertyListSP->releaseLock();
                 return true;
             }
             catch (const PublishVersionException &ex) {
@@ -363,7 +359,7 @@ ClusterlibRPCMethod::setMethodStatus(const string &status,
                          statusKey.c_str(),
                          retries);
             }
-            propertyList->releaseLock();
+            propertyListSP->releaseLock();
         }
         ++retries;
     }
@@ -436,8 +432,8 @@ ClusterlibRPCManager::invokeAndResp(const string &rpcInvocation,
             LOG_WARN(CL_LOG, 
                      "invokeAndResp: No params for the request, so putting "
                      "result in default completed queue (%s)",
-                     m_completedQueue->getKey().c_str());
-            m_completedQueue->put(encodedResultArr);
+                     m_completedQueueSP->getKey().c_str());
+            m_completedQueueSP->put(encodedResultArr);
             return;
         }
         const JSONValue::JSONObject &paramObj = 
@@ -447,17 +443,17 @@ ClusterlibRPCManager::invokeAndResp(const string &rpcInvocation,
         if (jsonInputIt != paramObj.end()) {
             string respQueueKey = 
             jsonInputIt->second.get<JSONValue::JSONString>();
-            Queue *respQueue = dynamic_cast<Queue *>(
-                m_root->getNotifyableFromKey(respQueueKey));
-            if (respQueue != NULL) {
-                respQueue->put(encodedResult);
+            shared_ptr<Queue> respQueueSP = dynamic_pointer_cast<Queue>(
+                m_rootSP->getNotifyableFromKey(respQueueKey));
+            if (respQueueSP != NULL) {
+                respQueueSP->put(encodedResult);
                 /*
                  * Also add to the completed queue if the
                  * defaultCompletedQueue if > 0 or -1
                  */
                 if ((m_completedQueueMaxSize == -1) ||
                     (m_completedQueueMaxSize > 0)) {
-                    m_completedQueue->put(encodedResultArr);
+                    m_completedQueueSP->put(encodedResultArr);
                 }
             }
             else {
@@ -466,12 +462,12 @@ ClusterlibRPCManager::invokeAndResp(const string &rpcInvocation,
                          "selected queue (%s) and failed, so putting "
                          "result in default completed queue (%s)",
                          respQueueKey.c_str(),
-                         m_completedQueue->getKey().c_str());
-                m_completedQueue->put(encodedResultArr);
+                         m_completedQueueSP->getKey().c_str());
+                m_completedQueueSP->put(encodedResultArr);
             }
         }
         else {
-            m_completedQueue->put(encodedResultArr);
+            m_completedQueueSP->put(encodedResultArr);
         }
 
         /* 
@@ -480,8 +476,8 @@ ClusterlibRPCManager::invokeAndResp(const string &rpcInvocation,
          */
         string tmpElement;
         while ((m_completedQueueMaxSize != -1) && 
-               (m_completedQueue->size() > m_completedQueueMaxSize)) {
-            m_completedQueue->takeWaitMsecs(100, tmpElement);
+               (m_completedQueueSP->size() > m_completedQueueMaxSize)) {
+            m_completedQueueSP->takeWaitMsecs(100, tmpElement);
         }
     }
     catch (const Exception &ex) {
@@ -493,7 +489,7 @@ ClusterlibRPCManager::invokeAndResp(const string &rpcInvocation,
                  "and adding element (%s) to the DEFAULT_COMPLETED_QUEUE",
                   JSONCodec::encode(rpcInvocation).c_str(),
                  queueElement.c_str());
-        m_completedQueue->put(queueElement);
+        m_completedQueueSP->put(queueElement);
     }
 }
 
@@ -505,8 +501,9 @@ ClusterlibRPCManager::setBasicRequestStatus(
 {
     TRACE(CL_LOG, "setBasicRequestStatus");
 
-    PropertyList *propertyList = getRPCMethodHandlerPropertyList();
-    if (propertyList == NULL) {
+    const shared_ptr<PropertyList> &propertyListSP = 
+        getRPCMethodHandlerPropertyList();
+    if (propertyListSP == NULL) {
         return false;
     }
     int32_t retries = 0;
@@ -529,19 +526,19 @@ ClusterlibRPCManager::setBasicRequestStatus(
     JSONValue::JSONString timeString;
     JSONValue::JSONArray finalTimeArr;
     while ((maxRetries == -1) || (retries <= maxRetries)) {
-        gotLock = propertyList->acquireLockWaitMsecs(100);
+        gotLock = propertyListSP->acquireLockWaitMsecs(100);
         if (gotLock) {
             time = TimerService::getCurrentTimeMsecs();
             timeString = TimerService::getMsecsTimeString(time);
             jsonBasicStatusArr.push_back(time);
             jsonBasicStatusArr.push_back(timeString);
             jsonStatusObj["basic status"] = jsonBasicStatusArr;
-            propertyList->cachedKeyValues().set(
+            propertyListSP->cachedKeyValues().set(
                 basicStatusKey, 
                 JSONCodec::encode(jsonStatusObj));
             try {
-                propertyList->cachedKeyValues().publish();
-                propertyList->releaseLock();
+                propertyListSP->cachedKeyValues().publish();
+                propertyListSP->releaseLock();
                 return true;
             }
             catch (const PublishVersionException &ex) {
@@ -551,7 +548,7 @@ ClusterlibRPCManager::setBasicRequestStatus(
                          basicStatusKey.c_str(),
                          retries);
             }
-            propertyList->releaseLock();
+            propertyListSP->releaseLock();
         }
         ++retries;
     }
@@ -563,6 +560,5 @@ ClusterlibRPCManager::setBasicRequestStatus(
 
     return false;
 }
-
 
 }	/* End of 'namespace clusterlib' */

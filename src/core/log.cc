@@ -11,8 +11,7 @@
 using namespace std;
 using namespace log4cxx;
 
-namespace clusterlib 
-{
+namespace clusterlib  {
 
 /**
  * The amount of delay prior to checking if the filename has changed

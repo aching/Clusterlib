@@ -11,8 +11,7 @@
 #ifndef	_CL_INTERNALCHANGEHANDLERS_H_
 #define	_CL_INTERNALCHANGEHANDLERS_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /*
  * The actual factory class.

@@ -12,8 +12,7 @@
 #ifndef _CL_PROPERTYLISTIMPL_H_
 #define _CL_PROPERTYLISTIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class PropertyListImpl
@@ -25,9 +24,11 @@ class PropertyListImpl
   public:
     virtual CachedKeyValues &cachedKeyValues();    
 
-    virtual PropertyList *getPropertyList(
+    virtual bool getPropertyListWaitMsecs(
         const std::string &name,
-        AccessType accessType = LOAD_FROM_REPOSITORY);
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<PropertyList> *pPropertyListSP);
 
     /*
      * Internal functions not used by outside clients
@@ -39,9 +40,7 @@ class PropertyListImpl
     PropertyListImpl(FactoryOps *fp,
                      const std::string &key,
                      const std::string &name,
-                     NotifyableImpl *parent)
-        : NotifyableImpl(fp, key, name, parent),
-          m_cachedKeyValues(this) {}
+                     const boost::shared_ptr<NotifyableImpl> &parent);
 
     virtual NotifyableList getChildrenNotifyables();
     
@@ -58,15 +57,9 @@ class PropertyListImpl
 
   private:
     /**
-     * The default constructor is private so no one can call it.
+     * Do not call the default constructor.
      */
-    PropertyListImpl()
-        : NotifyableImpl(NULL, "", "", NULL),
-          m_cachedKeyValues(this)
-    {
-        throw InvalidMethodException("Someone called the PropertyListImpl "
-                                     "default constructor!");
-    }
+    PropertyListImpl();
 
   private:
     /**
@@ -75,7 +68,7 @@ class PropertyListImpl
     CachedKeyValuesImpl m_cachedKeyValues;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_PROPERTYLISTIMPL_H_ */
 

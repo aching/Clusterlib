@@ -19,6 +19,7 @@
 #include "generalcommands.h"
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 using namespace json;
 using namespace json::rpc;
@@ -58,20 +59,20 @@ int main(int argc, char* argv[])
      * Enable the JSON-RPC response handler and create the appropriate
      * response queue for this client.
      */
-    Root *root = params->getClient()->getRoot();
-    Application *cliApp = root->getApplication(
+    shared_ptr<Root> rootSP = params->getClient()->getRoot();
+    shared_ptr<Application> cliAppSP = rootSP->getApplication(
         ClusterlibStrings::DEFAULT_CLI_APPLICATION, CREATE_IF_NOT_FOUND);
-    Queue *respQueue = cliApp->getQueue(
+    shared_ptr<Queue> respQueueSP = cliAppSP->getQueue(
         ProcessThreadService::getHostnamePidTid() + 
         ClusterlibStrings::DEFAULT_RESP_QUEUE, CREATE_IF_NOT_FOUND);
-    string respQueueKey = respQueue->getKey();
-    Queue *completedQueue = cliApp->getQueue(
+    string respQueueKey = respQueueSP->getKey();
+    shared_ptr<Queue> completedQueueSP = cliAppSP->getQueue(
         ProcessThreadService::getHostnamePidTid() + 
         ClusterlibStrings::DEFAULT_COMPLETED_QUEUE, CREATE_IF_NOT_FOUND);
-    string completedQueueKey = completedQueue->getKey();    
+    string completedQueueKey = completedQueueSP->getKey();    
     Client *jsonRPCResponseClient = 
-        params->getFactory()->createJSONRPCResponseClient(respQueue,
-                                                          completedQueue);
+        params->getFactory()->createJSONRPCResponseClient(respQueueSP,
+                                                          completedQueueSP);
 
     /* Register the commands after connecting */
     params->registerCommandByGroup(new GetZnode(params->getFactory(),
@@ -106,7 +107,7 @@ int main(int argc, char* argv[])
     params->registerCommandByGroup(new AddQueue(params->getClient()),
                                    clusterlibCmds);
     params->registerCommandByGroup(new JSONRPCCommand(params->getClient(), 
-                                                      respQueue),
+                                                      respQueueSP),
                                    clusterlibCmds);
     params->registerCommandByGroup(new SetCurrentState(params->getClient()),
                                    clusterlibCmds);
@@ -155,8 +156,8 @@ int main(int argc, char* argv[])
         }
     }
 
-    respQueue->remove();
-    completedQueue->remove();
+    respQueueSP->remove();
+    completedQueueSP->remove();
 
     return 0;
 }

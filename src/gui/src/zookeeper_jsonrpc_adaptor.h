@@ -14,6 +14,9 @@ const int32_t CONNECTION_TIMEOUT = 5;
 class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod 
 {
   public:        
+    /**
+     * Constructor.
+     */
     MethodAdaptor(const std::string &servers);
     
     virtual const std::string &getName() const;

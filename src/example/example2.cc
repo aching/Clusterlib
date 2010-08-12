@@ -8,6 +8,7 @@
 #include "clusterlib.h"
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 using namespace json;
 
@@ -21,10 +22,9 @@ main(int ac, char **av)
         cerr << "factory = " << f << endl;
         Client *c = f->createClient();
         cerr << "client = " << c << endl;
-        Application *
-            app0 = c->getRoot()->getApplication("app-foo", 
-                                                CREATE_IF_NOT_FOUND);
-        cerr << "app0 = " << app0 << endl;
+        shared_ptr<Application> application0SP =
+            c->getRoot()->getApplication("app-foo", CREATE_IF_NOT_FOUND);
+        cerr << "application0SP = " << application0SP << endl;
         c->getRoot()->getApplication("app-bar", CREATE_IF_NOT_FOUND);
 
         NameList appNames = c->getRoot()->getApplicationNames();
@@ -34,130 +34,136 @@ main(int ac, char **av)
                 
         }
 
-	Group *grp0 = app0->getGroup("bar-servers", 
-                                                 CREATE_IF_NOT_FOUND);
-	cerr << "grp0 = " << grp0 << endl;
-	grp0 = app0->getGroup("bar-clients", CREATE_IF_NOT_FOUND);
-	cerr << "grp0 = " << grp0 << endl;
-	Group *grp1 = app0->getGroup("bar-clients");
-	cerr << "grp1 = " << grp1 << endl;
+	shared_ptr<Group> group0SP = application0SP->getGroup(
+            "bar-servers", CREATE_IF_NOT_FOUND);
+	cerr << "group0SP = " << group0SP << endl;
+	group0SP = application0SP->getGroup(
+            "bar-clients", CREATE_IF_NOT_FOUND);
+	cerr << "group0SP = " << group0SP << endl;
+	shared_ptr<Group> group1SP = application0SP->getGroup(
+            "bar-clients", LOAD_FROM_REPOSITORY);
+	cerr << "group1SP = " << group1SP << endl;
 	
-	Node *node0 = grp0->getNode("zopc-0", 
-                                                CREATE_IF_NOT_FOUND);
-	cerr << "node0 = " << node0 << endl;
+	shared_ptr<Node> node0SP = group0SP->getNode("zopc-0", 
+                                                     CREATE_IF_NOT_FOUND);
+	cerr << "node0 = " << node0SP << endl;
 
-        Node *node1 = grp0->getNode("zopc-0");
-	cerr << "node1 = " << node1 << endl;
+        shared_ptr<Node> node1SP = group0SP->getNode(
+            "zopc-0", LOAD_FROM_REPOSITORY);
+	cerr << "node1 = " << node1SP << endl;
 
-	Node *s0 = grp0->getNode("zops-0",
-                                 CREATE_IF_NOT_FOUND);
-        cerr << "server = " << s0 << endl;
+	shared_ptr<Node> s0SP = group0SP->getNode("zops-0",
+                                                  CREATE_IF_NOT_FOUND);
+        cerr << "server = " << s0SP << endl;
 
-	Node *s1 = grp0->getNode("zops-1",
-                                 CREATE_IF_NOT_FOUND);
-        cerr << "server = " << s1 << endl;
+	shared_ptr<Node> s1SP = group0SP->getNode("zops-1",
+                                                  CREATE_IF_NOT_FOUND);
+        cerr << "server = " << s1SP << endl;
         
-	Node *s2 = grp0->getNode("zops-2",
-                                 CREATE_IF_NOT_FOUND);
-        cerr << "server = " << s2 << endl;
+	shared_ptr<Node> s2SP = group0SP->getNode("zops-2",
+                                                  CREATE_IF_NOT_FOUND);
+        cerr << "server = " << s2SP << endl;
         
-	DataDistribution *dst = 
-	    app0->getDataDistribution("dist", CREATE_IF_NOT_FOUND);
+	shared_ptr<DataDistribution> dst = 
+	    application0SP->getDataDistribution("dist", CREATE_IF_NOT_FOUND);
 	cerr << "dist name = " << dst->getName() << endl;
 	cerr << "dist key = " << dst->getKey() << endl;
 
 	dst->acquireLock();
         dst->cachedShards().insert(Uint64HashRange(0),
                                    Uint64HashRange(99), 
-                                   s0);
+                                   s0SP);
         dst->cachedShards().insert(Uint64HashRange(100),
                                    Uint64HashRange(199),
-                                   s1);        
+                                   s1SP);        
         dst->cachedShards().insert(Uint64HashRange(200),
                                    Uint64HashRange(299),
-                                   s2);
+                                   s2SP);
 	dst->cachedShards().publish();
 	dst->releaseLock();
 
-        Application *app1 = dst->getMyApplication();
-        if (app0 != app1) {
+        shared_ptr<Application> application1SP = dst->getMyApplication();
+        if (application0SP != application1SP) {
             throw clusterlib::Exception(
                 "app->dist->app non-equivalence");
         }
 
-        Group *grp2 = node0->getMyGroup();
-        if (grp1 != grp2) {
+        shared_ptr<Group> group2SP = node0SP->getMyGroup();
+        if (group1SP != group2SP) {
             throw clusterlib::Exception(
                 "group->node->group non-equivalence");
         }
-        app1 = grp0->getMyApplication();
-        if (app0 != app1) {
+        application1SP = group0SP->getMyApplication();
+        if (application0SP != application1SP) {
             throw clusterlib::Exception(
                 "app->group->app non-equivalence");
         }
 
-	PropertyList *propList0 = app1->getPropertyList(
-            ClusterlibStrings::DEFAULTPROPERTYLIST, 
-            CREATE_IF_NOT_FOUND);
-	propList0->acquireLock();
+	shared_ptr<PropertyList> properyList0SP = 
+            application1SP->getPropertyList(
+                ClusterlibStrings::DEFAULTPROPERTYLIST, 
+                CREATE_IF_NOT_FOUND);
+	properyList0SP->acquireLock();
         
-        found = propList0->cachedKeyValues().get(
+        found = properyList0SP->cachedKeyValues().get(
             "test", jsonValue);
-	cerr << "(app1) test (test) = " 
+	cerr << "(application1SP) test (test) = " 
              << jsonValue.get<JSONValue::JSONString>()
              << " and should be empty (if this is the first time running) "
 	     << endl;
 
-	propList0->cachedKeyValues().set("test", "passed");
-	propList0->cachedKeyValues().set("weird", "yessir");
-	propList0->cachedKeyValues().publish();
-	propList0->releaseLock();
+	properyList0SP->cachedKeyValues().set("test", "passed");
+	properyList0SP->cachedKeyValues().set("weird", "yessir");
+	properyList0SP->cachedKeyValues().publish();
+	properyList0SP->releaseLock();
 
-        found = propList0->cachedKeyValues().get("test", jsonValue);
-	cerr << "(app1) test2 (test) = " 
+        found = properyList0SP->cachedKeyValues().get("test", jsonValue);
+	cerr << "(application1SP) test2 (test) = " 
              << jsonValue.get<JSONValue::JSONString>()
              << " and should be passed " << endl;
 
-	PropertyList *propList1 = app0->getPropertyList();
-	propList1->cachedKeyValues().get("test", jsonValue);
+	shared_ptr<PropertyList> properyList1SP = 
+            application0SP->getPropertyList(
+                ClusterlibStrings::DEFAULTPROPERTYLIST, CREATE_IF_NOT_FOUND);
+	properyList1SP->cachedKeyValues().get("test", jsonValue);
         string test3 = jsonValue.get<JSONValue::JSONString>();
-	cerr << "(app0) test3 (test) = " << test3
+	cerr << "(application0SP) test3 (test) = " << test3
 	     << " and should be passed " << endl;
 	
-	propList0->acquireLock();
-	propList0->cachedKeyValues().set("avery", "ching");
-	propList0->cachedKeyValues().set("test", "good");
-	propList0->cachedKeyValues().publish();
-	propList0->releaseLock();
+	properyList0SP->acquireLock();
+	properyList0SP->cachedKeyValues().set("avery", "ching");
+	properyList0SP->cachedKeyValues().set("test", "good");
+	properyList0SP->cachedKeyValues().publish();
+	properyList0SP->releaseLock();
 
-	propList1->cachedKeyValues().get("test", jsonValue);
+	properyList1SP->cachedKeyValues().get("test", jsonValue);
         test3 = jsonValue.get<JSONValue::JSONString>();
-	cerr << "(app0) test3 (test) = " << test3 
+	cerr << "(application0SP) test3 (test) = " << test3 
 	     << " and should be good " << endl;
-	propList1->cachedKeyValues().get("avery", jsonValue);
+	properyList1SP->cachedKeyValues().get("avery", jsonValue);
         test3 = jsonValue.get<JSONValue::JSONString>();
-	cerr << "(app0) test3 (avery) = " << test3 
+	cerr << "(application0SP) test3 (avery) = " << test3 
 	     << " and should be ching " << endl;
 
-	PropertyList *propList2 = node0->getPropertyList(
+	shared_ptr<PropertyList> propertyList2SP = node0SP->getPropertyList(
             ClusterlibStrings::DEFAULTPROPERTYLIST,
             CREATE_IF_NOT_FOUND);
-	propList2->cachedKeyValues().get("test", jsonValue);
+	propertyList2SP->cachedKeyValues().get("test", jsonValue);
         test3 = jsonValue.get<JSONValue::JSONString>();
 	cerr << "(node) test3 (test) = " << test3 
 	     << " and should be good " << endl;
 
-	propList2->acquireLock();
-	propList2->cachedKeyValues().set("test", "node");
-	propList2->cachedKeyValues().publish();
-	propList2->releaseLock();
+	propertyList2SP->acquireLock();
+	propertyList2SP->cachedKeyValues().set("test", "node");
+	propertyList2SP->cachedKeyValues().publish();
+	propertyList2SP->releaseLock();
 
-	propList2->cachedKeyValues().get("test", jsonValue);
+	propertyList2SP->cachedKeyValues().get("test", jsonValue);
         test3 = jsonValue.get<JSONValue::JSONString>();
 	cerr << "(node) test3 (test) = " << test3 
 	     << " and should be node " << endl;
 
-	propList1->cachedKeyValues().get("test", jsonValue);
+	properyList1SP->cachedKeyValues().get("test", jsonValue);
         test3 = jsonValue.get<JSONValue::JSONString>();
 	cerr << "(app) test3 (test) = " << test3 
 	     << " and should be good " << endl;

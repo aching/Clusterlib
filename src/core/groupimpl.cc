@@ -13,13 +13,10 @@
 
 #include "clusterlibinternal.h"
 
-#define LOG_LEVEL LOG_WARN
-#define MODULE_NAME "ClusterLib"
-
 using namespace std;
+using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 NameList
 GroupImpl::getNodeNames() 
@@ -33,19 +30,37 @@ GroupImpl::getNodeNames()
         CachedObjectChangeHandlers::NODES_CHANGE);
 }
 
-Node *
-GroupImpl::getNode(const string &nodeName, 
-                   AccessType accessType)
+bool
+GroupImpl::getNodeWaitMsecs(
+    const string &name,
+    AccessType accessType,
+    int64_t msecTimeout,
+    shared_ptr<Node> *pNodeSP) 
 {
-    TRACE(CL_LOG, "getNode");
+    TRACE(CL_LOG, "getNodeWaitMsecs");
 
     throwIfRemoved();
 
-    return dynamic_cast<Node *>(
-        getOps()->getNotifyable(this,
-                                ClusterlibStrings::REGISTERED_NODE_NAME,
-                                nodeName,
-                                accessType));
+    shared_ptr<NotifyableImpl> notifyableSP;
+    bool completed = getOps()->getNotifyableWaitMsecs(
+        shared_from_this(),
+        ClusterlibStrings::REGISTERED_NODE_NAME,
+        name,
+        accessType,
+        msecTimeout,
+        &notifyableSP);
+
+    *pNodeSP = dynamic_pointer_cast<Node>(notifyableSP);
+    return completed;
+}
+
+shared_ptr<Node>
+GroupImpl::getNode(const string &name,
+                         AccessType accessType)
+{
+    shared_ptr<Node> nodeSP;
+    getNodeWaitMsecs(name, accessType, -1, &nodeSP);
+    return nodeSP;
 }
 
 NameList
@@ -60,19 +75,37 @@ GroupImpl::getGroupNames()
         CachedObjectChangeHandlers::GROUPS_CHANGE);
 }
 
-Group *
-GroupImpl::getGroup(const string &groupName,
-                    AccessType accessType)
+bool
+GroupImpl::getGroupWaitMsecs(
+    const string &name,
+    AccessType accessType,
+    int64_t msecTimeout,
+    shared_ptr<Group> *pGroupSP) 
 {
-    TRACE(CL_LOG, "getGroup");
+    TRACE(CL_LOG, "getGroupWaitMsecs");
 
     throwIfRemoved();
 
-    return dynamic_cast<Group *>(
-        getOps()->getNotifyable(this,
-                                ClusterlibStrings::REGISTERED_GROUP_NAME, 
-                                groupName,
-                                accessType));
+    shared_ptr<NotifyableImpl> notifyableSP;
+    bool completed = getOps()->getNotifyableWaitMsecs(
+        shared_from_this(),
+        ClusterlibStrings::REGISTERED_GROUP_NAME,
+        name,
+        accessType,
+        msecTimeout,
+        &notifyableSP);
+
+    *pGroupSP = dynamic_pointer_cast<Group>(notifyableSP);
+    return completed;
+}
+
+shared_ptr<Group>
+GroupImpl::getGroup(const string &name,
+                         AccessType accessType)
+{
+    shared_ptr<Group> groupSP;
+    getGroupWaitMsecs(name, accessType, -1, &groupSP);
+    return groupSP;
 }
 
 NameList
@@ -86,21 +119,39 @@ GroupImpl::getDataDistributionNames()
         NotifyableKeyManipulator::createDataDistributionChildrenKey(getKey()),
         CachedObjectChangeHandlers::DATADISTRIBUTIONS_CHANGE);
 }
-
-DataDistribution *
-GroupImpl::getDataDistribution(const string &distName,
-                               AccessType accessType)
+ 
+bool
+GroupImpl::getDataDistributionWaitMsecs(
+    const string &name,
+    AccessType accessType,
+    int64_t msecTimeout,
+    shared_ptr<DataDistribution> *pDataDistributionSP) 
 {
-    TRACE(CL_LOG, "getDataDistribution");
+    TRACE(CL_LOG, "getDataDistributionWaitMsecs");
 
     throwIfRemoved();
 
-    return dynamic_cast<DataDistribution *>(
-        getOps()->getNotifyable(
-            this,
-            ClusterlibStrings::REGISTERED_DATADISTRIBUTION_NAME, 
-            distName,
-            accessType));
+    shared_ptr<NotifyableImpl> notifyableSP;
+    bool completed = getOps()->getNotifyableWaitMsecs(
+        shared_from_this(),
+        ClusterlibStrings::REGISTERED_DATADISTRIBUTION_NAME,
+        name,
+        accessType,
+        msecTimeout,
+        &notifyableSP);
+
+    *pDataDistributionSP = 
+        dynamic_pointer_cast<DataDistribution>(notifyableSP);
+    return completed;
+}
+
+shared_ptr<DataDistribution>
+GroupImpl::getDataDistribution(const string &name,
+                         AccessType accessType)
+{
+    shared_ptr<DataDistribution> dataDistributionSP;
+    getDataDistributionWaitMsecs(name, accessType, -1, &dataDistributionSP);
+    return dataDistributionSP;
 }
 
 NotifyableList
@@ -116,19 +167,19 @@ GroupImpl::getChildrenNotifyables()
      */
     NotifyableList tmpList, finalList;
     tmpList = getOps()->getNotifyableList(
-        this,
+        shared_from_this(),
         ClusterlibStrings::REGISTERED_NODE_NAME,
         getNodeNames(),
         LOAD_FROM_REPOSITORY);
     finalList.insert(finalList.end(), tmpList.begin(), tmpList.end());
     tmpList = getOps()->getNotifyableList(
-        this,
+        shared_from_this(),
         ClusterlibStrings::REGISTERED_GROUP_NAME,
         getGroupNames(),
         LOAD_FROM_REPOSITORY);
     finalList.insert(finalList.end(), tmpList.begin(), tmpList.end());
     tmpList = getOps()->getNotifyableList(
-        this,
+        shared_from_this(),
         ClusterlibStrings::REGISTERED_DATADISTRIBUTION_NAME,
         getDataDistributionNames(),
         LOAD_FROM_REPOSITORY);

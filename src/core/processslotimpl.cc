@@ -20,14 +20,11 @@ extern char **environ;
 #include <sys/types.h>
 #include <signal.h>
 
-#define LOG_LEVEL LOG_WARN
-#define MODULE_NAME "ClusterLib"
-
 using namespace std;
+using namespace boost;
 using namespace json;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 const string ProcessSlot::DESIRED_PROCESS_STATE_SET_MSECS_KEY = 
     "_desiredProcessStateSetMsecs";
@@ -227,4 +224,4 @@ ProcessSlotImpl::~ProcessSlotImpl()
 {
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

@@ -13,19 +13,10 @@
 
 #include "clusterlibinternal.h"
 
-#define LOG_LEVEL LOG_WARN
-#define MODULE_NAME "ClusterLib"
-
 using namespace std;
+using namespace boost;
 
-namespace clusterlib
-{
-
-Group *
-ApplicationImpl::getMyGroup()
-{
-    throw InvalidMethodException("Application cannot be a part of a group!");
-}
+namespace clusterlib {
 
 void
 ApplicationImpl::initializeCachedRepresentation()
@@ -33,4 +24,4 @@ ApplicationImpl::initializeCachedRepresentation()
     GroupImpl::initializeCachedRepresentation();
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

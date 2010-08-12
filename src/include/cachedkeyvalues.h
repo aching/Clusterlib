@@ -12,8 +12,7 @@
 #ifndef	_CL_CACHEDKEYVALUES_H_
 #define _CL_CACHEDKEYVALUES_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class CachedKeyValues
@@ -45,15 +44,18 @@ class CachedKeyValues
      *
      * @param key the key
      * @param jsonValue The value of the given propery if found
-     * @param searchParent Try the parent for the property as well?
-     * @param propertyListWithKey The resulting PropertyList where the 
-     *        jsonValue came from.
+     * @param searchParent Search the parent (and ancestors) as well?
+     * @param ancestorMsecTimeout Msecs to wait on getting locks for ancestors
+     * @param pUsedProperyListSP If not NULL, will be filled in with the 
+     *        PropertyList where the jsonValue came from.
      * @return True if found, false otherwise
      */
-    virtual bool get(const std::string &key, 
-                     json::JSONValue &jsonValue,
-                     bool searchParent = false,
-                     PropertyList **propertyListWithKey = NULL) = 0;
+    virtual bool get(
+        const std::string &key, 
+        json::JSONValue &jsonValue,
+        bool searchParent = false,
+        int64_t ancestorMsecTimeout = -1,
+        boost::shared_ptr<PropertyList> *pUsedProperyListSP = NULL) = 0;
 
     /**
      * \brief Sets value of the given key.
@@ -94,6 +96,6 @@ class CachedKeyValues
     virtual ~CachedKeyValues() {}
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_CACHEDKEYVALUES_H_ */

@@ -5,8 +5,7 @@ using namespace clusterlib;
 using namespace std;
 using namespace boost;
 
-namespace activenode 
-{
+namespace activenode  {
 
 /**
  * Default check frequency

@@ -15,13 +15,10 @@
 #include <sys/types.h>
 #include <linux/unistd.h>
 
-#define LOG_LEVEL LOG_WARN
-
 using namespace std;
 using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 string
 NotifyableKeyManipulator::createLocksKey(const string &notifyableKey)
@@ -554,4 +551,4 @@ NotifyableKeyManipulator::removeComponentFromKey(const string &key)
     return key.substr(0, keySeparator - 1); 
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

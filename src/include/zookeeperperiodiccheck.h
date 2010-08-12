@@ -11,8 +11,7 @@
 #ifndef	_CL_ZOOKEEPERPERIODIC_CHECK_H_
 #define	_CL_ZOOKEEPERPERIODIC_CHECK_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Checks a Zookeeper instance and reports its data into Clusterlib.
@@ -30,12 +29,12 @@ class ZookeeperPeriodicCheck : public Periodic
      * @param msecsFrequency How many msecs to wait between checks
      * @param registry The comma-separated list of Zookeeper servers
      *        and ports.
-     * @param root The Root underwhich the Group will be created.  If NULL, 
+     * @param rootSP The Root underwhich the Group will be created.  If NULL, 
      *        then no Notifyable objects will be manipulated.
      */
     ZookeeperPeriodicCheck(int64_t msecsFrequency,
                            const std::string &registry, 
-                           Root *root);
+                           const boost::shared_ptr<Root> &rootSP);
 
     /**
      * Virtual destructor.
@@ -110,7 +109,7 @@ class ZookeeperPeriodicCheck : public Periodic
     /**
      * Application for storing the information.
      */
-    Application *m_application;
+    boost::shared_ptr<Application> m_applicationSP;
 
     /**
      * The Zookeeper aggregate service state.
@@ -120,7 +119,7 @@ class ZookeeperPeriodicCheck : public Periodic
     /**
      * Nodes that are being watched and owned.
      */
-    std::vector<Node *> m_nodeVec;
+    std::vector<boost::shared_ptr<Node> > m_nodeSPVec;
 
     /**
      * Make this object thread-safe.

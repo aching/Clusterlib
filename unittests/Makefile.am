@@ -26,6 +26,7 @@ unittests_LDADD = \
 	@EXPAT_LIB@ \
 	@LIB_THREAD_OS@ \
 	@MPICH_LIB@
+
 unittests_SOURCES = \
 	test.cc \
 	testparams.cc \
@@ -46,7 +47,6 @@ unittests_SOURCES = \
 	clusterlibleader.cc \
 	clusterlibtimer.cc \
 	clusterlibhealthcheck.cc \
-	clusterlibreleaseref.cc \
 	clusterlibremove.cc
 CXXFLAGS = @BASE_CXXFLAGS@ -DMPICH_IGNORE_CXX_SEEK -Wno-non-virtual-dtor
 

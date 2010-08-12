@@ -36,7 +36,8 @@ class ConfigurationException
     std::string message;
 };
 
-class XmlConfig {
+class XmlConfig
+{
   public:
     static void Parse(const std::string &xmlFile, Configuration *config);
   private:

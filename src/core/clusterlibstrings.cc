@@ -14,8 +14,7 @@
 
 using namespace std;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /*
  * All the string constants needed to construct and deconstruct
@@ -200,5 +199,4 @@ const string ClusterlibStrings::ZK_STAT_STATE_KEY = "Zookeeper statistics";
 const string ClusterlibStrings::ZK_AGG_NODES_STATE_KEY =
     "Zookeeper aggregate state";
 
-
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

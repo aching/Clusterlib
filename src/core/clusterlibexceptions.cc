@@ -11,8 +11,7 @@
 
 using namespace std;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 Exception::Exception(const string &msg)
     : m_message(msg) 
@@ -83,5 +82,4 @@ Exception::demangleName(const char *mangledName, bool &success)
     return demangledString;
 }
 
-
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

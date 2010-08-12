@@ -14,8 +14,7 @@
 #include <algorithm>
 #include "mutex.h"
 
-namespace clusterlib 
-{
+namespace clusterlib  {
  
 /**
  * \brief An unbounded blocking queue of elements of type E.
@@ -40,9 +39,9 @@ class BlockingQueue
          * waiting forever if no elements are present in this
          * queue.
          * 
-         * @param e the element filled in
+         * @return Element from the queue
          */
-        void take(E &e);
+        E take();
         
         /**
          * \brief Retrieves and removes the head of this queue,
@@ -127,9 +126,11 @@ void BlockingQueue<E>::put(E e)
  * @param e the element returned
  */
 template<class E> 
-void BlockingQueue<E>::take(E &e)
+E BlockingQueue<E>::take()
 {
+    E e;
     takeWaitMsecs(-1, e);
+    return e;
 }
 
 /**

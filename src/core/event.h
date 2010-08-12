@@ -305,7 +305,7 @@ class EventListenerAdapter
         eventSource.addListener(this);
     }
         
-    void eventReceived(const EventSource<E> &source, const E &e)
+    virtual void eventReceived(const EventSource<E> &source, const E &e)
     {
         LOG_DEBUG(EV_LOG, "EventListenerAdapter::eventReceived: before fire");
         AbstractEventWrapper *wrapper = new EventWrapper<E>(e);
@@ -331,7 +331,7 @@ class SynchronousEventAdapter
     {
         TRACE(EV_LOG, "eventReceived");
         LOG_DEBUG(EV_LOG, 
-                  "eventReceived: event %p, instance %p, thread %" PRIu32,
+                  "eventReceived: event %p, instance %p, thread %" PRId32,
                   &e, 
                   this, 
                   ProcessThreadService::getTid());
@@ -370,7 +370,7 @@ class SynchronousEventAdapter
 
         LOG_DEBUG(EV_LOG, 
                   "getNextEvent: msecTimeout %" PRId64
-                  ", instance %p, thread %" PRIu32,
+                  ", instance %p, thread %" PRId32,
                   msecTimeout,
                   this, 
                   ProcessThreadService::getTid());
@@ -417,7 +417,7 @@ void EventSource<E>::fireEvent(EventListener<E> *lp, const E &event)
 {
     LOG_DEBUG(EV_LOG,
               "fireEvent: Sending event: event %p, listener %p, "
-              "thread %" PRIu32, 
+              "thread %" PRId32, 
               &event, 
               lp, 
               ProcessThreadService::getTid());
@@ -434,43 +434,44 @@ template<class T>
 class NotifyableEventHandler
 {
   public:
-    /*
+    /**
      * Define the type of the member function to invoke.
      */
-    typedef Event (T::*EventMethod)(NotifyableImpl *np,
-                                    int32_t etype,
-                                    const std::string &path);
+    typedef Event (T::*EventMethod)(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP,
+        int32_t etype,
+        const std::string &path);
 
-    /*
+    /**
      * Constructor.
      */
     NotifyableEventHandler(T *objp, EventMethod handler)
         : mp_obj(objp),    
           m_handler(handler) {}
 
-    /*
-     * Deliver the event with a NotifyableImpl *.
+    /**
+     * Deliver the event.
      */
-    Event deliver(NotifyableImpl *np, 
+    Event deliver(const boost::shared_ptr<NotifyableImpl> &notifyableSP, 
                   int32_t etype,
                   const std::string &path)
     {
-        return ((*mp_obj).*m_handler)(np, etype, path);
+        return ((*mp_obj).*m_handler)(notifyableSP, etype, path);
     }
 
-    /*
+    /**
      * Retrieve the object on which the method
      * is being called.
      */
     T *getObject() { return mp_obj; }
 
   private:
-    /*
+    /**
      * The instance.
      */
     T *mp_obj;
 
-    /*
+    /**
      * The handler method to call.
      */
     EventMethod m_handler;
@@ -774,7 +775,7 @@ class Timer
     {
         LOG_DEBUG(EV_LOG, 
                   "Starting thread with Timer::sendAlarms(), "
-                  "this: %p, thread %" PRIu32,
+                  "this: %p, thread %" PRId32,
                   this, 
                   ProcessThreadService::getTid());
         
@@ -813,7 +814,7 @@ class Timer
 
         LOG_DEBUG(EV_LOG,
                   "Ending thread with Timer::sendAlarms(): "
-                  "this: %p, thread: %" PRIu32,
+                  "this: %p, thread: %" PRId32,
                   this,
                   ProcessThreadService::getTid());
     }

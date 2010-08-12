@@ -13,9 +13,9 @@
 #include "clusterlibinternal.h"
 
 using namespace std;
+using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 const string &
 RegisteredGroupImpl::registeredName() const
@@ -30,23 +30,23 @@ RegisteredGroupImpl::generateKey(const string &parentKey,
     return NotifyableKeyManipulator::createGroupKey(parentKey, name);
 }
 
-
-NotifyableImpl *
+shared_ptr<NotifyableImpl>
 RegisteredGroupImpl::createNotifyable(const string &notifyableName,
                                       const string &notifyableKey,
-                                      NotifyableImpl *parent,
+                                      const shared_ptr<NotifyableImpl> &parent,
                                       FactoryOps &factoryOps) const
 {
-    return new GroupImpl(&factoryOps,
-                         notifyableKey,
-                         notifyableName,
-                         parent);
+    return dynamic_pointer_cast<NotifyableImpl>(
+        shared_ptr<GroupImpl> (new GroupImpl(&factoryOps,
+                                             notifyableKey,
+                                             notifyableName,
+                                             parent)));
 }
 
 vector<string>
 RegisteredGroupImpl::generateRepositoryList(
-    const std::string &notifyableName,
-    const std::string &notifyableKey) const
+    const string &notifyableName,
+    const string &notifyableKey) const
 {
     vector<string> resVec;
     resVec.push_back(notifyableKey);
@@ -131,13 +131,21 @@ RegisteredGroupImpl::isValidKey(const vector<string> &components,
     return true;    
 }
 
-NotifyableImpl *
+bool
 RegisteredGroupImpl::getObjectFromComponents(
     const vector<string> &components,
     int32_t elements, 
-    AccessType accessType)
+    AccessType accessType,
+    int64_t msecTimeout,
+    shared_ptr<NotifyableImpl> *pNotifyableSP)
 {
     TRACE(CL_LOG, "getObjectFromComponents");
+
+    if (pNotifyableSP == NULL) {
+        throw InvalidArgumentsException(
+            "getObjectFromComponents: NULL pNotifyableSP");
+    }
+    pNotifyableSP->reset();
 
     /* 
      * Set to the full size of the vector.
@@ -152,12 +160,11 @@ RegisteredGroupImpl::getObjectFromComponents(
      * parent that is either an Application or Group.  If the parent
      * is a Group, this function will call itself recursively.
      */
-    RegisteredNotifyable *regApplication = NULL;
-    regApplication = getOps()->getRegisteredNotifyable(
+    RegisteredNotifyable *regApplication = getOps()->getRegisteredNotifyable(
         ClusterlibStrings::REGISTERED_APPLICATION_NAME, true);
     if (regApplication->isValidKey(components, elements)) {
         return regApplication->getObjectFromComponents(
-            components, elements, accessType);
+            components, elements, accessType, msecTimeout, pNotifyableSP);
     }
     
     if (!isValidKey(components, elements)) {
@@ -165,41 +172,50 @@ RegisteredGroupImpl::getObjectFromComponents(
                   "getObjectFromComponents: Couldn't find key"
                   " with %d elements",
                   elements);
-        return NULL;
+        return false;
     }
 
     int32_t parentGroupCount = 
         NotifyableKeyManipulator::removeObjectFromComponents(components, 
                                                              elements);
     if (parentGroupCount == -1) {
-        return NULL;
+        return false;
     }
-    GroupImpl *parent = dynamic_cast<GroupImpl *>(
-        getObjectFromComponents(components,
-                                parentGroupCount,
-                                accessType));
-    if (parent == NULL) {
+
+    shared_ptr<NotifyableImpl> parentSP;
+    bool finished = getObjectFromComponents(components,
+                                            parentGroupCount,
+                                            accessType,
+                                            msecTimeout,
+                                            &parentSP);
+    if (finished == false) {
+        LOG_DEBUG(CL_LOG,
+                  "getObjectFromComponents: Didn't finish with msecTimeout=%" 
+                  PRId64,
+                  msecTimeout);
+        return false;
+    }
+
+    if (parentSP == NULL) {
         LOG_WARN(CL_LOG, "getObjectFromComponents: Tried to get "
                  "parent with name %s",
                  components.at(parentGroupCount - 1).c_str());
-        return NULL;
+        pNotifyableSP->reset();
+        return true;
     }
     
     LOG_DEBUG(CL_LOG, 
               "getObjectFromComponents: parent key = %s, group name = %s", 
-              parent->getKey().c_str(),
+              parentSP->getKey().c_str(),
               components.at(elements - 1).c_str());
 
-    GroupImpl *group = dynamic_cast<GroupImpl *>(
-        getOps()->getNotifyable(parent,
-                                ClusterlibStrings::REGISTERED_GROUP_NAME,
-                                components.at(elements - 1),
-                                accessType));
-    if (dynamic_cast<Root *>(parent) == NULL) {
-        parent->releaseRef();
-    }
-
-    return group;
+    return getOps()->getNotifyableWaitMsecs(
+        parentSP,
+        ClusterlibStrings::REGISTERED_GROUP_NAME,
+        components.at(elements - 1),
+        accessType,
+        msecTimeout,
+        pNotifyableSP);
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

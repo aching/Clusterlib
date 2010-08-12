@@ -11,14 +11,11 @@
  */
 #include "clusterlibinternal.h"
 
-#define LOG_LEVEL LOG_WARN
-#define MODULE_NAME "ClusterLib"
-
 using namespace std;
+using namespace boost;
 using namespace json;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 #define VAL(str) #str
     
@@ -75,19 +72,37 @@ NodeImpl::getProcessSlotNames()
         CachedObjectChangeHandlers::PROCESSSLOTS_CHANGE);
 }
 
-ProcessSlot *
-NodeImpl::getProcessSlot(const string &processSlotName, 
-                         AccessType accessType)
+bool
+NodeImpl::getProcessSlotWaitMsecs(
+    const string &name,
+    AccessType accessType,
+    int64_t msecTimeout,
+    shared_ptr<ProcessSlot> *pProcessSlotSP) 
 {
-    TRACE(CL_LOG, "getProcessSlot");
+    TRACE(CL_LOG, "getProcessSlotWaitMsecs");
 
     throwIfRemoved();
 
-    return dynamic_cast<ProcessSlotImpl *>(
-        getOps()->getNotifyable(this,
-                                ClusterlibStrings::REGISTERED_PROCESSSLOT_NAME,
-                                processSlotName,
-                                accessType));
+    shared_ptr<NotifyableImpl> notifyableSP;
+    bool completed = getOps()->getNotifyableWaitMsecs(
+        shared_from_this(),
+        ClusterlibStrings::REGISTERED_PROCESSSLOT_NAME,
+        name,
+        accessType,
+        msecTimeout,
+        &notifyableSP);
+
+    *pProcessSlotSP = dynamic_pointer_cast<ProcessSlot>(notifyableSP);
+    return completed;
+}
+
+shared_ptr<ProcessSlot>
+NodeImpl::getProcessSlot(const string &name,
+                         AccessType accessType)
+{
+    shared_ptr<ProcessSlot> processSlotSP;
+    getProcessSlotWaitMsecs(name, accessType, -1, &processSlotSP);
+    return processSlotSP;
 }
 
 string
@@ -113,7 +128,7 @@ NodeImpl::getChildrenNotifyables()
     throwIfRemoved();
     
     return getOps()->getNotifyableList(
-        this,
+        shared_from_this(),
         ClusterlibStrings::REGISTERED_PROCESSSLOT_NAME,
         getProcessSlotNames(),
         LOAD_FROM_REPOSITORY);
@@ -131,4 +146,4 @@ NodeImpl::initializeCachedRepresentation()
     m_cachedProcessSlotInfo.loadDataFromRepository(false);
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

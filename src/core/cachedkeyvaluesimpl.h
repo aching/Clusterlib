@@ -12,8 +12,7 @@
 #ifndef	_CL_CACHEDKEYVALUESIMPL_H_
 #define _CL_CACHEDKEYVALUESIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class CachedKeyValuesImpl
@@ -30,10 +29,12 @@ class CachedKeyValuesImpl
   public:
     virtual std::vector<json::JSONValue::JSONString> getKeys();
 
-    virtual bool get(const std::string &key, 
-                     json::JSONValue &jsonValue,
-                     bool searchParent = false,
-                     PropertyList **propertyListWithKey = NULL);
+    virtual bool get(
+        const std::string &key, 
+        json::JSONValue &jsonValue,
+        bool searchParent = false,
+        int64_t ancestorMsecTimeout = -1,
+        boost::shared_ptr<PropertyList> *pUsedProperyListSP = NULL);
 
     virtual void set(const ::json::JSONValue::JSONString &key, 
                      const ::json::JSONValue &value);
@@ -45,7 +46,7 @@ class CachedKeyValuesImpl
     /**
      * Constructor.
      */
-    explicit CachedKeyValuesImpl(NotifyableImpl *ntp);
+    explicit CachedKeyValuesImpl(NotifyableImpl *notifyable);
 
     /**
      * Destructor.
@@ -59,6 +60,6 @@ class CachedKeyValuesImpl
     ::json::JSONValue::JSONObject m_keyValues;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_CACHEDKEYVALUESIMPL_H_ */

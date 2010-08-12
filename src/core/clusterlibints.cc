@@ -12,8 +12,7 @@
 
 #include "clusterlib.h"
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 std::string
 getAccessTypeString(AccessType accessType)
@@ -65,4 +64,4 @@ const int32_t ClusterlibInts::INITIAL_ZK_VERSION = -3;
 const int32_t ClusterlibInts::DELETED_ZK_VERSION = -2;
 const int64_t ClusterlibInts::MSECS_NOT_AVAILABLE = -1;
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

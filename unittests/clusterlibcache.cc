@@ -5,6 +5,7 @@
 extern TestParams globalTestParams;
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 
 const string appName = "unittests-cache-app";
@@ -36,10 +37,6 @@ class ClusterlibCache
         : MPITestFixture(globalTestParams),
           _factory(NULL),
           _client0(NULL),
-          _app0(NULL),
-          _grp0(NULL),
-          _nod0(NULL),
-          _dist0(NULL),
           _zk(NULL) {}
 
     /* Runs prior to each test */
@@ -221,7 +218,7 @@ class ClusterlibCache
 
         MPI_CPPUNIT_ASSERT(found == true);
 
-        Group *groupP = _app0->getGroup("g15");
+        shared_ptr<Group> groupP = _app0->getGroup("g15");
 
         MPI_CPPUNIT_ASSERT(groupP->getState() == Notifyable::READY);
     }
@@ -289,7 +286,7 @@ class ClusterlibCache
 
         MPI_CPPUNIT_ASSERT(found == true);
 
-        DataDistribution *distP = _app0->getDataDistribution("d15");
+        shared_ptr<DataDistribution> distP = _app0->getDataDistribution("d15");
 
         MPI_CPPUNIT_ASSERT(distP->getState() == Notifyable::READY);
     }
@@ -358,7 +355,7 @@ class ClusterlibCache
 
         MPI_CPPUNIT_ASSERT(found == true);
 
-        Node *np = _grp0->getNode("n111");
+        shared_ptr<Node> np = _grp0->getNode("n111");
 
         MPI_CPPUNIT_ASSERT(np->getState() == Notifyable::READY);
     }
@@ -427,7 +424,7 @@ class ClusterlibCache
 
         MPI_CPPUNIT_ASSERT(found == true);
 
-        DataDistribution *distP = _grp0->getDataDistribution("d15");
+        shared_ptr<DataDistribution> distP = _grp0->getDataDistribution("d15");
 
         MPI_CPPUNIT_ASSERT(distP->getState() == Notifyable::READY);
     }
@@ -495,7 +492,7 @@ class ClusterlibCache
 
         MPI_CPPUNIT_ASSERT(found == true);
 
-        Node *np = _app0->getNode("n111");
+        shared_ptr<Node> np = _app0->getNode("n111");
 
         MPI_CPPUNIT_ASSERT(np->getState() == Notifyable::READY);
     }
@@ -563,7 +560,7 @@ class ClusterlibCache
 
         MPI_CPPUNIT_ASSERT(found == true);
 
-        Group *groupP = _grp0->getGroup("g15");
+        shared_ptr<Group> groupP = _grp0->getGroup("g15");
 
         MPI_CPPUNIT_ASSERT(groupP->getState() == Notifyable::READY);
     }
@@ -748,10 +745,10 @@ class ClusterlibCache
   private:
     Factory *_factory;
     Client *_client0;
-    Application *_app0;
-    Group *_grp0;
-    Node *_nod0;
-    DataDistribution *_dist0;
+    shared_ptr<Application> _app0;
+    shared_ptr<Group> _grp0;
+    shared_ptr<Node> _nod0;
+    shared_ptr<DataDistribution> _dist0;
     zk::ZooKeeperAdapter *_zk;
 };
 

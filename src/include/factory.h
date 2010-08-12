@@ -11,8 +11,7 @@
 #ifndef	_CL_FACTORY_H_
 #define	_CL_FACTORY_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * A client visible class to begin accessing clusterlib objects
@@ -31,7 +30,7 @@ class Factory
      */
     Factory(const std::string &registry, int64_t connectTimeout = 30000);
 
-    /*
+    /**
      * Destructor.
      */
     ~Factory();
@@ -62,14 +61,15 @@ class Factory
      * registered prior to any JSON-RPC requests if a response is
      * desired.
      *
-     * @param responseQueue the queue this client specifies for the
+     * @param responseQueueSP Queue this client specifies for the
      *        response to its JSON-RPC requests
-     * @param completedQueue the queue this client specifies for the
+     * @param completedQueueSP Queue this client specifies for the
      *        problems with elements in the response queue
      * @return a Client pointer
      */
-    Client *createJSONRPCResponseClient(Queue *responseQueue,
-                                        Queue *completedQueue);
+    Client *createJSONRPCResponseClient(
+        const boost::shared_ptr<Queue> &responseQueueSP,
+        const boost::shared_ptr<Queue> &completedQueueSP);
 
     /**
      * Create a client for handling JSON-RPC methods.

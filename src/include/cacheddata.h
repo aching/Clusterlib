@@ -12,8 +12,7 @@
 #ifndef	_CL_CACHEDDATA_H_
 #define _CL_CACHEDDATA_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class CachedData
@@ -90,6 +89,6 @@ class CachedData
     virtual ~CachedData() {}
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_NODE_H_ */

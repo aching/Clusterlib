@@ -12,8 +12,7 @@
 #ifndef	_CL_CACHEDPROCESSINFO_H_
 #define _CL_CACHEDPROCESSINFO_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class CachedProcessInfo
@@ -57,6 +56,6 @@ class CachedProcessInfo
     virtual ~CachedProcessInfo() {}
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_CACHEDPROCESSINFO_H_ */

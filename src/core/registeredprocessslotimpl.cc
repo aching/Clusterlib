@@ -13,9 +13,9 @@
 #include "clusterlibinternal.h"
 
 using namespace std;
+using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 const string &
 RegisteredProcessSlotImpl::registeredName() const
@@ -30,27 +30,24 @@ RegisteredProcessSlotImpl::generateKey(const string &parentKey,
     return NotifyableKeyManipulator::createProcessSlotKey(parentKey, name);
 }
 
-NotifyableImpl *
-RegisteredProcessSlotImpl::createNotifyable(const string &notifyableName,
-                                            const string &notifyableKey,
-                                            NotifyableImpl *parent,
-                                            FactoryOps &factoryOps) const
+shared_ptr<NotifyableImpl>
+RegisteredProcessSlotImpl::createNotifyable(
+    const string &notifyableName,
+    const string &notifyableKey,
+    const shared_ptr<NotifyableImpl> &parent,
+    FactoryOps &factoryOps) const
 {
-    NodeImpl *node = dynamic_cast<NodeImpl *>(parent);
-    if (node == NULL) {
-        throw InvalidArgumentsException("createNotifyable: Got impossible "
-                                        "parent that is not a Node");
-    }
-    return new ProcessSlotImpl(&factoryOps,
-                               notifyableKey,
-                               notifyableName,
-                               node);
+    return dynamic_pointer_cast<NotifyableImpl>(
+        shared_ptr<ProcessSlotImpl>(new ProcessSlotImpl(&factoryOps,
+                                                        notifyableKey,
+                                                        notifyableName,
+                                                        parent)));
 }
 
 vector<string>
 RegisteredProcessSlotImpl::generateRepositoryList(
-    const std::string &notifyableName,
-    const std::string &notifyableKey) const
+    const string &notifyableName,
+    const string &notifyableKey) const
 {
     vector<string> resVec;
     resVec.push_back(notifyableKey);
@@ -111,68 +108,14 @@ RegisteredProcessSlotImpl::isValidKey(const vector<string> &components,
         return false;
     } 
 
-    return true;    
-    
+    return true;        
 }
 
-NotifyableImpl *
-RegisteredProcessSlotImpl::getObjectFromComponents(
-    const vector<string> &components,
-    int32_t elements, 
-    AccessType accessType)
+RegisteredProcessSlotImpl::RegisteredProcessSlotImpl(FactoryOps *factoryOps)
+    : RegisteredNotifyableImpl(factoryOps)
 {
-    TRACE(CL_LOG, "getObjectFromComponents");
-
-    /* 
-     * Set to the full size of the vector.
-     */
-    if (elements == -1) {
-        elements = components.size();
-    }
-
-    if (!isValidKey(components, elements)) {
-        LOG_DEBUG(CL_LOG, 
-                  "getObjectFromComponents: Couldn't find key"
-                  " with %d elements",
-                  elements);
-        return NULL;
-    }
-    
-    int32_t parentGroupCount = 
-        NotifyableKeyManipulator::removeObjectFromComponents(components, 
-                                                             elements);
-    if (parentGroupCount == -1) {
-        return NULL;
-    }
-    RegisteredNotifyable *regNode = getOps()->getRegisteredNotifyable(
-        ClusterlibStrings::REGISTERED_NODE_NAME, true);
-    NodeImpl *parent = dynamic_cast<NodeImpl *>(
-        regNode->getObjectFromComponents(components,
-                                         parentGroupCount,
-                                         accessType));
-    if (parent == NULL) {
-        LOG_WARN(CL_LOG, "getObjectFromComponents: Tried to get "
-                 "parent with name %s",
-                 components.at(parentGroupCount - 1).c_str());
-        return NULL;
-    }
-
-    LOG_DEBUG(CL_LOG, 
-              "getObjectFromComponents: parent key = %s, "
-              "process slot name = %s", 
-              parent->getKey().c_str(),
-              components.at(elements - 1).c_str());
-
-    ProcessSlotImpl *processSlot = dynamic_cast<ProcessSlotImpl *>(
-        getOps()->getNotifyable(parent,
-                                ClusterlibStrings::REGISTERED_PROCESSSLOT_NAME,
-                                components.at(elements - 1),
-                                accessType));
-    if (dynamic_cast<Root *>(parent) == NULL) {
-        parent->releaseRef();
-    }
-
-    return processSlot;
+    setRegisteredParentNameVec(
+        vector<string>(1, ClusterlibStrings::REGISTERED_NODE_NAME));
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

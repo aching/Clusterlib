@@ -5,9 +5,11 @@
 extern TestParams globalTestParams;
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 
-class ClusterlibNotifyableKeyManipulator : public MPITestFixture {
+class ClusterlibNotifyableKeyManipulator : public MPITestFixture
+{
     CPPUNIT_TEST_SUITE(ClusterlibNotifyableKeyManipulator);
     CPPUNIT_TEST(testNotifyableKeyManipulator1);
     CPPUNIT_TEST(testNotifyableKeyManipulator2);

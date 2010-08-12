@@ -14,8 +14,7 @@
 #ifndef _CL_JSONRPCMETHODHANDLER_H_
 #define _CL_JSONRPCMETHODHANDLER_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Handle JSON-RPC requests in the receiving queue.

@@ -5,12 +5,14 @@
 extern TestParams globalTestParams;
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 using namespace json;
 
 const string appName = "unittests-healthCheck-app";
 
-class ClusterlibHealthCheck : public MPITestFixture {
+class ClusterlibHealthCheck : public MPITestFixture
+{
     CPPUNIT_TEST_SUITE(ClusterlibHealthCheck);
     CPPUNIT_TEST(testHealthCheck1);
     CPPUNIT_TEST(testHealthCheck2);
@@ -21,22 +23,22 @@ class ClusterlibHealthCheck : public MPITestFixture {
     class HealthUpdater : public Periodic {
       public:
         HealthUpdater(int64_t msecsFrequency, 
-                      Notifyable *notifyable, 
+                      const shared_ptr<Notifyable> &notifyableSP, 
                       ClientData *clientData)
-            : Periodic(msecsFrequency, notifyable, clientData) {}
+            : Periodic(msecsFrequency, notifyableSP, clientData) {}
         
         virtual void run() 
         {
-            Notifyable *notifyable = getNotifyable();
-            if (notifyable == NULL) {
+            const shared_ptr<Notifyable> &notifyableSP = getNotifyable();
+            if (notifyableSP == NULL) {
                 return;
             }
 
-            NotifyableLocker l(notifyable);
+            NotifyableLocker l(notifyableSP);
 
-             notifyable->cachedCurrentState().set(
+            notifyableSP->cachedCurrentState().set(
                 Node::HEALTH_KEY, getHealth());
-            notifyable->cachedCurrentState().publish();
+            notifyableSP->cachedCurrentState().publish();
         }
         
         void setHealth(const string &health)
@@ -64,7 +66,7 @@ class ClusterlibHealthCheck : public MPITestFixture {
     ClusterlibHealthCheck() 
         : MPITestFixture(globalTestParams),
           _factory(NULL),
-          _healthUpdater(10, NULL, NULL) {}
+          _healthUpdater(10, shared_ptr<Notifyable>(), NULL) {}
     
     /**
      * Runs prior to each test 
@@ -159,7 +161,7 @@ class ClusterlibHealthCheck : public MPITestFixture {
         MPI_CPPUNIT_ASSERT(cancelled == false);
         _node0->acquireOwnership();
         /* Do nothing */
-        _healthUpdater.setNotifyable(NULL);
+        _healthUpdater.setNotifyable(shared_ptr<Notifyable>());
         _factory->registerPeriodicThread(_healthUpdater);
         _node0->releaseOwnership();
         /* Even though cancelPeriodicThread() is not called,
@@ -213,7 +215,7 @@ class ClusterlibHealthCheck : public MPITestFixture {
         waitsForOrder(0, 1, _factory, true);
 
         if (isMyRank(1)) {
-            _node0 = _group0->getNode("server-0");
+            _node0 = _group0->getNode("server-0", LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(_node0);
 
             found = _node0->cachedCurrentState().get(
@@ -256,9 +258,9 @@ class ClusterlibHealthCheck : public MPITestFixture {
   private:
     Factory *_factory;
     Client *_client0;
-    Application *_app0;
-    Group *_group0;
-    Node *_node0;
+    shared_ptr<Application> _app0;
+    shared_ptr<Group> _group0;
+    shared_ptr<Node> _node0;
     HealthUpdater _healthUpdater;
 };
 

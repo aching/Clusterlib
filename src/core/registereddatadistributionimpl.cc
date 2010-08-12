@@ -13,9 +13,9 @@
 #include "clusterlibinternal.h"
 
 using namespace std;
+using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 const string &
 RegisteredDataDistributionImpl::registeredName() const
@@ -31,27 +31,30 @@ RegisteredDataDistributionImpl::generateKey(const string &parentKey,
         parentKey, name);
 }
 
-NotifyableImpl *
-RegisteredDataDistributionImpl::createNotifyable(const string &notifyableName,
-                                                 const string &notifyableKey,
-                                                 NotifyableImpl *parent,
-                                                 FactoryOps &factoryOps) const
+shared_ptr<NotifyableImpl>
+RegisteredDataDistributionImpl::createNotifyable(
+    const string &notifyableName,
+    const string &notifyableKey,
+    const shared_ptr<NotifyableImpl> &parent,
+    FactoryOps &factoryOps) const
 {
-    GroupImpl *group = dynamic_cast<GroupImpl *>(parent);
+    shared_ptr<GroupImpl> group = dynamic_pointer_cast<GroupImpl>(parent);
     if (group == NULL) {
         throw InvalidArgumentsException("createNotifyable: Got impossible "
                                         "parent that is not a group");
     }
-    return new DataDistributionImpl(&factoryOps,
-                                    notifyableKey,
-                                    notifyableName,
-                                    group);
+    return dynamic_pointer_cast<NotifyableImpl>(
+        shared_ptr<DataDistributionImpl>(new DataDistributionImpl(
+                                             &factoryOps,
+                                             notifyableKey,
+                                             notifyableName,
+                                             group)));
 }
 
 vector<string>
 RegisteredDataDistributionImpl::generateRepositoryList(
-    const std::string &notifyableName,
-    const std::string &notifyableKey) const
+    const string &notifyableName,
+    const string &notifyableKey) const
 {
     vector<string> resVec;
     resVec.push_back(notifyableKey);
@@ -116,66 +119,4 @@ RegisteredDataDistributionImpl::isValidKey(const vector<string> &components,
     return true;    
 }
 
-NotifyableImpl *
-RegisteredDataDistributionImpl::getObjectFromComponents(
-    const vector<string> &components, 
-    int32_t elements,
-    AccessType accessType)
-{
-    TRACE(CL_LOG, "getObjectFromComponents");
-
-    /* 
-     * Set to the full size of the vector.
-     */
-    if (elements == -1) {
-        elements = components.size();
-    }
-
-    if (!isValidKey(components, elements)) {
-        LOG_DEBUG(CL_LOG, 
-                  "getObjectFromComponents: Couldn't find key"
-                  " with %d elements",
-                  elements);
-        return NULL;
-    }
-    
-    int32_t parentGroupCount = 
-        NotifyableKeyManipulator::removeObjectFromComponents(components, 
-                                                             elements);
-    if (parentGroupCount == -1) {
-        return NULL;
-    }    
-    RegisteredNotifyable *regGroup = getOps()->getRegisteredNotifyable(
-        ClusterlibStrings::REGISTERED_GROUP_NAME, true);
-    GroupImpl *parent = dynamic_cast<GroupImpl *>(
-        regGroup->getObjectFromComponents(components,
-                                        parentGroupCount,
-                                        accessType));
-    if (parent == NULL) {
-        LOG_WARN(CL_LOG, "getObjectFromComponents: Tried to get "
-                 "parent with name %s",
-                 components.at(parentGroupCount - 1).c_str());
-        return NULL;
-    }
-
-    LOG_DEBUG(CL_LOG, 
-              "getObjectFromComponents: parent key = %s, "
-              "distribution name = %s", 
-              parent->getKey().c_str(),
-              components.at(elements - 1).c_str());
-
-    DataDistributionImpl *dataDistribution =
-        dynamic_cast<DataDistributionImpl *>(
-            getOps()->getNotifyable(
-                parent,
-                ClusterlibStrings::REGISTERED_DATADISTRIBUTION_NAME,
-                components.at(elements - 1),
-                accessType));
-    if (dynamic_cast<Root *>(parent) == NULL) {
-        parent->releaseRef();
-    }
-
-    return dataDistribution;
-}
-
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

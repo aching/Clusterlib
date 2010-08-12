@@ -7,11 +7,13 @@ extern TestParams globalTestParams;
 
 using namespace clusterlib;
 using namespace std;
+using namespace boost;
 using namespace json;
 
 const string appName = "unittests-propertylist-app";
 
-class ClusterlibPropertyList : public MPITestFixture {
+class ClusterlibPropertyList : public MPITestFixture
+{
     CPPUNIT_TEST_SUITE(ClusterlibPropertyList);
     CPPUNIT_TEST(testGetPropertyList1);
     CPPUNIT_TEST(testGetPropertyList2);
@@ -28,11 +30,7 @@ class ClusterlibPropertyList : public MPITestFixture {
     ClusterlibPropertyList() 
         : MPITestFixture(globalTestParams),
           _factory(NULL),
-          _client0(NULL),
-          _app0(NULL),
-          _group0(NULL),
-          _node0(NULL),
-          _propertyList0(NULL) {}
+          _client0(NULL) {}
 
     /* Runs prior to each test */
     virtual void setUp() 
@@ -89,7 +87,7 @@ class ClusterlibPropertyList : public MPITestFixture {
         waitsForOrder(0, 1, _factory, true);
 
         if (isMyRank(1)) {
-            _propertyList0 = _node0->getPropertyList();
+            _propertyList0 = _node0->getPropertyList(ClusterlibStrings::DEFAULTPROPERTYLIST, LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
             found = _propertyList0->cachedKeyValues().get("test", jsonValue);
@@ -151,7 +149,7 @@ class ClusterlibPropertyList : public MPITestFixture {
         waitsForOrder(0, 1, _factory, true);
 
         if (isMyRank(1)) {
-            _propertyList0 = _group0->getPropertyList();
+            _propertyList0 = _group0->getPropertyList(ClusterlibStrings::DEFAULTPROPERTYLIST, LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
             found = _propertyList0->cachedKeyValues().get("test", jsonValue);
@@ -159,7 +157,7 @@ class ClusterlibPropertyList : public MPITestFixture {
             cerr << "Got correct test = v3" << endl;
             _propertyList0->releaseLock();
             
-            _propertyList0 = _node0->getPropertyList();
+            _propertyList0 = _node0->getPropertyList(ClusterlibStrings::DEFAULTPROPERTYLIST, LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
             found = _propertyList0->cachedKeyValues().get("test", jsonValue);
@@ -183,7 +181,7 @@ class ClusterlibPropertyList : public MPITestFixture {
         waitsForOrder(1, 0, _factory, true);
         
         if (isMyRank(0)) {
-            _propertyList0 = _group0->getPropertyList();
+            _propertyList0 = _group0->getPropertyList(ClusterlibStrings::DEFAULTPROPERTYLIST, LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
             found =_propertyList0->cachedKeyValues().get("test", jsonValue);
@@ -194,7 +192,7 @@ class ClusterlibPropertyList : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>() == "v3");
             cerr << "Got correct test = v3" << endl;
             
-            _propertyList0 = _node0->getPropertyList();
+            _propertyList0 = _node0->getPropertyList(ClusterlibStrings::DEFAULTPROPERTYLIST, LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
             found =_propertyList0->cachedKeyValues().get(
@@ -216,7 +214,7 @@ class ClusterlibPropertyList : public MPITestFixture {
             MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONString>() == "v3");
             cerr << "Got correct test = v3" << endl;
             
-            _propertyList0 = _group0->getPropertyList();
+            _propertyList0 = _group0->getPropertyList(ClusterlibStrings::DEFAULTPROPERTYLIST, LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
             _propertyList0->cachedKeyValues().erase("test");
@@ -228,7 +226,7 @@ class ClusterlibPropertyList : public MPITestFixture {
 
         if (isMyRank(1)) {
             string val;
-            _propertyList0 = _node0->getPropertyList();
+            _propertyList0 = _node0->getPropertyList(ClusterlibStrings::DEFAULTPROPERTYLIST, LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(_propertyList0);
             _propertyList0->acquireLock();
             found =_propertyList0->cachedKeyValues().get(
@@ -271,7 +269,7 @@ class ClusterlibPropertyList : public MPITestFixture {
 
         barrier(_factory, true);
 
-        _propertyList0 = _node0->getPropertyList();
+        _propertyList0 = _node0->getPropertyList(ClusterlibStrings::DEFAULTPROPERTYLIST, LOAD_FROM_REPOSITORY);
         if (isMyRank(0)) {
             _propertyList0->acquireLock();
             _propertyList0->cachedKeyValues().set(prop, newValue);
@@ -480,9 +478,9 @@ class ClusterlibPropertyList : public MPITestFixture {
         JSONValue jsonValue;
 
         if (isMyRank(0)) {
-            PropertyList *toolkitProp = 
+            shared_ptr<PropertyList> toolkitProp = 
                 _app0->getPropertyList("toolkit", CREATE_IF_NOT_FOUND);
-            PropertyList *kernelProp = 
+            shared_ptr<PropertyList> kernelProp = 
                 _app0->getPropertyList("kernel", CREATE_IF_NOT_FOUND);
 
             toolkitProp->acquireLock();
@@ -532,7 +530,7 @@ class ClusterlibPropertyList : public MPITestFixture {
 
         barrier(_factory, true);
 
-        _propertyList0 = _node0->getPropertyList();
+        _propertyList0 = _node0->getPropertyList(ClusterlibStrings::DEFAULTPROPERTYLIST, LOAD_FROM_REPOSITORY);
 
         stringstream ss;
         ss << getRank();
@@ -591,9 +589,9 @@ class ClusterlibPropertyList : public MPITestFixture {
         string propList1Name = "propList1";
         string propList2Name = "propList2";
         string propList3Name = "propList3";
-        PropertyList *propList1 = NULL;
-        PropertyList *propList2 = NULL;
-        PropertyList *propList3 = NULL;
+        shared_ptr<PropertyList> propList1;
+        shared_ptr<PropertyList> propList2;
+        shared_ptr<PropertyList> propList3;
 
         if (isMyRank(0)) {
             propList1 = _node0->getPropertyList(
@@ -601,7 +599,7 @@ class ClusterlibPropertyList : public MPITestFixture {
             propList2 = _node0->getPropertyList(
                 propList2Name, CREATE_IF_NOT_FOUND);
             propList3 = _node0->getPropertyList(
-                propList2Name, CREATE_IF_NOT_FOUND);
+                propList3Name, CREATE_IF_NOT_FOUND);
             _node0->acquireLock();
             propList1->cachedKeyValues().erase(prop);
             propList1->cachedKeyValues().publish();
@@ -614,9 +612,12 @@ class ClusterlibPropertyList : public MPITestFixture {
 
         barrier(_factory, true);
 
-        propList1 = _node0->getPropertyList(propList1Name);
-        propList2 = _node0->getPropertyList(propList2Name);
-        propList3 = _node0->getPropertyList(propList2Name);
+        propList1 = _node0->getPropertyList(propList1Name, 
+                                            LOAD_FROM_REPOSITORY);
+        propList2 = _node0->getPropertyList(propList2Name, 
+                                            LOAD_FROM_REPOSITORY);
+        propList3 = _node0->getPropertyList(propList3Name, 
+                                            LOAD_FROM_REPOSITORY);
         MPI_CPPUNIT_ASSERT(propList1);
         MPI_CPPUNIT_ASSERT(propList2);
         MPI_CPPUNIT_ASSERT(propList3);
@@ -736,10 +737,10 @@ class ClusterlibPropertyList : public MPITestFixture {
   private:
     Factory *_factory;
     Client *_client0;
-    Application *_app0;
-    Group *_group0;
-    Node *_node0;
-    PropertyList *_propertyList0;
+    shared_ptr<Application> _app0;
+    shared_ptr<Group> _group0;
+    shared_ptr<Node> _node0;
+    shared_ptr<PropertyList> _propertyList0;
 };
 
 /* Registers the fixture into the 'registry' */

@@ -111,7 +111,8 @@ const std::string optionDelim = "\b";
 const std::string addProperty = "Add property";
 const std::string addQueueElement = "Add queue element";
 
-class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod {
+class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod
+{
   public:
     MethodAdaptor(clusterlib::Client *client);
 
@@ -168,12 +169,12 @@ class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod {
         const ::json::JSONValue::JSONObject &name);
 
     ::json::JSONValue::JSONObject getNotifyableId(
-        clusterlib::Notifyable *notifyable);
+        const boost::shared_ptr<clusterlib::Notifyable> &notifyableSP);
 
     ::json::JSONValue::JSONObject getPropertyList(
-        clusterlib::PropertyList *propertyList);
+        const boost::shared_ptr<clusterlib::PropertyList> &propertyList);
 
-    clusterlib::Notifyable *getNotifyable(
+    boost::shared_ptr<clusterlib::Notifyable> getNotifyable(
         const ::json::JSONValue::JSONObject &id, 
         const std::string &expectType);
     
@@ -202,28 +203,28 @@ class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod {
         std::vector<clusterlib::Shard> &shardVec);
     
     ::json::JSONValue::JSONObject getOneNotifyableStatus(
-        clusterlib::Notifyable *notifyable);
+        const boost::shared_ptr<clusterlib::Notifyable> &notifyableSP);
 
     ::json::JSONValue::JSONObject getOneApplicationStatus(
-        clusterlib::Application *application);
+        const boost::shared_ptr<clusterlib::Application> &applicationSP);
 
     ::json::JSONValue::JSONObject getOneNodeStatus(
-        clusterlib::Node *node);
+        const boost::shared_ptr<clusterlib::Node> &nodeSP);
 
     ::json::JSONValue::JSONObject getOneProcessSlotStatus(
-        clusterlib::ProcessSlot *processSlot);
+        const boost::shared_ptr<clusterlib::ProcessSlot> &processSlotSP);
 
     ::json::JSONValue::JSONObject getOneGroupStatus(
-        clusterlib::Group *group);
+        const boost::shared_ptr<clusterlib::Group> &groupSP);
 
     ::json::JSONValue::JSONObject getOneDataDistributionStatus(
-        clusterlib::DataDistribution *distribution);
+        const boost::shared_ptr<clusterlib::DataDistribution> &distributionSP);
 
     ::json::JSONValue::JSONObject getOnePropertyListStatus(
-        clusterlib::PropertyList *propertyList);
+        const boost::shared_ptr<clusterlib::PropertyList> &propertyListSP);
 
     ::json::JSONValue::JSONObject getOneQueueStatus(
-        clusterlib::Queue *queue);
+        const boost::shared_ptr<clusterlib::Queue> &queueSP);
 
     ::json::JSONValue::JSONObject getOneShardStatus(
         clusterlib::Shard &shard);
@@ -236,7 +237,7 @@ class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod {
 
     clusterlib::Client *m_client;
 
-    clusterlib::Root *m_root;
+    boost::shared_ptr<clusterlib::Root> m_rootSP;
 
     std::string m_name;
 };

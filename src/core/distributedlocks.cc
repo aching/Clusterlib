@@ -1,26 +1,41 @@
 #include "clusterlibinternal.h"
 
 using namespace std;
+using namespace boost;
 using namespace json;
 
 namespace clusterlib {
 
 void
-DistributedLocks::acquire(Notifyable *ntp, 
+DistributedLocks::acquire(const shared_ptr<Notifyable> &pNotifyableSP, 
                           const string &lockName)
 {
     TRACE(CL_LOG, "acquire");
 
-    if (!acquireWaitUsecs(-1LL, ntp, lockName)) {
+    if (!acquireWaitUsecs(-1LL, pNotifyableSP, lockName)) {
         throw InconsistentInternalStateException(
             "acquire: Impossible that acquireWaitUsecs failed!");
     }
 }
 
 bool
-DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
-                                   Notifyable *ntp, 
-                                   const string &lockName)
+DistributedLocks::acquireWaitMsecs(
+    int64_t msecTimeout, 
+    const shared_ptr<Notifyable> &pNotifyableSP, 
+    const string &lockName)
+{
+    TRACE(CL_LOG, "acquireWaitMsecs");
+
+    return acquireWaitUsecs(((msecTimeout == -1) ? -1 : msecTimeout * 1000),
+                            pNotifyableSP,
+                            lockName);
+}
+
+bool
+DistributedLocks::acquireWaitUsecs(
+    int64_t usecTimeout,
+    const shared_ptr<Notifyable> &pNotifyableSP, 
+    const string &lockName)
 {
     TRACE(CL_LOG, "acquireWaitUsecs");
 
@@ -39,8 +54,9 @@ DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
     else {
         curUsecTimeout = -1;
     }
-    NotifyableImpl *castedNtp = dynamic_cast<NotifyableImpl *>(ntp);
-    if (castedNtp == NULL) {
+    shared_ptr<NotifyableImpl> notifyableImplSP = 
+        dynamic_pointer_cast<NotifyableImpl>(pNotifyableSP);
+    if (notifyableImplSP == NULL) {
         InvalidArgumentsException("acquireWaitUsecs: Notifyable is NULL");
     }
 
@@ -48,7 +64,7 @@ DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
      * Acquiring locks is serialized for each thread on a lock
      * granular basis.  Releasing can happen in parallel and is safe.
      */
-    Locker l(castedNtp->getSyncDistLock());
+    Locker l(notifyableImplSP->getSyncDistLock());
 
     /**
      * Algorithm:
@@ -68,7 +84,7 @@ DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
      *    to step 3.
      */
     string locksKey = NotifyableKeyManipulator::createLocksKey(
-        castedNtp->getKey());
+        notifyableImplSP->getKey());
 
     LOG_DEBUG(CL_LOG, 
               "acquireWaitUsecs: Creating locks node %s", 
@@ -81,7 +97,7 @@ DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
                  true);
 
     string lockKey = NotifyableKeyManipulator::createLockKey(
-        castedNtp->getKey(),
+        notifyableImplSP->getKey(),
         lockName);
 
     LOG_DEBUG(CL_LOG, 
@@ -96,23 +112,23 @@ DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
 
     string lockNode = 
         NotifyableKeyManipulator::createLockNodeKey(
-            castedNtp->getKey(),
+            notifyableImplSP->getKey(),
             lockName);
     
     /*
      * If I already have the lock, just increase the reference count.
      */
     string::size_type pos = 
-        castedNtp->getDistributedLockOwner(
+        notifyableImplSP->getDistributedLockOwner(
             lockName).find(lockNode);
     if (pos != string::npos) {
         LOG_WARN(CL_LOG, 
                  "acquireWaitUsecs: Already have the lock on %s (had "
                  "%d references)", 
-                 castedNtp->getKey().c_str(),
-                 castedNtp->getDistributedLockOwnerCount(
+                 notifyableImplSP->getKey().c_str(),
+                 notifyableImplSP->getDistributedLockOwnerCount(
                      lockName));
-        castedNtp->incrDistributedLockOwnerCount(
+        notifyableImplSP->incrDistributedLockOwnerCount(
             lockName);
         return true;
     }
@@ -338,15 +354,15 @@ DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
     /*
      * Remember the createPath node name so it can be cleaned up at release.
      */
-    castedNtp->setDistributedLockOwner(lockName,
-                                       createdPath);
-    castedNtp->incrDistributedLockOwnerCount(
+    notifyableImplSP->setDistributedLockOwner(lockName,
+                                              createdPath);
+    notifyableImplSP->incrDistributedLockOwnerCount(
         lockName);
     LOG_DEBUG(CL_LOG, "acquireWaitUsecs: Setting distributed lock key "
               "of Notifyable %s with %s (%u references)",
-              castedNtp->getKey().c_str(),
+              notifyableImplSP->getKey().c_str(),
               createdPath.c_str(),
-              castedNtp->getDistributedLockOwnerCount(
+              notifyableImplSP->getDistributedLockOwnerCount(
                   lockName));
     /*
      * In order to guarantee that changes are seen from one locked
@@ -359,32 +375,34 @@ DistributedLocks::acquireWaitUsecs(int64_t usecTimeout,
 }
 
 void
-DistributedLocks::release(Notifyable *ntp, const string &lockName)
+DistributedLocks::release(const shared_ptr<Notifyable> &pNotifyableSP, 
+                          const string &lockName)
 {
     TRACE(CL_LOG, "release");
 
-    NotifyableImpl *castedNtp = dynamic_cast<NotifyableImpl *>(ntp);
-    if (castedNtp == NULL) {
+    shared_ptr<NotifyableImpl> notifyableImplSP = 
+        dynamic_pointer_cast<NotifyableImpl>(pNotifyableSP);
+    if (notifyableImplSP == NULL) {
         throw InvalidArgumentsException("release: Notifyable is NULL");
     }
 
     string lockNode = 
         NotifyableKeyManipulator::createLockNodeKey(
-            castedNtp->getKey(),
+            notifyableImplSP->getKey(),
             lockName);
 
     LOG_DEBUG(CL_LOG, "release: Looking for %s in %s (%d references)",
               lockNode.c_str(),
-              castedNtp->getDistributedLockOwner(
+              notifyableImplSP->getDistributedLockOwner(
                   lockName).c_str(),
-              castedNtp->getDistributedLockOwnerCount(
+              notifyableImplSP->getDistributedLockOwnerCount(
                   lockName));
 
     /*
      * Make sure that I actually have the lock before I delete the
      * node.  Only delete the node if my reference count drops to 0.
      */
-    string removeNode = castedNtp->getDistributedLockOwner(
+    string removeNode = notifyableImplSP->getDistributedLockOwner(
         lockName);
     string::size_type pos = removeNode.find(lockNode);
     if (pos == string::npos) {
@@ -395,13 +413,13 @@ DistributedLocks::release(Notifyable *ntp, const string &lockName)
             lockNode);
     }
 
-    int32_t refCount = castedNtp->decrDistributedLockOwnerCount(
+    int32_t refCount = notifyableImplSP->decrDistributedLockOwnerCount(
         lockName);
     if (refCount != 0) {
         return;
     }
     
-    castedNtp->setDistributedLockOwner(lockName, "");
+    notifyableImplSP->setDistributedLockOwner(lockName, "");
 
     /* 
      * Delete the lock node here.
@@ -420,11 +438,11 @@ DistributedLocks::release(Notifyable *ntp, const string &lockName)
          * Make sure that this Notifyable is still alive?  Can't release
          * deleted Notifyables.
          */
-        if (castedNtp->getState() == Notifyable::REMOVED) {
+        if (notifyableImplSP->getState() == Notifyable::REMOVED) {
             LOG_DEBUG(CL_LOG, 
                       "release: Lock on Notifyable %s will not be released "
                       "since it was removed",
-                      castedNtp->getKey().c_str());
+                      notifyableImplSP->getKey().c_str());
             return;
         }
 
@@ -438,12 +456,14 @@ DistributedLocks::release(Notifyable *ntp, const string &lockName)
 }
 
 bool
-DistributedLocks::hasLock(Notifyable *ntp, const string &lockName)
+DistributedLocks::hasLock(const shared_ptr<Notifyable> &pNotifyableSP, 
+                          const string &lockName)
 {
     TRACE(CL_LOG, "hasLock");
     
-    NotifyableImpl *castedNtp = dynamic_cast<NotifyableImpl *>(ntp);
-    if (castedNtp == NULL) {
+    shared_ptr<NotifyableImpl> notifyableImplSP = 
+        dynamic_pointer_cast<NotifyableImpl>(pNotifyableSP);
+    if (notifyableImplSP == NULL) {
         throw InvalidArgumentsException("hasLock: Notifyable is NULL");
     }
 
@@ -451,12 +471,12 @@ DistributedLocks::hasLock(Notifyable *ntp, const string &lockName)
      * Locking operations are serialized for each thread on a lock
      * granular basis. 
      */
-    Locker l(castedNtp->getSyncDistLock());
+    Locker l(notifyableImplSP->getSyncDistLock());
 
-    string lockOwner = castedNtp->getDistributedLockOwner(lockName);
+    string lockOwner = notifyableImplSP->getDistributedLockOwner(lockName);
     
     string myLockNodeKey = NotifyableKeyManipulator::createLockNodeKey(
-        castedNtp->getKey(),
+        notifyableImplSP->getKey(),
         lockName);
 
     LOG_DEBUG(CL_LOG, 
@@ -464,8 +484,8 @@ DistributedLocks::hasLock(Notifyable *ntp, const string &lockName)
               "lock owner (%s) for Notifyable (%s) with ref count (%d)",
               myLockNodeKey.c_str(),
               lockOwner.c_str(),
-              ntp->getKey().c_str(),
-              castedNtp->getDistributedLockOwnerCount(lockName));
+              pNotifyableSP->getKey().c_str(),
+              notifyableImplSP->getDistributedLockOwnerCount(lockName));
     
     if (lockOwner.find(myLockNodeKey) != string::npos) {
         return true;
@@ -475,18 +495,21 @@ DistributedLocks::hasLock(Notifyable *ntp, const string &lockName)
 }
 
 bool
-DistributedLocks::getInfo(
-    Notifyable *ntp, const string &lockName, string *id, int64_t *msecs)
+DistributedLocks::getInfo(const shared_ptr<Notifyable> &pNotifyableSP,
+                          const string &lockName, 
+                          string *id, 
+                          int64_t *msecs)
 {
     TRACE(CL_LOG, "getInfo");
 
-    NotifyableImpl *castedNtp = dynamic_cast<NotifyableImpl *>(ntp);
-    if (castedNtp == NULL) {
+    shared_ptr<NotifyableImpl> notifyableImplSP = 
+        dynamic_pointer_cast<NotifyableImpl>(pNotifyableSP);
+    if (notifyableImplSP == NULL) {
         throw InvalidArgumentsException("release: Notifyable is NULL");
     }
 
     string lockKey = NotifyableKeyManipulator::createLockKey(
-        castedNtp->getKey(),
+        notifyableImplSP->getKey(),
         lockName);
 
     NameList childList;
@@ -523,4 +546,4 @@ DistributedLocks::getInfo(
     return true;
 }
 
-};
+}

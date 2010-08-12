@@ -20,21 +20,20 @@ using namespace json::rpc;
 /* Wait up to 0.5 seconds for a queue element */
 static const int64_t respQueueMsecTimeOut = 500;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 void 
 JSONRPCResponseHandler::handleUserEvent(Event e)
 {
     TRACE(CL_LOG, "handleUserEvent");
 
-    if (m_respQueue == NULL) {
+    if (m_respQueueSP == NULL) {
         throw InconsistentInternalStateException(
             "handleUserEvent: No response queue exists!!!");
         return;
     }
     
-    if (m_respQueue->empty()) {
+    if (m_respQueueSP->empty()) {
         LOG_DEBUG(CL_LOG, 
                   "handleUserEvent: Empty response queue on event %u",
                   e);
@@ -46,7 +45,7 @@ JSONRPCResponseHandler::handleUserEvent(Event e)
     string response;
     LOG_DEBUG(CL_LOG, "handleUserEvent: Starting to take");
     /* Process all responses in the queue that make the timeout */
-    bool found = m_respQueue->takeWaitMsecs(respQueueMsecTimeOut, response);
+    bool found = m_respQueueSP->takeWaitMsecs(respQueueMsecTimeOut, response);
     while (found == true) {
         LOG_DEBUG(CL_LOG,
                   "handleUserEvent: Got response (%s)", 
@@ -70,12 +69,12 @@ JSONRPCResponseHandler::handleUserEvent(Event e)
                      "handleUserEvent: Got non-valid JSON-RPC data (%s), "
                      "moving to completed queue (%s)",
                      response.c_str(),
-                     m_completedQueue->getKey().c_str());
-            m_completedQueue->put(response);
+                     m_completedQueueSP->getKey().c_str());
+            m_completedQueueSP->put(response);
         }
         
         /* Try to get the next response. */
-        found = m_respQueue->takeWaitMsecs(respQueueMsecTimeOut, response);
+        found = m_respQueueSP->takeWaitMsecs(respQueueMsecTimeOut, response);
     }
 }
 

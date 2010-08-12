@@ -12,8 +12,7 @@
 #ifndef	_CL_CACHEDSTATEIMPL_H_
 #define _CL_CACHEDSTATEIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class CachedStateImpl
@@ -61,7 +60,8 @@ class CachedStateImpl
     /**
      * Constructor.
      */
-    explicit CachedStateImpl(NotifyableImpl *ntp, StateType stateType);
+    explicit CachedStateImpl(NotifyableImpl *notifyable, 
+                             StateType stateType);
 
     /**
      * Destructor.
@@ -91,6 +91,6 @@ class CachedStateImpl
     ::json::JSONValue::JSONObject m_state;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_CACHEDSTATEIMPL_H_ */

@@ -11,8 +11,7 @@
 #ifndef	_CL_PERIODIC_H_
 #define	_CL_PERIODIC_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Interface for objects that run periodically.  Users should subclass
@@ -25,11 +24,13 @@ class Periodic
     /**
      * Constructor.
      */
-    explicit Periodic(int64_t msecsFrequency, 
-                      Notifyable *notifyable = NULL, 
-                      ClientData clientData = NULL)
+    explicit Periodic(
+        int64_t msecsFrequency, 
+        const boost::shared_ptr<Notifyable> &notifyableSP = 
+        boost::shared_ptr<Notifyable>(), 
+        ClientData clientData = NULL)
         : m_runMsecsFrequency(msecsFrequency),
-          m_notifyable(notifyable),
+          m_notifyableSP(notifyableSP),
           m_clientData(clientData) {}
 
     /**
@@ -72,18 +73,18 @@ class Periodic
         }
     }
 
-    Notifyable *getNotifyable() 
+    const boost::shared_ptr<Notifyable> &getNotifyable() 
     { 
         Locker l(getMutex());
 
-        return m_notifyable; 
+        return m_notifyableSP; 
     }
     
-    void setNotifyable(Notifyable *notifyable) 
+    void setNotifyable(const boost::shared_ptr<Notifyable> &notifyableSP) 
     {
         Locker l(getMutex());
 
-        m_notifyable = notifyable;
+        m_notifyableSP = notifyableSP;
     }
 
     ClientData getClientData() 
@@ -117,7 +118,7 @@ class Periodic
     /**
      * Saved Notifyable.
      */
-    Notifyable *m_notifyable;
+    boost::shared_ptr<Notifyable> m_notifyableSP;
 
     /**
      * Client data 
@@ -125,6 +126,6 @@ class Periodic
     ClientData m_clientData;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_PERIODIC_H_ */

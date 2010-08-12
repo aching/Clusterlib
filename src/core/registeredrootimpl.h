@@ -11,8 +11,7 @@
 #ifndef	_CL_REGISTEREDROOTIMPL_H_
 #define _CL_REGISTEREDROOTIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Implementation of interfaces for a RegisteredRootImpl.
@@ -28,10 +27,10 @@ class RegisteredRootImpl
     
     virtual bool isValidName(const std::string &name) const;
 
-    virtual NotifyableImpl *createNotifyable(
+    virtual boost::shared_ptr<NotifyableImpl> createNotifyable(
         const std::string &notifyableName,
         const std::string &notifyableKey,
-        NotifyableImpl *parent,
+        const boost::shared_ptr<NotifyableImpl> &parent,
         FactoryOps &factoryOps) const;
 
     virtual std::vector<std::string> generateRepositoryList(
@@ -41,10 +40,12 @@ class RegisteredRootImpl
     virtual bool isValidKey(const std::vector<std::string> &components, 
                             int32_t elements = -1);
 
-    virtual NotifyableImpl *getObjectFromComponents(
+    virtual bool getObjectFromComponents(
         const std::vector<std::string> &components,
-        int32_t elements = -1, 
-        AccessType accessType = LOAD_FROM_REPOSITORY);
+        int32_t elements,
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<NotifyableImpl> *pNotifyableSP);
 
     /**
      * Constructor
@@ -58,6 +59,6 @@ class RegisteredRootImpl
     virtual ~RegisteredRootImpl() {}
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_REGISTEREDNOTIFYABLE_H_ */

@@ -12,13 +12,10 @@
 
 #include "clusterlibinternal.h"
 
-#define LOG_LEVEL LOG_WARN
-#define MODULE_NAME "ClusterLib"
-
 using namespace std;
+using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 Factory::Factory(const string &registry, int64_t connectTimeout)
     : m_ops(NULL)
@@ -55,11 +52,12 @@ Factory::removeClient(Client *client)
 }
 
 Client *
-Factory::createJSONRPCResponseClient(Queue *responseQueue,
-                                     Queue *completedQueue)
+Factory::createJSONRPCResponseClient(
+    const shared_ptr<Queue> &responseQueueSP,
+    const shared_ptr<Queue> &completedQueueSP)
 {
-    return getOps()->createJSONRPCResponseClient(responseQueue,
-                                                 completedQueue);
+    return getOps()->createJSONRPCResponseClient(responseQueueSP,
+                                                 completedQueueSP);
 }
 
 Client *

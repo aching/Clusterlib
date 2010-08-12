@@ -31,7 +31,8 @@ struct CallbackAndContext {
     void *context;    
 };
 
-class CallbackAndContextManager {
+class CallbackAndContextManager
+{
   public:
     /**
      * Allocate the memory and setup a CallbackAndContext.  Track the
@@ -73,6 +74,6 @@ class CallbackAndContextManager {
     Mutex m_lock;
 };
 
-};   /* end of 'namespace clusterlib' */
+}      /* End of 'namespace clusterlib' */
 
 #endif /* _CL_CALLBACKANDCONTEXT_H_ */

@@ -11,8 +11,6 @@
 #ifndef	_CL_CLUSTERLIBINTERNAL_H_
 #define	_CL_CLUSTERLIBINTERNAL_H_
 
-#include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/split.hpp>
 #include "clusterlib.h"
 
 #include "log.h"

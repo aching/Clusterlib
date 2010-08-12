@@ -32,10 +32,11 @@ class ProcessSlotUpdater
      * Constructor.
      *
      * @param msecsFrequency How often to run this check
-     * @param notifyable The notifyable to set the current state.
+     * @param processSlotSP ProcessSlot to set the current state.
      */
-    ProcessSlotUpdater(int64_t msecsFrequency, 
-                            clusterlib::Notifyable *notifyable);
+    ProcessSlotUpdater(
+        int64_t msecsFrequency, 
+        const boost::shared_ptr<clusterlib::ProcessSlot> &processSlotSP);
 
     /**
      * Virtual destructor.
@@ -50,10 +51,11 @@ class ProcessSlotUpdater
     /**
      * Helper function for run to figure out what to do.
      *
-     * @param notifyable The Notifyable to check states.
+     * @param processSlotSP ProcessSlot to set the current state.
      * @return A course of action to be taken.
      */
-    UpdateAction determineAction(clusterlib::Notifyable &notifyable);
+    UpdateAction determineAction(
+        const boost::shared_ptr<clusterlib::ProcessSlot> &processSlotSP);
 };
 
 }

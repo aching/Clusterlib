@@ -12,8 +12,7 @@
 #ifndef	_CL_DATADISTRIBUTIONIMPL_H_
 #define _CL_DATADISTRIBUTIONIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class DataDistribution.
@@ -32,7 +31,7 @@ class DataDistributionImpl
     DataDistributionImpl(FactoryOps *fp,
                          const std::string &key,
                          const std::string &name,
-                         GroupImpl *parentGroup);
+                         const boost::shared_ptr<NotifyableImpl> &parentGroup);
 
     /**
      * Destructor to clean up shards and manual overrides
@@ -54,17 +53,9 @@ class DataDistributionImpl
 
   private:
     /**
-     * Make the default constructor private so it cannot be called.
+     * Do not call the default constructor
      */
-    DataDistributionImpl()
-        : NotifyableImpl(NULL, "", "", NULL),
-          m_cachedShards(this)
-        
-    {
-        throw InvalidMethodException(
-            "Someone called the DataDistributionImpl "
-            "default constructor!");
-    }
+    DataDistributionImpl();
     
   private:
     /**

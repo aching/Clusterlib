@@ -76,8 +76,7 @@
     } \
 } 
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /*
  * Typedefs for the various event adapter types.
@@ -90,7 +89,8 @@ typedef EventListenerAdapter<zk::ZKWatcherEvent, ZKEVENT>
 /**
  * This class does all the actual work of the Factory
  */
-class FactoryOps {
+class FactoryOps
+{
   public:
     /**
      * Constructor that should only be called from Factory
@@ -124,14 +124,15 @@ class FactoryOps {
      * registered prior to any JSON-RPC requests if a response is
      * desired.
      *
-     * @param responseQueue the queue this client specifies for the
+     * @param responseQueueSP the queue this client specifies for the
      *        response to its JSON-RPC requests
-     * @param completedQueue the queue this client specifies for the
+     * @param completedQueueSP the queue this client specifies for the
      *        problems with elements in the response queue
      * @return a Client pointer
      */
-    Client *createJSONRPCResponseClient(Queue *responseQueue,
-                                        Queue *completedQueue);
+    Client *createJSONRPCResponseClient(
+        const boost::shared_ptr<Queue> &responseQueueSP,
+        const boost::shared_ptr<Queue> &completedQueueSP);
     
     /**
      * Create a client for handling JSON-RPC methods.
@@ -167,10 +168,7 @@ class FactoryOps {
      * 
      * @return the ZooKeeperAdapter * from Factory Ops
      */
-    zk::ZooKeeperAdapter *getRepository()
-    {
-        return &m_zk;
-    }
+    zk::ZooKeeperAdapter *getRepository();
 
     /**
      * Register a notifyable for use in clusterlib.  A notifyable may
@@ -181,7 +179,7 @@ class FactoryOps {
      * Once registered, the RegisteredNotifyable cannot be
      * unregistered.
      * 
-     * @param ntp the RegisteredNotifyable pointer to register.
+     * @param regNtp the RegisteredNotifyable pointer to register.
      */
     void registerNotifyable(RegisteredNotifyable *regNtp);
 
@@ -203,9 +201,32 @@ class FactoryOps {
     void cleanCachedNotifyableMaps();
 
     /**
+     * Gets a notifyable from the cache, the repository, or creates it.
+     *
+     * @param parentSP Shared pointer to the parent or NULL pointer if
+     *        no parent
+     * @param registeredNotifyableName the name of the registered notifyable
+     *        the user is looking for 
+     * @param name Name of the actual notifyable to get or create
+     * @param accessType Access allowed to get this notifyable
+     * @param msecTimeout Access allowed to get this notifyable
+     * @param pNotifyableSP Shared pointer will be set to the correct value
+     *        if successful, NULL if not.
+     * @return True if operation completed prior to the msecTimeout, false
+     *         otherwise.
+     */
+    bool getNotifyableWaitMsecs(
+        const boost::shared_ptr<NotifyableImpl> parentSP,
+        const std::string &registeredNotifyableName, 
+        const std::string &name,
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<NotifyableImpl> *pNotifyableSP);
+
+    /**
      * Gets a notifyable from the cache or creates it.
      *
-     * @param parent pointer to the parent notifyable (NULL if no parent)
+     * @param parentSP Pointer to the parent notifyable (NULL if no parent)
      * @param registeredNotifyableName the name of the registered notifyable
      *        the user is looking for 
      * @param name the name of the actual notifyable to get or create
@@ -213,10 +234,11 @@ class FactoryOps {
      * @return Returns the notifyable pointer or NULL if could not be 
      *         accessed with the given accessType.
      */
-    NotifyableImpl *getNotifyable(NotifyableImpl *parent,
-                                  const std::string &registeredNotifyableName, 
-                                  const std::string &name,
-                                  AccessType accessType);
+    boost::shared_ptr<NotifyableImpl> getNotifyable(
+        const boost::shared_ptr<NotifyableImpl> &parentSP,
+        const std::string &registeredNotifyableName, 
+        const std::string &name,
+        AccessType accessType);
 
     /*
      * Add and remove clients.
@@ -312,7 +334,34 @@ class FactoryOps {
      * these names may no longer exist if the distributed lock on the
      * parent was not held.
      *
-     * @param parent The parent Notifyable of the nameList
+     * @param parentSP Parent Notifyable of the nameList
+     * @param registeredNotifyableName The registered Notifyable name (only
+     *        these types of notifyables will be acquired.
+     * @param nameList A list of names for this particular type of Notifyable
+     * @param accessType The access type.
+     * @param msecTimeout -1 for wait forever, 0 for return immediately, 
+     *        otherwise the number of milliseconds to wait for the lock.
+     * @param pNotifyableList Returns a list of Notifyable * that match the 
+     *        type of registeredNotifyableName
+     * @return True if the operation completed within msecTimeout, false 
+     *         otherwise
+     */
+    bool getNotifyableListWaitMsecs(
+        const boost::shared_ptr<NotifyableImpl> &parentSP,
+        const std::string &registeredNotifyableName,
+        const NameList &nameList,
+        AccessType accessType,
+        int64_t msecTimeout,
+        NotifyableList *pNotifyableList);
+
+    /**
+     * After calling getChildrenNames(), this function can be used to
+     * take the returned NameList and get all the Notifyable pointers.
+     * Note that if the accessType is not CREATE_IF_NOT_FOUND, some of
+     * these names may no longer exist if the distributed lock on the
+     * parent was not held.
+     *
+     * @param parentSP The parent Notifyable of the nameList
      * @param registeredNotifyableName The registered Notifyable name (only
      *        these types of notifyables will be acquired.
      * @param nameList A list of names for this particular type of Notifyable
@@ -321,7 +370,7 @@ class FactoryOps {
      *         registeredNotifyableName
      */
     NotifyableList getNotifyableList(
-        NotifyableImpl *parent,
+        const boost::shared_ptr<NotifyableImpl> &parentSP,
         const std::string &registeredNotifyableName,
         const NameList &nameList,
         AccessType accessType);
@@ -381,14 +430,35 @@ class FactoryOps {
      *        RegisteredNotifyable objects to check.  If this vector is empty, 
      *        check all registered RegisteredNotifyable objects.
      * @param key the key that should contain a clusterlib object
-     * @param create try to create this object if it does not exist?
+     * @param accessType Access type
+     * @param msecTimeout -1 for wait forever, 0 for return immediately, 
+     *        otherwise the number of milliseconds to wait for the lock.
+     * @param pNotifyableSP Shared pointer will be set to the correct value
+     *        if successful, NULL if not.
      * @return NULL if no Notifyable can be found, else the Notifyable *
      */
-    NotifyableImpl *getNotifyableFromKey(
+    bool getNotifyableFromKeyWaitMsecs(
         const std::vector<std::string> &registeredNameVec,
         const std::string &key, 
-        AccessType accessType = LOAD_FROM_REPOSITORY);
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<NotifyableImpl> *pNotifyableSP);
     
+    /**
+     * Get the notifyable represented by this key (wait forever). 
+     *
+     * @param registeredNameVec The list of names of 
+     *        RegisteredNotifyable objects to check.  If this vector is empty, 
+     *        check all registered RegisteredNotifyable objects.
+     * @param key the key that should contain a clusterlib object
+     * @param accessType Access type
+     * @return NULL if no Notifyable can be found, else the Notifyable *
+     */
+    boost::shared_ptr<NotifyableImpl> getNotifyableFromKey(
+        const std::vector<std::string> &registeredNameVec,
+        const std::string &key, 
+        AccessType accessType);
+
     /**
      * Get the notifyable represented by these components.
      *
@@ -396,42 +466,41 @@ class FactoryOps {
      *        RegisteredNotifyable objects to check.  If this vector is empty, 
      *        check all registered RegisteredNotifyable objects.
      * @param components Should represent the Notifyable object
-     * @param elements The number of elements to use in the components
-                       (-1 for all)
-     * @param create try to create this object if it does not exist?
+     * @param elements The number of elements to check with (should 
+     *                 be <= components.size()).  If it is -1, then use 
+     *                 components.size().
+     * @param accessType Access type
+     * @param msecTimeout -1 for wait forever, 0 for return immediately, 
+     *        otherwise the number of milliseconds to wait for the lock.
+     * @param pNotifyableSP Shared pointer will be set to the correct value
+     *        if successful, NULL if not.
      */
-    NotifyableImpl *getNotifyableFromComponents(
+    bool getNotifyableFromComponents(
         const std::vector<std::string> &registeredNameVec,
         const std::vector<std::string> &components,
-        int32_t elements = -1, 
-        AccessType accessType = LOAD_FROM_REPOSITORY);
+        int32_t elements, 
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<NotifyableImpl> *pNotifyableSP);
     
     /**
-     * Removes the notifyable from the m_cachedNotifyableMap, puts it
-     * in the dead pool of m_removedNotifyables and set its to
-     * removed.
+     * Removes the notifyable from the m_cachedNotifyableMap and sets
+     * the state to removed.  Since the pointers of type shared_ptr,
+     * the memory will be cleaned up by the last shared_ptr.
      *
-     * @param ntp pointer to the notifyable to remove
+     * @param notifyableSP Shared pointer to the notifyable to remove
      */
-    void removeCachedNotifyable(NotifyableImpl *ntp);
+    void removeCachedNotifyable(
+        const boost::shared_ptr<NotifyableImpl> &notifyableSP);
     
     /*
      * Get various locks and conditionals.
      */
     Mutex *getClientsLock();
-    Mutex *getRemovedNotifyablesLock();
     Mutex *getTimersLock();
     Mutex *getSyncEventLock();
     Cond *getSyncEventCond();
     Mutex *getEndEventLock();
-
-    /**
-     * Get the removed notifyables set
-     */
-    std::set<Notifyable *> *getRemovedNotifyables()
-    {
-        return &m_removedNotifyables;
-    }
 
     /**
      * Increment the sync event id completed
@@ -476,10 +545,14 @@ class FactoryOps {
         return &m_zkEventAdapter;
     }
 
-    /*
+    /**
      * Orderly termination mechanism.
      */
     void stopZKEventDispatch();
+
+    /**
+     * Pushes an "end event" into zookeeper so that it will shut down.
+     */
     void injectEndEvent();
 
     /**
@@ -617,14 +690,9 @@ class FactoryOps {
     void discardAllPeriodicThreads();
 
     /**
-     * Clean up all removed notifyables
-     */
-    void discardAllRemovedNotifyables();
-
-    /**
      * Required to support SAFE_CALL_ZK macro for various classes
      */
-    FactoryOps *getOps() { return this; }
+    FactoryOps *getOps();
 
     /**
      * Dispatch all events. Reads from the
@@ -654,7 +722,7 @@ class FactoryOps {
     Mutex m_clLock;
 
     /**
-     * The cache of all clusterlib notifyables
+     * The cache of all clusterlib Notifyable objects
      */
     std::map<std::string, SafeNotifyableMap *> m_cachedNotifyableMap;
 
@@ -696,12 +764,6 @@ class FactoryOps {
     int64_t m_syncEventIdCompleted;
     Mutex m_syncEventLock;
     Cond m_syncEventCond;
-
-    /*
-     * The registry of removed Notifyables
-     */
-    std::set<Notifyable *> m_removedNotifyables;
-    Mutex m_removedNotifyablesLock;
 
     /**
      * Protects m_idResponseMap.
@@ -830,6 +892,6 @@ class FactoryOps {
     DistributedLocks m_distributedLocks;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_FACTORYOPS_H_ */

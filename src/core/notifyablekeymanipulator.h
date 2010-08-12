@@ -11,8 +11,7 @@
 #ifndef	_CL_NOTIFYABLEKEYMANIPULATOR_H_
 #define	_CL_NOTIFYABLEKEYMANIPULATOR_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of NotifyableKeyManipulator.

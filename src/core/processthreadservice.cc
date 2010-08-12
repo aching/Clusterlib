@@ -19,8 +19,7 @@ _syscall0(pid_t,gettid)
 
 using namespace std;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 pid_t 
 ProcessThreadService::forkExec(const vector<string> &addEnv, 

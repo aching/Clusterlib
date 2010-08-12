@@ -7,11 +7,16 @@ using namespace json::rpc;
 using namespace log4cxx;
 using namespace std;
 
-namespace zookeeper { namespace rpc { namespace json {
-    LoggerPtr MethodAdaptor::logger(
-        Logger::getLogger("zookeeper.rpc.json.MethodAdaptor"));
+namespace zookeeper { 
 
-const std::string &
+namespace rpc {
+
+namespace json {
+
+LoggerPtr MethodAdaptor::logger(
+    Logger::getLogger("zookeeper.rpc.json.MethodAdaptor"));
+
+const string &
 MethodAdaptor::getName() const
 {
     return name;
@@ -85,7 +90,8 @@ void MethodAdaptor::reconnect() {
     
     if (state != ZOO_CONNECTED_STATE) {
         LOG4CXX_ERROR(logger, "Failed to establish ZooKeeper connection");
-        throw JSONRPCInvocationException("ZooKeeper server connection cannot be established (timed-out).");
+        throw JSONRPCInvocationException(
+            "ZooKeeper server connection cannot be established (timed-out).");
         }
     
     LOG4CXX_INFO(logger, "Established ZooKeeper connection");
@@ -101,9 +107,12 @@ MethodAdaptor::staticGlobalWatcher(zhandle_t *zkHandle,
         context)->globalWatcher(type, state, path);
 }
 
-void MethodAdaptor::globalWatcher(int type, int state, const char *path) {
+void 
+MethodAdaptor::globalWatcher(int type, int state, const char *path) {
     if (type == ZOO_SESSION_EVENT ) {
-        LOG4CXX_INFO(logger, "Switching ZooKeeper connection state from " << connectionState << " to " << state);
+        LOG4CXX_INFO(logger, 
+                     "Switching ZooKeeper connection state from " 
+                     << connectionState << " to " << state);
         pthread_mutex_lock(&mutex);
         connectionState = state;
         if (connectionState == ZOO_CONNECTED_STATE) {
@@ -114,32 +123,42 @@ void MethodAdaptor::globalWatcher(int type, int state, const char *path) {
 }
 
 JSONValue
-MethodAdaptor::invoke(const std::string &name, 
+MethodAdaptor::invoke(const string &name, 
                       const JSONValue::JSONArray &param, 
                       StatePersistence *persistence) {
     if (name == "zoo_exists") {
-        if (param.size() != 1 || param[0].type() != typeid(JSONValue::JSONString)) {
-            throw JSONRPCInvocationException("Method '" + name + "' requires one string parameter.");
+        if (param.size() != 1 || 
+            param[0].type() != typeid(JSONValue::JSONString)) {
+            throw JSONRPCInvocationException(
+                "Method '" + name + "' requires one string parameter.");
         }
         return zooExists(param[0].get<JSONValue::JSONString>());
     } else if (name == "zoo_get") {
-        if (param.size() != 1 || param[0].type() != typeid(JSONValue::JSONString)) {
-            throw JSONRPCInvocationException("Method '" + name + "' requires one string parameter.");
+        if (param.size() != 1 || 
+            param[0].type() != typeid(JSONValue::JSONString)) {
+            throw JSONRPCInvocationException(
+                "Method '" + name + "' requires one string parameter.");
         }
         return zooGet(param[0].get<JSONValue::JSONString>());
     } else if (name == "zoo_set") {
-        if (param.size() != 2 || param[0].type() != typeid(JSONValue::JSONString) || param[1].type() != typeid(JSONValue::JSONString)) {
-            throw JSONRPCInvocationException("Method '" + name + "' requires two string parameters.");
+        if (param.size() != 2 || 
+            param[0].type() != typeid(JSONValue::JSONString) || 
+            param[1].type() != typeid(JSONValue::JSONString)) {
+            throw JSONRPCInvocationException(
+                "Method '" + name + "' requires two string parameters.");
         }
         return zooSet(param[0].get<JSONValue::JSONString>(),
                       param[1].get<JSONValue::JSONString>());
     } else if (name == "zoo_get_children") {
-        if (param.size() != 1 || param[0].type() != typeid(JSONValue::JSONString)) {
-            throw JSONRPCInvocationException("Method '" + name + "' requires one string parameter.");
+        if (param.size() != 1 || 
+            param[0].type() != typeid(JSONValue::JSONString)) {
+            throw JSONRPCInvocationException(
+                "Method '" + name + "' requires one string parameter.");
         }
         return zooGetChildren(param[0].get<JSONValue::JSONString>());
     } else {
-        throw JSONRPCInvocationException("Unknown method '" + name + "' invoked.");
+        throw JSONRPCInvocationException(
+            "Unknown method '" + name + "' invoked.");
     }
 }
 
@@ -158,7 +177,8 @@ MethodAdaptor::zooExists(JSONValue::JSONString path) {
         case ZNONODE:
             return false;
         default:
-            throw JSONRPCInvocationException(string("Error occurred in ZooKeeper (") + zerror(ret) + ")");
+            throw JSONRPCInvocationException(
+                string("Error occurred in ZooKeeper (") + zerror(ret) + ")");
     }
 }
     
@@ -177,7 +197,8 @@ MethodAdaptor::zooGet(JSONValue::JSONString path) {
         case ZOK:
             return string(buffer, 0, bufLen);
         default:
-            throw JSONRPCInvocationException(string("Error occurred in ZooKeeper (") + zerror(ret) + ")");
+            throw JSONRPCInvocationException(
+                string("Error occurred in ZooKeeper (") + zerror(ret) + ")");
     }
 }
     
@@ -220,8 +241,13 @@ MethodAdaptor::zooGetChildren(JSONValue::JSONString path) {
             deallocate_String_vector(&children);
             return array;
         default:
-            throw JSONRPCInvocationException(string("Error occurred in ZooKeeper (") + zerror(ret) + ")");
+            throw JSONRPCInvocationException(
+                string("Error occurred in ZooKeeper (") + zerror(ret) + ")");
     }
 }
 
-}}}
+}
+
+}
+
+}

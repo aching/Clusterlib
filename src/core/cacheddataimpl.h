@@ -12,8 +12,7 @@
 #ifndef	_CL_CACHEDDATAIMPL_H_
 #define _CL_CACHEDDATAIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class CachedDataImpl
@@ -45,9 +44,9 @@ class CachedDataImpl
     /**
      * Constructor.
      * 
-     * @param ntp the notifyable that is associated with this cached data
+     * @param notifyable Notifyable that is associated with this cached data
      */
-    explicit CachedDataImpl(NotifyableImpl *ntp);
+    explicit CachedDataImpl(NotifyableImpl *notifyable);
 
     /**
      * Destructor.
@@ -75,10 +74,7 @@ class CachedDataImpl
     /**
      * Get the notifyable that contains this cached data
      */
-    NotifyableImpl *getNotifyable() 
-    {
-        return m_notifyable;
-    }
+    boost::shared_ptr<NotifyableImpl> getNotifyable();
 
     /**
      * Get the factory ops
@@ -124,9 +120,12 @@ class CachedDataImpl
     Mutex m_cachedDataLock;
 
     /**
-     * The notifyable associated with this cached data
+     * The pointer to the NotifyableImpl associated with this cached
+     * data.  This cannot be a boost::weak_ptr or boost::shared_ptr
+     * since this is initialized as part of the constructor.
+     * "There must exist at least one shared_ptr instance p that owns t"
      */
-    NotifyableImpl *m_notifyable;    
+    NotifyableImpl *m_notifyable;
     
     /**
      * Statistics of this cached data
@@ -134,6 +133,6 @@ class CachedDataImpl
     Stat m_stat;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_NODE_H_ */

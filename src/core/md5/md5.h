@@ -43,7 +43,8 @@ documentation and/or software.
 #include <fstream>
 #include <iostream>
 
-class MD5 {
+class MD5
+{
 
 public:
 // methods for controlled operation:
@@ -65,8 +66,6 @@ public:
   unsigned char    *raw_digest ();  // digest as a 16-byte binary array
   char *            hex_digest ();  // digest as a 33-byte ascii-hex string
   friend ostream&   operator<< (ostream&, MD5 context);
-
-
 
 private:
 

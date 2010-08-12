@@ -19,14 +19,16 @@
 #include "processslotupdater.h"
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 using namespace json;
 
 namespace activenode {
 
-ProcessSlotUpdater::ProcessSlotUpdater(int64_t msecsFrequency,
-                                       Notifyable *notifyable)
-    : Periodic(msecsFrequency, notifyable)
+ProcessSlotUpdater::ProcessSlotUpdater(
+    int64_t msecsFrequency,
+    const shared_ptr<ProcessSlot> &processSlotSP)
+    : Periodic(msecsFrequency, processSlotSP)
 {
 }
 
@@ -35,16 +37,17 @@ ProcessSlotUpdater::~ProcessSlotUpdater()
 }
 
 ProcessSlotUpdater::UpdateAction
-ProcessSlotUpdater::determineAction(Notifyable &notifyable)
+ProcessSlotUpdater::determineAction(
+    const shared_ptr<ProcessSlot> &processSlotSP)
 {
     TRACE(CL_LOG, "determineAction");
 
     JSONValue jsonCurrentState, jsonDesiredState;
     bool currentFound = false, desiredFound = false;
 
-    currentFound = notifyable.cachedCurrentState().get(
+    currentFound = processSlotSP->cachedCurrentState().get(
         ProcessSlot::PROCESS_STATE_KEY, jsonCurrentState);    
-    desiredFound = notifyable.cachedDesiredState().get(
+    desiredFound = processSlotSP->cachedDesiredState().get(
         ProcessSlot::PROCESS_STATE_KEY, jsonDesiredState);
     
     /*
@@ -86,11 +89,11 @@ ProcessSlotUpdater::determineAction(Notifyable &notifyable)
             JSONValue desiredProcessStateSetMsecs;
 
             currentDesiredProcessStateSetMsecsFound = 
-                notifyable.cachedCurrentState().get(
+                processSlotSP->cachedCurrentState().get(
                     ProcessSlot::DESIRED_PROCESS_STATE_SET_MSECS_KEY, 
                     currentDesiredProcessStateSetMsecs);    
             desiredProcessStateSetMsecsFound = 
-                notifyable.cachedDesiredState().get(
+                processSlotSP->cachedDesiredState().get(
                     ProcessSlot::PROCESS_STATE_SET_MSECS_KEY, 
                     desiredProcessStateSetMsecs);
             if (!desiredProcessStateSetMsecsFound) {
@@ -140,20 +143,20 @@ ProcessSlotUpdater::run()
 {
     TRACE(CL_LOG, "run");
 
-    ProcessSlotImpl *processSlot = dynamic_cast<ProcessSlotImpl *>(
-        getNotifyable());
-    if (processSlot == NULL) {
+    const shared_ptr<ProcessSlotImpl> processSlotSP = 
+        dynamic_pointer_cast<ProcessSlotImpl>(getNotifyable());
+    if (processSlotSP == NULL) {
         throw InconsistentInternalStateException(
-            "run: processSlot is NULL");
+            "run: processSlotSP is NULL");
     }
 
-    NotifyableLocker l(processSlot);
+    NotifyableLocker l(processSlotSP);
 
     LOG_DEBUG(CL_LOG,
               "run: current state = %s, desired state = %s",
-              JSONCodec::encode(processSlot->cachedCurrentState().
+              JSONCodec::encode(processSlotSP->cachedCurrentState().
                                 getHistoryArray()).c_str(),
-              JSONCodec::encode(processSlot->cachedDesiredState().
+              JSONCodec::encode(processSlotSP->cachedDesiredState().
                                 getHistoryArray()).c_str());
 
     /*
@@ -162,7 +165,7 @@ ProcessSlotUpdater::run()
      */
     ostringstream msgss;
     JSONValue jsonPid;
-    bool foundPid = processSlot->cachedCurrentState().get(
+    bool foundPid = processSlotSP->cachedCurrentState().get(
         ProcessSlot::PID_KEY, jsonPid);
     pid_t oldPid = -1;
     pid_t waitedPid = -1;
@@ -200,22 +203,22 @@ ProcessSlotUpdater::run()
                 if (WIFEXITED(stat_loc)) {
                     msgss << "PID " << waitedPid << " exited with "
                           << WEXITSTATUS(stat_loc);
-                    processSlot->cachedCurrentState().set(
+                    processSlotSP->cachedCurrentState().set(
                         ProcessSlot::PROCESS_STATE_KEY, 
                         ProcessSlot::PROCESS_STATE_EXIT_VALUE);
                 }
                 else {
-                    processSlot->cachedCurrentState().set(
+                    processSlotSP->cachedCurrentState().set(
                         ProcessSlot::PROCESS_STATE_KEY, 
                         ProcessSlot::PROCESS_STATE_FAILURE_VALUE);
                 }
-                processSlot->cachedCurrentState().set(
+                processSlotSP->cachedCurrentState().set(
                     ProcessSlot::PID_KEY, JSONValue::JSONInteger(-1));
             }
         }
     }
 
-    UpdateAction action = determineAction(*processSlot);
+    UpdateAction action = determineAction(processSlotSP);
 
     switch(action) {
         case NONE:
@@ -224,7 +227,7 @@ ProcessSlotUpdater::run()
             {
                 /* Might have to stop first if already running */
                 if ((oldPid > 0) && (oldPid != waitedPid)) {
-                    processSlot->stopLocal(oldPid, SIGKILL);
+                    processSlotSP->stopLocal(oldPid, SIGKILL);
                     msgss << "Start Action: Stopped old PID " 
                           << oldPid << endl;
                 }
@@ -237,12 +240,12 @@ ProcessSlotUpdater::run()
                 int64_t totalStarts = 1;
                 int64_t maxStarts = -1;
                 try {
-                    found = processSlot->cachedDesiredState().get(
+                    found = processSlotSP->cachedDesiredState().get(
                         ProcessSlot::PROCESS_STATE_MAX_STARTS_KEY, jsonValue);
                     if (found) {
                         maxStarts = jsonValue.get<JSONValue::JSONInteger>();
                     }
-                    found = processSlot->cachedCurrentState().get(
+                    found = processSlotSP->cachedCurrentState().get(
                         ProcessSlot::PROCESS_STATE_TOTAL_STARTS_KEY, 
                         jsonValue);
                     if (found) {
@@ -251,28 +254,28 @@ ProcessSlotUpdater::run()
                     }
 
                     if ((maxStarts != -1) && (totalStarts > maxStarts)) {
-                        processSlot->cachedCurrentState().set(
+                        processSlotSP->cachedCurrentState().set(
                             ProcessSlot::PROCESS_STATE_KEY,
                             ProcessSlot::PROCESS_STATE_FAILURE_VALUE);
                         msgss << "StartAction: total starts " << totalStarts 
                               << " > max starts" << maxStarts << endl;;
                     }
                     else {
-                        processSlot->cachedCurrentState().set(
+                        processSlotSP->cachedCurrentState().set(
                             ProcessSlot::PROCESS_STATE_TOTAL_STARTS_KEY,
                             totalStarts);
 
-                        processSlot->getExecArgs(
-                            processSlot->cachedDesiredState(),
+                        processSlotSP->getExecArgs(
+                            processSlotSP->cachedDesiredState(),
                             addEnv,
                             path, 
                             command);
-                        pid_t newPid = processSlot->startLocal(
+                        pid_t newPid = processSlotSP->startLocal(
                             addEnv, path, command);
-                        processSlot->cachedCurrentState().set(
+                        processSlotSP->cachedCurrentState().set(
                             ProcessSlot::PID_KEY, 
                             JSONValue::JSONInteger(newPid));
-                        processSlot->cachedCurrentState().set(
+                        processSlotSP->cachedCurrentState().set(
                             ProcessSlot::PROCESS_STATE_KEY, 
                         ProcessSlot::PROCESS_STATE_RUNNING_VALUE);
                         msgss << "StartAction: Started new PID " 
@@ -282,7 +285,7 @@ ProcessSlotUpdater::run()
                 catch (const RepositoryDataMissingException &e) { 
                     msgss.str("");
                     msgss << e.what();
-                    processSlot->cachedCurrentState().set(
+                    processSlotSP->cachedCurrentState().set(
                         ProcessSlot::PROCESS_STATE_KEY, 
                         ProcessSlot::PROCESS_STATE_FAILURE_VALUE);
                 }
@@ -290,36 +293,36 @@ ProcessSlotUpdater::run()
             break;
         case KILL:
             if ((oldPid > 0) && (oldPid != waitedPid)) {
-                processSlot->stopLocal(oldPid, SIGKILL);
+                processSlotSP->stopLocal(oldPid, SIGKILL);
                 msgss << "Kill Action: Stopped old PID " << oldPid << endl;
             }
-            processSlot->cachedCurrentState().set(
+            processSlotSP->cachedCurrentState().set(
                 ProcessSlot::PROCESS_STATE_KEY, 
                 ProcessSlot::PROCESS_STATE_EXIT_VALUE);
             break;
         default:
             throw InconsistentInternalStateException("run: Invalid action");
-    };
+    }
 
-    processSlot->cachedCurrentState().set(
+    processSlotSP->cachedCurrentState().set(
         ProcessSlot::PROCESS_STATE_MSG_KEY, 
         msgss.str());
     int64_t msecs = TimerService::getCurrentTimeMsecs();
-    processSlot->cachedCurrentState().set(
+    processSlotSP->cachedCurrentState().set(
         ProcessSlot::PROCESS_STATE_SET_MSECS_KEY, msecs);
-    processSlot->cachedCurrentState().set(
+    processSlotSP->cachedCurrentState().set(
         ProcessSlot::PROCESS_STATE_SET_MSECS_AS_DATE_KEY, 
         TimerService::getMsecsTimeString(msecs));
     JSONValue jsonDesiredProcessStateSetMsecs;
-    bool found = processSlot->cachedDesiredState().get(
+    bool found = processSlotSP->cachedDesiredState().get(
         ProcessSlot::PROCESS_STATE_SET_MSECS_KEY, 
         jsonDesiredProcessStateSetMsecs);
     if (found) {
-        processSlot->cachedCurrentState().set(
+        processSlotSP->cachedCurrentState().set(
             ProcessSlot::DESIRED_PROCESS_STATE_SET_MSECS_KEY, 
             jsonDesiredProcessStateSetMsecs);
     }
-    processSlot->cachedCurrentState().publish();
+    processSlotSP->cachedCurrentState().publish();
 } 
 
 }

@@ -17,7 +17,7 @@ namespace json {namespace rpc {
         manager = NULL;
     }
 
-    void HttpServerAdaptor::pageHandler(const std::string &path, HttpContext *context) {
+    void HttpServerAdaptor::pageHandler(const string &path, HttpContext *context) {
         size_t pos = 0;
 
         context->response.headerMap[HTTP_HEADER_CONTENT_TYPE] = "application/json";
@@ -82,7 +82,7 @@ namespace json {namespace rpc {
     HttpServerAdaptor::HttpSessionStatePersistence::~HttpSessionStatePersistence() {
     }
 
-    PersistableState *HttpServerAdaptor::HttpSessionStatePersistence::get(const std::string &name) {
+    PersistableState *HttpServerAdaptor::HttpSessionStatePersistence::get(const string &name) {
         HttpSession::HttpSessionStateMap::iterator iter = session->state.find(name);
         if (iter == session->state.end()) {
             return NULL;
@@ -92,7 +92,7 @@ namespace json {namespace rpc {
         return (state == NULL) ? NULL : state->get();
     }
 
-    void HttpServerAdaptor::HttpSessionStatePersistence::set(const std::string &name, PersistableState *state) {
+    void HttpServerAdaptor::HttpSessionStatePersistence::set(const string &name, PersistableState *state) {
         HttpSession::HttpSessionStateMap::iterator iter = session->state.find(name);
         if (iter != session->state.end()) {
             delete iter->second;
@@ -102,7 +102,7 @@ namespace json {namespace rpc {
         session->state[name] = new HttpSessionPersistableState(state);
     }
 
-    void HttpServerAdaptor::HttpSessionStatePersistence::erase(const std::string &name) {
+    void HttpServerAdaptor::HttpSessionStatePersistence::erase(const string &name) {
         HttpSession::HttpSessionStateMap::iterator iter = session->state.find(name);
         if (iter != session->state.end()) {
             delete iter->second;

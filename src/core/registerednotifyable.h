@@ -11,8 +11,7 @@
 #ifndef	_CL_REGISTEREDNOTIFYABLE_H_
 #define _CL_REGISTEREDNOTIFYABLE_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Interface that must be derived by specific notifyable objects to be
@@ -52,13 +51,13 @@ class RegisteredNotifyable
      *
      * @param notifyableName the name of the notifyable to load objects for
      * @param notifyableKey the key of the notifyable to load objects for
-     * @param parent the parent of the new notifyable
+     * @param parentSP the parent of the new notifyable
      * @return pointer to the new notifyable or NULL if couldn't be found
      */
-    virtual NotifyableImpl *loadNotifyableFromRepository(
+    virtual boost::shared_ptr<NotifyableImpl> loadNotifyableFromRepository(
         const std::string &notifyableName,
         const std::string &notifyableKey,
-        NotifyableImpl *parent) = 0;
+        const boost::shared_ptr<NotifyableImpl> &parentSP) = 0;
 
     /**
      * Creates the necessary zknodes in the repository.  This is part
@@ -95,10 +94,10 @@ class RegisteredNotifyable
      * @param factoryOps reference to the FactoryOps object
      * @return pointer to the new notifyable or NULL if couldn't be found
      */
-    virtual NotifyableImpl *createNotifyable(
+    virtual boost::shared_ptr<NotifyableImpl> createNotifyable(
         const std::string &notifyableName,
         const std::string &notifyableKey,
-        NotifyableImpl *parent,
+        const boost::shared_ptr<NotifyableImpl> &parent,
         FactoryOps &factoryOps) const = 0;
 
     /**
@@ -142,11 +141,18 @@ class RegisteredNotifyable
      *
      * @param key should represent this object
      * @param accessType The access permission to get this object
-     * @return NULL if cannot be found, else the NotifyableImpl *
+     * @param msecTimeout -1 for wait forever, 0 for return immediately, 
+     *        otherwise the number of milliseconds to wait for the lock.
+     * @param pNotifyableSP NULL if cannot be found, else the 
+     *        object pointer
+     * @return True if operation completed within the msecTimeout, 
+     *         false otherwise
      */
-    virtual NotifyableImpl *getObjectFromKey(
+    virtual bool getObjectFromKey(
         const std::string &key, 
-        AccessType accessType = LOAD_FROM_REPOSITORY) = 0;
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<NotifyableImpl> *pNotifyableSP) = 0;
 
     /**
      * Try to get this object type represented exactly by these components.
@@ -157,12 +163,18 @@ class RegisteredNotifyable
      *                 be <= components.size()).  If it is -1, then use 
      *                 components.size().
      * @param accessType The access permission to get this object
-     * @return NULL if cannot be found, else the object pointer
+     * @param msecTimeout Msecs to wait for locks (-1 for wait forever, 0 for
+     *        no waiting)
+     * @param pNotifyableSP NULL if cannot be found, else the object pointer
+     * @return True if operation completed within the msecTimeout, 
+     *         false otherwise
      */
-    virtual NotifyableImpl *getObjectFromComponents(
+    virtual bool getObjectFromComponents(
         const std::vector<std::string> &components,
-        int32_t elements = -1, 
-        AccessType accessType = LOAD_FROM_REPOSITORY) = 0;
+        int32_t elements,
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<NotifyableImpl> *pNotifyableSP) = 0;
     
     /**
      * Virtual destructor.
@@ -170,6 +182,6 @@ class RegisteredNotifyable
     virtual ~RegisteredNotifyable() {}
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_REGISTEREDNOTIFYABLE_H_ */

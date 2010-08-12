@@ -16,6 +16,7 @@
 #include "activenode.h"
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 using namespace json;
 using namespace json::rpc;
@@ -33,30 +34,30 @@ int main(int argc, char* argv[])
 
     auto_ptr<Factory> factory(new Factory(params.getZkServerPortList()));
     ActiveNode activeNode(params, factory.get());
-    Queue *recvQueue = activeNode.getActiveNode()->getQueue(
+    shared_ptr<Queue> recvQueueSP = activeNode.getActiveNode()->getQueue(
         ClusterlibStrings::DEFAULT_RECV_QUEUE, 
         CREATE_IF_NOT_FOUND);
-    Queue *completedQueue = activeNode.getActiveNode()->getQueue(
+    shared_ptr<Queue> completedQueueSP = activeNode.getActiveNode()->getQueue(
         ClusterlibStrings::DEFAULT_COMPLETED_QUEUE, 
         CREATE_IF_NOT_FOUND);
-    PropertyList *rpcMethodHandlerPropertylist = 
+    shared_ptr<PropertyList> rpcMethodHandlerPropertyListSP = 
         activeNode.getActiveNode()->getPropertyList(
             ClusterlibStrings::DEFAULTPROPERTYLIST,
             CREATE_IF_NOT_FOUND);
     /* Try to clear the PropertyList if possible wihin 0.5 seconds */
-    bool gotLock = rpcMethodHandlerPropertylist->acquireLockWaitMsecs(500);
+    bool gotLock = rpcMethodHandlerPropertyListSP->acquireLockWaitMsecs(500);
     if (gotLock) {
-        rpcMethodHandlerPropertylist->cachedKeyValues().clear();
-        rpcMethodHandlerPropertylist->cachedKeyValues().publish();
-        rpcMethodHandlerPropertylist->releaseLock();
+        rpcMethodHandlerPropertyListSP->cachedKeyValues().clear();
+        rpcMethodHandlerPropertyListSP->cachedKeyValues().publish();
+        rpcMethodHandlerPropertyListSP->releaseLock();
     }
 
     auto_ptr<ClusterlibRPCManager> rpcManager(
         new ClusterlibRPCManager(activeNode.getRoot(),
-                                 recvQueue, 
-                                 completedQueue, 
+                                 recvQueueSP, 
+                                 completedQueueSP, 
                                  completedQueueMaxSize, 
-                                 rpcMethodHandlerPropertylist));
+                                 rpcMethodHandlerPropertyListSP));
     /*
      * Deliberately added an ClusterlibRPCManager that has no methods
      * as an example.  Create and register methods if desired.  For

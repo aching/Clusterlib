@@ -12,8 +12,7 @@
 #ifndef _CL_PROPERTYLIST_H_
 #define _CL_PROPERTYLIST_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class PropertyList
@@ -28,16 +27,9 @@ class PropertyList
      * @return A reference to the cached key-values.
      */
     virtual CachedKeyValues &cachedKeyValues() = 0;
-
-    /**
-     * \brief Do not allow getPropertyList() on a Properties object (throw)
-     */
-    virtual PropertyList *getPropertyList(
-        const std::string &name,
-        AccessType accessType = LOAD_FROM_REPOSITORY) = 0;    
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CLUSTERLIB_H_ */
 

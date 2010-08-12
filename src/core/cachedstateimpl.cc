@@ -13,13 +13,14 @@
 #include "clusterlibinternal.h"
 
 using namespace std;
+using namespace boost;
 using namespace json;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
-CachedStateImpl::CachedStateImpl(NotifyableImpl *ntp, StateType stateType)
-    : CachedDataImpl(ntp),
+CachedStateImpl::CachedStateImpl(NotifyableImpl *notifyable,
+                                 StateType stateType)
+    : CachedDataImpl(notifyable),
       m_maxHistorySize(5),
       m_stateType(stateType)
 {
@@ -244,7 +245,7 @@ CachedStateImpl::getHistory(int32_t stateIndex,
 }
 
 bool
-CachedStateImpl::get(const std::string &key, 
+CachedStateImpl::get(const string &key, 
                      json::JSONValue &jsonValue)
 {
     TRACE(CL_LOG, "get");

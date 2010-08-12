@@ -12,8 +12,7 @@
 #ifndef	_CL_APPLICATION_H_
 #define _CL_APPLICATION_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class Application.

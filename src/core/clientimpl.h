@@ -11,14 +11,13 @@
 #ifndef _CL_CLIENTIMPL_H_
 #define _CL_CLIENTIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 class ClientImpl
     : public virtual Client
 {
   public:
-    virtual Root *getRoot();
+    virtual boost::shared_ptr<Root> getRoot();
 
     virtual TimerId registerTimer(TimerEventHandler *tehp,
                                   uint64_t afterMsecs,
@@ -30,8 +29,9 @@ class ClientImpl
 
     virtual bool cancelHandler(UserEventHandler *cehp);
 
-    virtual void registerJSONRPCResponseHandler(Queue *responseQueue,
-                                                Queue *completedQueue);
+    virtual void registerJSONRPCResponseHandler(
+        const boost::shared_ptr<Queue> &responseQueueSP,
+        const boost::shared_ptr<Queue> &completedQueueSP);
 
     virtual bool cancelJSONRPCResponseHandler();
 
@@ -177,6 +177,6 @@ class ClientImpl
     PredMutexCond m_predMutexCond;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CLUSTERCLIENTIMPL_H_ */

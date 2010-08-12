@@ -4,11 +4,13 @@
 extern TestParams globalTestParams;
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 
 const string appName = "unittests-hierarchy-app";
 
-class ClusterlibHierarchy : public MPITestFixture {
+class ClusterlibHierarchy : public MPITestFixture
+{
     CPPUNIT_TEST_SUITE(ClusterlibHierarchy);
     CPPUNIT_TEST(testHierarchy1);
     CPPUNIT_TEST(testHierarchy2);
@@ -20,8 +22,7 @@ class ClusterlibHierarchy : public MPITestFixture {
     ClusterlibHierarchy() 
         : MPITestFixture(globalTestParams),
           _factory(NULL),
-          _client(NULL),
-          _app(NULL) {}
+          _client(NULL) {}
     
     /**
      * Runs prior to each test 
@@ -62,16 +63,17 @@ class ClusterlibHierarchy : public MPITestFixture {
                                     "testHierarchy1");
 
         if (isMyRank(0)) {
-            Group *group = _app->getGroup("hierarchy-group", 
+            shared_ptr<Group> group = _app->getGroup("hierarchy-group", 
                                           CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(group);
-	    DataDistribution *dist = 
+	    shared_ptr<DataDistribution> dist = 
 		group->getDataDistribution("hierarchy-dist",
-					    CREATE_IF_NOT_FOUND);
+                                           CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(dist);
-	    Node *node = group->getNode("hierarchy-node", CREATE_IF_NOT_FOUND);
+	    shared_ptr<Node> node = group->getNode("hierarchy-node", 
+                                                   CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(node);
-	    PropertyList *prop = node->getPropertyList(
+	    shared_ptr<PropertyList> prop = node->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST, 
                 CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(prop);
@@ -101,26 +103,31 @@ class ClusterlibHierarchy : public MPITestFixture {
 
 	    MPI_CPPUNIT_ASSERT(_app->getMyApplication() == _app);
 	    
-	    Group *group = _app->getGroup("hierarchy-group");
+	    shared_ptr<Group> group = _app->getGroup("hierarchy-group", 
+                                                     LOAD_FROM_REPOSITORY);
 	    MPI_CPPUNIT_ASSERT(group);
 	    MPI_CPPUNIT_ASSERT(group->getMyParent() == _app);
 	    MPI_CPPUNIT_ASSERT(group->getMyGroup() == _app);
 	    MPI_CPPUNIT_ASSERT(group->getMyApplication() == _app);
 	    
-	    DataDistribution *dist = 
-		group->getDataDistribution("hierarchy-dist");
+	    shared_ptr<DataDistribution> dist = 
+		group->getDataDistribution("hierarchy-dist",
+                                           LOAD_FROM_REPOSITORY);
 	    MPI_CPPUNIT_ASSERT(dist);
 	    MPI_CPPUNIT_ASSERT(dist->getMyParent() == group);
 	    MPI_CPPUNIT_ASSERT(dist->getMyGroup() == group);
 	    MPI_CPPUNIT_ASSERT(dist->getMyApplication() == _app);
 
-	    Node *node = group->getNode("hierarchy-node");
+	    shared_ptr<Node> node = group->getNode("hierarchy-node",
+                                                   LOAD_FROM_REPOSITORY);
 	    MPI_CPPUNIT_ASSERT(node);
 	    MPI_CPPUNIT_ASSERT(node->getMyParent() == group);
 	    MPI_CPPUNIT_ASSERT(node->getMyGroup() == group);
 	    MPI_CPPUNIT_ASSERT(node->getMyApplication() == _app);
 	    
-	    PropertyList *prop = node->getPropertyList();
+	    shared_ptr<PropertyList> prop = node->getPropertyList(
+                ClusterlibStrings::DEFAULTPROPERTYLIST,
+                LOAD_FROM_REPOSITORY);
 	    MPI_CPPUNIT_ASSERT(prop);
 	    MPI_CPPUNIT_ASSERT(prop->getMyParent() == node);
 	    MPI_CPPUNIT_ASSERT(prop->getMyGroup() == group);
@@ -142,21 +149,25 @@ class ClusterlibHierarchy : public MPITestFixture {
                                     "testHierarchy2");
 
         if (isMyRank(0)) {
-	    Node *node1 = _app->getNode("node1", CREATE_IF_NOT_FOUND);
+	    shared_ptr<Node> node1 = _app->getNode("node1", 
+                                                   CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(node1);
 
-	    Group *group1 = _app->getGroup("hier-group1", CREATE_IF_NOT_FOUND);
+	    shared_ptr<Group> group1 = _app->getGroup("hier-group1", 
+                                                      CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(group1);
-	    Node *node2 = group1->getNode("node2", CREATE_IF_NOT_FOUND);
+	    shared_ptr<Node> node2 = group1->getNode("node2", 
+                                                     CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(node2);
 
-	    Group *group2 = group1->getGroup("hier-group2", 
-                                             CREATE_IF_NOT_FOUND);
+	    shared_ptr<Group> group2 = group1->getGroup("hier-group2", 
+                                                        CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(group2);
-	    Node *node3 = group2->getNode("node3", CREATE_IF_NOT_FOUND);
+	    shared_ptr<Node> node3 = group2->getNode("node3", 
+                                                     CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(node3);
 
-            PropertyList *prop = node3->getPropertyList(
+            shared_ptr<PropertyList> prop = node3->getPropertyList(
                 ClusterlibStrings::DEFAULTPROPERTYLIST, 
                 CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(prop);
@@ -180,38 +191,45 @@ class ClusterlibHierarchy : public MPITestFixture {
                 _app->getMyGroup();
                 MPI_CPPUNIT_ASSERT("UNREACHABLE BECAUSE OF EXCEPTION" == NULL);
             } catch (InvalidMethodException &e) {                
-                cerr << "Caught app->getMyGroup() exception incorrectly" 
+                cerr << "Caught app->getMyGroup() exception correctly" 
                      << endl;
             }
 
 	    MPI_CPPUNIT_ASSERT(_app->getMyApplication() == _app);
 	    
-	    Node *node1 = _app->getNode("node1");
+	    shared_ptr<Node> node1 = _app->getNode("node1",
+                                                   LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(node1->getMyParent() == _app);
             MPI_CPPUNIT_ASSERT(node1->getMyGroup() == _app);
             MPI_CPPUNIT_ASSERT(node1->getMyApplication() == _app);
 
-            Group *group1 = _app->getGroup("hier-group1");
+            shared_ptr<Group> group1 = _app->getGroup("hier-group1",
+                                                      LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(group1->getMyParent() == _app);
             MPI_CPPUNIT_ASSERT(group1->getMyGroup() == _app);
             MPI_CPPUNIT_ASSERT(group1->getMyApplication() == _app);
 
-	    Node *node2 = group1->getNode("node2", CREATE_IF_NOT_FOUND);
+	    shared_ptr<Node> node2 = group1->getNode("node2", 
+                                                     CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(node2->getMyParent() == group1);
             MPI_CPPUNIT_ASSERT(node2->getMyGroup() == group1);
             MPI_CPPUNIT_ASSERT(node2->getMyApplication() == _app);
 
-            Group *group2 = group1->getGroup("hier-group2");
+            shared_ptr<Group> group2 = group1->getGroup("hier-group2",
+                                                        LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(group2->getMyParent() == group1);
             MPI_CPPUNIT_ASSERT(group2->getMyGroup() == group1);
             MPI_CPPUNIT_ASSERT(group2->getMyApplication() == _app);
 
-	    Node *node3 = group2->getNode("node3");
+	    shared_ptr<Node> node3 = group2->getNode("node3",
+                                                     LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(node3->getMyParent() == group2);
             MPI_CPPUNIT_ASSERT(node3->getMyGroup() == group2);
             MPI_CPPUNIT_ASSERT(node3->getMyApplication() == _app);
 
-	    PropertyList *prop = node3->getPropertyList();
+	    shared_ptr<PropertyList> prop = node3->getPropertyList(
+                ClusterlibStrings::DEFAULTPROPERTYLIST,
+                LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(prop->getMyParent() == node3);
             MPI_CPPUNIT_ASSERT(prop->getMyGroup() == group2);
             MPI_CPPUNIT_ASSERT(prop->getMyApplication() == _app);
@@ -259,7 +277,7 @@ class ClusterlibHierarchy : public MPITestFixture {
             }
 
             string newkey = nl[index] + postfix;
-            Application *app0 = 
+            shared_ptr<Application> app0 = 
                 _client->getRoot()->getApplication(newkey, 
                                                    CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(app0);
@@ -279,7 +297,8 @@ class ClusterlibHierarchy : public MPITestFixture {
                     (it->compare(it->size() - postfix.size(), 
                                  postfix.size(), 
                                  postfix) == 0)) {
-                    _client->getRoot()->getApplication(*it)->remove(true);
+                    _client->getRoot()->getApplication(
+                        *it, LOAD_FROM_REPOSITORY)->remove(true);
                     cerr << "Removed the application " << *it << endl;
                     break;
                 }
@@ -290,7 +309,7 @@ class ClusterlibHierarchy : public MPITestFixture {
   private:
     Factory *_factory;
     Client *_client;
-    Application *_app;
+    shared_ptr<Application> _app;
 };
 
 /* Registers the fixture into the 'registry' */

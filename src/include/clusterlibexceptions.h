@@ -9,8 +9,7 @@
 #ifndef _CL_CLUSTERLIBEXCEPTIONS_H_
 #define _CL_CLUSTERLIBEXCEPTIONS_H_
 
-namespace clusterlib 
-{
+namespace clusterlib  {
 
 /**
  * \brief A general clusterlib related exception.

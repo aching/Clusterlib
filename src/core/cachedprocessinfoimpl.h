@@ -12,8 +12,7 @@
 #ifndef	_CL_CACHEDPROCESSINFOIMPL_H_
 #define _CL_CACHEDPROCESSINFOIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class CachedProcessInfoImpl
@@ -39,7 +38,7 @@ class CachedProcessInfoImpl
     /**
      * Constructor.
      */
-    explicit CachedProcessInfoImpl(NotifyableImpl *ntp);
+    explicit CachedProcessInfoImpl(NotifyableImpl *notifyable);
 
     /**
      * Destructor.
@@ -73,6 +72,6 @@ class CachedProcessInfoImpl
     ::json::JSONValue::JSONArray m_portArr;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_CACHEDPROCESSINFOIMPL_H_ */

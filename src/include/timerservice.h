@@ -11,13 +11,13 @@
 #ifndef	_CL_TIMERSERVICE_H_
 #define	_CL_TIMERSERVICE_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * This class provides a static timer.
  */
-class TimerService {
+class TimerService
+{
   public:
     /**
      * Get the time in a human-readable format based on the msecs from
@@ -101,6 +101,6 @@ class TimerService {
     }
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_TIMERSERVICE_H_ */

@@ -20,6 +20,7 @@
 #include "activenode.h"
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 using namespace json;
 using namespace json::rpc;
@@ -46,12 +47,12 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
 
     /* Go to the group to add the node */
     m_client = m_factory->createClient();
-    m_root = m_client->getRoot();
-    m_activeNodeGroup = m_root->getApplication(groupVec[0], 
-                                               CREATE_IF_NOT_FOUND);
+    m_rootSP = m_client->getRoot();
+    m_activeNodeGroupSP = m_rootSP->getApplication(groupVec[0], 
+                                                   CREATE_IF_NOT_FOUND);
     for (size_t i = 1; i < m_params.getGroupVec().size(); i++) {
-        m_activeNodeGroup = m_activeNodeGroup->getGroup(groupVec[i], 
-                                                        CREATE_IF_NOT_FOUND);
+        m_activeNodeGroupSP = m_activeNodeGroupSP->getGroup(
+            groupVec[i], CREATE_IF_NOT_FOUND);
     }
 
     string nodeName = m_params.getNodeName();
@@ -61,44 +62,46 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
      * objects as soon as ownership is acquired.
      */
     Mutex activeNodeMutex;
-    m_activeNode = m_activeNodeGroup->getNode(nodeName, CREATE_IF_NOT_FOUND);
+    m_activeNodeSP = 
+        m_activeNodeGroupSP->getNode(nodeName, CREATE_IF_NOT_FOUND);
     if (m_params.getEnableNodeOwnership()) {
-        m_activeNode->acquireOwnership();
+        m_activeNodeSP->acquireOwnership();
     }
     m_activeNodePeriodicCheck = 
         new ActiveNodePeriodicCheck(m_params.getCheckMsecs(), 
-                                    m_activeNode,
+                                    m_activeNodeSP,
                                     m_predMutexCond);
     m_periodicVec.push_back(m_activeNodePeriodicCheck);
     m_factory->registerPeriodicThread(*m_activeNodePeriodicCheck);
     
     /* Get rid of all the previous ProcessSlot objects */
-    NameList nl = m_activeNode->getProcessSlotNames();
-    ProcessSlot *processSlot = NULL;
+    NameList nl = m_activeNodeSP->getProcessSlotNames();
+    shared_ptr<ProcessSlot> processSlotSP;
     for (size_t i = 0; i < nl.size(); i++) {
-        processSlot =  m_activeNode->getProcessSlot(nl[i]);
-        if (processSlot != NULL) {
-            processSlot->remove(true);
+        processSlotSP =  m_activeNodeSP->getProcessSlot(nl[i],
+                                                        LOAD_FROM_REPOSITORY);
+        if (processSlotSP != NULL) {
+            processSlotSP->remove(true);
         }
     }
     int32_t maxProcessSlots = m_params.getNumProcs();
 
     {
-        NotifyableLocker l(m_activeNode);
+        NotifyableLocker l(m_activeNodeSP);
 
-        m_activeNode->cachedProcessSlotInfo().setMaxProcessSlots(
+        m_activeNodeSP->cachedProcessSlotInfo().setMaxProcessSlots(
             maxProcessSlots);
-        m_activeNode->cachedProcessSlotInfo().publish();
+        m_activeNodeSP->cachedProcessSlotInfo().publish();
     }
 
     Periodic *processUpdater = NULL;
     for (int32_t i = 0; i < m_params.getNumProcs(); i++) {
         ostringstream oss;
         oss << "slot_" << i;
-        processSlot = m_activeNode->getProcessSlot(oss.str(), 
-                                                   CREATE_IF_NOT_FOUND);
+        processSlotSP = m_activeNodeSP->getProcessSlot(oss.str(), 
+                                                       CREATE_IF_NOT_FOUND);
         processUpdater = 
-            new ProcessSlotUpdater(ProcessSlotUpdaterFrequency, processSlot);
+            new ProcessSlotUpdater(ProcessSlotUpdaterFrequency, processSlotSP);
         m_periodicVec.push_back(processUpdater);
         m_factory->registerPeriodicThread(*processUpdater);
     }
@@ -107,24 +110,24 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
 ActiveNode::~ActiveNode()
 {    
     if (m_params.getEnableNodeOwnership()) {
-        m_activeNode->releaseOwnership();
+        m_activeNodeSP->releaseOwnership();
     }
 }
 
-Node *
+const shared_ptr<Node> &
 ActiveNode::getActiveNode()
 {
     TRACE(CL_LOG, "getActiveNode");
     
-    return m_activeNode;
+    return m_activeNodeSP;
 }
 
-Root *
+const shared_ptr<Root> &
 ActiveNode::getRoot()
 {
     TRACE(CL_LOG, "getRoot");
 
-    return m_root;
+    return m_rootSP;
 }
 
 int32_t 
@@ -143,10 +146,10 @@ ActiveNode::run(vector<ClusterlibRPCManager *> &rpcManagerVec)
     }
 
     {
-        NotifyableLocker l(m_activeNode);
+        NotifyableLocker l(m_activeNodeSP);
 
-        m_activeNode->cachedProcessSlotInfo().setEnable(true);
-        m_activeNode->cachedProcessSlotInfo().publish();
+        m_activeNodeSP->cachedProcessSlotInfo().setEnable(true);
+        m_activeNodeSP->cachedProcessSlotInfo().publish();
     }
 
     /* Wait until a signal to stop */

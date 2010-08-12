@@ -4,6 +4,7 @@
 extern TestParams globalTestParams;
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 
 const string appName = "unittests-userevents-app";
@@ -18,10 +19,10 @@ class MyUserEventHandler
     /*
      * Constructor.
      */
-    MyUserEventHandler(Notifyable *ntp,
+    MyUserEventHandler(const shared_ptr<Notifyable> &notifyableSP,
                        Event mask,
                        ClientData cd)
-        : UserEventHandler(ntp, mask, cd),
+        : UserEventHandler(notifyableSP, mask, cd),
           m_counter(0),
           m_targetCounter(0)
     {
@@ -103,9 +104,6 @@ class ClusterlibUserEvents
         : MPITestFixture(globalTestParams), 
           _factory(NULL),
           _client0(NULL),
-          _app0(NULL),
-          _grp0(NULL),
-          _propList0(NULL),
           _zk(NULL)
     {
     }
@@ -143,9 +141,6 @@ class ClusterlibUserEvents
             _factory = NULL;
         }
         _client0 = NULL;
-        _app0 = NULL;
-        _grp0 = NULL;
-        _propList0 = NULL;
     }
 
     /*
@@ -391,9 +386,9 @@ class ClusterlibUserEvents
   private:
     Factory *_factory;
     Client *_client0;
-    Application *_app0;
-    Group *_grp0;
-    PropertyList *_propList0;
+    shared_ptr<Application> _app0;
+    shared_ptr<Group> _grp0;
+    shared_ptr<PropertyList> _propList0;
     zk::ZooKeeperAdapter *_zk;
 };
 

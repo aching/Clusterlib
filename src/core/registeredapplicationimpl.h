@@ -11,8 +11,7 @@
 #ifndef	_CL_REGISTEREDAPPLICATIONIMPL_H_
 #define _CL_REGISTEREDAPPLICATIONIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Implementation of interfaces for a RegisteredApplicationImpl.
@@ -28,10 +27,10 @@ class RegisteredApplicationImpl
 
     virtual bool isValidName(const std::string &name) const;
 
-    virtual NotifyableImpl *createNotifyable(
+    virtual boost::shared_ptr<NotifyableImpl> createNotifyable(
         const std::string &notifyableName,
         const std::string &notifyableKey,
-        NotifyableImpl *parent,
+        const boost::shared_ptr<NotifyableImpl> &parent,
         FactoryOps &factoryOps) const;
 
     virtual std::vector<std::string> generateRepositoryList(
@@ -40,17 +39,11 @@ class RegisteredApplicationImpl
 
     virtual bool isValidKey(const std::vector<std::string> &components, 
                             int32_t elements = -1);
-
-    virtual NotifyableImpl *getObjectFromComponents(
-        const std::vector<std::string> &components,
-        int32_t elements = -1, 
-        AccessType accessType = LOAD_FROM_REPOSITORY);
     
     /**
      * Constructor
      */
-    RegisteredApplicationImpl(FactoryOps *factoryOps)
-        : RegisteredNotifyableImpl(factoryOps) {}
+    RegisteredApplicationImpl(FactoryOps *factoryOps);
 
     /**
      * Virtual destructor.

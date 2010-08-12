@@ -4,6 +4,7 @@
 extern TestParams globalTestParams;
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 
 const string appName = "unittests-timer-app";
@@ -77,10 +78,6 @@ class ClusterlibTimer
         : MPITestFixture(globalTestParams),
           _factory(NULL),
           _client0(NULL),
-          _app0(NULL),
-          _grp0(NULL),
-          _nod0(NULL),
-          _dist0(NULL),
           _zk(NULL),
           _timer0(NULL)
     {
@@ -121,10 +118,6 @@ class ClusterlibTimer
 	delete _factory;
         _factory = NULL;
         _client0 = NULL;
-        _app0 = NULL;
-        _grp0 = NULL;
-        _nod0 = NULL;
-        _dist0 = NULL;
         _zk = NULL;
         delete _timer0;
         _timer0 = NULL;
@@ -186,10 +179,10 @@ class ClusterlibTimer
   private:
     Factory *_factory;
     Client *_client0;
-    Application *_app0;
-    Group *_grp0;
-    Node *_nod0;
-    DataDistribution *_dist0;
+    shared_ptr<Application> _app0;
+    shared_ptr<Group> _grp0;
+    shared_ptr<Node> _nod0;
+    shared_ptr<DataDistribution> _dist0;
     zk::ZooKeeperAdapter *_zk;
     MyTimerEventHandler *_timer0;
 };

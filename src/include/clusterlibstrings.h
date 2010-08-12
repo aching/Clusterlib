@@ -13,8 +13,7 @@
 
 #include <iostream>
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Class containing static variables for all string constants.
@@ -218,6 +217,6 @@ class ClusterlibStrings
     }
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_CLUSTERLIBSTRINGS_H_ */

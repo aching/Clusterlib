@@ -16,8 +16,7 @@ using namespace std;
 using namespace json;
 using namespace json::rpc;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 void
 ClusterlibRPCBulkRequest::addRequest(ClusterlibRPCRequest *request) 

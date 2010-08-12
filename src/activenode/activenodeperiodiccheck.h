@@ -22,11 +22,13 @@ class ActiveNodePeriodicCheck
      * Constructor.
      *
      * @param msecsFrequency How often to run this check
-     * @param notifyable The notifyable to set the current state.
+     * @param nodeSP Node to set the current state.
+     * @param predMutexCond Synchronize on this object.
      */
-    ActiveNodePeriodicCheck(int64_t msecsFrequency, 
-                            clusterlib::Notifyable *notifyable,
-                            clusterlib::PredMutexCond &predMutexCond);
+    ActiveNodePeriodicCheck(
+        int64_t msecsFrequency, 
+        const boost::shared_ptr<clusterlib::Node> &nodeSP,
+        clusterlib::PredMutexCond &predMutexCond);
 
     /**
      * Virtual destructor.

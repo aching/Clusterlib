@@ -15,8 +15,7 @@
 using namespace std;
 using namespace json;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 string
 UnknownHashRange::name()
@@ -85,4 +84,4 @@ UnknownHashRange::operator++ ()
     throw InvalidMethodException("++: Not allowed for UnknownHashRange");
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

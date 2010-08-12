@@ -12,8 +12,7 @@
 #ifndef	_CL_CACHEDSHARDSIMPL_H_
 #define _CL_CACHEDSHARDSIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * The object stored in the interval tree with each notifyable.
@@ -106,8 +105,7 @@ class CachedShardsImpl
   public:
     virtual std::string getHashRangeName();
 
-    virtual std::vector<Notifyable *> getNotifyables(
-        const HashRange &hashedKey);
+    virtual NotifyableList getNotifyables(const HashRange &hashRange);
 
     virtual uint32_t getCount();
 
@@ -115,11 +113,13 @@ class CachedShardsImpl
 
     virtual void insert(const HashRange &start,
                         const HashRange &end,
-                        Notifyable *ntp,
+                        const boost::shared_ptr<Notifyable> &notifyableSP,
                         int32_t priority = 0);
     
-    virtual std::vector<Shard> getAllShards(const Notifyable *ntp = NULL,
-                                            int32_t priority = -1);
+    virtual std::vector<Shard> getAllShards(
+        const boost::shared_ptr<Notifyable> &notifyableSP = 
+        boost::shared_ptr<Notifyable>(),
+        int32_t priority = -1);
 
     virtual bool remove(Shard &shard);
 
@@ -128,7 +128,7 @@ class CachedShardsImpl
     /**
      * Constructor.
      */
-    explicit CachedShardsImpl(NotifyableImpl *ntp);
+    explicit CachedShardsImpl(NotifyableImpl *notifyable);
 
     /**
      * Destructor.
@@ -187,6 +187,6 @@ class CachedShardsImpl
     HashRange *m_hashRange;
 };
 
-};	/* End of 'namespace clusterlib' */
+}  // End ;	
 
 #endif	/* !_CL_CACHEDSHARDSIMPL_H_ */

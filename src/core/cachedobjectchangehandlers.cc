@@ -14,14 +14,10 @@
 
 #include "clusterlibinternal.h"
 
-#define LOG_LEVEL LOG_WARN
-#define MODULE_NAME "ClusterLib"
-
 using namespace std;
 using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 string 
 CachedObjectChangeHandlers::getCachedObjectChangeString(
@@ -70,16 +66,17 @@ CachedObjectChangeHandlers::getCachedObjectChangeString(
 }
 
 Event
-CachedObjectChangeHandlers::handleNotifyableRemovedChange(NotifyableImpl *ntp,
-                                                          int32_t etype,
-                                                          const string &key)
+CachedObjectChangeHandlers::handleNotifyableRemovedChange(
+    const shared_ptr<NotifyableImpl> &notifyableSP,
+    int32_t etype,
+    const string &key)
 {
     TRACE(CL_LOG, "handleNotifyableRemovedChange");
     LOG_DEBUG(CL_LOG,
               "handleNotifyableRemovedChange: %s on notifyable (%s)"
               " for key %s",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              (!ntp) ? "" : ntp->getKey().c_str(),
+              (!notifyableSP) ? "" : notifyableSP->getKey().c_str(),
               key.c_str());
 
     unsetHandlerCallbackReady(NOTIFYABLE_REMOVED_CHANGE, key);
@@ -91,8 +88,9 @@ CachedObjectChangeHandlers::handleNotifyableRemovedChange(NotifyableImpl *ntp,
          * is propagated through this handler.  Note that if any part
          * of the NotifyableImpl is removed, it gets removed.
          */
-        if (ntp != NULL) {
-            getOps()->removeCachedNotifyable(ntp);
+        if (notifyableSP != NULL) {
+            getOps()->removeCachedNotifyable(
+                shared_ptr<NotifyableImpl>(notifyableSP));
         }
 
         return EN_DELETED;
@@ -118,16 +116,17 @@ CachedObjectChangeHandlers::handleNotifyableRemovedChange(NotifyableImpl *ntp,
 }
 
 Event
-CachedObjectChangeHandlers::handleCurrentStateChange(NotifyableImpl *ntp,
-                                                     int32_t etype,
-                                                     const string &key)
+CachedObjectChangeHandlers::handleCurrentStateChange(
+    const shared_ptr<NotifyableImpl> &notifyableSP,
+    int32_t etype,
+    const string &key)
 {
     TRACE(CL_LOG, "handleCurrentStateChange");
     LOG_DEBUG(CL_LOG,
               "handleCurrentStateChange: %s on notifyable (%s)"
               " for key %s",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              (!ntp) ? "" : ntp->getKey().c_str(),
+              (!notifyableSP) ? "" : notifyableSP->getKey().c_str(),
               key.c_str());
 
     unsetHandlerCallbackReady(CURRENT_STATE_CHANGE, key);
@@ -135,7 +134,7 @@ CachedObjectChangeHandlers::handleCurrentStateChange(NotifyableImpl *ntp,
     /*
      * If there's no notifyable or is deleted, punt.
      */
-    if ((ntp == NULL) || (etype == ZOO_DELETED_EVENT)) {
+    if ((notifyableSP == NULL) || (etype == ZOO_DELETED_EVENT)) {
         LOG_WARN(CL_LOG,
                  "handleCurrentStateChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
@@ -147,21 +146,22 @@ CachedObjectChangeHandlers::handleCurrentStateChange(NotifyableImpl *ntp,
      * Update the cached data and re-establish watches.
      */
     dynamic_cast<CachedStateImpl &>(
-        ntp->cachedCurrentState()).loadDataFromRepository(false);
+        notifyableSP->cachedCurrentState()).loadDataFromRepository(false);
     return EN_CURRENT_STATE_CHANGE;
 }
 
 Event
-CachedObjectChangeHandlers::handleDesiredStateChange(NotifyableImpl *ntp,
-                                                     int32_t etype,
-                                                     const string &key)
+CachedObjectChangeHandlers::handleDesiredStateChange(
+    const shared_ptr<NotifyableImpl> &notifyableSP,
+    int32_t etype,
+    const string &key)
 {
     TRACE(CL_LOG, "handleDesiredStateChange");
     LOG_DEBUG(CL_LOG,
               "handleDesiredStateChange: %s on notifyable (%s)"
               " for key %s",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              (!ntp) ? "" : ntp->getKey().c_str(),
+              (!notifyableSP) ? "" : notifyableSP->getKey().c_str(),
               key.c_str());
 
     unsetHandlerCallbackReady(DESIRED_STATE_CHANGE, key);
@@ -169,7 +169,7 @@ CachedObjectChangeHandlers::handleDesiredStateChange(NotifyableImpl *ntp,
     /*
      * If there's no notifyable or is deleted, punt.
      */
-    if ((ntp == NULL) || (etype == ZOO_DELETED_EVENT)) {
+    if ((notifyableSP == NULL) || (etype == ZOO_DELETED_EVENT)) {
         LOG_WARN(CL_LOG,
                  "handleDesiredStateChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
@@ -181,14 +181,15 @@ CachedObjectChangeHandlers::handleDesiredStateChange(NotifyableImpl *ntp,
      * Update the cached data and re-establish watches.
      */
     dynamic_cast<CachedStateImpl &>(
-        ntp->cachedDesiredState()).loadDataFromRepository(false);
+        notifyableSP->cachedDesiredState()).loadDataFromRepository(false);
     return EN_DESIRED_STATE_CHANGE;
 }
 
 Event
-CachedObjectChangeHandlers::handleApplicationsChange(NotifyableImpl *ntp,
-                                                     int32_t etype,
-                                                     const string &key)
+CachedObjectChangeHandlers::handleApplicationsChange(
+    const shared_ptr<NotifyableImpl> &notifyableSP,
+    int32_t etype,
+    const string &key)
 {
     TRACE(CL_LOG, "handleApplicationsChange");
     
@@ -206,7 +207,7 @@ CachedObjectChangeHandlers::handleApplicationsChange(NotifyableImpl *ntp,
     /*
      * If there's no notifyable, punt.
      */
-    if (ntp == NULL) {
+    if (notifyableSP == NULL) {
         LOG_WARN(CL_LOG,
                  "handleApplicationsChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
@@ -217,21 +218,22 @@ CachedObjectChangeHandlers::handleApplicationsChange(NotifyableImpl *ntp,
     LOG_DEBUG(CL_LOG,
               "handleApplicationsChange: %s on notifyable: \"%s\"",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str());
+              notifyableSP->getKey().c_str());
 
     /*
      * Data not required, only using this function to set the watch again.
      */
     getOps()->getChildrenNames(
-        NotifyableKeyManipulator::createApplicationChildrenKey(ntp->getKey()),
+        NotifyableKeyManipulator::createApplicationChildrenKey(notifyableSP->getKey()),
         CachedObjectChangeHandlers::APPLICATIONS_CHANGE);
     return EN_APPSCHANGE;
 }
 
 Event
-CachedObjectChangeHandlers::handleGroupsChange(NotifyableImpl *ntp,
-                                               int32_t etype,
-                                               const string &key)
+CachedObjectChangeHandlers::handleGroupsChange(
+    const shared_ptr<NotifyableImpl> &notifyableSP,
+    int32_t etype,
+    const string &key)
 {
     TRACE(CL_LOG, "handleGroupsChange");
     
@@ -249,7 +251,7 @@ CachedObjectChangeHandlers::handleGroupsChange(NotifyableImpl *ntp,
     /*
      * If there's no notifyable, punt.
      */
-    if (ntp == NULL) {
+    if (notifyableSP == NULL) {
         LOG_WARN(CL_LOG,
                  "handleGroupsChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
@@ -260,21 +262,22 @@ CachedObjectChangeHandlers::handleGroupsChange(NotifyableImpl *ntp,
     LOG_DEBUG(CL_LOG,
               "handleGroupsChange: %s on notifyable: \"%s\"",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str());
+              notifyableSP->getKey().c_str());
 
     /*
      * Data not required, only using this function to set the watch again.
      */
     getOps()->getChildrenNames(
-        NotifyableKeyManipulator::createGroupChildrenKey(ntp->getKey()),
+        NotifyableKeyManipulator::createGroupChildrenKey(notifyableSP->getKey()),
         CachedObjectChangeHandlers::GROUPS_CHANGE);
     return EN_GROUPSCHANGE;
 }
 
 Event
-CachedObjectChangeHandlers::handleDataDistributionsChange(NotifyableImpl *ntp,
-                                                          int32_t etype,
-                                                          const string &key)
+CachedObjectChangeHandlers::handleDataDistributionsChange(
+    const shared_ptr<NotifyableImpl> &notifyableSP,
+    int32_t etype,
+    const string &key)
 {
     TRACE(CL_LOG, "handleDataDistributionsChange");
     
@@ -292,7 +295,7 @@ CachedObjectChangeHandlers::handleDataDistributionsChange(NotifyableImpl *ntp,
     /*
      * If there's no notifyable, punt.
      */
-    if (ntp == NULL) {
+    if (notifyableSP == NULL) {
         LOG_WARN(CL_LOG,
                  "handleDataDistributionsChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
@@ -303,22 +306,23 @@ CachedObjectChangeHandlers::handleDataDistributionsChange(NotifyableImpl *ntp,
     LOG_DEBUG(CL_LOG,
               "handleDataDistributionsChange: %s on notifyable: \"%s\"",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str());
+              notifyableSP->getKey().c_str());
 
     /*
      * Data not required, only using this function to set the watch again.
      */
     getOps()->getChildrenNames(
         NotifyableKeyManipulator::createDataDistributionChildrenKey(
-            ntp->getKey()),
+            notifyableSP->getKey()),
         CachedObjectChangeHandlers::DATADISTRIBUTIONS_CHANGE);
     return EN_DISTSCHANGE;
 }
 
 Event
-CachedObjectChangeHandlers::handleNodesChange(NotifyableImpl *ntp,
-                                              int32_t etype,
-                                              const string &key)
+CachedObjectChangeHandlers::handleNodesChange(
+    const shared_ptr<NotifyableImpl> &notifyableSP,
+    int32_t etype,
+    const string &key)
 {
     TRACE(CL_LOG, "handleNodesChange");
     
@@ -336,7 +340,7 @@ CachedObjectChangeHandlers::handleNodesChange(NotifyableImpl *ntp,
     /*
      * If there's no notifyable, punt.
      */
-    if (ntp == NULL) {
+    if (notifyableSP == NULL) {
         LOG_WARN(CL_LOG,
                  "handleNodesChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
@@ -347,14 +351,15 @@ CachedObjectChangeHandlers::handleNodesChange(NotifyableImpl *ntp,
     LOG_DEBUG(CL_LOG,
               "handleNodesChange: %s on notifyable \"%s\" for key %s",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str(),
+              notifyableSP->getKey().c_str(),
               key.c_str());
 
     /*
      * Convert to a group object.
      */
-    GroupImpl *group = dynamic_cast<GroupImpl *>(ntp);
-    if (group == NULL) {
+    shared_ptr<GroupImpl> groupSP = 
+        dynamic_pointer_cast<GroupImpl>(notifyableSP);
+    if (groupSP == NULL) {
         LOG_WARN(CL_LOG,
                  "Conversion to Group * failed for %s",
                  key.c_str());
@@ -365,15 +370,17 @@ CachedObjectChangeHandlers::handleNodesChange(NotifyableImpl *ntp,
      * Data not required, only using this function to set the watch again.
      */
     getOps()->getChildrenNames(
-        NotifyableKeyManipulator::createNodeChildrenKey(ntp->getKey()),
+        NotifyableKeyManipulator::createNodeChildrenKey(
+            notifyableSP->getKey()),
         CachedObjectChangeHandlers::NODES_CHANGE);
     return EN_NODESCHANGE;
 }
 
 Event
-CachedObjectChangeHandlers::handleProcessSlotsChange(NotifyableImpl *ntp,
-                                                     int32_t etype,
-                                                     const string &key)
+CachedObjectChangeHandlers::handleProcessSlotsChange(
+    const shared_ptr<NotifyableImpl> &notifyableSP,
+    int32_t etype,
+    const string &key)
 {
     TRACE(CL_LOG, "handleProcessSlotsChange");
     
@@ -391,7 +398,7 @@ CachedObjectChangeHandlers::handleProcessSlotsChange(NotifyableImpl *ntp,
     /*
      * If there's no notifyable, punt.
      */
-    if (ntp == NULL) {
+    if (notifyableSP == NULL) {
         LOG_WARN(CL_LOG,
                  "handleProcessSlotsChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
@@ -402,21 +409,22 @@ CachedObjectChangeHandlers::handleProcessSlotsChange(NotifyableImpl *ntp,
     LOG_DEBUG(CL_LOG,
               "handleProcessSlotsChange: %s on notifyable \"%s\" for key %s",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str(),
+              notifyableSP->getKey().c_str(),
               key.c_str());
     /*
      * Data not required, only using this function to set the watch again.
      */
     getOps()->getChildrenNames(
-        NotifyableKeyManipulator::createProcessSlotChildrenKey(ntp->getKey()),
+        NotifyableKeyManipulator::createProcessSlotChildrenKey(notifyableSP->getKey()),
         CachedObjectChangeHandlers::PROCESSSLOTS_CHANGE);
     return EN_PROCESSSLOTSCHANGE;
 }
 
 Event
-CachedObjectChangeHandlers::handleProcessSlotsUsageChange(NotifyableImpl *ntp,
-                                                          int32_t etype,
-                                                          const string &key)
+CachedObjectChangeHandlers::handleProcessSlotsUsageChange(
+    const shared_ptr<NotifyableImpl> &notifyableSP,
+    int32_t etype,
+    const string &key)
 {
     TRACE(CL_LOG, "handleProcessSlotsUsageChange");
 
@@ -435,7 +443,7 @@ CachedObjectChangeHandlers::handleProcessSlotsUsageChange(NotifyableImpl *ntp,
     /*
      * If there's no notifyable, punt.
      */
-    if (ntp == NULL) {
+    if (notifyableSP == NULL) {
         LOG_WARN(CL_LOG,
                  "handleProcessSlotsUsageChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
@@ -447,14 +455,14 @@ CachedObjectChangeHandlers::handleProcessSlotsUsageChange(NotifyableImpl *ntp,
               "handleProcessSlotsUsageChange: "
               "%s on notifyable \"%s\" for key %s",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str(),
+              notifyableSP->getKey().c_str(),
               key.c_str());
 
     /*
      * Convert to a node object.
      */
-    NodeImpl *node = dynamic_cast<NodeImpl *>(ntp);
-    if (node == NULL) {
+    shared_ptr<NodeImpl> nodeSP = dynamic_pointer_cast<NodeImpl>(notifyableSP);
+    if (nodeSP == NULL) {
         LOG_WARN(CL_LOG,
                  "Conversion to Node * failed for %s",
                  key.c_str());
@@ -462,15 +470,16 @@ CachedObjectChangeHandlers::handleProcessSlotsUsageChange(NotifyableImpl *ntp,
     }
 
     dynamic_cast<CachedProcessSlotInfoImpl &>(
-        node->cachedProcessSlotInfo()).loadDataFromRepository(false);
+        nodeSP->cachedProcessSlotInfo()).loadDataFromRepository(false);
     
     return event;
 }
 
 Event
-CachedObjectChangeHandlers::handleProcessSlotProcessInfoChange(NotifyableImpl *ntp,
-                                                           int32_t etype,
-                                                           const string &key)
+CachedObjectChangeHandlers::handleProcessSlotProcessInfoChange(
+    const shared_ptr<NotifyableImpl> &notifyableSP,
+    int32_t etype,
+    const string &key)
 {
     TRACE(CL_LOG, "handleProcessSlotProcessInfoChange");
 
@@ -489,7 +498,7 @@ CachedObjectChangeHandlers::handleProcessSlotProcessInfoChange(NotifyableImpl *n
     /*
      * If there's no notifyable, punt.
      */
-    if (ntp == NULL) {
+    if (notifyableSP == NULL) {
         LOG_WARN(CL_LOG,
                  "handleProcessSlotProcessInfoChange: "
                  "Punting on event: %s on %s",
@@ -502,14 +511,15 @@ CachedObjectChangeHandlers::handleProcessSlotProcessInfoChange(NotifyableImpl *n
               "handleProcessSlotProcessInfoChange: "
               "%s on notifyable \"%s\" for key %s",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str(),
+              notifyableSP->getKey().c_str(),
               key.c_str());
 
     /*
      * Convert to a process slot object.
      */
-    ProcessSlotImpl *processSlot = dynamic_cast<ProcessSlotImpl *>(ntp);
-    if (processSlot == NULL) {
+    shared_ptr<ProcessSlotImpl> processSlotSP = 
+        dynamic_pointer_cast<ProcessSlotImpl>(notifyableSP);
+    if (processSlotSP == NULL) {
         LOG_WARN(CL_LOG,
                  "Conversion to ProcessSlotImpl * failed for %s",
                  key.c_str());
@@ -517,15 +527,16 @@ CachedObjectChangeHandlers::handleProcessSlotProcessInfoChange(NotifyableImpl *n
     }
 
     dynamic_cast<CachedProcessInfoImpl &>(
-        processSlot->cachedProcessInfo()).loadDataFromRepository(false);
+        processSlotSP->cachedProcessInfo()).loadDataFromRepository(false);
 
     return event;
 }
 
 Event
-CachedObjectChangeHandlers::handlePropertyListsChange(NotifyableImpl *ntp,
-                                                      int32_t etype,
-                                                      const string &key)
+CachedObjectChangeHandlers::handlePropertyListsChange(
+    const shared_ptr<NotifyableImpl> &notifyableSP,
+    int32_t etype,
+    const string &key)
 {
     TRACE(CL_LOG, "handlePropertyListsChange");
     
@@ -543,7 +554,7 @@ CachedObjectChangeHandlers::handlePropertyListsChange(NotifyableImpl *ntp,
     /*
      * If there's no notifyable, punt.
      */
-    if (ntp == NULL) {
+    if (notifyableSP == NULL) {
         LOG_WARN(CL_LOG,
                  "handlePropertyListsChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
@@ -554,22 +565,24 @@ CachedObjectChangeHandlers::handlePropertyListsChange(NotifyableImpl *ntp,
     LOG_DEBUG(CL_LOG,
               "handlePropertyListsChange: %s on notifyable \"%s\" for key %s",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str(),
+              notifyableSP->getKey().c_str(),
               key.c_str());
 
     /*
      * Data not required, only using this function to set the watch again.
      */
     getOps()->getChildrenNames(
-        NotifyableKeyManipulator::createPropertyListChildrenKey(ntp->getKey()),
+        NotifyableKeyManipulator::createPropertyListChildrenKey(
+            notifyableSP->getKey()),
         CachedObjectChangeHandlers::PROPERTYLISTS_CHANGE);
     return EN_PROPLISTSCHANGE;
 }
 
 Event
-CachedObjectChangeHandlers::handlePropertyListValueChange(NotifyableImpl *ntp,
-                                                        int32_t etype,
-                                                        const string &key)
+CachedObjectChangeHandlers::handlePropertyListValueChange(
+    const shared_ptr<NotifyableImpl> &notifyableSP,
+    int32_t etype,
+    const string &key)
 {
     TRACE(CL_LOG, "handlePropertyListValueChange");
     
@@ -587,7 +600,7 @@ CachedObjectChangeHandlers::handlePropertyListValueChange(NotifyableImpl *ntp,
     /*
      * If there's no notifyable, punt.
      */
-    if (ntp == NULL) {
+    if (notifyableSP == NULL) {
         LOG_WARN(CL_LOG,
                  "handlePropertyListValueChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
@@ -599,15 +612,16 @@ CachedObjectChangeHandlers::handlePropertyListValueChange(NotifyableImpl *ntp,
               "handlePropertyListValueChange: %s on notifyable \"%s\" "
               "for key %s",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str(),
+              notifyableSP->getKey().c_str(),
               key.c_str());
 
     /*
      * Convert the NotifyableImpl into a PropertyList *.
      * If there's no PropertyListImpl * then punt.
      */
-    PropertyListImpl *prop = dynamic_cast<PropertyListImpl *>(ntp);
-    if (prop == NULL) {
+    shared_ptr<PropertyListImpl> propertyListSP = 
+        dynamic_pointer_cast<PropertyListImpl>(notifyableSP);
+    if (propertyListSP == NULL) {
         LOG_WARN(CL_LOG, 
                  "Conversion to PropertyListImpl * failed for %s",
                  key.c_str());
@@ -615,14 +629,14 @@ CachedObjectChangeHandlers::handlePropertyListValueChange(NotifyableImpl *ntp,
     }
 
     dynamic_cast<CachedKeyValuesImpl &>(
-        prop->cachedKeyValues()).loadDataFromRepository(false);
+        propertyListSP->cachedKeyValues()).loadDataFromRepository(false);
 
     return EN_PROPLISTVALUESCHANGE;
 }
 
 Event
 CachedObjectChangeHandlers::handleDataDistributionShardsChange(
-    NotifyableImpl *ntp,
+    const shared_ptr<NotifyableImpl> &notifyableSP,
     int32_t etype,
     const string &key)
 {
@@ -642,7 +656,7 @@ CachedObjectChangeHandlers::handleDataDistributionShardsChange(
     /*
      * If the given NotifyableImpl is NULL, punt.
      */
-    if (ntp == NULL) {
+    if (notifyableSP == NULL) {
         LOG_WARN(CL_LOG, "No NotifyableImpl provided -- punting");
         return EN_SHARDSCHANGE;
     }
@@ -650,12 +664,13 @@ CachedObjectChangeHandlers::handleDataDistributionShardsChange(
     /*
      * Convert it into a DataDistribution *.
      */
-    DataDistributionImpl *distp = dynamic_cast<DataDistributionImpl *>(ntp);
+    shared_ptr<DataDistributionImpl> dataDistributionSP = 
+        dynamic_pointer_cast<DataDistributionImpl>(notifyableSP);
 
     /*
      * If there's no data distribution, punt.
      */
-    if (distp == NULL) {
+    if (dataDistributionSP == NULL) {
         LOG_WARN(CL_LOG,
                  "Conversion to DataDistribution * failed for %s",
                  key.c_str());
@@ -665,19 +680,19 @@ CachedObjectChangeHandlers::handleDataDistributionShardsChange(
     LOG_DEBUG(CL_LOG,
               "handleShardsChange: %s on notifyable: \"%s\"",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str());
+              notifyableSP->getKey().c_str());
 
     /*
      * Update the cached data and re-establish watches.
      */
     dynamic_cast<CachedShardsImpl &>(
-        distp->cachedShards()).loadDataFromRepository(false);
+        dataDistributionSP->cachedShards()).loadDataFromRepository(false);
     return EN_SHARDSCHANGE;
 }
 
 Event
 CachedObjectChangeHandlers::handleNodeProcessSlotInfoChange(
-    NotifyableImpl *ntp,
+    const shared_ptr<NotifyableImpl> &notifyableSP,
     int32_t etype,
     const string &key)
 {
@@ -688,12 +703,13 @@ CachedObjectChangeHandlers::handleNodeProcessSlotInfoChange(
     /*
      * Convert it to a NodeImpl *
      */
-    NodeImpl *node = dynamic_cast<NodeImpl *>(ntp);
+    shared_ptr<NodeImpl> nodeSP = 
+        dynamic_pointer_cast<NodeImpl>(notifyableSP);
 
     /*
      * If there's no Node, punt.
      */
-    if (node == NULL) {
+    if (nodeSP == NULL) {
         LOG_WARN(CL_LOG,
                  "Conversion to NodeImpl * failed for %s",
                  key.c_str());
@@ -703,13 +719,13 @@ CachedObjectChangeHandlers::handleNodeProcessSlotInfoChange(
     LOG_DEBUG(CL_LOG,
               "handleNodeProcessSlotInfoChange: %s on notifyable: \"%s\"",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str());
+              notifyableSP->getKey().c_str());
 
     /*
      * Update the cached data and re-establish watches.
      */
     dynamic_cast<CachedProcessSlotInfoImpl &>(
-        node->cachedProcessSlotInfo()).loadDataFromRepository(false);
+        nodeSP->cachedProcessSlotInfo()).loadDataFromRepository(false);
 
     return EN_PROCESS_SLOT_INFO_CHANGE;
 }
@@ -721,9 +737,10 @@ CachedObjectChangeHandlers::handleNodeProcessSlotInfoChange(
  * client.
  */
 Event
-CachedObjectChangeHandlers::handleSynchronizeChange(NotifyableImpl *ntp,
-                                                    int32_t etype,
-                                                    const string &key)
+CachedObjectChangeHandlers::handleSynchronizeChange(
+    const shared_ptr<NotifyableImpl> &notifyableSP,
+    int32_t etype,
+    const string &key)
 {
     TRACE(CL_LOG, "handleSynchronizeChange");
 
@@ -751,9 +768,10 @@ CachedObjectChangeHandlers::handleSynchronizeChange(NotifyableImpl *ntp,
  * and try again.
  */
 Event
-CachedObjectChangeHandlers::handlePrecLockNodeExistsChange(NotifyableImpl *ntp,
-                                                           int32_t etype,
-                                                           const string &key)
+CachedObjectChangeHandlers::handlePrecLockNodeExistsChange(
+    const shared_ptr<NotifyableImpl> &notifyableSP,
+    int32_t etype,
+    const string &key)
 {
     TRACE(CL_LOG, "handlePrecLockNodeExistsChange");
 
@@ -789,9 +807,10 @@ CachedObjectChangeHandlers::handlePrecLockNodeExistsChange(NotifyableImpl *ntp,
 }
 
 Event
-CachedObjectChangeHandlers::handleQueuesChange(NotifyableImpl *ntp,
-                                               int32_t etype,
-                                               const string &key)
+CachedObjectChangeHandlers::handleQueuesChange(
+    const shared_ptr<NotifyableImpl> &notifyableSP,
+    int32_t etype,
+    const string &key)
 {
     TRACE(CL_LOG, "handleQueuesChange");
     
@@ -809,7 +828,7 @@ CachedObjectChangeHandlers::handleQueuesChange(NotifyableImpl *ntp,
     /*
      * If there's no notifyable, punt.
      */
-    if (ntp == NULL) {
+    if (notifyableSP == NULL) {
         LOG_WARN(CL_LOG,
                  "handleQueuesChange: Punting on event: %s on %s",
                  zk::ZooKeeperAdapter::getEventString(etype).c_str(),
@@ -820,21 +839,22 @@ CachedObjectChangeHandlers::handleQueuesChange(NotifyableImpl *ntp,
     LOG_DEBUG(CL_LOG,
               "handleQueuesChange: %s on notifyable: \"%s\"",
               zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-              ntp->getKey().c_str());
+              notifyableSP->getKey().c_str());
 
     /*
      * Data not required, only using this function to set the watch again.
      */
     getOps()->getChildrenNames(
-        NotifyableKeyManipulator::createQueueChildrenKey(ntp->getKey()),
+        NotifyableKeyManipulator::createQueueChildrenKey(notifyableSP->getKey()),
         CachedObjectChangeHandlers::QUEUES_CHANGE);
     return EN_QUEUESCHANGE;
 }
 
 Event
-CachedObjectChangeHandlers::handleQueueChildChange(NotifyableImpl *ntp,
-                                                   int32_t etype,
-                                                   const string &key)
+CachedObjectChangeHandlers::handleQueueChildChange(
+    const shared_ptr<NotifyableImpl> &notifyableSP,
+    int32_t etype,
+    const string &key)
 {
     TRACE(CL_LOG, "handleQueueChildChange");
 
@@ -843,7 +863,7 @@ CachedObjectChangeHandlers::handleQueueChildChange(NotifyableImpl *ntp,
     /*
      * If there's no Notifyable, punt.
      */
-    if (ntp == NULL) {
+    if (notifyableSP == NULL) {
         LOG_WARN(CL_LOG, "No NotifyableImpl provided -- punting");
         return EN_QUEUECHILDCHANGE;
     }
@@ -867,12 +887,13 @@ CachedObjectChangeHandlers::handleQueueChildChange(NotifyableImpl *ntp,
                   "handleQueueChildChange: Got child event for key %s",
                   key.c_str());
         getOps()->getQueueEventSignalMap()->signalPredMutexCond(key);
-        QueueImpl *queue = dynamic_cast<QueueImpl *>(ntp);
+        shared_ptr<QueueImpl> queueSP = 
+            dynamic_pointer_cast<QueueImpl>(notifyableSP);
         /*
          * Reestablish the watch if the queue still exists
          */
-        if (queue != NULL) {
-            queue->establishQueueWatch();
+        if (queueSP != NULL) {
+            queueSP->establishQueueWatch();
         }
         return EN_QUEUECHILDCHANGE;
     }
@@ -1037,4 +1058,4 @@ CachedObjectChangeHandlers::getChangeHandler(CachedObjectChange change) {
     }
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

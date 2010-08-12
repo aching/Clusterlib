@@ -5,11 +5,13 @@
 extern TestParams globalTestParams;
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 
 const string appName = "unittests-releaseRef-app";
 
-class ClusterlibReleaseRef : public MPITestFixture {
+class ClusterlibReleaseRef : public MPITestFixture
+{
     CPPUNIT_TEST_SUITE(ClusterlibReleaseRef);
     CPPUNIT_TEST(testReleaseRef1);
     CPPUNIT_TEST(testReleaseRef2);
@@ -74,7 +76,7 @@ class ClusterlibReleaseRef : public MPITestFixture {
                                     _factory, 
                                     true, 
                                     "testReleaseRef2");
-        Node *node0 = _group0->getNode("server-0");
+        shared_ptr<Node> node0 = _group0->getNode("server-0");
         MPI_CPPUNIT_ASSERT(node0 != NULL);
         node0->releaseRef();
         _node0->releaseRef();
@@ -117,9 +119,9 @@ class ClusterlibReleaseRef : public MPITestFixture {
   private:
     Factory *_factory;
     Client *_client0;
-    Application *_app0;
-    Group *_group0;
-    Node *_node0;
+    shared_ptr<Application> _app0;
+    shared_ptr<Group> _group0;
+    shared_ptr<Node> _node0;
 };
 
 /* Registers the fixture into the 'registry' */

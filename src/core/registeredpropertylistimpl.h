@@ -11,8 +11,7 @@
 #ifndef	_CL_REGISTEREDPROPERTYLISTIMPL_H_
 #define _CL_REGISTEREDPROPERTYLISTIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Implementation of interfaces for a RegisteredPropertyListImpl.
@@ -28,10 +27,10 @@ class RegisteredPropertyListImpl
 
     virtual bool isValidName(const std::string &name) const;
 
-    virtual NotifyableImpl *createNotifyable(
+    virtual boost::shared_ptr<NotifyableImpl> createNotifyable(
         const std::string &notifyableName,
         const std::string &notifyableKey,
-        NotifyableImpl *parent,
+        const boost::shared_ptr<NotifyableImpl> &parent,
         FactoryOps &factoryOps) const;
 
     virtual std::vector<std::string> generateRepositoryList(
@@ -40,11 +39,6 @@ class RegisteredPropertyListImpl
     
     virtual bool isValidKey(const std::vector<std::string> &components, 
                             int32_t elements = -1);
-
-    virtual NotifyableImpl *getObjectFromComponents(
-        const std::vector<std::string> &components,
-        int32_t elements = -1, 
-        AccessType accessType = LOAD_FROM_REPOSITORY);
 
     /**
      * Constructor

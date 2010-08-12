@@ -12,10 +12,10 @@
 #ifndef _CL_GENERICRPC_H_
 #define _CL_GENERICRPC_H_
 
-namespace clusterlib 
-{
+namespace clusterlib  {
 
-class GenericRPC : public virtual ::json::rpc::JSONRPC {
+class GenericRPC : public virtual ::json::rpc::JSONRPC
+{
   public:
     virtual const std::string &getName() const;
 

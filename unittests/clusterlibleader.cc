@@ -5,11 +5,13 @@
 extern TestParams globalTestParams;
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 
 const string appName = "unittests-leader-app";
 
-class ClusterlibLeader : public MPITestFixture {
+class ClusterlibLeader : public MPITestFixture
+{
     CPPUNIT_TEST_SUITE(ClusterlibLeader);
     CPPUNIT_TEST(testLeader1);
     CPPUNIT_TEST(testLeader2);
@@ -116,9 +118,9 @@ class ClusterlibLeader : public MPITestFixture {
   private:
     Factory *_factory;
     Client *_client0;
-    Application *_app0;
-    Group *_group0;
-    Node *_node0;
+    shared_ptr<Application> _app0;
+    shared_ptr<Group> _group0;
+    shared_ptr<Node> _node0;
 };
 
 /* Registers the fixture into the 'registry' */

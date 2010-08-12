@@ -13,13 +13,10 @@
 
 #include "clusterlibinternal.h"
 
-#define LOG_LEVEL LOG_WARN
-#define MODULE_NAME "ClusterLib"
-
 using namespace std;
+using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 NameList
 RootImpl::getApplicationNames()
@@ -31,16 +28,37 @@ RootImpl::getApplicationNames()
         CachedObjectChangeHandlers::APPLICATIONS_CHANGE);
 }
 
-Application *
-RootImpl::getApplication(const string &appName, AccessType accessType)
+bool
+RootImpl::getApplicationWaitMsecs(
+    const string &name,
+    AccessType accessType,
+    int64_t msecTimeout,
+    shared_ptr<Application> *pApplicationSP) 
 {
-    TRACE(CL_LOG, "getApplication");
+    TRACE(CL_LOG, "getApplicationWaitMsecs");
 
-    return dynamic_cast<Application *>(
-        getOps()->getNotifyable(this,
-                                ClusterlibStrings::REGISTERED_APPLICATION_NAME,
-                                appName,
-                                accessType));
+    throwIfRemoved();
+
+    shared_ptr<NotifyableImpl> notifyableSP;
+    bool completed = getOps()->getNotifyableWaitMsecs(
+        shared_from_this(),
+        ClusterlibStrings::REGISTERED_APPLICATION_NAME,
+        name,
+        accessType,
+        msecTimeout,
+        &notifyableSP);
+
+    *pApplicationSP = dynamic_pointer_cast<Application>(notifyableSP);
+    return completed;
+}
+
+shared_ptr<Application>
+RootImpl::getApplication(const string &name,
+                         AccessType accessType)
+{
+    shared_ptr<Application> applicationSP;
+    getApplicationWaitMsecs(name, accessType, -1, &applicationSP);
+    return applicationSP;
 }
 
 NotifyableList
@@ -51,7 +69,7 @@ RootImpl::getChildrenNotifyables()
     throwIfRemoved();
     
     return getOps()->getNotifyableList(
-        this,
+        shared_from_this(),
         ClusterlibStrings::REGISTERED_APPLICATION_NAME,
         getApplicationNames(),
         LOAD_FROM_REPOSITORY);
@@ -63,4 +81,4 @@ RootImpl::initializeCachedRepresentation()
     TRACE(CL_LOG, "initializeCachedRepresentation");
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

@@ -121,7 +121,7 @@ class CXXThread
     PredMutexCond m_predMutexCond;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif /* _CL_THREAD_H_ */
 

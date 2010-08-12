@@ -14,7 +14,8 @@
 
 namespace clusterlib {
 
-class StopProcessRPC : public virtual ::json::rpc::JSONRPC {
+class StopProcessRPC : public virtual ::json::rpc::JSONRPC
+{
   public:
     virtual const std::string &getName() const;
 

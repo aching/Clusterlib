@@ -13,9 +13,9 @@
 #include "clusterlibinternal.h"
 
 using namespace std;
+using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 const string &
 RegisteredApplicationImpl::registeredName() const
@@ -47,22 +47,24 @@ RegisteredApplicationImpl::isValidName(const string &name) const
     }
 }
 
-NotifyableImpl *
-RegisteredApplicationImpl::createNotifyable(const string &notifyableName,
-                                            const string &notifyableKey,
-                                            NotifyableImpl *parent,
-                                            FactoryOps &factoryOps) const
+shared_ptr<NotifyableImpl>
+RegisteredApplicationImpl::createNotifyable(
+    const string &notifyableName,
+    const string &notifyableKey,
+    const shared_ptr<NotifyableImpl> &parent,
+    FactoryOps &factoryOps) const
 {
-    return new ApplicationImpl(&factoryOps,
-                               notifyableKey,
-                               notifyableName,
-                               parent);
+    return dynamic_pointer_cast<NotifyableImpl>(
+        shared_ptr<ApplicationImpl>(new ApplicationImpl(&factoryOps,
+                                                        notifyableKey,
+                                                        notifyableName,
+                                                        parent)));
 }
 
 vector<string>
 RegisteredApplicationImpl::generateRepositoryList(
-    const std::string &notifyableName,
-    const std::string &notifyableKey) const
+    const string &notifyableName,
+    const string &notifyableKey) const
 {
     vector<string> resVec;
     resVec.push_back(notifyableKey);
@@ -116,66 +118,11 @@ RegisteredApplicationImpl::isValidKey(const vector<string> &components,
     return true;    
 }
 
-NotifyableImpl *
-RegisteredApplicationImpl::getObjectFromComponents(
-    const vector<string> &components,
-    int32_t elements, 
-    AccessType accessType)
+RegisteredApplicationImpl::RegisteredApplicationImpl(FactoryOps *factoryOps)
+    : RegisteredNotifyableImpl(factoryOps) 
 {
-    TRACE(CL_LOG, "getObjectFromComponents");
-
-    /* 
-     * Set to the full size of the vector.
-     */
-    if (elements == -1) {
-        elements = components.size();
-    }
-
-    if (!isValidKey(components, elements)) {
-        LOG_DEBUG(CL_LOG, 
-                  "getObjectFromComponents: Couldn't find key"
-                  " with %d elements",
-                  elements);
-        return NULL;
-    }
-
-    int32_t parentGroupCount = 
-        NotifyableKeyManipulator::removeObjectFromComponents(components, 
-                                                             elements);
-    if (parentGroupCount == -1) {
-        return NULL;
-    }
-
-    RegisteredNotifyable *regRoot = getOps()->getRegisteredNotifyable(
-        ClusterlibStrings::REGISTERED_ROOT_NAME, true);
-    RootImpl *parent = dynamic_cast<RootImpl *>(
-        regRoot->getObjectFromComponents(components,
-                                        parentGroupCount,
-                                        accessType));
-    if (parent == NULL) {
-        LOG_WARN(CL_LOG, "getObjectFromComponents: Tried to get "
-                 "parent with name %s",
-                 components.at(parentGroupCount - 1).c_str());
-        return NULL;
-    }
-
-    LOG_DEBUG(CL_LOG, 
-              "getObjectFromComponents: parent key = %s, "
-              "application name = %s", 
-              parent->getKey().c_str(),
-              components.at(elements - 1).c_str());
-
-    ApplicationImpl *application = dynamic_cast<ApplicationImpl *>(
-        getOps()->getNotifyable(
-            parent,
-            ClusterlibStrings::REGISTERED_APPLICATION_NAME, 
-            components.at(elements - 1),
-            accessType));
-    if (dynamic_cast<Root *>(parent) == NULL) {
-        parent->releaseRef();
-    }
-
-    return application;
+    setRegisteredParentNameVec(
+        vector<string>(1, ClusterlibStrings::REGISTERED_ROOT_NAME));
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

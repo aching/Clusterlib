@@ -8,11 +8,9 @@
 
 #include "clusterlibinternal.h"
 
-#define LOG_LEVEL LOG_WARN
 #define MODULE_NAME "Event"
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /*
  * Mechanism for delivering user events and for waiting till a condition
@@ -113,5 +111,5 @@ UserEventHandler::handleUserEventDelivery(Event e)
     releaseLock();
 }    
 
-};       /* End of 'namespace clusterlib' */
+}       /* End of 'namespace clusterlib' */
 

@@ -21,8 +21,7 @@ using namespace clusterlib;
 using namespace std;
 using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 void
 ZookeeperPeriodicCheck::run()
@@ -33,10 +32,10 @@ ZookeeperPeriodicCheck::run()
 
     ostringstream oss;
     if (getNotifyable() && 
-        (m_hostPortVec.size() != m_nodeVec.size())) {
+        (m_hostPortVec.size() != m_nodeSPVec.size())) {
         oss.str("");
         oss << "run: m_hostPortVec.size=" << m_hostPortVec.size()
-            << ", m_nodeVec.size=" << m_nodeVec.size();
+            << ", m_nodeSPVec.size=" << m_nodeSPVec.size();
         LOG_FATAL(CL_LOG, "%s", oss.str().c_str());
         throw InconsistentInternalStateException(oss.str());
     }
@@ -72,21 +71,21 @@ ZookeeperPeriodicCheck::run()
         }
 
         if (getNotifyable() != NULL) {
-            NotifyableLocker l(m_nodeVec[i]);
+            NotifyableLocker l(m_nodeSPVec[i]);
 
-            m_nodeVec[i]->cachedCurrentState().set(
+            m_nodeSPVec[i]->cachedCurrentState().set(
                 Node::HEALTH_KEY, 
                 (ruokRes == "imok") ? Node::HEALTH_GOOD_VALUE : 
                 Node::HEALTH_BAD_VALUE);
-            m_nodeVec[i]->cachedCurrentState().set(
+            m_nodeSPVec[i]->cachedCurrentState().set(
                 ClusterlibStrings::ZK_RUOK_STATE_KEY, ruokRes);
-            m_nodeVec[i]->cachedCurrentState().set(
+            m_nodeSPVec[i]->cachedCurrentState().set(
                 ClusterlibStrings::ZK_ENVI_STATE_KEY, enviRes);
-            m_nodeVec[i]->cachedCurrentState().set(
+            m_nodeSPVec[i]->cachedCurrentState().set(
                 ClusterlibStrings::ZK_REQS_STATE_KEY, reqsRes);
-            m_nodeVec[i]->cachedCurrentState().set(
+            m_nodeSPVec[i]->cachedCurrentState().set(
                 ClusterlibStrings::ZK_STAT_STATE_KEY, statRes);
-            m_nodeVec[i]->cachedCurrentState().publish();
+            m_nodeSPVec[i]->cachedCurrentState().publish();
         }
     }
 
@@ -98,25 +97,26 @@ ZookeeperPeriodicCheck::run()
     m_aggNodeStateObj["Total Node Count"] = m_hostPortVec.size();
 
     if (getNotifyable() != NULL) {
-        NotifyableLocker l(m_application);
+        NotifyableLocker l(m_applicationSP);
 
-        m_application->cachedCurrentState().set(
+        m_applicationSP->cachedCurrentState().set(
             ClusterlibStrings::ZK_AGG_NODES_STATE_KEY, 
             m_aggNodeStateObj);
         int64_t currentMsecs = TimerService::getCurrentTimeMsecs();
-        m_application->cachedCurrentState().set(
+        m_applicationSP->cachedCurrentState().set(
             ClusterlibStrings::STATE_SET_MSECS, currentMsecs);
-        m_application->cachedCurrentState().set(
+        m_applicationSP->cachedCurrentState().set(
             ClusterlibStrings::STATE_SET_MSECS_AS_DATE, 
             TimerService::getMsecsTimeString(currentMsecs));
-        m_application->cachedCurrentState().publish();
+        m_applicationSP->cachedCurrentState().publish();
     }
 }
 
-ZookeeperPeriodicCheck::ZookeeperPeriodicCheck(int64_t msecsFrequency,
-                                               const string &registry,
-                                               Root *root)
-    : Periodic(msecsFrequency, dynamic_cast<Notifyable *>(root))
+ZookeeperPeriodicCheck::ZookeeperPeriodicCheck(
+    int64_t msecsFrequency,
+    const string &registry,
+    const shared_ptr<Root> &rootSP)
+    : Periodic(msecsFrequency, dynamic_pointer_cast<Notifyable>(rootSP))
 {
     TRACE(CL_LOG, "ZookeeperPeriodicCheck");
 
@@ -125,16 +125,16 @@ ZookeeperPeriodicCheck::ZookeeperPeriodicCheck(int64_t msecsFrequency,
     Locker l(&m_lock);
 
     if (getNotifyable() != NULL) {
-        m_application = 
-            root->getApplication(string("Zookeeper (") + registry + ")",
-                                 CREATE_IF_NOT_FOUND);
+        m_applicationSP = 
+            rootSP->getApplication(string("Zookeeper (") + registry + ")",
+                                   CREATE_IF_NOT_FOUND);
     }
 
     vector<string> componentVec;
     split(componentVec, registry, is_any_of(","));
     vector<string> hostPortVec;
     vector<string>::const_iterator componentVecIt;
-    Node *node = NULL;
+    shared_ptr<Node> nodeSP;
     for (componentVecIt = componentVec.begin();
          componentVecIt != componentVec.end();
          ++componentVecIt) {
@@ -152,11 +152,11 @@ ZookeeperPeriodicCheck::ZookeeperPeriodicCheck(int64_t msecsFrequency,
         }
 
         if (getNotifyable() != NULL) {
-            node = 
-                m_application->getNode(*componentVecIt, CREATE_IF_NOT_FOUND);
+            nodeSP = 
+                m_applicationSP->getNode(*componentVecIt, CREATE_IF_NOT_FOUND);
             
-            node->acquireOwnership();
-            m_nodeVec.push_back(node);
+            nodeSP->acquireOwnership();
+            m_nodeSPVec.push_back(nodeSP);
         }
 
         m_hostPortVec.push_back(make_pair<string, int32_t>(
@@ -171,9 +171,9 @@ ZookeeperPeriodicCheck::~ZookeeperPeriodicCheck()
 
     Locker l(&m_lock);
 
-    vector<Node *>::const_iterator nodeVecIt;
-    for (nodeVecIt = m_nodeVec.begin(); 
-         nodeVecIt != m_nodeVec.end(); 
+    vector<shared_ptr<Node> >::const_iterator nodeVecIt;
+    for (nodeVecIt = m_nodeSPVec.begin(); 
+         nodeVecIt != m_nodeSPVec.end(); 
          ++nodeVecIt) {
         (*nodeVecIt)->releaseOwnership();
     }

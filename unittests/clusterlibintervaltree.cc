@@ -1,13 +1,16 @@
+#include "clusterlibinternal.h"
 #include "testparams.h"
 #include "MPITestFixture.h"
-#include "clusterlibinternal.h"
+
 
 extern TestParams globalTestParams;
 
 using namespace clusterlib;
 using namespace std;
+using namespace boost;
 
-class ClusterlibIntervalTree : public MPITestFixture {
+class ClusterlibIntervalTree : public MPITestFixture
+{
     CPPUNIT_TEST_SUITE(ClusterlibIntervalTree);
     CPPUNIT_TEST(testIntervalTree1);
     CPPUNIT_TEST(testIntervalTree2);

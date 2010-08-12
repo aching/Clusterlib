@@ -11,8 +11,7 @@
 #ifndef _CL_CLUSTERLIBRPCREQUESTMANAGER_H_
 #define _CL_CLUSTERLIBRPCREQUESTMANAGER_H_
  
-namespace clusterlib 
-{
+namespace clusterlib  {
 
 /**
  * Manages mulitple ClusterlibRPCRequest objects.

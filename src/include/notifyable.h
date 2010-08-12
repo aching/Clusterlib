@@ -11,8 +11,7 @@
 #ifndef	_CL_NOTIFYABLE_H_
 #define _CL_NOTIFYABLE_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Interface that must be derived by specific notifyable objects.
@@ -102,7 +101,7 @@ class Notifyable
      * @return pointer to parent 
      * @throw Exception if Notifyable is the root
      */
-    virtual Notifyable *getMyParent() const = 0;
+    virtual boost::shared_ptr<Notifyable> getMyParent() const = 0;
 
     /**
      * Get a list of all the children of this notifyable.
@@ -110,30 +109,79 @@ class Notifyable
      * @return list of child Notifyable pointers
      */
     virtual NotifyableList getMyChildren() = 0;
-    
+
     /**
      * Retrieve the application object that this Notifyable is a part of.  
+     *
+     * @param msecTimeout the amount of usecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediatel
+     * @param pApplicationSP Pointer to that Application if it exists, 
+     *        otherwise NULL.
+     * @return True is the method completed prior to the timeout, false 
+     *         otherwise
+     * @throw Exception if Notifyable is the root
+     */
+    virtual bool getMyApplicationWaitMsecs(
+        int64_t msecTimeout,
+        boost::shared_ptr<Application> *pApplicationSP) = 0; 
+    
+    /**
+     * Retrieve the application object that this Notifyable is a part
+     * of (wait forever).
      *
      * @return pointer to the Application
      * @throw Exception if Notifyable is the root
      */
-    virtual Application *getMyApplication() = 0; 
+    virtual boost::shared_ptr<Application> getMyApplication() = 0; 
 
     /**
-     * Retrieve the group object that this Notifyable is a part of.
+     * Retrieve the group object that this Notifyable is a part of.  
+     *
+     * @param msecTimeout the amount of usecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediatel
+     * @param pGroupSP Pointer to that Group if it exists, 
+     *                 otherwise NULL.
+     * @return True is the method completed prior to the timeout, false 
+     *         otherwise
+     * @throw Exception if Notifyable is the root
+     */
+    virtual bool getMyGroupWaitMsecs(
+        int64_t msecTimeout,
+        boost::shared_ptr<Group> *pGroupSP) = 0; 
+
+    /**
+     * Retrieve the group object that this Notifyable is a part of
+     * (wait forever).
      *
      * @return pointer to the Group
      * @throw Exception if Notifyable is the root or application
      */
-    virtual Group *getMyGroup() = 0; 
+    virtual boost::shared_ptr<Group> getMyGroup() = 0; 
 
     /**
      * Get a notifyable from a key. 
      *
      * @param key the key that represents a notifyable.
-     * @return a pointer to that notifyable if it exists, otherwise NULL.
+     * @param msecTimeout the amount of usecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediatel
+     * @param pNotifyableSP Pointer to that notifyable if it exists, 
+     *        otherwise NULL.
+     * @return True if the operation finished before the timeout
      */
-    virtual Notifyable *getNotifyableFromKey(const std::string &key) = 0;
+    virtual bool getNotifyableFromKeyWaitMsecs(
+        const std::string &key,
+        int64_t msecTimeout,
+        boost::shared_ptr<Notifyable> *pNotifyableSP) = 0;
+
+    /**
+     * Get a notifyable from a key (wait forever). 
+     *
+     * @param key the key that represents a notifyable.
+     * @return Pointer to that notifyable if it exists, 
+     *         otherwise NULL.
+     */
+    virtual boost::shared_ptr<Notifyable> getNotifyableFromKey(
+        const std::string &key) = 0;
 
     /**
      * What state is this Notifyable in?  It is safe to call this even
@@ -156,19 +204,39 @@ class Notifyable
      * Get the property lists for this object (if it is allowed). If
      * subclasses do not want to allow getPropertyList(), override it
      * and throw a clusterlib exception.  Propertylists can be named and
-     * will use the name ClusterlibStrings::DEFAULTPROPERTYLIST if no
+     * should use the name ClusterlibStrings::DEFAULTPROPERTYLIST if no
      * name is selected.
      * 
      * @param name the name of the PropertyList to create
      * @param accessType The mode of access
-     * @return PropertyList pointer or NULL if no PropertyList exists for this 
-     * notifyable and create == false
+     * @param msecTimeout the amount of usecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediately
+     * @param pPropertyListSP Pointer to that pPropertyListSP if it exists, 
+     *        otherwise NULL.
+     * @return True if the operation finished before the timeout
      * @throw Exception if Notifyable is the root or application
      */
-    virtual PropertyList *getPropertyList(
-        const std::string &name = 
-        ClusterlibStrings::DEFAULTPROPERTYLIST, 
-        AccessType accessType = LOAD_FROM_REPOSITORY) = 0;
+    virtual bool getPropertyListWaitMsecs(
+        const std::string &name,
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<PropertyList> *pPropertyListSP) = 0;
+
+    /**
+     * Get the property lists for this object (if it is allowed). If
+     * subclasses do not want to allow getPropertyList(), override it
+     * and throw a clusterlib exception.  Propertylists can be named and
+     * should use the name ClusterlibStrings::DEFAULTPROPERTYLIST if no
+     * name is selected.  
+     * 
+     * @param name the name of the PropertyList to create
+     * @param accessType The mode of access
+     * @return Pointer to that pPropertyListSP if it exists, otherwise NULL.
+     * @throw Exception if Notifyable is the root or application
+     */
+    virtual boost::shared_ptr<PropertyList> getPropertyList(
+        const std::string &name,
+        AccessType accessType) = 0;
 
     /**
      * Get a list of names of all queues.
@@ -176,6 +244,28 @@ class Notifyable
      * @return a copy of the list of all queues.
      */
     virtual NameList getQueueNames() = 0;
+
+    /**
+     * Get the queue for this object (if it is allowed). If
+     * subclasses do not want to allow getQueue(), override it
+     * and throw a clusterlib exception.  Queues can be named and
+     * should use the name ClusterlibStrings::DEFAULTQUEUE if no
+     * name is selected.
+     * 
+     * @param name the name of the Queue to create
+     * @param accessType The mode of access
+     * @param msecTimeout the amount of usecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediately
+     * @param pQueueSP Pointer to that pQueueSP if it exists, 
+     *        otherwise NULL.
+     * @return True if the operation finished before the timeout
+     * @throw Exception if Notifyable is the root or application
+     */
+    virtual bool getQueueWaitMsecs(
+        const std::string &name,
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<Queue> *pQueueSP) = 0;
 
     /**
      * Get the queues for this object (if it is allowed). If
@@ -187,32 +277,8 @@ class Notifyable
      * @return queue pointer or NULL if no queue exists for this 
      * notifyable and create == false
      */
-    virtual Queue *getQueue(const std::string &name,
-                            AccessType accessType = LOAD_FROM_REPOSITORY) = 0;
-
-    /**
-     * Get the reference count of this cachec representation of a
-     * Notifyable.  Useful for debugging, since it cannot be
-     * manipulated directly.
-     *
-     * @return the reference count
-     */
-    virtual int32_t getRefCount() = 0;
-
-    /**
-     * Any get*() (i.e. getProperties() or getNode()) increments a
-     * reference count on a cached Notifyable.  If the user wants to
-     * let clusterlib know that it will no longer access the
-     * Notifyable * that refers to a cached Notifyable, it should call
-     * this function to decrement the reference count.  Once the
-     * reference count goes to 0, the cached Notifyable will be
-     * removed from the clusterlib cache.  This function does not
-     * effect whether the cached object is removed from the
-     * repository.  It is also not required if a user has sufficient
-     * memory to hold all cached objects (current and deleted
-     * combined).
-     */
-    virtual void releaseRef() = 0;
+    virtual boost::shared_ptr<Queue> getQueue(const std::string &name,
+                                              AccessType accessType) = 0;
 
     /** 
      * \brief Acquire the clusterlib lock for this Notifyable.
@@ -395,6 +461,6 @@ class Notifyable
     virtual ~Notifyable() {};
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_NOTIFYABLE_H_ */

@@ -12,8 +12,7 @@
 #ifndef _CL_CLUSTERLIBRPC_H_
 #define _CL_CLUSTERLIBRPC_H_
  
-namespace clusterlib 
-{
+namespace clusterlib  {
 
 /**
  * Defines a clusterlib JSON-RPC Request.  Clients use this object to make
@@ -124,12 +123,12 @@ class ClusterlibRPCRequest
     /**
      * The clusterlib Root
      */
-    Root *m_root;
+    boost::shared_ptr<Root> m_rootSP;
 
     /**
      * The destination Queue
      */
-    Queue *m_destinationQueue;
+    boost::shared_ptr<Queue> m_destinationQueueSP;
 
     /**
      * The JSON-RPC parameters
@@ -245,22 +244,22 @@ class ClusterlibRPCManager
     /**
      * Constructor.
      *
-     * @param root the clusterlib root
-     * @param recvQueue the queue where this client receives JSON-RPC requests
-     * @param completedQueue the queue where this client places responses or 
+     * @param rootSP Clusterlib root
+     * @param recvQueueSP Queue where this client receives JSON-RPC requests
+     * @param completedQueueSP Queue where this client places responses or 
      *        errors for JSON-RPC requests if no destination is specified.
      * @param completedQueueMaxSize the maximum number of elements in the 
      *        completedQueue, -1 for infinite, 0 for none.
-     * @param rpcMethodHandlerPropertyList if set, the rpcManager will update
+     * @param rpcMethodHandlerPropertyListSP If set, the rpcManager will update
      *        rpcMethodHandlerPropertyList with the current request and status
      *        information
      */
     ClusterlibRPCManager(
-        Root *root,
-        Queue *recvQueue,
-        Queue *completedQueue,
+        const boost::shared_ptr<Root> &rootSP,
+        const boost::shared_ptr<Queue> &recvQueueSP,
+        const boost::shared_ptr<Queue> &completedQueueSP,
         int32_t completedQueueMaxSize,
-        PropertyList *rpcMethodHandlerPropertyList);
+        const boost::shared_ptr<PropertyList> &rpcMethodHandlerPropertyListSP);
 
     /**
      * Destructor.
@@ -285,9 +284,9 @@ class ClusterlibRPCManager
      *
      * @return the root
      */
-    virtual Root *getRoot()
+    virtual const boost::shared_ptr<Root> &getRoot()
     {
-        return m_root;
+        return m_rootSP;
     }
 
     /**
@@ -295,9 +294,9 @@ class ClusterlibRPCManager
      *
      * @return the recv queue
      */
-    virtual Queue *getRecvQueue()
+    virtual const boost::shared_ptr<Queue> &getRecvQueue()
     {
-        return m_recvQueue;
+        return m_recvQueueSP;
     }
 
     /**
@@ -305,9 +304,9 @@ class ClusterlibRPCManager
      *
      * @return the completed queue
      */
-    virtual Queue *getCompletedQueue()
+    virtual const boost::shared_ptr<Queue> &getCompletedQueue()
     {
-        return m_completedQueue;
+        return m_completedQueueSP;
     }
 
     /**
@@ -315,9 +314,10 @@ class ClusterlibRPCManager
      *
      * @return pointer to m_RPCMethodHandlerPropertyList
      */
-    virtual PropertyList *getRPCMethodHandlerPropertyList()
+    virtual const boost::shared_ptr<PropertyList> &
+    getRPCMethodHandlerPropertyList()
     {
-        return m_RPCMethodHandlerPropertyList;
+        return m_RPCMethodHandlerPropertyListSP;
     }
 
   private:
@@ -342,18 +342,18 @@ class ClusterlibRPCManager
     /**
      * The clusterlib root
      */
-    Root *m_root;
+    boost::shared_ptr<Root> m_rootSP;
 
     /**
      * The queue that the manager is waiting for requests
      */
-    Queue *m_recvQueue;
+    boost::shared_ptr<Queue> m_recvQueueSP;
     
     /**
      * The queue that used to specify where completed requests will go
      * (limited to a finite size (m_completedQueueMaxSize).
      */
-    Queue *m_completedQueue;
+    boost::shared_ptr<Queue> m_completedQueueSP;
     
     /**
      * The maximum size of m_completedQueue, -1 for infinite, 0 for don't use.
@@ -364,7 +364,7 @@ class ClusterlibRPCManager
      * If set, this is the property list that will report the updates
      * of the currently running JSON-RPC request.
      */
-    PropertyList *m_RPCMethodHandlerPropertyList;
+    boost::shared_ptr<PropertyList> m_RPCMethodHandlerPropertyListSP;
 };
 
 }

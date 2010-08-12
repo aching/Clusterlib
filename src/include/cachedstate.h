@@ -12,8 +12,7 @@
 #ifndef	_CL_CACHEDSTATE_H_
 #define _CL_CACHEDSTATE_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class CachedState.  Conceptually, CachedState is a
@@ -148,6 +147,6 @@ class CachedState
     virtual ~CachedState() {}
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_CACHEDSTATE_H_ */

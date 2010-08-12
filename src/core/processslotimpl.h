@@ -12,8 +12,7 @@
 #ifndef	_CL_PROCESSSLOTIMPL_H_
 #define _CL_PROCESSSLOTIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class ProcessSlotImpl.
@@ -35,10 +34,9 @@ class ProcessSlotImpl
     ProcessSlotImpl(FactoryOps *fp,
                     const std::string &key,
                     const std::string &name,
-                    NodeImpl *node)
+                    boost::shared_ptr<NotifyableImpl> node)
         : NotifyableImpl(fp, key, name, node),
           m_cachedProcessInfo(this) {}
-
 
     /**
      * Create the key-value JSONArray key
@@ -94,15 +92,9 @@ class ProcessSlotImpl
 
   private:
     /*
-     * Make the default constructor private so it cannot be called.
+     * Do not call the default constructor
      */
-    ProcessSlotImpl()
-        : NotifyableImpl(NULL, "", "", NULL),
-          m_cachedProcessInfo(this)
-    {
-        throw InvalidMethodException("Someone called the ProcessSlotImpl "
-                                     "default constructor!");
-    }
+    ProcessSlotImpl();
 
   private:
     /**

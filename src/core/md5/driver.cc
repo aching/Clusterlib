@@ -36,7 +36,6 @@ using namespace std;
 
 #include "md5.h"
 
-
 // Length of test block, number of test blocks.
 
 #define TEST_BLOCK_LEN 1000
@@ -79,7 +78,6 @@ int main (int argc, char *argv[]){
   return (0);
 }
 
-
 // Measures the time to digest TEST_BLOCK_COUNT TEST_BLOCK_LEN-byte blocks.
 
 static void MD5_timeTrial ()
@@ -88,7 +86,6 @@ static void MD5_timeTrial ()
   time_t endTime, startTime;
   unsigned char block[TEST_BLOCK_LEN];
   unsigned int i;
-
 
   cout << "MD5 time trial. Digesting "<< TEST_BLOCK_LEN << " ";
   cout << TEST_BLOCK_COUNT << "-byte blocks ...";
@@ -139,7 +136,6 @@ static void MD5_testSuite ()
 1234567890123456789012345678901234567890");
 }
 
-
 // Digests a file and prints the result.
 
 static void MD5_file (char *filename){
@@ -165,8 +161,6 @@ static void MD5_filter ()
   cout << context << endl;
 }
 
-
-
 // Digests a string and prints the result.
 
 void MD5_string (unsigned char *string){
@@ -179,8 +173,6 @@ void MD5_string (unsigned char *string){
 
   cout << "MD5 (\"" << (char *)string << "\") = " << context <<endl;
 }
-
-
 
 static string MD5_usage(){
 
@@ -197,6 +189,4 @@ Arguments (may be any combination):\n\
   filename - digests file\n\
   (none)   - digests standard input\n\n";
 }
-
-
 

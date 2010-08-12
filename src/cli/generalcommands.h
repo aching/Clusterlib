@@ -13,8 +13,7 @@
 #ifndef	_CL_GENERALCOMMANDS_H_
 #define _CL_GENERALCOMMANDS_H_
 
-namespace clusterlib 
-{
+namespace clusterlib  {
 
 /**
  * Set the logging level for the clusterlib library.
@@ -280,14 +279,15 @@ class JSONRPCCommand : public CliCommand
     /** Name of the params array argument */
     static const std::string PARAM_ARRAY_ARG;
 
-    JSONRPCCommand(Client *client, Queue *respQueue);
+    JSONRPCCommand(Client *client, 
+                   const boost::shared_ptr<Queue> &respQueueSP);
     virtual void action();
     virtual std::string helpMessage();
     virtual ~JSONRPCCommand();
 
   private:
     /** The queue to put the response on. */
-    Queue *m_respQueue;
+    boost::shared_ptr<Queue> m_respQueueSP;
 };
 
 /**

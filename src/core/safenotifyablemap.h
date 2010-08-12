@@ -11,13 +11,13 @@
 #ifndef	_CL_SAFENOTIFYABLEMAP_H_
 #define	_CL_SAFENOTIFYABLEMAP_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
  /**
   * Special caching structure for clusterlib notifyables.
   */
-class SafeNotifyableMap {
+class SafeNotifyableMap
+{
   public:
     /**
      * Constructor.
@@ -30,7 +30,8 @@ class SafeNotifyableMap {
      * @param notifyableKey the key of the notifyable
      * @return a pointer to the notifyable or NULL if not found
      */
-    NotifyableImpl *getNotifyable(const std::string &notifyableKey);
+    boost::shared_ptr<NotifyableImpl> getNotifyable(
+        const std::string &notifyableKey);
     
     /**
      * Insert the notifyable into the map if it is unique (thread-safe
@@ -38,22 +39,22 @@ class SafeNotifyableMap {
      * At this point, the memory of the notifyable is owned by
      * SafeNotifyableMap and will be removed during destruction.
      *
-     * @param notifyable Pointer to the notifyable to insert
+     * @param notifyableSP Pointer to the notifyable to insert
      */
-    void uniqueInsert(NotifyableImpl &notifyable);
+    void uniqueInsert(const boost::shared_ptr<NotifyableImpl> &notifyableSP);
 
     /**
      * Remove the notifyable from the map (thread-safe if holding the
      * mutex).
      */
-    void erase(NotifyableImpl &notifyable);
+    void erase(const boost::shared_ptr<NotifyableImpl> &notifyableSP);
 
     /**
      * Get the lock that protects this object.
      *
      * @return a reference to the mutex
      */
-    Mutex &getLock();
+    const Mutex &getLock() const;
 
     /**
      * Destructor.  Frees all memory for every NotifyableImpl * in the map.
@@ -62,16 +63,21 @@ class SafeNotifyableMap {
 
   private:
     /**
-     * No copying.
+     * No copy constructor.
      */
     SafeNotifyableMap(const SafeNotifyableMap &other);
+
+    /**
+     * No assignment.
+     */
+    SafeNotifyableMap & operator=(const SafeNotifyableMap &other);
 
   private:
     /** 
      * The map containing the pointers to the allocated Notifyable
      * objects.
      */
-    std::map<std::string, NotifyableImpl *> m_ntpMap;
+    std::map<std::string, boost::shared_ptr<NotifyableImpl> > m_ntpMap;
     
     /**
      * Lock that protects m_ntpMap.
@@ -79,8 +85,7 @@ class SafeNotifyableMap {
     Mutex m_ntpMapLock;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_SAFENOTIFYABLEMAP_H_ */
-
 

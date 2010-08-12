@@ -12,8 +12,7 @@
 #ifndef	_CL_UNKNOWNHASHRANGE_H_
 #define _CL_UNKNOWNHASHRANGE_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 class UnknownHashRange 
     : public HashRange

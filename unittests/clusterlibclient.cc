@@ -4,6 +4,7 @@
 extern TestParams globalTestParams;
 
 using namespace std;
+using namespace boost;
 using namespace clusterlib;
 
 const string appName = "unittests-client-app";
@@ -42,8 +43,7 @@ class ClusterlibClient
         : MPITestFixture(globalTestParams),
           _factory(NULL),
           _client0(NULL),
-          _app0(NULL),
-          _id0(0),
+                    _id0(0),
           _fired0(false),
           _cancelled0(false) {}
 
@@ -84,8 +84,7 @@ class ClusterlibClient
 	delete _factory;
         _factory = NULL;
         _client0 = NULL;
-        _app0 = NULL;
-
+        
         /*
          * Delete my own data.
          */
@@ -335,7 +334,7 @@ class ClusterlibClient
   private:
     clusterlib::Factory *_factory;
     clusterlib::Client *_client0;
-    clusterlib::Application *_app0;
+    shared_ptr<Application> _app0;
 
     clusterlib::TimerId _id0;
     clusterlib::TimerId _id1;

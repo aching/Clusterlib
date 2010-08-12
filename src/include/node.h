@@ -12,8 +12,7 @@
 #ifndef	_CL_NODE_H_
 #define _CL_NODE_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class Node
@@ -65,19 +64,35 @@ class Node
      * @return a copy of the list of all process slots.
      */
     virtual NameList getProcessSlotNames() = 0;
+ 
+    /**
+     * Get the name ProcessSlot.
+     *
+     * @param name Name of the ProcessSlot to create
+     * @param accessType Mode of access
+     * @param msecTimeout Amount of msecs to wait until giving up, 
+     *        -1 means wait forever, 0 means return immediately
+     * @param pProcessSlotSP Pointer to that pProcessSlotSP if it exists, 
+     *        otherwise NULL.
+     * @return True if the operation finished before the timeout
+     */
+    virtual bool getProcessSlotWaitMsecs(
+        const std::string &name,
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<ProcessSlot> *pProcessSlotSP) = 0;
 
     /**
-     * Get the named process slot (only if enabled).
+     * Get the named ProcessSlot (no timeout).
      * 
-     * @param name the name of the proccess slot
-     * @param accessType The mode of access
-     * @return NULL if the named process slot does not exist and create
-     * == false
+     * @param name Name of the ProcessSlot to get
+     * @param accessType Mode of access
+     * @return NULL if the named ProcessSlot does not exist
      * @throw Exception only if tried to create and couldn't create
      */
-    virtual ProcessSlot *getProcessSlot(
-        const std::string &name, 
-        AccessType accessType = LOAD_FROM_REPOSITORY) = 0;
+    virtual boost::shared_ptr<ProcessSlot> getProcessSlot(
+        const std::string &name,
+        AccessType accessType) = 0;
 
     /**
      * Destructor.
@@ -85,6 +100,6 @@ class Node
     virtual ~Node() {}
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_NODE_H_ */

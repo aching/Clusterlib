@@ -10,28 +10,22 @@
 
 #ifndef _CL_JSON_H_
 #define _CL_JSON_H_
-#include <string>
-#include <deque>
-#include <map>
-#include <iostream>
-#include <boost/any.hpp>
-#include "clusterlibexceptions.h"
-#include <typeinfo>
-#include <limits>
+
+#include "clusterlib.h"
 
 /**
  * Defines the namespace of JSON encoder and decoder. The utility
  * class JSONCodec is the single entry of parsing and composing JSON
  * messages.
  */
-namespace json 
-{
+namespace json  {
     
 /**
  * Defines the value in JSON. The value can be a number (integer
  * or floating point), a boolean, a string, a vector or a map.
  */
-class JSONValue {
+class JSONValue
+{
   public:
     typedef std::string JSONString;
     typedef std::deque<JSONValue> JSONArray;
@@ -270,7 +264,8 @@ inline JSONValue::JSONInteger JSONValue::get<JSONValue::JSONInteger>() const
  * Defines the utility class of JSON parser and composer. This is
  * the single entry of the namespace.
  */
-class JSONCodec {
+class JSONCodec
+{
   public:
     /**
      * Encodes the JSONValue to a JSON message.
@@ -300,6 +295,6 @@ class JSONCodec {
     JSONCodec();
 };
 
-};
+}
 
 #endif

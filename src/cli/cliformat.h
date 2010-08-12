@@ -14,7 +14,8 @@
 /**
  * CliFormat class.
  */
-class CliFormat {
+class CliFormat
+{
   public:
     /** 
      * Print out a bool data attribute. 
@@ -65,7 +66,7 @@ class CliFormat {
      * Print out a vector of string for an attribute
      *
      * @param attribute the attribute name
-     * @param data the attribute data in a vector
+     * @param dataVec the attribute data in a vector
      */
     static void attributeOut(std::string attribute, 
                              std::vector<std::string> dataVec) 

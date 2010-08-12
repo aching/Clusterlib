@@ -12,8 +12,7 @@
 #ifndef	_CL_HASHRANGE_H_
 #define _CL_HASHRANGE_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Subclass to create a hash range.

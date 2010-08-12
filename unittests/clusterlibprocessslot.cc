@@ -6,11 +6,13 @@ extern TestParams globalTestParams;
 
 using namespace clusterlib;
 using namespace std;
+using namespace boost;
 using namespace json;
 
 const string appName = "unittests-processSlot-app";
 
-class ClusterlibProcessSlot : public MPITestFixture {
+class ClusterlibProcessSlot : public MPITestFixture
+{
     CPPUNIT_TEST_SUITE(ClusterlibProcessSlot);
     CPPUNIT_TEST(testProcessSlot1);
     CPPUNIT_TEST(testProcessSlot2);
@@ -22,12 +24,8 @@ class ClusterlibProcessSlot : public MPITestFixture {
     ClusterlibProcessSlot() 
         : MPITestFixture(globalTestParams),
           _factory(NULL),
-          _client0(NULL),
-          _app0(NULL),
-          _group0(NULL),
-          _node0(NULL),
-          _processSlot0(NULL) {}
-    
+          _client0(NULL) {}
+
     /* Runs prior to each test */
     virtual void setUp() 
     {
@@ -87,7 +85,8 @@ class ClusterlibProcessSlot : public MPITestFixture {
         waitsForOrder(0, 1, _factory, true);
 
         if (isMyRank(1)) {
-            _processSlot0 = _node0->getProcessSlot(processSlotName);
+            _processSlot0 = _node0->getProcessSlot(processSlotName, 
+                                                   LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(_processSlot0);
             _processSlot0->acquireLock();
             JSONValue::JSONArray portArr = 
@@ -144,7 +143,7 @@ class ClusterlibProcessSlot : public MPITestFixture {
                 processSlotName,
                 CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(_processSlot0);
-            PropertyList *propList = 
+            shared_ptr<PropertyList> propList = 
                 _app0->getPropertyList(ClusterlibStrings::DEFAULTPROPERTYLIST,
                                        CREATE_IF_NOT_FOUND);
             propList->acquireLock();
@@ -155,17 +154,19 @@ class ClusterlibProcessSlot : public MPITestFixture {
 
         barrier(_factory, true);
 
-        Root *root = _client0->getRoot();
-        PropertyList *propList = 
-            _app0->getPropertyList();
+        shared_ptr<Root> root = _client0->getRoot();
+        shared_ptr<PropertyList> propList = 
+            _app0->getPropertyList(ClusterlibStrings::DEFAULTPROPERTYLIST,
+                                   LOAD_FROM_REPOSITORY);
         MPI_CPPUNIT_ASSERT(propList);
         propList->acquireLock();
         JSONValue jsonValue;
         propList->cachedKeyValues().get(propKey, jsonValue);
         propList->releaseLock();
-        ProcessSlot *processSlot = dynamic_cast<ProcessSlot *>(
-            root->getNotifyableFromKey(
-                jsonValue.get<JSONValue::JSONString>()));
+        shared_ptr<ProcessSlot> processSlot = 
+            dynamic_pointer_cast<ProcessSlot>(
+                root->getNotifyableFromKey(
+                    jsonValue.get<JSONValue::JSONString>()));
         MPI_CPPUNIT_ASSERT(processSlot);
     }
 
@@ -223,10 +224,10 @@ class ClusterlibProcessSlot : public MPITestFixture {
   private:
     Factory *_factory;
     Client *_client0;
-    Application *_app0;
-    Group *_group0;
-    Node *_node0;
-    ProcessSlot *_processSlot0;
+    shared_ptr<Application> _app0;
+    shared_ptr<Group> _group0;
+    shared_ptr<Node> _node0;
+    shared_ptr<ProcessSlot> _processSlot0;
 };
 
 /* Registers the fixture into the 'registry' */

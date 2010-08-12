@@ -13,13 +13,14 @@
 #include "clusterlibinternal.h"
 
 using namespace std;
+using namespace boost;
 using namespace json;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
-CachedProcessSlotInfoImpl::CachedProcessSlotInfoImpl(NotifyableImpl *ntp)
-    : CachedDataImpl(ntp) 
+CachedProcessSlotInfoImpl::CachedProcessSlotInfoImpl(
+    NotifyableImpl *notifyable)
+    : CachedDataImpl(notifyable) 
 {
     m_processSlotInfoArr.resize(CachedProcessSlotInfoImpl::MAX_SIZE);
     m_processSlotInfoArr[CachedProcessSlotInfoImpl::ENABLE] = false;
@@ -167,4 +168,4 @@ CachedProcessSlotInfoImpl::loadDataFromRepository(bool setWatchesOnly)
     }
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

@@ -2,7 +2,6 @@
  * queueimpl.cc --
  *
  * Implementation of the QueueImpl class.
-
  *
  * ============================================================================
  * $Header$
@@ -11,7 +10,6 @@
  * ============================================================================
  */
 
-#define LOG_LEVEL LOG_WARN
 #define MODULE_NAME "Queue"
 
 #include <limits>
@@ -21,13 +19,12 @@
 using namespace std;
 using namespace boost;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 QueueImpl::QueueImpl(FactoryOps *fp,
                      const string &key,
                      const string &name,
-                     NotifyableImpl *parent)
+                     const shared_ptr<NotifyableImpl> &parent)
     : NotifyableImpl(fp, key, name, parent), 
       m_queueParentKey(NotifyableKeyManipulator::createQueueParentKey(key))
 {
@@ -69,15 +66,17 @@ QueueImpl::put(const string &element)
     return myBid;
 }
 
-void
-QueueImpl::take(string &element) 
+string
+QueueImpl::take() 
 {
     TRACE(CL_LOG, "take");
 
-    if (!takeWaitMsecs(-1LL, element)) {
+    string res;
+    if (!takeWaitMsecs(-1LL, res)) {
         throw InconsistentInternalStateException(
             "take: Impossible that takeWaitMsecs failed!");
     }
+    return res;
 }
 
 bool
@@ -426,4 +425,4 @@ QueueImpl::establishQueueWatch()
         true);
 }
 
-};       /* End of 'namespace clusterlib' */
+}       /* End of 'namespace clusterlib' */

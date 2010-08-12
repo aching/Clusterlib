@@ -13,8 +13,7 @@
 #ifndef	_CL_QUEUE_H_
 #define _CL_QUEUE_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class Queue.
@@ -36,9 +35,9 @@ class Queue
      * lock is held by another client or if there are no elements in the
      * queue.  This will wait unconditionally.
      *
-     * @param element the element retrieved from the queue if successful
+     * @return Element retrieved from the queue if successful
      */
-    virtual void take(std::string &element) = 0;
+    virtual std::string take() = 0;
 
     /**
      * Retrieves and removes the head of this queue, waiting if the
@@ -109,6 +108,6 @@ class Queue
     virtual ~Queue() {}
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_QUEUE_H_ */

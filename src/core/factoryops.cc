@@ -12,18 +12,11 @@
 
 #include "clusterlibinternal.h"
 
-#include <sys/types.h>
-#include <linux/unistd.h>
-
-#define LOG_LEVEL LOG_WARN
-#define MODULE_NAME "ClusterLib"
-
 using namespace std;
 using namespace boost;
 using namespace json;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 FactoryOps::FactoryOps(const string &registry, int64_t connectTimeout)
     : m_syncEventId(0),
@@ -49,7 +42,7 @@ FactoryOps::FactoryOps(const string &registry, int64_t connectTimeout)
     /*
      * Create the clusterlib event dispatch thread (processes only
      * events that are visible to clusterlib clients)
-    */
+     */
     m_externalEventThread.Create(
         *this, 
         &FactoryOps::dispatchExternalEvents);
@@ -66,7 +59,7 @@ FactoryOps::FactoryOps(const string &registry, int64_t connectTimeout)
         m_zk.reconnect();
         LOG_INFO(CL_LOG, 
                  "Waiting for connect event from ZooKeeper up to %" PRId64 
-                 " msecs, thread: %" PRIu32,
+                 " msecs, thread: %" PRId32,
                  connectTimeout,
                  ProcessThreadService::getTid());
         if (m_firstConnect.predWaitUsecs(connectTimeout * 1000) == false) {
@@ -119,7 +112,7 @@ FactoryOps::FactoryOps(const string &registry, int64_t connectTimeout)
     /*
      * After all other initializations, get/create the root object.
      */
-    getNotifyable(NULL,
+    getNotifyable(shared_ptr<NotifyableImpl>(),
                   ClusterlibStrings::REGISTERED_ROOT_NAME, 
                   ClusterlibStrings::ROOT,
                   CREATE_IF_NOT_FOUND);
@@ -218,9 +211,6 @@ FactoryOps::cleanCachedNotifyableMaps()
     }
 }
 
-/*
- * Destructor of FactoryOps
- */
 FactoryOps::~FactoryOps()
 {
     TRACE(CL_LOG, "~FactoryOps");
@@ -242,9 +232,11 @@ FactoryOps::~FactoryOps()
     discardAllPeriodicThreads();
 
     discardAllClients();
-    discardAllRemovedNotifyables();
 
     unregisterAllNotifyables();
+
+    unregisterAllHashRanges();
+
     cleanCachedNotifyableMaps();
 
     try {
@@ -300,8 +292,9 @@ FactoryOps::createClient()
 }
 
 Client *
-FactoryOps::createJSONRPCResponseClient(Queue *responseQueue,
-                                        Queue *completedQueue)
+FactoryOps::createJSONRPCResponseClient(
+    const shared_ptr<Queue> &responseQueueSP,
+    const shared_ptr<Queue> &completedQueueSP)
 {
     TRACE(CL_LOG, "createJSONRPCResponseClient");
 
@@ -310,8 +303,8 @@ FactoryOps::createJSONRPCResponseClient(Queue *responseQueue,
         throw InconsistentInternalStateException(
             "createJSONRPCResponseClient: Failed to create client");
     }
-    client->registerJSONRPCResponseHandler(responseQueue,
-                                           completedQueue);
+    client->registerJSONRPCResponseHandler(responseQueueSP,
+                                           completedQueueSP);
     return client;
 }
 
@@ -412,6 +405,12 @@ FactoryOps::synchronize()
               syncEventId);
 }
 
+zk::ZooKeeperAdapter *
+FactoryOps::getRepository()
+{
+    return &m_zk;
+}
+
 /**********************************************************************/
 /* Below this line are the methods of class FactoryOps that provide
  * functionality beyond what Factory needs.  */
@@ -502,7 +501,7 @@ FactoryOps::runPeriodic(void *param)
 
     LOG_INFO(CL_LOG,
              "Starting thread with FactoryOps::runPeriodic(), "
-             "this: %p, thread: %" PRIu32,
+             "this: %p, thread: %" PRId32,
              this,
              ProcessThreadService::getTid());
     
@@ -523,7 +522,7 @@ FactoryOps::runPeriodic(void *param)
     try {
         do {
             LOG_DEBUG(CL_LOG, 
-                      "runPeriodic: thread: %" PRIu32 " doing run() "
+                      "runPeriodic: thread: %" PRId32 " doing run() "
                       "after waiting %" PRId64,
                       ProcessThreadService::getTid(),
                       periodic->getMsecsFrequency());
@@ -540,7 +539,7 @@ FactoryOps::runPeriodic(void *param)
 
     LOG_INFO(CL_LOG,
              "Ending thread with FactoryOps::runPeriodic(): "
-             "this: %p, thread: %" PRIu32,
+             "this: %p, thread: %" PRId32,
              this,
              ProcessThreadService::getTid());
 }
@@ -612,36 +611,15 @@ FactoryOps::discardAllPeriodicThreads()
         periodicMapIt = m_periodicMap.begin();
         periodicMapIt->second->getPredMutexCond().predSignal();
         periodicMapIt->second->Join();
-        m_periodicMap.erase(periodicMapIt);
         delete periodicMapIt->second;
+        m_periodicMap.erase(periodicMapIt);
     }
 }
 
-void
-FactoryOps::discardAllRemovedNotifyables()
+FactoryOps *
+FactoryOps::getOps() 
 {
-    TRACE(CL_LOG, "discardAllRemovedNotifyables");
-
-    Locker l(getRemovedNotifyablesLock());
-    set<Notifyable *>::iterator ntpIt;
-
-    int32_t count = 0;
-    for (ntpIt = m_removedNotifyables.begin();
-         ntpIt != m_removedNotifyables.end();
-         ntpIt++) {
-        LOG_DEBUG(CL_LOG, 
-                  "discardAllRemovedNotifyables: "
-                  "Removed key (%s) with %d refs",
-                  (*ntpIt)->getKey().c_str(),
-                  (*ntpIt)->getRefCount());
-	delete *ntpIt;
-        count++;
-    }
-    m_removedNotifyables.clear();
-
-    LOG_INFO(CL_LOG, 
-             "discardAllRemovedNotifyables: Cleaned up %d removed notifyables",
-             count);
+    return this;
 }
 
 /*
@@ -655,7 +633,7 @@ FactoryOps::dispatchExternalEvents(void *param)
     uint32_t eventSeqId = 0;
     LOG_INFO(CL_LOG,
              "Starting thread with FactoryOps::dispatchExternalEvents(), "
-             "this: %p, thread: %" PRIu32,
+             "this: %p, thread: %" PRId32,
              this,
              ProcessThreadService::getTid());
 
@@ -755,7 +733,7 @@ FactoryOps::dispatchExternalEvents(void *param)
 
     LOG_INFO(CL_LOG,
              "Ending thread with FactoryOps::dispatchExternalEvents(): "
-             "this: %p, thread: %" PRIu32,
+             "this: %p, thread: %" PRId32,
              this,
              ProcessThreadService::getTid());
 }
@@ -970,13 +948,13 @@ FactoryOps::consumeTimerEvents(void *param)
 
     LOG_INFO(CL_LOG,
              "Starting thread with FactoryOps::consumeTimerEvents(), "
-             "this: %p, thread: %" PRIu32,
+             "this: %p, thread: %" PRId32,
              this,
              ProcessThreadService::getTid());
 
     try {
         for (;;) {
-            m_timerEventQueue.take(tepp);
+            tepp = m_timerEventQueue.take();
 
             /*
              * If we received the terminate signal,
@@ -1026,30 +1004,43 @@ FactoryOps::consumeTimerEvents(void *param)
 
     LOG_INFO(CL_LOG,
              "Ending thread with FactoryOps::consumeTimerEvents(): "
-             "this: %p, thread: %" PRIu32,
+             "this: %p, thread: %" PRId32,
              this,
              ProcessThreadService::getTid());
 }
 
-NotifyableImpl *
-FactoryOps::getNotifyable(NotifyableImpl *parent,
-                          const string &registeredNotifyableName, 
-                          const string &name,
-                          AccessType accessType)
+bool
+FactoryOps::getNotifyableWaitMsecs(
+    const shared_ptr<NotifyableImpl> parentSP,
+    const string &registeredNotifyableName, 
+    const string &name,
+    AccessType accessType,
+    int64_t msecTimeout,
+    shared_ptr<NotifyableImpl> *pNotifyableSP)
 {
-    TRACE(CL_LOG, "getNotifyable");
+    TRACE(CL_LOG, "getNotifyableWaitMsecs");
 
     LOG_DEBUG(CL_LOG, 
-              "getNotifyable: parent '%p', registeredNotifyableName '%s', "
-              "name '%s' accessType '%s'",
-              parent,
+              "getNotifyableWaitMsecs: parent '%p', registeredNotifyableName "
+              "'%s', name '%s' accessType '%s' msecTimeout '%" PRId64 
+              "', pNotifyableSP '%p'",
+              parentSP.get(),
               registeredNotifyableName.c_str(),
               name.c_str(),
-              getAccessTypeString(accessType).c_str());
+              getAccessTypeString(accessType).c_str(),
+              msecTimeout,
+              pNotifyableSP);
 
+    if (pNotifyableSP == NULL) {
+        throw InvalidArgumentsException(
+            "getNotifyableWaitMsecs: NULL pNotifyableSP");
+    }
+
+    pNotifyableSP->reset();
     map<string, RegisteredNotifyable *>::const_iterator registeredNotifyableIt;
     {
         ReadLocker l(&m_registeredNotifyableMapRdWrLock);
+
         registeredNotifyableIt = 
             m_registeredNotifyableMap.find(registeredNotifyableName);
     }
@@ -1057,74 +1048,96 @@ FactoryOps::getNotifyable(NotifyableImpl *parent,
     /* Get the registered notifyable for the appropriate member functions */
     if (registeredNotifyableIt == m_registeredNotifyableMap.end()) {
         ostringstream oss;
-        oss << "getNotifyable: Tried to get a notifyable of type (" 
+        oss << "getNotifyableWaitMsecs: Tried to get a notifyable of type (" 
             << registeredNotifyableName << ") that does not exist.";
         throw InconsistentInternalStateException(oss.str());
     }
-    RegisteredNotifyable *registeredNtp = registeredNotifyableIt->second;
-    if (!registeredNtp->isValidName(name)) {
+    RegisteredNotifyable *registeredNotifyable = 
+        registeredNotifyableIt->second;
+    if (!registeredNotifyable->isValidName(name)) {
         ostringstream oss;
-        oss << "getNotifyable: Name (" << name << ") is invalid for type "
-            << registeredNotifyableName;
+        oss << "getNotifyableWaitMsecs: Name (" << name 
+            << ") is invalid for type " << registeredNotifyableName;
         throw InvalidArgumentsException(oss.str());
     }
     
-    string notifyableKey = registeredNtp->generateKey(
-        ((parent == NULL) ? "" : parent->getKey()),
+    LOG_DEBUG(CL_LOG, 
+              "getNotifyableWaitMsecs: Using registeredNotifyable=%s",
+              registeredNotifyable->registeredName().c_str());
+
+    string notifyableKey = registeredNotifyable->generateKey(
+        ((parentSP == NULL) ? "" : parentSP->getKey()),
         name);
     SafeNotifyableMap *safeNotifyableMap = 
-        registeredNtp->getSafeNotifyableMap();
+        registeredNotifyable->getSafeNotifyableMap();
 
     /* Try to find the notifyable in its proper map cache. */
-    NotifyableImpl *ntp = NULL;
     {
         Locker l(&safeNotifyableMap->getLock());
-        ntp = safeNotifyableMap->getNotifyable(notifyableKey);
-        if (ntp != NULL) {
-            ntp->incrRefCount();
+
+        *pNotifyableSP = safeNotifyableMap->getNotifyable(notifyableKey);
+    }
+
+    if ((*pNotifyableSP != NULL) || (accessType == CACHED_ONLY)) {
+        return true;
+    }
+
+    if (parentSP != NULL) {
+        if (getOps()->getDistributedLocks()->acquireWaitMsecs(
+                msecTimeout,
+                dynamic_pointer_cast<Notifyable>(parentSP),
+                ClusterlibStrings::NOTIFYABLELOCK) == false) {
+            return false;
         }
     }
-
-    if ((ntp != NULL) || (accessType == CACHED_ONLY)) {
-        return ntp;
-    }
-
-    if (parent != NULL) {
-        getOps()->getDistributedLocks()->acquire(
-            parent, 
-            ClusterlibStrings::NOTIFYABLELOCK);
-    }
     
-    ntp = registeredNtp->loadNotifyableFromRepository(
-        name, notifyableKey, parent);
-    if ((ntp == NULL) && (accessType == CREATE_IF_NOT_FOUND)) {
-        registeredNtp->createRepositoryObjects(name, notifyableKey);
-        ntp = registeredNtp->loadNotifyableFromRepository(
-            name, notifyableKey, parent);
-        if (ntp == NULL) {
+    *pNotifyableSP = registeredNotifyable->loadNotifyableFromRepository(
+        name, notifyableKey, parentSP);
+    if ((*pNotifyableSP == NULL) && (accessType == CREATE_IF_NOT_FOUND)) {
+        registeredNotifyable->createRepositoryObjects(name, notifyableKey);
+        *pNotifyableSP = registeredNotifyable->loadNotifyableFromRepository(
+            name, notifyableKey, parentSP);
+        if (*pNotifyableSP == NULL) {
             ostringstream oss;
-            oss << "getNotifyable: Couldn't load notifyable with name="
-                << name << ",key=" << notifyableKey;
+            oss << "getNotifyableWaitMsecs: Couldn't load notifyable "
+                << "with name=" << name << ", key=" << notifyableKey;
             throw InconsistentInternalStateException(oss.str());
         }
     }
 
-    if (ntp != NULL) {
-        ntp->setSafeNotifyableMap(*safeNotifyableMap);
+    if (*pNotifyableSP != NULL) {
+        (*pNotifyableSP)->setSafeNotifyableMap(*safeNotifyableMap);
 
         Locker l(&safeNotifyableMap->getLock());
 
-        safeNotifyableMap->uniqueInsert(*ntp);
-        ntp->initialize();
+        safeNotifyableMap->uniqueInsert(*pNotifyableSP);
+        (*pNotifyableSP)->initialize();
     }
     
-    if (parent != NULL) {
+    if (parentSP != NULL) {
         getOps()->getDistributedLocks()->release(
-            parent,
+            parentSP,
             ClusterlibStrings::NOTIFYABLELOCK);
     }
 
-    return ntp;
+    return true;
+}
+
+shared_ptr<NotifyableImpl> 
+FactoryOps::getNotifyable(
+    const shared_ptr<NotifyableImpl> &parentSP,
+    const string &registeredNotifyableName, 
+    const string &name,
+    AccessType accessType)
+{
+    shared_ptr<NotifyableImpl> notifyableSP;
+    getNotifyableWaitMsecs(parentSP,
+                           registeredNotifyableName,
+                           name,
+                           accessType,
+                           -1,
+                           &notifyableSP);
+    return notifyableSP;
 }
 
 bool
@@ -1230,32 +1243,55 @@ FactoryOps::getNotifyableKeyFromKey(const string &key)
     return string();
 }
 
-NotifyableImpl *
+bool
+FactoryOps::getNotifyableFromKeyWaitMsecs(
+    const vector<string> &registeredNameVec,
+    const string &key, 
+    AccessType accessType,
+    int64_t msecTimeout,
+    shared_ptr<NotifyableImpl> *pNotifyableSP)
+{
+    TRACE(CL_LOG, "getNotifyableFromKeyWaitMsecs");
+
+    vector<string> components;
+    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
+    LOG_DEBUG(CL_LOG, "getNotifyableFromKey: key %s", key.c_str());
+    return getNotifyableFromComponents(registeredNameVec, 
+                                       components, 
+                                       -1, 
+                                       accessType, 
+                                       msecTimeout, 
+                                       pNotifyableSP);
+}
+
+shared_ptr<NotifyableImpl> 
 FactoryOps::getNotifyableFromKey(
     const vector<string> &registeredNameVec,
     const string &key, 
     AccessType accessType)
 {
-    TRACE(CL_LOG, "getNotifyableFromKey");
-
-    vector<string> components;
-    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
-    LOG_DEBUG(CL_LOG, "getNotifyableFromKey: key %s", key.c_str());
-    return getNotifyableFromComponents(
-        registeredNameVec, components, -1, accessType);
+    shared_ptr<NotifyableImpl> notifyableSP;
+    getNotifyableFromKeyWaitMsecs(
+        registeredNameVec, key, accessType, -1, &notifyableSP);
+    return notifyableSP;
 }
 
-NotifyableImpl *
+bool
 FactoryOps::getNotifyableFromComponents(
     const vector<string> &registeredNameVec,
     const vector<string> &components,
     int32_t elements,
-    AccessType accessType)
+    AccessType accessType,
+    int64_t msecTimeout,
+    shared_ptr<NotifyableImpl> *pNotifyableSP)
 {
     TRACE(CL_LOG, "getNotifyableFromComponents");
 
-    NotifyableImpl *ntp = NULL;
-    RegisteredNotifyable *regNtp = NULL;
+    if (pNotifyableSP == NULL) {
+        throw InvalidArgumentsException(
+            "getObjectFromComponents: NULL pNotifyableSP");
+    }
+    pNotifyableSP->reset();
 
     if (elements == -1) {
         elements = components.size();
@@ -1263,85 +1299,85 @@ FactoryOps::getNotifyableFromComponents(
 
     ReadLocker l(&m_registeredNotifyableMapRdWrLock);
     
+    bool success = false;
     if (registeredNameVec.empty()) {
         map<string, RegisteredNotifyable *>::const_iterator 
             registeredNotifyableIt;
         for (registeredNotifyableIt = m_registeredNotifyableMap.begin();
              registeredNotifyableIt != m_registeredNotifyableMap.end();
              ++registeredNotifyableIt) {
-            ntp = registeredNotifyableIt->second->getObjectFromComponents(
-                components, elements, accessType);
-            if (ntp != NULL) {
+            success = registeredNotifyableIt->second->getObjectFromComponents(
+                components, 
+                elements, 
+                accessType, 
+                msecTimeout, 
+                pNotifyableSP);
+            if ((success == true) && (*pNotifyableSP != NULL)) {
                 LOG_DEBUG(
                     CL_LOG,
                     "getObjectFromComponents: Found notifyable in "
                     "RegisteredNotifyable name = '%s' ",
                     registeredNotifyableIt->second->registeredName().c_str());
-                return ntp;
+                return true;
             }
         }
-        
-        return NULL;
     }
     else {
+        RegisteredNotifyable *pRegNotifyable = NULL;
         vector<string>::const_iterator registeredNameVecIt;
         for (registeredNameVecIt = registeredNameVec.begin();
              registeredNameVecIt != registeredNameVec.end();
              ++registeredNameVecIt) {
-            regNtp = getOps()->getRegisteredNotifyable(*registeredNameVecIt);
-            if (regNtp != NULL) {
-                ntp = regNtp->getObjectFromComponents(
-                    components, elements, accessType);
-                if (ntp != NULL) {
-                    LOG_DEBUG(CL_LOG,
-                              "getObjectFromComponents: Found notifyable in "
-                              "RegisteredNotifyable name = '%s' ",
-                              regNtp->registeredName().c_str());
-                    return ntp;
+            pRegNotifyable = 
+                getOps()->getRegisteredNotifyable(*registeredNameVecIt);
+            if (pRegNotifyable != NULL) {
+                success = pRegNotifyable->getObjectFromComponents(
+                    components, 
+                    elements, 
+                    accessType, 
+                    msecTimeout, 
+                    pNotifyableSP);
+                if ((success == true) && (*pNotifyableSP != NULL)) {
+                    LOG_DEBUG(
+                        CL_LOG,
+                        "getObjectFromComponents: Found notifyable in "
+                        "RegisteredNotifyable name = '%s' with name = '%s'",
+                        pRegNotifyable->registeredName().c_str(),
+                        components.back().c_str());
+                    return true;
                 }
             }
         }
-
-        return NULL;
     }
+
+    pNotifyableSP->reset();
+    return false;
 }
 
 void 
-FactoryOps::removeCachedNotifyable(NotifyableImpl *ntp)
+FactoryOps::removeCachedNotifyable(
+    const shared_ptr<NotifyableImpl> &notifyableSP)
 {
     TRACE(CL_LOG, "removeCachedNotifyable");
     
-    Locker l(&ntp->getSafeNotifyableMap()->getLock());
+    Locker l(&notifyableSP->getSafeNotifyableMap()->getLock());
     {
-
         LOG_DEBUG(CL_LOG, 
                   "removeCachedNotifyable: state changing to REMOVED "
                   "for Notifyable %s",
-                  ntp->getKey().c_str());
+                  notifyableSP->getKey().c_str());
 
         /* One way transition to removed, this is fine. */
-        if (ntp->getState() == Notifyable::REMOVED) {
+        if (notifyableSP->getState() == Notifyable::REMOVED) {
             throw InvalidMethodException(
                 string("removeCachedNotifyable: Tried to remove 2x ") +
-                ntp->getKey().c_str());
+                notifyableSP->getKey().c_str());
         }
         
-        Locker l3(getRemovedNotifyablesLock());
-        set<Notifyable *>::const_iterator it = 
-            getRemovedNotifyables()->find(ntp);
-        if (it != getRemovedNotifyables()->end()) {
-            throw InconsistentInternalStateException(
-                string("RemoveNotifyableFromCacheByKey: Notifyable for key ") +
-                ntp->getKey() + 
-                " is already in removed notifyables" +
-                " set!");
-        }
-        getRemovedNotifyables()->insert(ntp);
-
-        ntp->setState(Notifyable::REMOVED);
+        notifyableSP->setState(Notifyable::REMOVED);
     }
 
-    ntp->getSafeNotifyableMap()->erase(*ntp);
+    notifyableSP->getSafeNotifyableMap()->erase(notifyableSP);
 }
 
 Mutex *
@@ -1349,13 +1385,6 @@ FactoryOps::getClientsLock()
 {
     TRACE(CL_LOG, "getClientsLock");
     return &m_clLock; 
-}
-
-Mutex *
-FactoryOps::getRemovedNotifyablesLock() 
-{
-    TRACE(CL_LOG, "getRemovedNotifyablesLock");
-    return &m_removedNotifyablesLock; 
 }
 
 Mutex *
@@ -1393,15 +1422,15 @@ FactoryOps::getChildrenNames(
 {
     TRACE(CL_LOG, "getChildrenNames");
 
-    NameList list;
+    NameList nameList;
     SAFE_CALLBACK_ZK(
         m_zk.getNodeChildren(
             notifyableKey,
-            list,
+            nameList,
             &m_zkEventAdapter,
             getCachedObjectChangeHandlers()->
             getChangeHandler(change)),
-        m_zk.getNodeChildren(notifyableKey, list),
+        m_zk.getNodeChildren(notifyableKey, nameList),
         change,
         notifyableKey,
         "Reading the value of %s failed: %s",
@@ -1409,41 +1438,66 @@ FactoryOps::getChildrenNames(
         true,
         true);
     
-    for (NameList::iterator nlIt = list.begin();
-         nlIt != list.end();
-         ++nlIt) {
+    for (NameList::iterator nameListIt = nameList.begin();
+         nameListIt != nameList.end();
+         ++nameListIt) {
         /*
          * Remove the key prefix
          */
-        *nlIt = nlIt->substr(notifyableKey.length() + 
-                             ClusterlibStrings::KEYSEPARATOR.length());
+        *nameListIt = nameListIt->substr(
+            notifyableKey.length() + 
+            ClusterlibStrings::KEYSEPARATOR.length());
     }
 
-    return list;
+    return nameList;
 }
 
-NotifyableList 
-FactoryOps::getNotifyableList(NotifyableImpl *parent,
-                              const std::string &registeredNotifyableName,
-                              const NameList &nameList,
-                              AccessType accessType)
+bool
+FactoryOps::getNotifyableListWaitMsecs(
+    const shared_ptr<NotifyableImpl> &parentSP,
+    const string &registeredNotifyableName,
+    const NameList &nameList,
+    AccessType accessType,
+    int64_t msecTimeout,
+    NotifyableList *pNotifyableList)
 {
-    TRACE(CL_LOG, "getNotifyableList");
+    TRACE(CL_LOG, "getNotifyableListWaitMsecs");
     
-    NotifyableList list;
-    NotifyableImpl *ntp = NULL;
+    shared_ptr<NotifyableImpl> notifyableSP;
     NameList::const_iterator nameListIt;
+    bool completed = false;
     for (nameListIt = nameList.begin(); 
          nameListIt != nameList.end(); 
          ++nameListIt) {
-        ntp = getNotifyable(
-            parent, registeredNotifyableName, *nameListIt, accessType);
-        if (ntp != NULL) {
-            list.push_back(ntp);
+        completed = getNotifyableWaitMsecs(parentSP, 
+                                           registeredNotifyableName, 
+                                           *nameListIt, 
+                                           accessType, 
+                                           msecTimeout, 
+                                           &notifyableSP);
+        if ((completed == true) && (notifyableSP != NULL)) {
+            pNotifyableList->push_back(
+                dynamic_pointer_cast<Notifyable>(notifyableSP));
         }
     }
 
-    return list;
+    return completed;
+}
+
+NotifyableList 
+FactoryOps::getNotifyableList(const shared_ptr<NotifyableImpl> &parentSP,
+                              const string &registeredNotifyableName,
+                              const NameList &nameList,
+                              AccessType accessType)
+{
+    NotifyableList notifyableList;
+    getNotifyableListWaitMsecs(parentSP, 
+                               registeredNotifyableName, 
+                               nameList, 
+                               accessType,
+                               -1, 
+                               &notifyableList);
+    return notifyableList;
 }
 
 /*
@@ -1532,7 +1586,7 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
      * it exists, it needs to be removed.
      */
     string notifyablePath;
-    NotifyableImpl *ntp = NULL;
+    shared_ptr<NotifyableImpl> notifyableSP;
     string cachedObjectPath = ep->getPath();
 
     /* There are two cases where the getting the Notifyable is not
@@ -1552,12 +1606,10 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
             callbackAndContext->callback);
         getHandlerAndContextManager()->deleteCallbackAndContext(
             callbackAndContext);
-        ntp = NULL;
     }
     else if ((ep->getPath().find(ClusterlibStrings::PARTIALLOCKNODE) != 
           string::npos) && (etype == ZOO_DELETED_EVENT)) {
         notifyablePath = ep->getPath();
-        ntp = NULL;
     }
     else {
         try {
@@ -1567,7 +1619,7 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
              * otherwise distributed locks must be held.  This will
              * hold the sync lock for notifyables for a short time.
              */
-            ntp = getNotifyableFromKey(
+            notifyableSP = getNotifyableFromKey(
                 vector<string>(), notifyablePath, CACHED_ONLY); 
             
             LOG_DEBUG(CL_LOG, 
@@ -1582,7 +1634,7 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
                     "original path (" + ep->getPath() + 
                     ") and is unrelated to any Notifyable!");
             }
-            if (ntp == NULL) {
+            if (notifyableSP == NULL) {
                 LOG_DEBUG(CL_LOG, 
                           "updateCachedObject: Returned no notifyable from "
                           "the original path (%s) with notifyablePath (%s)" ,
@@ -1609,12 +1661,7 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
      * will also return the kind of user-level event that this
      * repository event represents.
      */
-    Event e = fehp->deliver(ntp, etype, cachedObjectPath);
-    if (ntp != NULL) {
-        if (dynamic_cast<Root *>(ntp) == NULL) {
-            ntp->releaseRef();
-        }
-    }
+    Event e = fehp->deliver(notifyableSP, etype, cachedObjectPath);
 
     LOG_DEBUG(CL_LOG, 
               "updateCachedObject: Returning payload for event %s (%d) for "
@@ -1692,4 +1739,4 @@ FactoryOps::getIdResponse(const string &id)
     return retObj;
 }
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */

@@ -13,8 +13,7 @@
 #ifndef	_CL_QUEUEIMPL_H_
 #define _CL_QUEUEIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class QueueImpl.
@@ -26,7 +25,7 @@ class QueueImpl
   public:
     virtual int64_t put(const std::string &element);
 
-    virtual void take(std::string &element);
+    virtual std::string take();
 
     virtual bool takeWaitMsecs(int64_t msecTimeout, 
                                std::string &element);
@@ -50,7 +49,7 @@ class QueueImpl
     QueueImpl(FactoryOps *fp,
               const std::string &key,
               const std::string &name,
-              NotifyableImpl *parent);
+              const boost::shared_ptr<NotifyableImpl> &parent);
 
     /**
      * Destructor to clean up shards and manual overrides
@@ -68,15 +67,9 @@ class QueueImpl
 
   private:
     /**
-     * Make the default constructor private so it cannot be called.
+     * Do not call the default constructor.
      */
-    QueueImpl()
-        : NotifyableImpl(NULL, "", "", NULL)
-    {
-        throw InvalidMethodException(
-            "Someone called the QueueImpl "
-            "default constructor!");
-    }
+    QueueImpl();
 
     /**
      * Get the queue parent key
@@ -91,6 +84,6 @@ class QueueImpl
     std::string m_queueParentKey;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_QUEUEIMPL_H_ */

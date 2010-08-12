@@ -11,8 +11,7 @@
 #ifndef	_CL_NOTIFYABLEIMPL_H_
 #define _CL_NOTIFYABLEIMPL_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 struct NameRef {
     NameRef()
@@ -38,7 +37,8 @@ struct NameRef {
  * specific Notifyable objects.
  */
 class NotifyableImpl
-    : public virtual Notifyable
+    : public virtual Notifyable, 
+      public virtual boost::enable_shared_from_this<NotifyableImpl>
 {
   public:
     virtual bool operator==(const Notifyable &other)
@@ -56,36 +56,54 @@ class NotifyableImpl
         return m_key; 
     }
 
-    virtual Notifyable *getMyParent() const;
+    virtual boost::shared_ptr<Notifyable> getMyParent() const;
     
     virtual NotifyableList getMyChildren();
 
-    virtual Application *getMyApplication(); 
+    virtual bool getMyApplicationWaitMsecs(
+        int64_t msecTimeout,
+        boost::shared_ptr<Application> *pApplicationSP); 
 
-    virtual Group *getMyGroup(); 
+    virtual boost::shared_ptr<Application> getMyApplication(); 
 
-    virtual Notifyable *getNotifyableFromKey(const std::string &key);
+    virtual bool getMyGroupWaitMsecs(
+        int64_t msecTimeout,
+        boost::shared_ptr<Group> *pGroupSP); 
+
+    virtual boost::shared_ptr<Group> getMyGroup(); 
+
+    virtual bool getNotifyableFromKeyWaitMsecs(
+        const std::string &key,
+        int64_t msecTimeout,
+        boost::shared_ptr<Notifyable> *pNotifyableSP);
+
+    virtual boost::shared_ptr<Notifyable> getNotifyableFromKey(
+        const std::string &key);
 
     virtual Notifyable::State getState() const;
     
     virtual NameList getPropertyListNames();
 
-    virtual PropertyList *getPropertyList(
+    virtual bool getPropertyListWaitMsecs(
         const std::string &name,
-        AccessType = LOAD_FROM_REPOSITORY);
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<PropertyList> *pPropertyListSP);
+
+    virtual boost::shared_ptr<PropertyList> getPropertyList(
+        const std::string &name,
+        AccessType accessType);
 
     virtual NameList getQueueNames();
 
-    virtual Queue *getQueue(const std::string &name,
-                            AccessType accessType = LOAD_FROM_REPOSITORY);
+    virtual bool getQueueWaitMsecs(
+        const std::string &name,
+        AccessType accessType,
+        int64_t msecTimeout,
+        boost::shared_ptr<Queue> *pQueueSP);
 
-    virtual int32_t getRefCount()
-    {
-        Locker l(getRefCountLock());
-        return m_refCount;
-    }
-
-    virtual void releaseRef();
+    virtual boost::shared_ptr<Queue> getQueue(const std::string &name,
+                                              AccessType accessType);
 
     virtual void acquireLock(bool acquireChildren = false);
 
@@ -125,10 +143,6 @@ class NotifyableImpl
     /**
      * Constructor.
      *
-     * Initialize m_refCount to 1 since on creation, it must begin
-     * with 1 to allow a releaseRef().  load*() will also increment the
-     * m_refCount every time the data is acquired from the cache.
-     *
      * Note: Currently, clusterlib does not allow a user to remove an
      * object that has children.  If this changes, one possible
      * solution is to always keep a reference to parent.  This
@@ -139,22 +153,12 @@ class NotifyableImpl
      * @param fp pointer to the FactoryOps
      * @param key the key of this notifyable
      * @param name the name of this notifyable
-     * @param parent the parent of this notifyable or NULL if this is the Root
-     * @param registeredName the name that this notifyable is registered under 
+     * @param parentSP Parent of this notifyable or NULL if this is the Root
      */
     NotifyableImpl(FactoryOps *fp,
                    const std::string &key,
                    const std::string &name,
-                   NotifyableImpl *parent)
-        : mp_f(fp),
-          m_key(key),
-          m_name(name),
-          mp_parent(parent),
-          m_state(Notifyable::READY),
-          m_refCount(1),
-          m_safeNotifyableMap(NULL),
-          m_cachedCurrentState(this, CachedStateImpl::CURRENT_STATE),
-          m_cachedDesiredState(this, CachedStateImpl::DESIRED_STATE) {}
+                   const boost::shared_ptr<NotifyableImpl> &parentSP);
 
     /**
      * Get the associated factory object.
@@ -163,7 +167,6 @@ class NotifyableImpl
 
     /**
      * Destructor.
-     *
      */
     virtual ~NotifyableImpl() {}
 
@@ -262,14 +265,14 @@ class NotifyableImpl
      * 
      * @return pointer to the synchronization lock
      */
-    Mutex *getSyncLock() const;
+    const Mutex &getSyncLock() const;
 
     /**
      * Get the NotifyableImpl synchronization lock for distributed locks
      * 
      * @return pointer to the synchronization lock for distributed locks
      */
-    Mutex *getSyncDistLock();
+    const Mutex &getSyncDistLock() const;
 
     /**
      * Return the stringified state
@@ -328,6 +331,7 @@ class NotifyableImpl
      * Create the state JSONValue key
      *
      * @param notifyableKey The notifyable key.
+     * @param stateType State type (current or desired)
      * @return the generated current state JSONValue key
      */
     static std::string createStateJSONArrayKey(
@@ -336,36 +340,14 @@ class NotifyableImpl
 
   private:
     /*
-     * Default constructor.
+     * Default constructor that no one should call.
      */
-    NotifyableImpl() 
-        : m_cachedCurrentState(this, CachedStateImpl::CURRENT_STATE),
-          m_cachedDesiredState(this, CachedStateImpl::DESIRED_STATE)
-    {
-        throw InvalidMethodException("Someone called the NotifyableImpl "
-                                     "default constructor!");
-    }
+    NotifyableImpl();
 
-    /**
-     * Decrement the reference count of this cached representation of
-     * the object.
+    /*
+     * Default assignment operator that no one should call.
      */
-    void decrRefCount();
-
-    /**
-     * Remove the pointer to this NotifyableImpl from the FactoryOps
-     * "removed cache" and also free the memory used iff the refcount is 0.
-     *
-     * @param decrRefCount do the decrement of the ref count as well?
-     */
-    void removeFromRemovedNotifyablesIfReleased(bool decrRefCount);
-
-    /**
-     * Get the mutex that protects the reference count
-     * 
-     * @return pointer to the mutex
-     */
-    Mutex *getRefCountLock();
+    NotifyableImpl & operator=(NotifyableImpl &other);
 
   private:
     /**
@@ -387,7 +369,7 @@ class NotifyableImpl
     /**
      * The parent notifyable (NULL if no parent)
      */
-    NotifyableImpl *mp_parent;
+    boost::shared_ptr<NotifyableImpl> mp_parent;
 
     /**
      * Is this notifyable "init", "ready", or "deleted" according to the
@@ -401,17 +383,6 @@ class NotifyableImpl
      */
     std::map<std::string, NameRef> m_distLockMap;
 
-    /** 
-     * Make the reference count (m_refCount) thread-safe
-     */
-    Mutex m_refCountLock;
-
-    /**
-     * Local object reference count.  Once this goes to 0 and m_state
-     * == REMOVED, it can be removed from the "removed cache".
-     */
-    int32_t m_refCount;
-
     /**                 
      * This is the map that contains this object (and these types of
      * objects).
@@ -423,7 +394,7 @@ class NotifyableImpl
      * processing thread.  It is mutable since it is used by
      * throwIfRemoved() - which is const so it can be used everywhere.
      */
-    mutable Mutex m_syncLock;
+    Mutex m_syncLock;
 
     /**
      * Lock to synchronize all clusterlib distributed locks.

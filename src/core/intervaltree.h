@@ -34,7 +34,8 @@ std::ostream & operator<< (std::ostream &stream,
  * D = the data container
  */
 template<typename R, typename D> 
-class IntervalTreeNode {
+class IntervalTreeNode
+{
   public:
     /**
      * Nodes can be red or black
@@ -127,7 +128,8 @@ class IntervalTreeNode {
  * The implementation of a node in an interval tree
  */
 template<typename R, typename D> 
-class IntervalTreeNodeImpl : public IntervalTreeNode<R, D> {
+class IntervalTreeNodeImpl : public IntervalTreeNode<R, D>
+{
   public:
     virtual R getStartRange() const;
 
@@ -549,7 +551,8 @@ IntervalTreeNodeImpl<R, D>::isSentinel() const
  * The interval tree class 
  */
 template<typename R, typename D> 
-class IntervalTree {
+class IntervalTree
+{
   public:
     /** 
      * Constructor
@@ -920,7 +923,6 @@ IntervalTree<R, D>::nodeSearch(R startRange,
 
     return NULL;
 }
-
 
 template<typename R, typename D> 
 IntervalTreeNode<R, D> *
@@ -1691,7 +1693,6 @@ IntervalTree<R, D>::endRangeMaxUpdateAncestors(
                 << tmpNodeP->getEndRange();
             throw InconsistentInternalStateException(oss.str());
         }
-
 
         if ((tmpNodeP->getLeftChildImpl() != getSentinelNode()) &&
             (tmpNodeP->getEndRange() < 

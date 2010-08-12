@@ -12,8 +12,7 @@
 #ifndef	_CL_PROCESSSLOT_H_
 #define _CL_PROCESSSLOT_H_
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /**
  * Definition of class ProcessSlot
@@ -170,7 +169,6 @@ class ProcessSlot
     virtual ~ProcessSlot() {}
 };
 
-
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_PROCESSSLOT_H_ */

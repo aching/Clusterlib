@@ -13,10 +13,10 @@
 #include "clusterlibinternal.h"
 
 using namespace std;
+using namespace boost;
 using namespace json;
 
-namespace clusterlib
-{
+namespace clusterlib {
 
 /** 
  * Given 2 shards, compare them based on priority.  Used to sort shard
@@ -36,8 +36,8 @@ static bool shardPriorityCompare(Shard a, Shard b)
     }
 }
 
-CachedShardsImpl::CachedShardsImpl(NotifyableImpl *ntp)
-    : CachedDataImpl(ntp),
+CachedShardsImpl::CachedShardsImpl(NotifyableImpl *notifyable)
+    : CachedDataImpl(notifyable),
       m_shardTree(NULL),
       m_shardTreeCount(0),
       m_hashRange(NULL)
@@ -183,7 +183,7 @@ CachedShardsImpl::getHashRangeName()
     return m_hashRange->getName();
 }
 
-vector<Notifyable *> 
+NotifyableList
 CachedShardsImpl::getNotifyables(const HashRange &hashPoint)
 {
     TRACE(CL_LOG, "getNotifyables");
@@ -191,12 +191,12 @@ CachedShardsImpl::getNotifyables(const HashRange &hashPoint)
     getNotifyable()->throwIfRemoved();
 
     /* This is a slow implementation, will be optimized later. */
-    vector<Shard> shardVec = getAllShards(NULL, -1);
-    vector<Notifyable *> ntpVec;
+    vector<Shard> shardVec = getAllShards(shared_ptr<Notifyable>(), -1);
+    NotifyableList ntList;
 
     /* Allow this to success if nothing exists */
     if (shardVec.empty()) {
-        return ntpVec;
+        return ntList;
     }
 
     throwIfUnknownHashRange();
@@ -210,11 +210,11 @@ CachedShardsImpl::getNotifyables(const HashRange &hashPoint)
          ++shardVecIt) {
         if ((shardVecIt->getStartRange() <= hashPoint) &&
             (shardVecIt->getEndRange() >= hashPoint)) {
-            ntpVec.push_back(shardVecIt->getNotifyable());
+            ntList.push_back(shardVecIt->getNotifyable());
         }
     }
 
-    return ntpVec;
+    return ntList;
 }
 
 uint32_t
@@ -275,7 +275,7 @@ CachedShardsImpl::isCovered()
 void 
 CachedShardsImpl::insert(const HashRange &start,
                          const HashRange &end,
-                         Notifyable *ntp,
+                         const shared_ptr<Notifyable> &notifyableSP,
                          int32_t priority) 
 {
     TRACE(CL_LOG, "insert");
@@ -324,12 +324,15 @@ CachedShardsImpl::insert(const HashRange &start,
         finalStart, 
         finalEnd, 
         finalEndMax, 
-        ShardTreeData(priority, (ntp == NULL) ? string() : ntp->getKey()));
+        ShardTreeData(
+            priority, 
+            (notifyableSP == NULL) ? string() : notifyableSP->getKey()));
     ++m_shardTreeCount;
 }
 
 vector<Shard> 
-CachedShardsImpl::getAllShards(const Notifyable *ntp, int32_t priority)
+CachedShardsImpl::getAllShards(
+    const shared_ptr<Notifyable> &notifyableSP, int32_t priority)
 {
     TRACE(CL_LOG, "getAllShards");
 
@@ -352,9 +355,9 @@ CachedShardsImpl::getAllShards(const Notifyable *ntp, int32_t priority)
              treeIt != m_shardTree->end(); 
              ++treeIt) {
             res.push_back(
-                Shard(dynamic_cast<Root *>(
+                Shard(dynamic_pointer_cast<Root>(
                           getOps()->getNotifyable(
-                              NULL,
+                              shared_ptr<NotifyableImpl>(),
                               ClusterlibStrings::REGISTERED_ROOT_NAME,
                               ClusterlibStrings::ROOT,
                               CACHED_ONLY)),
@@ -369,7 +372,8 @@ CachedShardsImpl::getAllShards(const Notifyable *ntp, int32_t priority)
     vector<Shard> finalRes;
     for (resIt = res.begin(); resIt != res.end(); ++resIt) {
         /* Filter by notifyable if not NULL */
-        if ((ntp == NULL) || (ntp->getKey() == resIt->getNotifyableKey())) {
+        if ((notifyableSP == NULL) || 
+            (notifyableSP->getKey() == resIt->getNotifyableKey())) {
             finalRes.push_back(*resIt);
         }
 
@@ -548,9 +552,9 @@ CachedShardsImpl::unmarshalShards(const string &encodedJsonArr)
 
         if (unknownHashRange) {
             m_unknownShardArr.push_back(
-                Shard(dynamic_cast<Root *>(
+                Shard(dynamic_pointer_cast<Root>(
                           getOps()->getNotifyable(
-                              NULL,
+                              shared_ptr<NotifyableImpl>(),
                               ClusterlibStrings::REGISTERED_ROOT_NAME,
                               ClusterlibStrings::ROOT,
                               CACHED_ONLY)),
