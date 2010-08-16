@@ -45,11 +45,15 @@ int main(int argc, char* argv[])
             ClusterlibStrings::DEFAULTPROPERTYLIST,
             CREATE_IF_NOT_FOUND);
     /* Try to clear the PropertyList if possible wihin 0.5 seconds */
-    bool gotLock = rpcMethodHandlerPropertyListSP->acquireLockWaitMsecs(500);
-    if (gotLock) {
-        rpcMethodHandlerPropertyListSP->cachedKeyValues().clear();
-        rpcMethodHandlerPropertyListSP->cachedKeyValues().publish();
-        rpcMethodHandlerPropertyListSP->releaseLock();
+    {
+        NotifyableLocker l(rpcMethodHandlerPropertyListSP,
+                           ClusterlibStrings::NOTIFYABLE_LOCK,
+                           DIST_LOCK_EXCL,
+                           500);
+        if (l.hasLock()) {
+            rpcMethodHandlerPropertyListSP->cachedKeyValues().clear();
+            rpcMethodHandlerPropertyListSP->cachedKeyValues().publish();
+        }        
     }
 
     auto_ptr<ClusterlibRPCManager> rpcManager(

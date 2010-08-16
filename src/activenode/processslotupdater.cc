@@ -150,7 +150,9 @@ ProcessSlotUpdater::run()
             "run: processSlotSP is NULL");
     }
 
-    NotifyableLocker l(processSlotSP);
+    NotifyableLocker l(processSlotSP,
+                       ClusterlibStrings::NOTIFYABLE_LOCK,
+                       DIST_LOCK_EXCL);
 
     LOG_DEBUG(CL_LOG,
               "run: current state = %s, desired state = %s",

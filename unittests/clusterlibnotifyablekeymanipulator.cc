@@ -57,7 +57,7 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture
             ClusterlibStrings::ROOTNODE +
             ClusterlibStrings::CLUSTERLIB +
             ClusterlibStrings::KEYSEPARATOR +
-            ClusterlibStrings::CLUSTERLIBVERSION +
+            ClusterlibStrings::CLUSTERLIB_VERSION +
             ClusterlibStrings::KEYSEPARATOR +
             ClusterlibStrings::ROOT;
         
@@ -88,7 +88,7 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture
             ClusterlibStrings::ROOTNODE +
             ClusterlibStrings::CLUSTERLIB +
             ClusterlibStrings::KEYSEPARATOR +
-            ClusterlibStrings::CLUSTERLIBVERSION +
+            ClusterlibStrings::CLUSTERLIB_VERSION +
             ClusterlibStrings::KEYSEPARATOR +
             ClusterlibStrings::ROOT;
                 
@@ -116,7 +116,7 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture
             ClusterlibStrings::ROOTNODE +
             ClusterlibStrings::CLUSTERLIB +
             ClusterlibStrings::KEYSEPARATOR +
-            ClusterlibStrings::CLUSTERLIBVERSION +
+            ClusterlibStrings::CLUSTERLIB_VERSION +
             ClusterlibStrings::KEYSEPARATOR +
             ClusterlibStrings::ROOT +
             ClusterlibStrings::KEYSEPARATOR +

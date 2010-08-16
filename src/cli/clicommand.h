@@ -12,10 +12,6 @@
 #ifndef	_CL_CLICOMMAND_H_
 #define _CL_CLICOMMAND_H_
 
-#include <vector>
-#include <getopt.h>
-#include <sstream>
-
 namespace clusterlib {
 
 /**

@@ -73,13 +73,14 @@ class ClusterlibProcessSlot : public MPITestFixture
                 CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(_processSlot0);
 
-            _processSlot0->acquireLock();
+            _processSlot0->acquireLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
             JSONValue::JSONArray portArr;
             portArr.push_back(1234);
             portArr.push_back(5678);
             _processSlot0->cachedProcessInfo().setPortArr(portArr);
             _processSlot0->cachedProcessInfo().publish();
-            _processSlot0->releaseLock();
+            _processSlot0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
         }
 
         waitsForOrder(0, 1, _factory, true);
@@ -88,7 +89,8 @@ class ClusterlibProcessSlot : public MPITestFixture
             _processSlot0 = _node0->getProcessSlot(processSlotName, 
                                                    LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(_processSlot0);
-            _processSlot0->acquireLock();
+            _processSlot0->acquireLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
             JSONValue::JSONArray portArr = 
                 _processSlot0->cachedProcessInfo().getPortArr();
             MPI_CPPUNIT_ASSERT(portArr.size() == 2);
@@ -102,16 +104,17 @@ class ClusterlibProcessSlot : public MPITestFixture
             portArr[1] = 56;
             _processSlot0->cachedProcessInfo().setPortArr(portArr);
             _processSlot0->cachedProcessInfo().publish();
-            _processSlot0->releaseLock();
+            _processSlot0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
         }
 
         waitsForOrder(1, 0, _factory, true);
 
         if (isMyRank(0)) {
-            _processSlot0->acquireLock();
+            _processSlot0->acquireLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
             JSONValue::JSONArray portArr = 
                 _processSlot0->cachedProcessInfo().getPortArr();
-            _processSlot0->releaseLock();
+            _processSlot0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
 
             if (portArr.size() == 2) {
                 MPI_CPPUNIT_ASSERT(portArr[0].get<JSONValue::JSONInteger>() ==
@@ -146,10 +149,11 @@ class ClusterlibProcessSlot : public MPITestFixture
             shared_ptr<PropertyList> propList = 
                 _app0->getPropertyList(ClusterlibStrings::DEFAULTPROPERTYLIST,
                                        CREATE_IF_NOT_FOUND);
-            propList->acquireLock();
+            propList->acquireLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
             propList->cachedKeyValues().set(propKey, _processSlot0->getKey());
             propList->cachedKeyValues().publish();
-            propList->releaseLock();            
+            propList->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
         }
 
         barrier(_factory, true);
@@ -159,10 +163,11 @@ class ClusterlibProcessSlot : public MPITestFixture
             _app0->getPropertyList(ClusterlibStrings::DEFAULTPROPERTYLIST,
                                    LOAD_FROM_REPOSITORY);
         MPI_CPPUNIT_ASSERT(propList);
-        propList->acquireLock();
+        propList->acquireLock(
+            ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
         JSONValue jsonValue;
         propList->cachedKeyValues().get(propKey, jsonValue);
-        propList->releaseLock();
+        propList->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
         shared_ptr<ProcessSlot> processSlot = 
             dynamic_pointer_cast<ProcessSlot>(
                 root->getNotifyableFromKey(
@@ -189,14 +194,15 @@ class ClusterlibProcessSlot : public MPITestFixture
                 processSlotName,
                 CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(_processSlot0);
-            _processSlot0->acquireLock();
+            _processSlot0->acquireLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
             _processSlot0->cachedCurrentState().set(
                 ProcessSlot::PID_KEY, 12341234);
             _processSlot0->cachedCurrentState().set(
                 ProcessSlot::PROCESS_STATE_KEY, 
                 ProcessSlot::PROCESS_STATE_RUN_CONTINUOUSLY_VALUE);
             _processSlot0->cachedCurrentState().publish();
-            _processSlot0->releaseLock();
+            _processSlot0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
         }
 
         barrier(_factory, true);
@@ -205,13 +211,14 @@ class ClusterlibProcessSlot : public MPITestFixture
             processSlotName,
             LOAD_FROM_REPOSITORY);
         MPI_CPPUNIT_ASSERT(_processSlot0);
-        _processSlot0->acquireLock();
+        _processSlot0->acquireLock(
+            ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
         JSONValue jsonValue, jsonValue2;
         bool found = _processSlot0->cachedCurrentState().get(
             ProcessSlot::PID_KEY, jsonValue);
         bool found2 = _processSlot0->cachedCurrentState().get(
             ProcessSlot::PROCESS_STATE_KEY, jsonValue2);
-        _processSlot0->releaseLock();
+        _processSlot0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
         
         MPI_CPPUNIT_ASSERT(found);
         MPI_CPPUNIT_ASSERT(jsonValue.get<JSONValue::JSONInteger>() == 

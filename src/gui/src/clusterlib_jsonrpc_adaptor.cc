@@ -255,7 +255,8 @@ MethodAdaptor::getNotifyableId(
     }
 
     /* Find the locks and their bids of this notifyable */
-    NameList bidList = notifyableSP->getLockBids(false);
+    NameList bidList = notifyableSP->getLockBids(
+        ClusterlibStrings::NOTIFYABLE_LOCK, false);
     JSONValue::JSONArray bidArr;
     NameList::const_iterator bidListIt;
     for (bidListIt = bidList.begin();
@@ -270,7 +271,10 @@ MethodAdaptor::getNotifyableId(
     string ownerId;
     int64_t acquiredOwnerTime = -1;
     bool hasOwner =
-        notifyableSP->getOwnershipInfo(&ownerId, &acquiredOwnerTime);
+        notifyableSP->getLockInfo(ClusterlibStrings::OWNERSHIP_LOCK, 
+                                  &ownerId, 
+                                  NULL, 
+                                  &acquiredOwnerTime);
     if (hasOwner) {
         id[idOwner] = ownerId;
         ostringstream oss;
@@ -679,9 +683,12 @@ MethodAdaptor::setNotifyableAttributesFromKey(
                             idPropertyListProperty.size(),
                             idPropertyListProperty) ||
                 !op.compare(addProperty)) {
-                bool gotLock = propertyListSP->acquireLockWaitMsecs(
-                    maxLockWaitMsecs);
-                if (!gotLock) {
+                NotifyableLocker l(propertyListSP,
+                                   ClusterlibStrings::NOTIFYABLE_LOCK,
+                                   DIST_LOCK_EXCL,
+                                   maxLockWaitMsecs);
+
+                if (!l.hasLock()) {
                     oss.str("");
                     oss << "Failed to set property " << property
                         << " with value " << value << " within "
@@ -690,7 +697,6 @@ MethodAdaptor::setNotifyableAttributesFromKey(
                 }
                 propertyListSP->cachedKeyValues().set(property, value);
                 propertyListSP->cachedKeyValues().publish();
-                propertyListSP->releaseLock();
             }
             else {
                 throw JSONRPCInvocationException(
@@ -766,9 +772,12 @@ MethodAdaptor::removeNotifyableAttributesFromKey(
             shared_ptr<PropertyList> propertyListSP =
                 dynamic_pointer_cast<PropertyList >(notifyableSP);
             if (!op.compare(idPropertyListProperty)) {
-                bool gotLock = propertyListSP->acquireLockWaitMsecs(
-                    maxLockWaitMsecs);
-                if (!gotLock) {
+                NotifyableLocker l(propertyListSP,
+                                   ClusterlibStrings::NOTIFYABLE_LOCK,
+                                   DIST_LOCK_EXCL,
+                                   maxLockWaitMsecs);
+
+                if (!l.hasLock()) {
                     oss.str("");
                     oss << "Failed to delete property " << attribute
                         << " within " << maxLockWaitMsecs << " msecs";
@@ -776,7 +785,6 @@ MethodAdaptor::removeNotifyableAttributesFromKey(
                 }
                 propertyListSP->cachedKeyValues().erase(attribute);
                 propertyListSP->cachedKeyValues().publish();
-                propertyListSP->releaseLock();
             }
             else {
                 throw JSONRPCInvocationException(
@@ -1366,7 +1374,10 @@ MethodAdaptor::getNode(
             dynamic_pointer_cast<Node>(getNotifyable(name, idTypeNode));
         string ownerId;
         int64_t ownerAcquiredTime = -1;
-        nodeSP->getOwnershipInfo(&ownerId, &ownerAcquiredTime);
+        nodeSP->getLockInfo(ClusterlibStrings::NOTIFYABLE_LOCK,
+                            &ownerId,
+                            NULL, 
+                            &ownerAcquiredTime);
         JSONValue::JSONObject result;
         result["owner"] = ownerId;
         result["ownerAcquiredTime"] = ownerAcquiredTime;
@@ -1464,7 +1475,7 @@ MethodAdaptor::getOneNodeStatus(
     const shared_ptr<Node> &nodeSP)
 {
     // Should change this to other condition
-    bool owner = nodeSP->getOwnershipInfo();
+    bool owner = nodeSP->getLockInfo(ClusterlibStrings::OWNERSHIP_LOCK);
     JSONValue jsonHealth;
     bool healthy = false;
     bool found = 
@@ -1898,7 +1909,8 @@ MethodAdaptor::getChildrenLockBids(
 {
     shared_ptr<Notifyable> notifyableSP = 
         m_rootSP->getNotifyableFromKey(notifyableKey);
-    NameList bidList = notifyableSP->getLockBids(true);
+    NameList bidList = notifyableSP->getLockBids(
+        ClusterlibStrings::NOTIFYABLE_LOCK, true);
     JSONValue::JSONArray bidArr;
     NameList::const_iterator bidListIt;
     for (bidListIt = bidList.begin();

@@ -76,8 +76,8 @@ CachedDataImpl::getStats(int64_t *czxid,
     }
 }
 
-CachedDataImpl::CachedDataImpl(NotifyableImpl *notifyable)
-    : m_notifyable(notifyable)
+CachedDataImpl::CachedDataImpl(NotifyableImpl *pNotifyable)
+    : m_notifyable(pNotifyable)
 {
     Locker l(&getCachedDataLock());
 

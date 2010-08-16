@@ -203,8 +203,8 @@ ZooKeeperAdapter::getStateString(int32_t state)
 
 void
 ZooKeeperAdapter::splitSequenceNode(const string &sequenceNode,
-                                    string *sequenceName,
-                                    int64_t *sequenceNumber)
+                                    string *pSequenceName,
+                                    int64_t *pSequenceNumber)
 {
     TRACE(LOG, "splitSequentialNode");
 
@@ -218,24 +218,24 @@ ZooKeeperAdapter::splitSequenceNode(const string &sequenceNode,
     /*
      * Set the name properly
      */
-    if (sequenceName != NULL) {
-        *sequenceName = sequenceNode.substr(
+    if (pSequenceName != NULL) {
+        *pSequenceName = sequenceNode.substr(
             0, 
-            sequenceNode.size() - 
+             sequenceNode.size() -
             clusterlib::ClusterlibInts::SEQUENCE_NUMBER_SIZE);
     }
 
     /*
      * Set and ensure that this is a legal sequence number.
      */
-    if (sequenceNumber != NULL) {
-        *sequenceNumber = ::strtol(
+    if (pSequenceNumber != NULL) {
+        *pSequenceNumber = ::strtol(
             &(sequenceNode.c_str()[
                   sequenceNode.size() - 
                   clusterlib::ClusterlibInts::SEQUENCE_NUMBER_SIZE]), 
             NULL, 
             10);
-        if (*sequenceNumber < 0) {
+        if (*pSequenceNumber < 0) {
             LOG_WARN(LOG, 
                      "splitSequentialNode: Expecting a valid number "
                      "but got %s", 

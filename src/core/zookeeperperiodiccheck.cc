@@ -71,7 +71,9 @@ ZookeeperPeriodicCheck::run()
         }
 
         if (getNotifyable() != NULL) {
-            NotifyableLocker l(m_nodeSPVec[i]);
+            NotifyableLocker l(m_nodeSPVec[i],
+                               ClusterlibStrings::NOTIFYABLE_LOCK,
+                               DIST_LOCK_EXCL);
 
             m_nodeSPVec[i]->cachedCurrentState().set(
                 Node::HEALTH_KEY, 
@@ -97,7 +99,9 @@ ZookeeperPeriodicCheck::run()
     m_aggNodeStateObj["Total Node Count"] = m_hostPortVec.size();
 
     if (getNotifyable() != NULL) {
-        NotifyableLocker l(m_applicationSP);
+        NotifyableLocker l(m_applicationSP,
+                           ClusterlibStrings::NOTIFYABLE_LOCK,
+                           DIST_LOCK_EXCL);
 
         m_applicationSP->cachedCurrentState().set(
             ClusterlibStrings::ZK_AGG_NODES_STATE_KEY, 
@@ -155,7 +159,8 @@ ZookeeperPeriodicCheck::ZookeeperPeriodicCheck(
             nodeSP = 
                 m_applicationSP->getNode(*componentVecIt, CREATE_IF_NOT_FOUND);
             
-            nodeSP->acquireOwnership();
+            nodeSP->acquireLock(ClusterlibStrings::OWNERSHIP_LOCK,
+                                DIST_LOCK_EXCL);
             m_nodeSPVec.push_back(nodeSP);
         }
 
@@ -175,7 +180,7 @@ ZookeeperPeriodicCheck::~ZookeeperPeriodicCheck()
     for (nodeVecIt = m_nodeSPVec.begin(); 
          nodeVecIt != m_nodeSPVec.end(); 
          ++nodeVecIt) {
-        (*nodeVecIt)->releaseOwnership();
+        (*nodeVecIt)->releaseLock(ClusterlibStrings::OWNERSHIP_LOCK);
     }
 }
 

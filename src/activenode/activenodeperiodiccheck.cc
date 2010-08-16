@@ -49,7 +49,9 @@ ActiveNodePeriodicCheck::run()
     bool shutdownFound = false;
     JSONValue jsonShutdown;
     
-    NotifyableLocker l(getNotifyable());
+    NotifyableLocker l(getNotifyable(),
+                       ClusterlibStrings::NOTIFYABLE_LOCK,
+                       DIST_LOCK_EXCL);
 
     getNotifyable()->cachedCurrentState().set(
         Notifyable::PID_KEY, ProcessThreadService::getPid());

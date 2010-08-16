@@ -46,8 +46,10 @@ NotifyableKeyManipulator::createLockKey(const string &notifyableKey,
 }
 
 string
-NotifyableKeyManipulator::createLockNodeKey(const string &notifyableKey,
-                                            const string &lockName)
+NotifyableKeyManipulator::createLockNodeKey(
+    const string &notifyableKey,
+    const string &lockName,
+    DistributedLockType distributedLockType)
 {
     string res;
     res.append(notifyableKey);
@@ -57,11 +59,10 @@ NotifyableKeyManipulator::createLockNodeKey(const string &notifyableKey,
     res.append(lockName);
     res.append(ClusterlibStrings::KEYSEPARATOR);
     res.append(ProcessThreadService::getHostnamePidTid());
-
-    /* 
-     * Our unique sequence number splitter to make readability easier.
-     */
     res.append(ClusterlibStrings::SEQUENCE_SPLIT);
+    res.append(distributedLockTypeToString(distributedLockType));
+    res.append(ClusterlibStrings::SEQUENCE_SPLIT);
+
     return res;
 }
 
@@ -125,7 +126,7 @@ NotifyableKeyManipulator::createRootKey()
     res.append(ClusterlibStrings::ROOTNODE);
     res.append(ClusterlibStrings::CLUSTERLIB);
     res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::CLUSTERLIBVERSION);
+    res.append(ClusterlibStrings::CLUSTERLIB_VERSION);
     res.append(ClusterlibStrings::KEYSEPARATOR);
     res.append(ClusterlibStrings::ROOT);
     
@@ -150,7 +151,7 @@ NotifyableKeyManipulator::createApplicationKey(const string &appName)
         res.append(ClusterlibStrings::ROOTNODE);
         res.append(ClusterlibStrings::CLUSTERLIB);
         res.append(ClusterlibStrings::KEYSEPARATOR);
-        res.append(ClusterlibStrings::CLUSTERLIBVERSION);
+        res.append(ClusterlibStrings::CLUSTERLIB_VERSION);
         res.append(ClusterlibStrings::KEYSEPARATOR);
         res.append(ClusterlibStrings::ROOT);
         res.append(ClusterlibStrings::KEYSEPARATOR);
@@ -335,7 +336,7 @@ NotifyableKeyManipulator::createQueuePrefixKey(
 {
     string res = NotifyableKeyManipulator::createQueueParentKey(notifyableKey);
     res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::QUEUEELEMENTPREFIX);
+    res.append(ClusterlibStrings::QUEUE_ELEMENT_PREFIX);
 
     return res;
 }

@@ -311,7 +311,6 @@ ClusterlibRPCMethod::setMethodStatus(const string &status,
     }
 
     int32_t retries = 0;
-    bool gotLock = false;
     string statusKey = 
         ProcessThreadService::getHostnamePidTid() + " " + 
         ClusterlibStrings::PLK_RPCMANAGER_REQ_STATUS_POSTFIX;
@@ -323,8 +322,11 @@ ClusterlibRPCMethod::setMethodStatus(const string &status,
     bool found = false;
     string encodedJsonArr;
     while ((maxRetries == -1) || (retries <= maxRetries)) {
-        gotLock = propertyListSP->acquireLockWaitMsecs(100);
-        if (gotLock) {
+        NotifyableLocker l(propertyListSP,
+                           ClusterlibStrings::NOTIFYABLE_LOCK, 
+                           DIST_LOCK_EXCL, 
+                           100);
+        if (l.hasLock()) {
             allStatusArr.clear();
             lastStatusArr.clear();
             found = 
@@ -349,7 +351,6 @@ ClusterlibRPCMethod::setMethodStatus(const string &status,
                 allStatusArr);
             try {
                 propertyListSP->cachedKeyValues().publish();
-                propertyListSP->releaseLock();
                 return true;
             }
             catch (const PublishVersionException &ex) {
@@ -359,7 +360,6 @@ ClusterlibRPCMethod::setMethodStatus(const string &status,
                          statusKey.c_str(),
                          retries);
             }
-            propertyListSP->releaseLock();
         }
         ++retries;
     }
@@ -507,7 +507,6 @@ ClusterlibRPCManager::setBasicRequestStatus(
         return false;
     }
     int32_t retries = 0;
-    bool gotLock = false;
     string basicStatusKey = 
         ProcessThreadService::getHostnamePidTid() + " " + 
         ClusterlibStrings::PLK_RPCMANAGER_REQ_POSTFIX;
@@ -526,8 +525,11 @@ ClusterlibRPCManager::setBasicRequestStatus(
     JSONValue::JSONString timeString;
     JSONValue::JSONArray finalTimeArr;
     while ((maxRetries == -1) || (retries <= maxRetries)) {
-        gotLock = propertyListSP->acquireLockWaitMsecs(100);
-        if (gotLock) {
+        NotifyableLocker l(propertyListSP,
+                           ClusterlibStrings::NOTIFYABLE_LOCK,
+                           DIST_LOCK_EXCL,
+                           100);
+        if (l.hasLock()) {
             time = TimerService::getCurrentTimeMsecs();
             timeString = TimerService::getMsecsTimeString(time);
             jsonBasicStatusArr.push_back(time);
@@ -538,7 +540,6 @@ ClusterlibRPCManager::setBasicRequestStatus(
                 JSONCodec::encode(jsonStatusObj));
             try {
                 propertyListSP->cachedKeyValues().publish();
-                propertyListSP->releaseLock();
                 return true;
             }
             catch (const PublishVersionException &ex) {
@@ -548,7 +549,6 @@ ClusterlibRPCManager::setBasicRequestStatus(
                          basicStatusKey.c_str(),
                          retries);
             }
-            propertyListSP->releaseLock();
         }
         ++retries;
     }

@@ -63,11 +63,14 @@ class ClusterlibNode : public MPITestFixture
         if (isMyRank(0)) {
             _node0 = _app0->getNode(name, CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(_node0);
-            _node0->acquireLock();
+            
+            NotifyableLocker l(_node0,
+                               ClusterlibStrings::NOTIFYABLE_LOCK,
+                               DIST_LOCK_EXCL);
+
             _node0->cachedProcessSlotInfo().setEnable(true);
             _node0->cachedProcessSlotInfo().setMaxProcessSlots(3);
             _node0->cachedProcessSlotInfo().publish();
-            _node0->releaseLock();
         }
     }
 

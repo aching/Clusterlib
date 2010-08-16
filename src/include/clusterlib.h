@@ -22,6 +22,7 @@
 #include <map>
 #include <algorithm>
 #include <iostream>
+#include <sstream> 
 #include <typeinfo>
 #include <limits>
 
@@ -33,15 +34,17 @@
 #include <inttypes.h>
 
 #include "forwarddecls.h"
+#include "clusterlibstrings.h"
+#include "clusterlibints.h"
 
 #include "clusterlibexceptions.h"
-#include "jsonexceptions.h"
-#include "blockingqueue.h"
-#include "mutex.h"
-#include "thread.h"
-#include "timerservice.h"
-#include "cacheddata.h"
 #include "processthreadservice.h"
+#include "jsonexceptions.h"
+#include "mutex.h"
+#include "timerservice.h"
+#include "blockingqueue.h"
+#include "thread.h"
+#include "cacheddata.h"
 #include "healthchecker.h"
 #include "periodic.h"
 
@@ -51,8 +54,6 @@
 #include "clusterlibrpcbulkrequest.h"
 #include "genericrpc.h"
 
-#include "clusterlibstrings.h"
-#include "clusterlibints.h"
 #include "cachedstate.h"
 #include "cachedkeyvalues.h"
 #include "cachedshards.h"

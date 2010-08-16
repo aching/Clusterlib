@@ -303,12 +303,18 @@ class ZooKeeperAdapter
     static std::string getStateString(int32_t state);
  
     /**
-     * Split a sequence node into a name and a sequence number.  This
-     * will not be needed when JIRA issues ZOOKEEPER-616 is resolved.
+     * Split a sequence node into a name, distributed lock type, and a
+     * sequence number.  This will not be needed when JIRA issues
+     * ZOOKEEPER-616 is resolved.
+     *
+     * @param sequenceNode Node to parse
+     * @param pSequenceName If set, will be the name of the node
+     * @param pSequenceNumber If set, will be the sequence number
      */
-    static void splitSequenceNode(const std::string &sequenceNode,
-                                  std::string *sequenceName = NULL,
-                                  int64_t *sequenceNumber = NULL);
+    static void splitSequenceNode(
+        const std::string &sequenceNode,
+        std::string *pSequenceName = NULL,
+        int64_t *pSequenceNumber = NULL);
 
     /**
      * Takes an ZooKeeper function error code and throws the

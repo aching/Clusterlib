@@ -27,8 +27,18 @@ class NotifyableKeyManipulator
     static std::string createLocksKey(const std::string &notifyableKey);
     static std::string createLockKey(const std::string &notifyableKey,
                                      const std::string &lockName);
-    static std::string createLockNodeKey(const std::string &notifyableKey,
-                                         const std::string &lockName);
+    static std::string createLockNodeKey(
+        const std::string &notifyableKey,
+        const std::string &lockName,
+        DistributedLockType distributedLockType);
+
+    /**
+     * Generate the ProcessSlot key
+     *
+     * @param nodeKey the name of the Node key
+     * @param processSlotName the name of the ProcessSlot
+     * @return Generated ProcessSlot key
+     */
     static std::string createProcessSlotKey(
         const std::string &nodeKey,
         const std::string &processSlotName);

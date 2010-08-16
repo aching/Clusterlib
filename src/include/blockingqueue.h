@@ -9,11 +9,6 @@
 #ifndef _CL_BLOCKINGQUEUE_H_
 #define _CL_BLOCKINGQUEUE_H_
  
-#include <deque>
-#include <sstream>
-#include <algorithm>
-#include "mutex.h"
-
 namespace clusterlib  {
  
 /**

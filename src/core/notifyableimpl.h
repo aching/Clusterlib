@@ -13,13 +13,23 @@
 
 namespace clusterlib {
 
+/**
+ * Keeps track of the information associated with lock owner.
+ */
 struct NameRef {
     NameRef()
-        : refCount(0) {}
+        : refCount(0),
+          distributedLockType(DIST_LOCK_INIT) {}
 
-    NameRef(int refCountArg, const std::string &lockOwnerArg)
+    NameRef(int refCountArg, 
+            const std::string &lockKey,
+            const std::string &lockNodeCreatedPath,
+            DistributedLockType distributedLockTypeArg)
         : refCount(refCountArg),
-          lockOwner(lockOwnerArg) {}
+          hostnamePidTid(ProcessThreadService::getHostnamePidTid()),
+          lockKey(lockKey),
+          lockNodeCreatedPath(lockNodeCreatedPath),
+          distributedLockType(distributedLockTypeArg) {}
 
     /**
      * Number of references on this lockOwner
@@ -27,13 +37,28 @@ struct NameRef {
     int refCount;
 
     /**
-     * Who actually has the lock
+     * Output from ProcessThreadService::getHostnamePidTid().
      */
-    std::string lockOwner;
+    std::string hostnamePidTid;
+
+    /**
+     * The lock key
+     */
+    std::string lockKey;
+
+    /**
+     * The actual lock node created path (used to remove later)
+     */
+    std::string lockNodeCreatedPath;
+
+    /**
+     * Distributed lock type
+     */
+    DistributedLockType distributedLockType;
 };
 
 /**
- * Interface nad partial implementation that must be derived by
+ * Interface and partial implementation that must be derived by
  * specific Notifyable objects.
  */
 class NotifyableImpl
@@ -105,30 +130,28 @@ class NotifyableImpl
     virtual boost::shared_ptr<Queue> getQueue(const std::string &name,
                                               AccessType accessType);
 
-    virtual void acquireLock(bool acquireChildren = false);
+    virtual void acquireLock(const std::string &lockName,
+                             DistributedLockType distributedLockType,
+                             bool acquireChildren = false);
 
-    virtual bool acquireLockWaitMsecs(int64_t msecTimeout, 
+    virtual bool acquireLockWaitMsecs(const std::string &lockName,
+                                      DistributedLockType distributedLockType,
+                                      int64_t msecTimeout, 
                                       bool acquireChildren = false);
 
-    virtual void releaseLock(bool releaseChildren = false);
+    virtual void releaseLock(const std::string &lockName,
+                             bool releaseChildren = false);
     
-    virtual bool hasLock();
+    virtual bool hasLock(const std::string &lockName,
+                         DistributedLockType *pDistributedLockType = NULL);
     
-    virtual bool getLockInfo(std::string *id = NULL, 
-                             int64_t *msecs = NULL);
+    virtual bool getLockInfo(const std::string &lockName,
+                             std::string *pId = NULL,
+                             DistributedLockType *pDistributedLockType = NULL,
+                             int64_t *pMsecs = NULL);
 
-    virtual NameList getLockBids(bool children);
-
-    virtual void acquireOwnership();
-
-    virtual bool acquireOwnershipWaitMsecs(int64_t msecTimeout);
-
-    virtual void releaseOwnership();
-
-    virtual bool hasOwnership();
-
-    virtual bool getOwnershipInfo(std::string *id = NULL, 
-                                  int64_t *msecs = NULL);
+    virtual NameList getLockBids(const std::string &lockName,
+                                 bool children);
 
     virtual void remove(bool removeChildren = false);
 
@@ -201,22 +224,38 @@ class NotifyableImpl
     virtual void removeRepositoryEntries();
 
     /**
-     * Get the key of the distributed lock owner
+     * Get distributed lock owner information
      *
      * @param lockName the name of the lock
-     * @return the owner of the lock
+     * @param pHostnamePidTid If not NULL, will be set to hostname pid tid
+     * @param pLockNodePrefix If not NULL, will be set to the lock node prefix
+     * @param pLockNodeCreatedPath If not NULL, will be set to the 
+     *        lock node created path
+     * @param pDistributedLockType If not NULL, will be set to the lock type
+     * @param pRefCount If not NULL, will be set to the lock's reference count
+     * @return True if found, false otherwise
      */
-    virtual const std::string getDistributedLockOwner(
-        const std::string &lockName);
+    virtual bool getDistributedLockOwnerInfo(
+        const std::string &lockName,
+        std::string *pHostnamePidTid,
+        std::string *pLockKey,
+        std::string *pLockNodeCreatedPath,
+        DistributedLockType *pDistributedLockType,
+        int32_t *pRefCount) const;
 
     /**
      * Set the key of the distributed lock
      *
-     * @param lockName the name of the lock
-     * @param lockOwner the name of the lock owner
+     * @param lockName Name of the lock to store under
+     * @param lockKey Key of the lock
+     * @param lockNodeCreatedPath Final created path of lock owner
+     * @param distributedLockType Lock type
      */
-    virtual void setDistributedLockOwner(const std::string &lockName,
-                                         const std::string &lockOwner);
+    virtual void setDistributedLockOwnerInfo(
+        const std::string &lockName,
+        const std::string &lockKey,
+        const std::string &lockNodeCreatedPath,
+        DistributedLockType distributedLockType);
     
     /**
      * Safe reference count changes for distributed locks.
@@ -228,7 +267,9 @@ class NotifyableImpl
         const std::string &lockName);
     
     /**
-     * Safe reference count changes for distributed locks.
+     * Safe reference count changes for distributed locks.  If the
+     * reference count goes down to zero, the owner for the lockName
+     * is removed.
      *
      * @param lockName the name of the lock
      * @return the reference count after the operation
@@ -237,12 +278,18 @@ class NotifyableImpl
         const std::string &lockName);
 
     /**
-     * Get the number of references on the current distributed lock key
+     * Check to see if the lock attempt is re-entrant (Do I already
+     * have this lock?)
      *
-     * @param lockName the name of the lock
+     * @param lockNodeKey Key to that will be used for getting the lock
+     * @param lockNodeOwnerKey Key that already has the lock
+     * @return True if the attempt is re-entrant, false otherwise
+     * @throws InvalidArgumentsException if a thread is trying to get the same
+     *         lock but with a different DistributedLockType
      */
-    virtual int32_t getDistributedLockOwnerCount(
-        const std::string &lockName);
+    bool isReentrantLockAttempt(const std::string &lockName,
+                                const std::string &lockKey,
+                                DistributedLockType distributedLockType) const;
 
     /**
      * Check the state of the Notifyable and throw an exception if it

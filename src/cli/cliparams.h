@@ -12,8 +12,6 @@
 #ifndef	_CL_CLIPARAMS_H_
 #define _CL_CLIPARAMS_H_
 
-#include "clicommand.h"
-
 namespace clusterlib {
 
 /**

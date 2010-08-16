@@ -290,13 +290,19 @@ class Notifyable
      * also lock all children.  Clients must be careful (i.e. have
      * some resource ordering) to ensure that deadlock does not occur.
      * The only time locks are implicitly grabbed by clusterlib is
-     * when trying to create/remove an object.
+     * when trying to create/remove an object.  Locks are all
+     * specified in ClusterlibStrings (NOTIFYABLE_LOCK,
+     * OWNERSHIP_LOCK, and CHILD_LOCK).
      *
+     * @param lockName Name of the lock
+     * @param distributedLockType Type of lock to access
      * @param acquireChildren lock the children as well?
      * @throw Exception if this Notifyable or its parent no
      * longer exist.
      */
-    virtual void acquireLock(bool acquireChildren = false) = 0;
+    virtual void acquireLock(const std::string &lockName,
+                             DistributedLockType distributedLockType,
+                             bool acquireChildren = false) = 0;
 
     /** 
      * \brief Acquire the clusterlib lock for this Notifyable within a
@@ -313,12 +319,16 @@ class Notifyable
      * returns true, then all locks have been acquired.  Otherwise, no
      * locks have been acquired.
      *
+     * @param lockName Name of the lock
+     * @param distributedLockType Type of lock to access
      * @param msecTimeout the amount of usecs to wait until giving up, 
      *        -1 means wait forever, 0 means return immediately
      * @param acquireChildren lock the children as well?
      * @return true if the lock was acquired or false if timed out
      */
-    virtual bool acquireLockWaitMsecs(int64_t msecTimeout,
+    virtual bool acquireLockWaitMsecs(const std::string &lockName,
+                                      DistributedLockType distributedLockType,
+                                      int64_t msecTimeout,
                                       bool acquireChildren = false) = 0;
 
     /** 
@@ -331,30 +341,40 @@ class Notifyable
      * is held until until the client destroys the factory or a
      * network connection is lost.
      *
+     * @param lockName Name of the lock
      * @param releaseChildren release the children as well?
      * @throw Exception if internal state is in consistent 
      */
-    virtual void releaseLock(bool releaseChildren = false) = 0;    
+    virtual void releaseLock(const std::string &lockName,
+                             bool releaseChildren = false) = 0;    
 
     /**
      * Do I have the lock?
      *
+     * @param lockName Name of the lock
+     * @param pDistributedLockType If set, will be the type of lock held
      * @return true if I have the lock, false otherwise
      */
-    virtual bool hasLock() = 0;
+    virtual bool hasLock(const std::string &lockName,
+                         DistributedLockType *pDistributedLockType = NULL) = 0;
 
     /**
      * Get the current lock information.  This is mainly for
      * debugging, since this information can change at any point.
      *
-     * @param id if a valid pointer and a lock holder exists, the id of 
+     * @param lockName Name of the lock
+     * @param pId if a valid pointer and a lock holder exists, the id of 
      *        the lock holder
-     * @param msecs if a valid pointer and a lock holder exists, the msecs
+     * @param pDistributedLockType If set, will be the type of lock held
+     * @param pMsecs if a valid pointer and a lock holder exists, the msecs
      *        since the epoch when the lock holder tried to get the lock
      * @return true if there is a holder of the lock
      */
-    virtual bool getLockInfo(std::string *id = NULL, 
-                             int64_t *msecs = NULL) = 0;
+    virtual bool getLockInfo(
+        const std::string &lockName,
+        std::string *pId = NULL,
+        DistributedLockType *pDistributedLockType = NULL,
+        int64_t *pMsecs = NULL) = 0;
 
     /**
      * Helps with lock debugging only and should not be used in any
@@ -365,68 +385,14 @@ class Notifyable
      * bypasses getting locks to load notifyable information (or else
      * would also run into problems getting lock data).  Therefore,
      * this operation should only be used in a situatution where a
-     * deadlock has been reached.  Using it might cause the thread who
-     * called it to Crash if the notifyable being loaded is being
-     * created/deleted at the same time.
+     * deadlock has been reached.
      * 
+     * @param lockName Name of the lock to look for (if empty, check all locks)
+     * @param children Check for lock bids of children?
      * @return a list of the strings naming the clients and their bids
      */
-    virtual NameList getLockBids(bool children) = 0;
-
-    /** 
-     * \brief Acquire the ownership for this Notifyable.
-     *
-     * This is a user-defined ownership.  It could represent a the
-     * physical node taking control of a clusterlib node or perhaps a
-     * process that is the "leader" of a group.
-     *
-     * @throw Exception if this Notifyable or its parent no
-     * longer exist.
-     */
-    virtual void acquireOwnership() = 0;
-
-    /** 
-     * \brief Acquire the ownership of this Notifyable within a number
-     * of msecs.
-     *
-     * This is a user-defined ownership.  It could represent a the
-     * physical node taking control of a clusterlib node or perhaps a
-     * process that is the "leader" of a group.
-     *
-     * @param msecTimeout the amount of usecs to wait until giving up, 
-     *        -1 means wait forever, 0 means return immediately
-     * @return true if the lock was acquired or false if timed out
-     */
-    virtual bool acquireOwnershipWaitMsecs(int64_t msecTimeout) = 0;
-
-    /** 
-     * \brief Give up ownership of this Notifyable.
-     *
-     * This is a user-defined ownership.  It could represent a the
-     * physical node taking control of a clusterlib node or perhaps a
-     * process that is the "leader" of a group.
-     */
-    virtual void releaseOwnership() = 0;
-
-    /**
-     * Do I have ownership of this notifyable?
-     *
-     * @return true if I have ownership, false otherwise
-     */
-    virtual bool hasOwnership() = 0;
-
-    /**
-     * Get the current ownership information.  This is mainly for
-     * debugging, since this information can change at any point.
-     *
-     * @param id if a valid pointer and an owner exists, the id of 
-     *        the owner
-     * @param msecs if a valid pointer and an owner exists, the msecs
-     *        since the epoch when the owner tried to become the owner
-     * @return true if there is an owner
-     */
-    virtual bool getOwnershipInfo(std::string *id = NULL, 
-                                  int64_t *msecs = NULL) = 0;
+    virtual NameList getLockBids(const std::string &lockName,
+                                 bool children) = 0;
 
     /**
      * Remove the this notifyable.  This causes the object to be

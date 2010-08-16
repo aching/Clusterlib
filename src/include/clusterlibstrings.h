@@ -11,8 +11,6 @@
 #ifndef	_CL_CLUSTERLIBSTRINGS_H_
 #define	_CL_CLUSTERLIBSTRINGS_H_
 
-#include <iostream>
-
 namespace clusterlib {
 
 /**
@@ -28,10 +26,8 @@ class ClusterlibStrings
     static const std::string KEYSEPARATOR;
 
     static const std::string CLUSTERLIB;
-    static const std::string CLUSTERLIBVERSION;
+    static const std::string CLUSTERLIB_VERSION;
 
-    static const std::string CONFIGURATION;
-    static const std::string ALERTS;
     static const std::string SYNC;
 
     static const std::string ROOT;
@@ -58,17 +54,8 @@ class ClusterlibStrings
     static const std::string NOTIFYABLESTATE_JSON_OBJECT;
     static const std::string CURRENT_STATE_JSON_VALUE;
     static const std::string DESIRED_STATE_JSON_VALUE;
-    static const std::string CLIENTSTATE;
-    static const std::string CLIENTSTATEDESC;
-    static const std::string ADDRESS;
-    static const std::string LASTCONNECTED;
-    static const std::string CLIENTVERSION;
+
     static const std::string QUEUE_PARENT;
-    static const std::string BOUNCY;
-    static const std::string READY;
-    static const std::string ALIVE;
-    static const std::string MASTERSETSTATE;
-    static const std::string SUPPORTEDVERSIONS;
     static const std::string PROCESSSLOT_INFO_JSON_OBJECT;
     static const std::string PROCESSSLOTSUSAGE;
     static const std::string PROCESSSLOTSMAX;
@@ -76,9 +63,6 @@ class ClusterlibStrings
     static const std::string JSON_PROCESSSTATE_STATE_KEY;
     static const std::string JSON_PROCESSSTATE_MSECS_KEY;
     static const std::string JSON_PROCESSSTATE_DATE_KEY;
-
-    static const std::string ENABLED;
-    static const std::string DISABLED;
 
     static const std::string DEFAULT_JSON_OBJECT;
     static const std::string DEFAULTPROPERTYLIST;
@@ -110,26 +94,42 @@ class ClusterlibStrings
      * Default recv queue a notifyable 
      */
     static const std::string DEFAULT_RECV_QUEUE;
+
     /** 
      * Default response queue 
      */
     static const std::string DEFAULT_RESP_QUEUE;
+
     /** 
      * Default completed message queue (no response queue set),
      * unparseable, or debugging enabled.
      */
     static const std::string DEFAULT_COMPLETED_QUEUE;
 
-    static const std::string QUEUEELEMENTPREFIX;
+    static const std::string QUEUE_ELEMENT_PREFIX;
 
     static const std::string SHARDS;
     static const std::string SHARD_JSON_OBJECT;
-    static const std::string GOLDENSHARDS;
 
     static const std::string SEQUENCE_SPLIT;
 
-    static const std::string NOTIFYABLELOCK;
+    /**
+     * User lock on a Notifyable object.
+     */
+    static const std::string NOTIFYABLE_LOCK;
+
+    /**
+     * User lock that can denote "ownership" of a Notifyable object.
+     */
     static const std::string OWNERSHIP_LOCK;
+
+    /**
+     * Lock that allows manipulation of a Notifyable object's
+     * children.  ClusterlibS uses this lock when creating and
+     * removing Notifyable objects.  Users are allowed to
+     * acquire/release this lock as well.
+     */
+    static const std::string CHILD_LOCK;
 
     static const std::string LOCKS;
     static const std::string BARRIERS;
@@ -137,40 +137,10 @@ class ClusterlibStrings
 
     static const std::string ENDEVENT;
 
-    static const std::string PARTIALLOCKNODE;
-
-    static const std::string INFLUX;
-    static const std::string HEALTHY;
-    static const std::string UNHEALTHY;
-
-    /*
-     * Names of predefined properties.
+    /**
+     * Used to detect whether the ZooKeeper node is part of a lock.
      */
-    static const std::string HEARTBEATMULTIPLE;
-    static const std::string HEARTBEATCHECKPERIOD;
-    static const std::string HEARTBEATHEALTHY;
-    static const std::string HEARTBEATUNHEALTHY;
-    static const std::string TIMEOUTUNHEALTHYYTOR;
-    static const std::string TIMEOUTUNHEALTHYRTOD;
-    static const std::string TIMEOUTDISCONNECTYTOR;
-    static const std::string TIMEOUTDISCONNECTRTOD;
-    static const std::string NODESTATEGREEN;
-    static const std::string NODEBOUNCYPERIOD;
-    static const std::string NODEBOUNCYNEVENTS;
-    static const std::string NODEMOVEBACKPERIOD;
-    static const std::string CLUSTERUNMANAGED;
-    static const std::string CLUSTERDOWN;
-    static const std::string CLUSTERFLUXPERIOD;
-    static const std::string CLUSTERFLUXNEVENTS;
-    static const std::string HISTORYSIZE;
-    static const std::string LEADERFAILLIMIT;
-    static const std::string SERVERBIN;
-    
-    /*
-     * Names associated with the special clusterlib master
-     * application.
-     */
-    static const std::string MASTER;
+    static const std::string PARTIAL_LOCK_NODE;
 
     /**
      * Default CLI application for issuing JSON-RPC 
@@ -210,11 +180,10 @@ class ClusterlibStrings
     static const std::string ZK_AGG_NODES_STATE_KEY;
 
   private:
-    ClusterlibStrings()
-    {
-        throw InvalidMethodException("Someone called the ClusterlibStrings "
-                                     "default constructor!");
-    }
+    /**
+     * No constructing.
+     */
+    ClusterlibStrings();
 };
 
 }	/* End of 'namespace clusterlib' */

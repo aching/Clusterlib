@@ -12,10 +12,6 @@
 #ifndef	_CL_ACTIVENODEPARAMS_H_
 #define _CL_ACTIVENODEPARAMS_H_
 
-#include <iostream>
-#include <vector>
-#include <getopt.h>
-
 namespace activenode {
 
 /**

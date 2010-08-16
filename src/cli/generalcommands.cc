@@ -15,6 +15,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include "clusterlibinternal.h"
+#include "clicommand.h"
 #include "cliparams.h"
 #include "cliformat.h"
 #include "generalcommands.h"
@@ -162,7 +163,9 @@ GetLockBids::action()
     }
     
     bool children = getArg(CliCommand::CHILDREN_ARG).getBoolArg();
-    NameList lockBids = notifyableSP->getLockBids(children);
+    NameList lockBids = notifyableSP->getLockBids(
+        ClusterlibStrings::NOTIFYABLE_LOCK,
+        children);
     NameList::const_iterator lockBidsIt;
     for (lockBidsIt = lockBids.begin(); 
          lockBidsIt != lockBids.end();
@@ -382,7 +385,8 @@ GetAttributes::action()
             notifyableSP->cachedDesiredState().getHistoryArray()));
     string id;
     int64_t msecs;
-    bool hasOwner = notifyableSP->getOwnershipInfo(&id, &msecs);
+    bool hasOwner = notifyableSP->getLockInfo(
+        ClusterlibStrings::OWNERSHIP_LOCK, &id, NULL, &msecs);
     CliFormat::attributeOut("has owner", hasOwner); 
     if (hasOwner) {
         CliFormat::attributeOut("owner id", id);
@@ -1100,7 +1104,9 @@ ManageProcessSlot::action()
                 getArg(ManageProcessSlot::DESIRED_STATE_ARG).getNativeArg());
     }
 
-    NotifyableLocker l(processSlotSP);
+    NotifyableLocker l(processSlotSP,
+                       ClusterlibStrings::NOTIFYABLE_LOCK,
+                       DIST_LOCK_EXCL);
 
     processSlotSP->cachedDesiredState().set(
         ProcessSlot::PROCESS_STATE_KEY,
@@ -1147,7 +1153,9 @@ ManageActiveNode::action()
                         getArg(CliCommand::NOTIFYABLE_ARG).getNativeArg());
     }
 
-    NotifyableLocker l(nodeSP);
+    NotifyableLocker l(nodeSP, 
+                       ClusterlibStrings::NOTIFYABLE_LOCK,
+                       DIST_LOCK_EXCL);
 
     bool start = getArg(ManageActiveNode::START_ARG).getBoolArg();
     nodeSP->cachedDesiredState().set(

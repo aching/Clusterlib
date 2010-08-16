@@ -1,4 +1,5 @@
 #include "clusterlibinternal.h"
+#include <getopt.h>
 #include "activenodeparams.h"
 
 using namespace clusterlib;

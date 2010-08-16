@@ -46,7 +46,7 @@ class CachedKeyValuesImpl
     /**
      * Constructor.
      */
-    explicit CachedKeyValuesImpl(NotifyableImpl *notifyable);
+    explicit CachedKeyValuesImpl(NotifyableImpl *pNotifyable);
 
     /**
      * Destructor.

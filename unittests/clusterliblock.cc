@@ -16,11 +16,18 @@ class ClusterlibLock : public MPITestFixture
     CPPUNIT_TEST_SUITE(ClusterlibLock);
     CPPUNIT_TEST(testLock1);
     CPPUNIT_TEST(testLock2);
+    CPPUNIT_TEST(testLock3);
+    CPPUNIT_TEST(testLock4);
+    CPPUNIT_TEST(testLock5);
+    CPPUNIT_TEST(testLock6);
     CPPUNIT_TEST(testLock20);
     CPPUNIT_TEST(testLock21);
     CPPUNIT_TEST(testLock22);
     CPPUNIT_TEST(testLock23);
     CPPUNIT_TEST(testLock24);
+    CPPUNIT_TEST(testLock25);
+    CPPUNIT_TEST(testLock26);
+    CPPUNIT_TEST(testLock27);
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -68,8 +75,10 @@ class ClusterlibLock : public MPITestFixture
         
         if (isMyRank(0)) {
             MPI_CPPUNIT_ASSERT(_group0);
-            _group0->acquireLock();
-            _group0->releaseLock();
+            _group0->acquireLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+            _group0->releaseLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK);
         }
     }
 
@@ -85,12 +94,110 @@ class ClusterlibLock : public MPITestFixture
                                     "testLock2");
         if (isMyRank(0)) {
             MPI_CPPUNIT_ASSERT(_group0);
-            _group0->acquireLock();
-            _group0->acquireLock();
-            _group0->acquireLock();
-            _group0->releaseLock();
-            _group0->releaseLock();
-            _group0->releaseLock();
+            _group0->acquireLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+            _group0->acquireLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+            _group0->acquireLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+        }
+    }
+
+    /** 
+     * Test a process locking/unlocking the group with purposeful
+     * double release.
+     */
+    void testLock3()
+    {
+        initializeAndBarrierMPITest(1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testLock3");
+        if (isMyRank(0)) {
+            MPI_CPPUNIT_ASSERT(_group0);
+            _group0->acquireLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+            try {
+                _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+                MPI_CPPUNIT_ASSERT("SHOULD HAVE THROWN EXCEPTION" == 0);
+            } catch (const InvalidMethodException &e) {
+            }
+        }
+    }
+
+    /** 
+     * Test a process locking/unlocking the group with purposeful
+     * double release.
+     */
+    void testLock4()
+    {
+        initializeAndBarrierMPITest(1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testLock4");
+        if (isMyRank(0)) {
+            MPI_CPPUNIT_ASSERT(_group0);
+            _group0->acquireLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+            try {
+                _group0->acquireLock(
+                    ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
+                MPI_CPPUNIT_ASSERT("SHOULD HAVE THROWN EXCEPTION" == 0);
+            } catch (const InvalidArgumentsException &e) {
+            }
+            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+        }
+    }
+
+    /** 
+     * Test a process getting a DIST_LOCK_SHARED lock.
+     */
+    void testLock5()
+    {
+        initializeAndBarrierMPITest(1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testLock5");
+        if (isMyRank(0)) {
+            MPI_CPPUNIT_ASSERT(_group0);
+            _group0->acquireLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
+            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+        }
+    }
+
+    /** 
+     * Test a process getting a DIST_LOCK_SHARED lock with children.
+     */
+    void testLock6()
+    {
+        initializeAndBarrierMPITest(1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testLock6");
+        if (isMyRank(0)) {
+            MPI_CPPUNIT_ASSERT(_app0);
+            _app0->acquireLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK, 
+                DIST_LOCK_SHARED,
+                true);
+            NameList nl = _app0->getLockBids(
+                ClusterlibStrings::NOTIFYABLE_LOCK, true);
+            NameList::const_iterator nlIt;
+            for (nlIt = nl.begin(); nlIt != nl.end(); ++nlIt) {
+                cerr << "testLock6: Lock bid = " << *nlIt << endl;
+            }
+            MPI_CPPUNIT_ASSERT(nl.size() >= 2);
+            _app0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK,
+                               true);
         }
     }
 
@@ -106,8 +213,9 @@ class ClusterlibLock : public MPITestFixture
                                     "testLock20");
         
         MPI_CPPUNIT_ASSERT(_group0);
-        _group0->acquireLock();
-        _group0->releaseLock();
+        _group0->acquireLock(
+            ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+        _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
     }
 
     /** 
@@ -122,12 +230,15 @@ class ClusterlibLock : public MPITestFixture
                                     "testLock21");
         
         MPI_CPPUNIT_ASSERT(_group0);
-        _group0->acquireLock();
-        _group0->acquireLock();
-        _group0->acquireLock();
-        _group0->releaseLock();
-        _group0->releaseLock();
-        _group0->releaseLock();
+        _group0->acquireLock(
+            ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+        _group0->acquireLock(
+            ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+        _group0->acquireLock(
+            ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+        _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+        _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+        _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
     }
 
     /** 
@@ -144,14 +255,18 @@ class ClusterlibLock : public MPITestFixture
         
         MPI_CPPUNIT_ASSERT(_group0);
         if (isMyRank(0)) {
-            _group0->acquireLock();
+            NotifyableLocker l(_group0,
+                               ClusterlibStrings::NOTIFYABLE_LOCK,
+                               DIST_LOCK_EXCL);
             barrier(_factory, true);
             barrier(_factory, true);
-            _group0->releaseLock();
         }
         else {
             barrier(_factory, true);
-            MPI_CPPUNIT_ASSERT(_group0->acquireLockWaitMsecs(10LL) == false);
+            MPI_CPPUNIT_ASSERT(_group0->acquireLockWaitMsecs(
+                ClusterlibStrings::NOTIFYABLE_LOCK,
+                DIST_LOCK_EXCL, 
+                10LL) == false);
             barrier(_factory, true);
         }
     }
@@ -169,14 +284,20 @@ class ClusterlibLock : public MPITestFixture
                                     "testLock23");
         
         MPI_CPPUNIT_ASSERT(_group0);
-        bool gotLock = _group0->acquireLockWaitMsecs(0LL);
+        bool gotLock = _group0->acquireLockWaitMsecs(
+            ClusterlibStrings::NOTIFYABLE_LOCK,
+            DIST_LOCK_EXCL,
+            0LL);
         if (gotLock) {
             cerr << getRank() << ": I got the lock" << endl;
             barrier(_factory, true);            
-            _group0->releaseLock();
+            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
         }
         else {
-            MPI_CPPUNIT_ASSERT(_group0->acquireLockWaitMsecs(0LL) == false);
+            MPI_CPPUNIT_ASSERT(_group0->acquireLockWaitMsecs(
+                ClusterlibStrings::NOTIFYABLE_LOCK,
+                DIST_LOCK_EXCL,
+                0LL) == false);
             barrier(_factory, true);
         }
     }
@@ -194,9 +315,85 @@ class ClusterlibLock : public MPITestFixture
                                     "testLock24");
         
         MPI_CPPUNIT_ASSERT(_group0);
-        NotifyableLocker l(_group0);
+        NotifyableLocker l(_group0,
+                           ClusterlibStrings::NOTIFYABLE_LOCK,
+                           DIST_LOCK_EXCL);
         MPI_CPPUNIT_ASSERT(l.hasLock() == true);
     }
+
+    /** 
+     * Test all processes to getting a DIST_LOCK_SHARED, verifying they
+     * simultaneously got access and then releasing.
+     */
+    void testLock25()
+    {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testLock25");
+        
+        MPI_CPPUNIT_ASSERT(_group0);
+        _group0->acquireLock(
+            ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
+        barrier(_factory, true);
+        _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+    }
+
+    /**
+     * DIST_LOCK_SHARED then DIST_LOCK_EXCL
+     */
+    void testLock26()
+    {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testLock26");
+        
+        MPI_CPPUNIT_ASSERT(_group0);
+        if (isMyRank(0)) {
+            _group0->acquireLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
+            barrier(_factory, true);
+            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+        }
+        else {
+            barrier(_factory, true);
+            _group0->acquireLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+        }
+    }
+
+    /**
+     * DIST_LOCK_EXCL then DIST_LOCK_SHARED.
+     */
+    void testLock27()
+    {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testLock27");
+        
+        MPI_CPPUNIT_ASSERT(_group0);
+        if (isMyRank(0)) {
+            _group0->acquireLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+            barrier(_factory, true);
+            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+            barrier(_factory, true);
+        }
+        else {
+            barrier(_factory, true);
+            _group0->acquireLock(
+                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
+            barrier(_factory, true);
+            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+        }
+    }
+
 
   private:
     Factory *_factory;

@@ -92,7 +92,8 @@ class ClusterlibEndEvent : public MPITestFixture
         
         shared_ptr<Node> myNode = _app->getNode(ss.str(), CREATE_IF_NOT_FOUND);
         MPI_CPPUNIT_ASSERT(myNode != NULL);
-        myNode->acquireOwnership();
+        myNode->acquireLock(ClusterlibStrings::OWNERSHIP_LOCK,
+                            DIST_LOCK_EXCL);
         HealthUpdater updater(1, myNode, NULL);
         _factory->registerPeriodicThread(updater);
 
@@ -100,7 +101,7 @@ class ClusterlibEndEvent : public MPITestFixture
          * Shouldn't be used this way, but will be in this case to
          * test for the end event 
          */
-        myNode->releaseOwnership();
+        myNode->releaseLock(ClusterlibStrings::OWNERSHIP_LOCK);
         barrier(_factory, true);
         finishedClTest(_factory);
 	delete _factory;

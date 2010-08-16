@@ -46,7 +46,7 @@ class CachedDataImpl
      * 
      * @param notifyable Notifyable that is associated with this cached data
      */
-    explicit CachedDataImpl(NotifyableImpl *notifyable);
+    explicit CachedDataImpl(NotifyableImpl *pNotifyable);
 
     /**
      * Destructor.

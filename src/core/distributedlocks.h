@@ -32,11 +32,13 @@ class DistributedLocks
      *
      * @param pNotifyableSP is the Notifyable to be locked.
      * @param lockName is the name of the lock
+     * @param distributedLockType Lock type
      * @return true if the lock was acquired, false otherwise
      * @throw Exception if the Notifyable doesn't exist
      */
-    void acquire(const boost::shared_ptr<Notifyable> &pNotifyableSP, 
-                 const std::string &lockName);
+    void acquire(const boost::shared_ptr<Notifyable> &pNotifyableSP,
+                 const std::string &lockName,
+                 DistributedLockType distributedLockType);
 
     /**
      * Try to lock this Notifyable.  The Notifyable cannot be the
@@ -47,12 +49,14 @@ class DistributedLocks
      *        otherwise the number of milliseconds to wait for the lock.
      * @param pNotifyableSP is the Notifyable to be locked.
      * @param lockName is the name of the lock
+     * @param distributedLockType Lock type
      * @return true if the lock was acquired, false otherwise
      * @throw Exception if the Notifyable doesn't exist
      */
     bool acquireWaitMsecs(int64_t msecTimeout, 
                           const boost::shared_ptr<Notifyable> &pNotifyableSP, 
-                          const std::string &lockName);
+                          const std::string &lockName,
+                          DistributedLockType distributedLockType);
 
     /**
      * Try to lock this Notifyable.  The Notifyable cannot be the
@@ -63,12 +67,14 @@ class DistributedLocks
      *        otherwise the number of microseconds to wait for the lock.
      * @param pNotifyableSP is the Notifyable to be locked.
      * @param lockName is the name of the lock
+     * @param distributedLockType Lock type
      * @return true if the lock was acquired, false otherwise
      * @throw Exception if the Notifyable doesn't exist
      */
     bool acquireWaitUsecs(int64_t usecTimeout, 
                           const boost::shared_ptr<Notifyable> &pNotifyableSP, 
-                          const std::string &lockName);
+                          const std::string &lockName,
+                          DistributedLockType distributedLockType);
 
     /**
      * Try to unlock this Notifyable.
@@ -85,10 +91,12 @@ class DistributedLocks
      *
      * @param pNotifyableSP the Notifyable that is being checked
      * @param lockName the name of the lock
-     * @return true if the thread has the lock
+     * @return DistributedLockType or -1 if it does not have the lock
      */
-    bool hasLock(const boost::shared_ptr<Notifyable> &pNotifyableSP, 
-                 const std::string &lockName);
+    bool hasLock(
+        const boost::shared_ptr<Notifyable> &pNotifyableSP, 
+        const std::string &lockName,
+        DistributedLockType *pDistributedLockType);
 
     /**
      * Get the current lock owner information.  This is mainly for
@@ -96,16 +104,19 @@ class DistributedLocks
      *
      * @param pNotifyableSP the Notifyable that is being checked
      * @param lockName the name of the lock
-     * @param id if a valid pointer and an owner exists, the id of 
+     * @param pId If a valid pointer and an owner exists, the id of 
      *        the owner
-     * @param msecs if a valid pointer and an owner exists, the msecs
+     * @param pDistributedLockType DistributedLockType of owner if exists
      *        since the epoch when the owner tried to become the owner
-     * @return true if there is an owner
+     * @param pMsecs if a valid pointer and an owner exists, the msecs
+     *        since the epoch when the owner tried to become the owner
+     * @return true if there is an owner of the lock
      */
     bool getInfo(const boost::shared_ptr<Notifyable> &pNotifyableSP,
                  const std::string &lockName,
-                 std::string *id = NULL,
-                 int64_t *msecs = NULL);
+                 std::string *pId = NULL,
+                 DistributedLockType *pDistributedLockType = NULL,
+                 int64_t *pMsecs = NULL);
 
     /**
      * Get the map that is used to signal threads trying to acquire locks.
@@ -122,13 +133,22 @@ class DistributedLocks
      *
      * @return pointer to m_waitMapLock
      */
-    Mutex *getWaitMapLock() { return &m_waitMapLock; }
+    const Mutex &getWaitMapLock() const;
 
   private:
     /**
      * Private access to mp_ops
      */
-    FactoryOps *getOps() { return mp_ops; }
+    FactoryOps *getOps();
+
+    /**
+     * The sequenceKey is a string that has a DistributedLockType in
+     * it and two ClusterlibStrings::SEQUENCE_SPLIT separating it.
+     *
+     * @param sequenceKey Input ket to find the DistributedLockType
+     * @return DistributedLockType of the sequenceKey
+     */
+    DistributedLockType getDistributedLockType(const std::string &sequenceKey);
 
   private:
     /**
@@ -147,6 +167,6 @@ class DistributedLocks
     Mutex m_waitMapLock;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_DISTRIBUTEDLOCKS_H_ */

@@ -12,10 +12,12 @@
 
 #include "clusterlib.h"
 
+using namespace std;
+
 namespace clusterlib {
 
-std::string
-getAccessTypeString(AccessType accessType)
+string
+accessTypeToString(AccessType accessType)
 {
     switch (accessType) {
         case CACHED_ONLY:
@@ -26,6 +28,40 @@ getAccessTypeString(AccessType accessType)
             return "CREATE_IF_NOT_FOUND";
         default:
             return "unknown access type";
+    }
+}
+
+string
+distributedLockTypeToString(DistributedLockType distributedLockType)
+{
+    switch (distributedLockType) {
+        case DIST_LOCK_INIT:
+            return "DIST_LOCK_INIT";
+        case DIST_LOCK_SHARED:
+            return "DIST_LOCK_SHARED";
+        case DIST_LOCK_EXCL:
+            return "DIST_LOCK_EXCL";
+        default:
+            return "unknown distributed lock type";
+    }
+}
+
+DistributedLockType
+distributedLockTypeFromString(const string &distributedLockTypeString)
+{
+    if (distributedLockTypeString.compare("DIST_LOCK_INIT") == 0) {
+        return DIST_LOCK_INIT;
+    }
+    else if (distributedLockTypeString.compare("DIST_LOCK_SHARED") == 0) {
+        return DIST_LOCK_SHARED;
+    }
+    else if (distributedLockTypeString.compare("DIST_LOCK_EXCL") == 0) {
+        return DIST_LOCK_EXCL;
+    }
+    else {
+        throw InvalidArgumentsException(
+            string("distributedLockTypeString: No valid conversion for ") + 
+            distributedLockTypeString);
     }
 }
 

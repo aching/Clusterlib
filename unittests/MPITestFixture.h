@@ -145,30 +145,26 @@ class MPITestFixture : public CppUnit::TestFixture
                  * the same time.
                  */
                 while (!done) {
-                    try {
-                        json::JSONValue jsonValue;
-
-                        propertyListSP->acquireLock();
-
-                        bool exists = propertyListSP->cachedKeyValues().get(
-                            genTestKey(), jsonValue);
-                        std::string value;
-                        if (exists) {
-                            value = 
-                                jsonValue.get<json::JSONValue::JSONString>();
-                        }
-                        value.append(" ");
-                        value.append(genPropertyListId());
-                        propertyListSP->cachedKeyValues().set(
-                            genTestKey(), value);
-                        propertyListSP->cachedKeyValues().publish();
-                        done = true;
-
-                        propertyListSP->releaseLock();  
+                    json::JSONValue jsonValue;
+                    
+                    clusterlib::NotifyableLocker l(
+                        propertyListSP,
+                        clusterlib::ClusterlibStrings::NOTIFYABLE_LOCK,
+                        clusterlib::DIST_LOCK_EXCL);
+                    
+                    bool exists = propertyListSP->cachedKeyValues().get(
+                        genTestKey(), jsonValue);
+                    std::string value;
+                    if (exists) {
+                        value = 
+                            jsonValue.get<json::JSONValue::JSONString>();
                     }
-                    catch (const clusterlib::PublishVersionException &e) {
-                        propertyListSP->releaseLock();
-                    }
+                    value.append(" ");
+                    value.append(genPropertyListId());
+                    propertyListSP->cachedKeyValues().set(
+                        genTestKey(), value);
+                    propertyListSP->cachedKeyValues().publish();
+                    done = true;
                 }
             }
             barrier(factory, true);
@@ -202,31 +198,27 @@ class MPITestFixture : public CppUnit::TestFixture
              * the same time.
              */
             while (!done) {
-                try {
-                    json::JSONValue jsonValue;
+                json::JSONValue jsonValue;
 
-                    propertyListSP->acquireLock();
-
-                    bool exists = propertyListSP->cachedKeyValues().get(
-                        genTestKey(), jsonValue);
-                    std::string value;
-                    if (exists) {
-                        value = jsonValue.get<json::JSONValue::JSONString>();
-                    }
-                    size_t index = value.find(genPropertyListId());
-                    if (index != std::string::npos) {
-                        value.erase(index, genPropertyListId().size());
-                        propertyListSP->cachedKeyValues().set(
-                            genTestKey(), value);
-                        propertyListSP->cachedKeyValues().publish();
-                    }
-                    done = true;
-
-                    propertyListSP->releaseLock();
+                clusterlib::NotifyableLocker l(
+                    propertyListSP,
+                    clusterlib::ClusterlibStrings::NOTIFYABLE_LOCK,
+                    clusterlib::DIST_LOCK_EXCL);
+                
+                bool exists = propertyListSP->cachedKeyValues().get(
+                    genTestKey(), jsonValue);
+                std::string value;
+                if (exists) {
+                    value = jsonValue.get<json::JSONValue::JSONString>();
                 }
-                catch (const clusterlib::PublishVersionException &e) {
-                    propertyListSP->releaseLock();
+                size_t index = value.find(genPropertyListId());
+                if (index != std::string::npos) {
+                    value.erase(index, genPropertyListId().size());
+                    propertyListSP->cachedKeyValues().set(
+                        genTestKey(), value);
+                    propertyListSP->cachedKeyValues().publish();
                 }
+                done = true;
             }
         }
     }

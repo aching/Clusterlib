@@ -166,7 +166,7 @@ class FactoryOps
      * For use by unit tests only: get the zkadapter so that the test can
      * synthesize ZK events and examine the results.
      * 
-     * @return the ZooKeeperAdapter * from Factory Ops
+     * @return Pointer to ZooKeeperAdapter
      */
     zk::ZooKeeperAdapter *getRepository();
 
@@ -496,11 +496,11 @@ class FactoryOps
     /*
      * Get various locks and conditionals.
      */
-    Mutex *getClientsLock();
-    Mutex *getTimersLock();
-    Mutex *getSyncEventLock();
-    Cond *getSyncEventCond();
-    Mutex *getEndEventLock();
+    const Mutex &getClientsLock() const;
+    const Mutex &getTimersLock() const;
+    const Mutex &getSyncEventLock() const;
+    const Cond &getSyncEventCond() const;
+    const Mutex &getEndEventLock() const;
 
     /**
      * Increment the sync event id completed
@@ -783,17 +783,18 @@ class FactoryOps
     bool m_endEventDispatched;
     Mutex m_endEventLock;
 
-    /*
+    /**
      * The ZooKeeper config object.
      */
     zk::ZooKeeperConfig m_config;
 
-    /*
-     * The ZooKeeper adapter object being used.
+    /**
+     * The ZooKeeper adapter object being used.  Needs to be mutable
+     * so that lock operations can be denoted as 'const'.
      */
     zk::ZooKeeperAdapter m_zk;
 
-    /*
+    /**
      * The timer event source.
      */
     ClusterlibTimerEventSource m_timerEventSrc;

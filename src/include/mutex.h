@@ -9,9 +9,6 @@
 #ifndef _CL_MUTEX_H_
 #define _CL_MUTEX_H_
 
-#include "clusterlibexceptions.h"
-#include "timerservice.h"
-
 namespace clusterlib {
 
 /*
@@ -535,13 +532,17 @@ class NotifyableLocker
     /**
      * Constructor that acquires the lock.
      * 
-     * @param notifyable The notifyable that will be locked
+     * @param pNotifyableSP Notifyable that will be locked
+     * @param lockName Name of the lock
+     * @param distributedLockType Type of lock to access
      * @param waitMsecs Amount of time to wait for the lock. -1 means forever
      *        0 means do not wait at all.  If -1, this will only finish if the 
      *        lock was acquired.
      */
     NotifyableLocker(
-        const boost::shared_ptr<Notifyable> &notifyable, 
+        const boost::shared_ptr<Notifyable> &pNotifyableSP, 
+        const std::string &lockName,
+        DistributedLockType distributedLockType,
         int64_t waitMsecs = -1);
 
     /**
@@ -580,6 +581,16 @@ class NotifyableLocker
      * The notifyable that is being locked.
      */
     boost::shared_ptr<Notifyable> m_notifyableSP;
+
+    /**
+     * Lock name
+     */
+    std::string m_lockName;
+
+    /**
+     * Lock type
+     */
+    DistributedLockType m_distributedLockType;
 
     /**
      * Was the lock acquired?

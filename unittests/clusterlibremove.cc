@@ -68,7 +68,7 @@ class ClusterlibRemove : public MPITestFixture
      */
     void testRemove1()
     {
-        initializeAndBarrierMPITest(1, 
+        initializeAndBarrierMPITest(-1, 
                                     true, 
                                     _factory, 
                                     true, 
@@ -88,7 +88,7 @@ class ClusterlibRemove : public MPITestFixture
      */
     void testRemove2()
     {
-        initializeAndBarrierMPITest(1, 
+        initializeAndBarrierMPITest(-1, 
                                     true, 
                                     _factory, 
                                     true, 
@@ -109,7 +109,7 @@ class ClusterlibRemove : public MPITestFixture
      */
     void testRemove3()
     {
-        initializeAndBarrierMPITest(1,
+        initializeAndBarrierMPITest(-1,
                                     true,
                                     _factory,
                                     true,
@@ -129,7 +129,7 @@ class ClusterlibRemove : public MPITestFixture
      */
     void testRemove4()
     {
-        initializeAndBarrierMPITest(1, 
+        initializeAndBarrierMPITest(-1, 
                                     true, 
                                     _factory, 
                                     true, 
@@ -149,7 +149,7 @@ class ClusterlibRemove : public MPITestFixture
      */
     void testRemove5()
     {
-        initializeAndBarrierMPITest(1, 
+        initializeAndBarrierMPITest(-1, 
                                     true, 
                                     _factory, 
                                     true, 
@@ -170,7 +170,7 @@ class ClusterlibRemove : public MPITestFixture
      */
     void testRemove6()
     {
-        initializeAndBarrierMPITest(1, 
+        initializeAndBarrierMPITest(-1, 
                                     true, 
                                     _factory, 
                                     true, 
@@ -193,7 +193,7 @@ class ClusterlibRemove : public MPITestFixture
      */
     void testRemove10()
     {
-        initializeAndBarrierMPITest(1, 
+        initializeAndBarrierMPITest(-1, 
                                     true, 
                                     _factory, 
                                     true, 
@@ -224,7 +224,7 @@ class ClusterlibRemove : public MPITestFixture
      */
     void testRemove11()
     {
-        initializeAndBarrierMPITest(1, 
+        initializeAndBarrierMPITest(-1, 
                                     true, 
                                     _factory, 
                                     true, 
@@ -242,7 +242,7 @@ class ClusterlibRemove : public MPITestFixture
      */
     void testRemove12()
     {
-        initializeAndBarrierMPITest(2, 
+        initializeAndBarrierMPITest(-1, 
                                     true, 
                                     _factory, 
                                     true, 
@@ -369,7 +369,7 @@ class ClusterlibRemove : public MPITestFixture
      */
     void testRemove99()
     {
-        initializeAndBarrierMPITest(1, 
+        initializeAndBarrierMPITest(-1, 
                                     true, 
                                     _factory, 
                                     true, 

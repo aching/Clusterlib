@@ -14,20 +14,55 @@
 namespace clusterlib {
 
 /**
- * How do you want to access the Notifyable?
+ * Desired access to a Notifyable.
+ *
+ * This determines what type of lock will be acquired.  CACHED_ONLY
+ * does not get a distributed lock.  LOAD_FROM_REPOSITORY will get a
+ * DIST_LOCK_SHARED on its parent.  CREATE_IF_NOT_FOUND will get a
+ * DIST_LOCK_EXCL of its parent.
  */
 enum AccessType {
     CACHED_ONLY = 0, ///< Only try to get the data in the cache, not repository
     LOAD_FROM_REPOSITORY, ///< Only check the cache and the repository
-    CREATE_IF_NOT_FOUND, ///< Create if not found in the cache or repository
+    CREATE_IF_NOT_FOUND ///< Create if not found in the cache or repository
 };
 
 /**
  * Helper function to get the AccessType as a string.
  *
- * @return The AccessType as a string.
+ * @return AccessType as a string.
  */
-std::string getAccessTypeString(AccessType accessType);
+std::string accessTypeToString(AccessType accessType);
+
+/**
+ * Desired type of distributed lock.
+ * 
+ * DIST_LOCK_SHARED can share access with multiple readers simultaneously
+ * DIST_LOCK_EXCL is an exclusive lock
+ * The locking policy is fair, all locks are granted in order of requests 
+ * although readers will be granted simultaneous access when possible.
+ */
+enum DistributedLockType {
+    DIST_LOCK_INIT = 0, ///< Initialized value (invalid for actual use)
+    DIST_LOCK_SHARED, ///< Shared lock (typically used for reading)
+    DIST_LOCK_EXCL ///< Exclusive lock (typically used for reading + writing)
+};
+
+/**
+ * Helper function to get the DistributedLockType as a string.
+ *
+ * @return DistributedLockType as a string.
+ */
+std::string distributedLockTypeToString(
+    DistributedLockType distributedLockType);
+
+/**
+ * Helper function to get the DistributedLockType from a string
+ *
+ * @return DistributedLockType from a string.
+ */
+DistributedLockType distributedLockTypeFromString(
+    const std::string &distributedLockTypeString);
 
 /**
  * Class containing static variables for all string constants.
@@ -86,11 +121,10 @@ class ClusterlibInts
     static const int64_t MSECS_NOT_AVAILABLE;
 
   private:
-    ClusterlibInts()
-    {
-        throw InvalidMethodException("Someone called the ClusterlibInts "
-                                     "default constructor!");
-    }
+    /**
+     * No constructing.
+     */
+    ClusterlibInts();
 };
 
 }	/* End of 'namespace clusterlib' */

@@ -1,7 +1,8 @@
 #include "clusterlibinternal.h"
+#include <getopt.h>
+#include "clicommand.h"
 #include "cliparams.h"
 #include "generalcommands.h"
-#include <stdlib.h> 
 #include "cliformat.h"
 
 #ifndef NO_TAB_COMPLETION

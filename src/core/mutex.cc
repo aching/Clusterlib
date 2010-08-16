@@ -292,8 +292,13 @@ PredMutexCond::predWaitMsecs(int64_t msecTimeout) const
 }
 
 NotifyableLocker::NotifyableLocker(
-    const shared_ptr<Notifyable> &notifyableSP, int64_t waitMsecs)
+    const shared_ptr<Notifyable> &notifyableSP, 
+    const string &lockName,
+    DistributedLockType distributedLockType,
+    int64_t waitMsecs)
     : m_notifyableSP(notifyableSP),
+      m_lockName(lockName),
+      m_distributedLockType(distributedLockType),
       m_hasLock(false)
 {
     if (m_notifyableSP == NULL) {
@@ -310,7 +315,9 @@ NotifyableLocker::acquireLock(int64_t waitMsecs)
         throw InvalidMethodException("acquireLock: Already has the lock");
     }
 
-    m_hasLock = m_notifyableSP->acquireLockWaitMsecs(waitMsecs);
+    m_hasLock = m_notifyableSP->acquireLockWaitMsecs(m_lockName,
+                                                     m_distributedLockType,
+                                                     waitMsecs);
     return m_hasLock;
 }
 
@@ -323,7 +330,7 @@ NotifyableLocker::hasLock()
 NotifyableLocker::~NotifyableLocker()
 {
     if (m_hasLock) {
-        m_notifyableSP->releaseLock();
+        m_notifyableSP->releaseLock(m_lockName);
     }
 }
 

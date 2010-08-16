@@ -8,11 +8,13 @@ namespace clusterlib {
 
 void
 DistributedLocks::acquire(const shared_ptr<Notifyable> &pNotifyableSP, 
-                          const string &lockName)
+                          const string &lockName,
+                          DistributedLockType distributedLockType)
 {
     TRACE(CL_LOG, "acquire");
 
-    if (!acquireWaitUsecs(-1LL, pNotifyableSP, lockName)) {
+    if (!acquireWaitUsecs(
+            -1LL, pNotifyableSP, lockName, distributedLockType)) {
         throw InconsistentInternalStateException(
             "acquire: Impossible that acquireWaitUsecs failed!");
     }
@@ -22,28 +24,47 @@ bool
 DistributedLocks::acquireWaitMsecs(
     int64_t msecTimeout, 
     const shared_ptr<Notifyable> &pNotifyableSP, 
-    const string &lockName)
+    const string &lockName,
+    DistributedLockType distributedLockType)
 {
     TRACE(CL_LOG, "acquireWaitMsecs");
 
     return acquireWaitUsecs(((msecTimeout == -1) ? -1 : msecTimeout * 1000),
                             pNotifyableSP,
-                            lockName);
+                            lockName,
+                            distributedLockType);
 }
 
 bool
 DistributedLocks::acquireWaitUsecs(
     int64_t usecTimeout,
     const shared_ptr<Notifyable> &pNotifyableSP, 
-    const string &lockName)
+    const string &lockName,
+    DistributedLockType distributedLockType)
 {
     TRACE(CL_LOG, "acquireWaitUsecs");
 
+    if (lockName.compare(ClusterlibStrings::NOTIFYABLE_LOCK) &&
+        lockName.compare(ClusterlibStrings::OWNERSHIP_LOCK) &&
+        lockName.compare(ClusterlibStrings::CHILD_LOCK) &&
+        !NotifyableKeyManipulator::isValidNotifyableName(lockName)) {
+        throw InvalidArgumentsException(
+            string("acquireWaitUsecs: Invalid lockName=") + lockName);
+    }
+
+    if ((distributedLockType < DIST_LOCK_SHARED) ||
+        (distributedLockType > DIST_LOCK_EXCL)) {
+        ostringstream oss;
+        oss << "acquireWaitUsecs: Invalid distributedLockType="
+            << distributedLockType;
+        throw InvalidArgumentsException(oss.str());
+    }
+
     if (usecTimeout < -1) {
-        stringstream ss;
-        ss << "acquireWaitUsecs: Cannot have usecTimeout < -1 (" 
-           << usecTimeout << ")";
-        throw InvalidArgumentsException(ss.str());
+        ostringstream oss;
+        oss << "acquireWaitUsecs: Cannot have usecTimeout < -1 (" 
+            << usecTimeout << ")";
+        throw InvalidArgumentsException(oss.str());
     }
 
     int64_t curUsecTimeout = 0;
@@ -69,17 +90,27 @@ DistributedLocks::acquireWaitUsecs(
     /**
      * Algorithm:
      *
-     * based on http://hadoop.apache.org/zookeeper/docs/current/recipes.html
+     * Based on 
+     * http://hadoop.apache.org/zookeeper/docs/r3.3.1/recipes.html#Shared+Locks
      *
-     * 1. Lazily create the lock node.
-     * 2. Create my entry as 'lock node'/entry with sequence and ephemeral 
-     *    flags set.
-     * 3. Call getChildren() on the lock node without setting the watch flag.
-     * 4. If my entry has the lowest sequence number suffix, have the lock, 
-     *    exit
-     * 5. The client calls exists() with the watch flag set on the path in the 
-     *    lock directory with the next lowest sequence number.
-     * 6. If exists(), returns false, go to step 3. Otherwise, wait for a 
+     * 1. Lazily create the locks zookeeper node (might already exist).
+     * 2. Lazily create the particular lockName zookeeper node
+     *    (might already exist).
+     * 3. Create my entry as 'locks'/'lockName/entry with sequence 
+     *    and ephemeral flags set and the appropriate lock type as part of 
+     *    the name - for instance 'myThreadId.writeLock'.
+     * 4. Call getChildren() on the lockName node without setting the 
+     *    watch flag.
+     * 5. - (DIST_LOCK_SHARED) If there are no DIST_LOCK_EXCL
+     *    entries above mine, I have the lock and will exit.
+     *    - (DIST_LOCK_EXCL) If there are no entries above
+     *    mine, I have the lock and will exit.
+     * 6. - (DIST_LOCK_SHARED) Client calls exists() with the watch flag set on
+     *    the path with the next lowest sequence number that is a 
+     *    DIST_LOCK_EXCL or DIST_LOCK_EXCL.
+     *    - (DIST_LOCK_EXCL) Client calls exists() with the 
+     *    watch flag set on the path with the next lowest sequence number.
+     * 7. If exists(), returns false, go to step 3. Otherwise, wait for a 
      *    notification for the pathname from the previous step before going 
      *    to step 3.
      */
@@ -113,23 +144,28 @@ DistributedLocks::acquireWaitUsecs(
     string lockNode = 
         NotifyableKeyManipulator::createLockNodeKey(
             notifyableImplSP->getKey(),
-            lockName);
+            lockName,
+            distributedLockType);
     
     /*
-     * If I already have the lock, just increase the reference count.
+     * If I already have the lock and this is the same lock type, just
+     * increase the reference count.  Note that the
+     * distributedLockType must the exactly the same as the one I am
+     * requesting now in order to support re-entrant locks.
      */
-    string::size_type pos = 
-        notifyableImplSP->getDistributedLockOwner(
-            lockName).find(lockNode);
-    if (pos != string::npos) {
-        LOG_WARN(CL_LOG, 
-                 "acquireWaitUsecs: Already have the lock on %s (had "
-                 "%d references)", 
-                 notifyableImplSP->getKey().c_str(),
-                 notifyableImplSP->getDistributedLockOwnerCount(
-                     lockName));
-        notifyableImplSP->incrDistributedLockOwnerCount(
-            lockName);
+    if (notifyableImplSP->isReentrantLockAttempt(
+            lockName, lockKey, distributedLockType)) {
+        if (CL_LOG->isInfoEnabled()) {
+            int32_t refCount = -1;
+            notifyableImplSP->getDistributedLockOwnerInfo(
+                lockName, NULL, NULL, NULL, NULL, &refCount);
+            LOG_INFO(CL_LOG, 
+                     "acquireWaitUsecs: Re-entering already held lock on %s "
+                     "(had %" PRId32 " references)", 
+                     notifyableImplSP->getKey().c_str(),
+                     refCount);
+        }
+        notifyableImplSP->incrDistributedLockOwnerCount(lockName);
         return true;
     }
 
@@ -143,11 +179,11 @@ DistributedLocks::acquireWaitUsecs(
     JSONValue::JSONInteger jsonInteger = TimerService::getCurrentTimeMsecs();
     
     SAFE_CALL_ZK((myBid = getOps()->getRepository()->createSequence(
-                      lockNode, 
-                      JSONCodec::encode(jsonInteger),
-                      ZOO_EPHEMERAL, 
-                      false, 
-                      createdPath)),
+        lockNode, 
+        JSONCodec::encode(jsonInteger),
+        ZOO_EPHEMERAL, 
+        false, 
+        createdPath)),
                  "Bidding with lock of Notifyable %s to get lock failed: %s",
                  lockKey.c_str(),
                  false,
@@ -170,6 +206,7 @@ DistributedLocks::acquireWaitUsecs(
     string precZkNode;
     int64_t tmpBid = -1, lowerBid = -1;
     string tmpBidThread, lowerBidThread;
+    DistributedLockType tmpDistributedLockType;
     do {
         NameList childList;
         SAFE_CALL_ZK(getOps()->getRepository()->getNodeChildren(lockKey,
@@ -184,28 +221,42 @@ DistributedLocks::acquireWaitUsecs(
         for (childListIt = childList.begin(); 
              childListIt != childList.end(); 
              childListIt++) {
-            /* 
-             * Get the bid number from the path.
-             */
+            /* Get the bid number from the path */
             zk::ZooKeeperAdapter::splitSequenceNode(*childListIt, 
                                                     &tmpBidThread,
                                                     &tmpBid);
-
+            /* Get the lock type from the sequence name */
+            tmpDistributedLockType = getDistributedLockType(*childListIt);
+            
             LOG_DEBUG(CL_LOG, 
                       "acquireWaitUsecs: thread %" PRIu32 ", this %p "
-                      "got bid %s with bid %" PRId64, 
+                      "got bid %s with bid %" PRId64 " and lock type %s", 
                       ProcessThreadService::getTid(),
                       this,
                       childListIt->c_str(),
-                      tmpBid);
+                      tmpBid,
+                      distributedLockTypeToString(
+                          tmpDistributedLockType).c_str());
+
             if ((!tmpBidThread.compare(myBidThread)) &&
-                 (myBid != tmpBid)) {
-                stringstream ss;
-                ss << "acquireWaitUsecs: Impossible that " << myBidThread 
-                   << " already has bid " << tmpBid 
-                   << " and is adding myBid " << myBid;
-                LOG_FATAL(CL_LOG, "%s", ss.str().c_str());
-                throw InconsistentInternalStateException(ss.str());
+                (myBid != tmpBid)) {
+                ostringstream oss;
+                oss << "acquireWaitUsecs: Impossible that " << myBidThread 
+                    << " already has bid " << tmpBid 
+                    << " and is adding myBid " << myBid;
+                LOG_FATAL(CL_LOG, "%s", oss.str().c_str());
+                throw InconsistentInternalStateException(oss.str());
+            }
+
+            /*
+             * For shared locks, the only locks to consider above mine
+             * are the exclusive ones or my own.
+             */
+            if (distributedLockType == DIST_LOCK_SHARED) {
+                if ((tmpDistributedLockType != DIST_LOCK_EXCL) &&
+                    (tmpBidThread.compare(myBidThread) != 0)) {
+                    continue;
+                }
             }
 
             /*
@@ -328,9 +379,9 @@ DistributedLocks::acquireWaitUsecs(
                 (TimerService::compareTimeUsecs(maxUsecs) >= 0)) {
                 bool deleted = false;
                 SAFE_CALL_ZK((deleted = getOps()->getRepository()->deleteNode(
-                                  createdPath,
-                                  false,
-                                  -1)),
+                    createdPath,
+                    false,
+                    -1)),
                              "acquireWaitUsecs: Trying to delete lock node: %s"
                              " failed: %s",
                              createdPath.c_str(),
@@ -352,18 +403,27 @@ DistributedLocks::acquireWaitUsecs(
     } while (lowerBid != myBid);
 
     /*
-     * Remember the createPath node name so it can be cleaned up at release.
+     * Remember the createPath node name and other lock information
+     * for cleanup and remembering the lock type for re-entrant locks.
      */
-    notifyableImplSP->setDistributedLockOwner(lockName,
-                                              createdPath);
+    notifyableImplSP->setDistributedLockOwnerInfo(lockName,
+                                                  lockKey,
+                                                  createdPath,
+                                                  distributedLockType);
     notifyableImplSP->incrDistributedLockOwnerCount(
         lockName);
-    LOG_DEBUG(CL_LOG, "acquireWaitUsecs: Setting distributed lock key "
-              "of Notifyable %s with %s (%u references)",
-              notifyableImplSP->getKey().c_str(),
-              createdPath.c_str(),
-              notifyableImplSP->getDistributedLockOwnerCount(
-                  lockName));
+    if (CL_LOG->isDebugEnabled()) {
+        int32_t refCount = -1;
+        notifyableImplSP->getDistributedLockOwnerInfo(
+            lockName, NULL, NULL, NULL, NULL, &refCount);
+        LOG_INFO(CL_LOG, 
+                 "acquireWaitUsecs: Setting distributed lock key "
+                 "of Notifyable %s with %s (%" PRId32 " references)", 
+                 notifyableImplSP->getKey().c_str(),
+                 createdPath.c_str(),
+                 refCount);
+    }
+
     /*
      * In order to guarantee that changes are seen from one locked
      * region to another locked region, synchronize must be used prior
@@ -386,29 +446,44 @@ DistributedLocks::release(const shared_ptr<Notifyable> &pNotifyableSP,
         throw InvalidArgumentsException("release: Notifyable is NULL");
     }
 
+    string ownerHostnamePidTid;
+    string ownerLockNodeCreatedPath;
+    DistributedLockType distributedLockType;
+    int32_t ownerRefCount = -1;
+    bool lockExists = notifyableImplSP->getDistributedLockOwnerInfo(
+        lockName, 
+        &ownerHostnamePidTid,
+        NULL, 
+        &ownerLockNodeCreatedPath, 
+        &distributedLockType, 
+        &ownerRefCount);
+    if (lockExists == false) {
+        throw InvalidMethodException(
+            string("release: There is no known lock for ") + 
+            notifyableImplSP->getKey());
+    }
+
     string lockNode = 
         NotifyableKeyManipulator::createLockNodeKey(
             notifyableImplSP->getKey(),
-            lockName);
+            lockName,
+            distributedLockType);
 
-    LOG_DEBUG(CL_LOG, "release: Looking for %s in %s (%d references)",
+    LOG_DEBUG(CL_LOG, 
+              "release: Looking for %s in %s (%" PRId32 " references)",
               lockNode.c_str(),
-              notifyableImplSP->getDistributedLockOwner(
-                  lockName).c_str(),
-              notifyableImplSP->getDistributedLockOwnerCount(
-                  lockName));
+              ownerLockNodeCreatedPath.c_str(),
+              ownerRefCount);
 
     /*
      * Make sure that I actually have the lock before I delete the
      * node.  Only delete the node if my reference count drops to 0.
      */
-    string removeNode = notifyableImplSP->getDistributedLockOwner(
-        lockName);
-    string::size_type pos = removeNode.find(lockNode);
-    if (pos == string::npos) {
+    if (ownerHostnamePidTid.compare(
+            ProcessThreadService::getHostnamePidTid()) != 0) {
         throw InvalidMethodException(
             string("release: I don't have the lock on ") +
-            removeNode + 
+            ownerLockNodeCreatedPath + 
             string(" with my node ") + 
             lockNode);
     }
@@ -418,19 +493,17 @@ DistributedLocks::release(const shared_ptr<Notifyable> &pNotifyableSP,
     if (refCount != 0) {
         return;
     }
-    
-    notifyableImplSP->setDistributedLockOwner(lockName, "");
 
     /* 
      * Delete the lock node here.
      */
     bool deleted = false;
     SAFE_CALL_ZK((deleted = getOps()->getRepository()->deleteNode(
-                      removeNode,
-                      false,
-                      -1)),
+        ownerLockNodeCreatedPath,
+        false,
+        -1)),
                  "release: Trying to delete lock node: %s failed: %s",
-                 removeNode.c_str(),
+                 ownerLockNodeCreatedPath.c_str(),
                  false,
                  true);
     if (deleted == false) {
@@ -457,7 +530,8 @@ DistributedLocks::release(const shared_ptr<Notifyable> &pNotifyableSP,
 
 bool
 DistributedLocks::hasLock(const shared_ptr<Notifyable> &pNotifyableSP, 
-                          const string &lockName)
+                          const string &lockName,
+                          DistributedLockType *pDistributedLockType) 
 {
     TRACE(CL_LOG, "hasLock");
     
@@ -472,32 +546,33 @@ DistributedLocks::hasLock(const shared_ptr<Notifyable> &pNotifyableSP,
      * granular basis. 
      */
     Locker l(notifyableImplSP->getSyncDistLock());
-
-    string lockOwner = notifyableImplSP->getDistributedLockOwner(lockName);
     
-    string myLockNodeKey = NotifyableKeyManipulator::createLockNodeKey(
-        notifyableImplSP->getKey(),
-        lockName);
-
-    LOG_DEBUG(CL_LOG, 
-              "hasLock: Trying to find my lock node prefix (%s) in the "
-              "lock owner (%s) for Notifyable (%s) with ref count (%d)",
-              myLockNodeKey.c_str(),
-              lockOwner.c_str(),
-              pNotifyableSP->getKey().c_str(),
-              notifyableImplSP->getDistributedLockOwnerCount(lockName));
-    
-    if (lockOwner.find(myLockNodeKey) != string::npos) {
-        return true;
+    string ownerHostnamePidTid;
+    bool lockExists = notifyableImplSP->getDistributedLockOwnerInfo(
+        lockName, 
+        &ownerHostnamePidTid,
+        NULL, 
+        NULL,
+        pDistributedLockType, 
+        NULL);
+    if (lockExists == false) {
+        return false;
     }
 
-    return false;
+    if (ownerHostnamePidTid.compare(
+            ProcessThreadService::getHostnamePidTid()) != 0) {
+        return false;
+    }
+    else {
+        return true;
+    }
 }
 
 bool
 DistributedLocks::getInfo(const shared_ptr<Notifyable> &pNotifyableSP,
                           const string &lockName, 
                           string *id, 
+                          DistributedLockType *pDistributedLockType,
                           int64_t *msecs)
 {
     TRACE(CL_LOG, "getInfo");
@@ -544,6 +619,34 @@ DistributedLocks::getInfo(const shared_ptr<Notifyable> &pNotifyableSP,
         return exists;
     }
     return true;
+}
+
+const Mutex &
+DistributedLocks::getWaitMapLock() const
+{
+    return m_waitMapLock;
+}
+
+FactoryOps *
+DistributedLocks::getOps()
+{
+    return mp_ops;
+}
+
+DistributedLockType
+DistributedLocks::getDistributedLockType(const string &sequenceKey)
+{
+    vector<string> components;
+    split(components, 
+          sequenceKey, 
+          is_any_of(ClusterlibStrings::SEQUENCE_SPLIT));
+    if (components.size() < 3) {
+        throw InvalidArgumentsException(
+            string("getDistributedLockType: Can't find components in ") +
+            sequenceKey);
+    }
+
+    return distributedLockTypeFromString(components[components.size() - 2]);
 }
 
 }

@@ -18,8 +18,8 @@ using namespace json;
 
 namespace clusterlib {
 
-CachedKeyValuesImpl::CachedKeyValuesImpl(NotifyableImpl *notifyable)
-    : CachedDataImpl(notifyable) 
+CachedKeyValuesImpl::CachedKeyValuesImpl(NotifyableImpl *pNotifyable)
+    : CachedDataImpl(pNotifyable) 
 {
 }
 

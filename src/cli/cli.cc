@@ -14,6 +14,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include "clusterlibinternal.h"
+#include "clicommand.h"
 #include "cliparams.h"
 #include "cliformat.h"
 #include "generalcommands.h"

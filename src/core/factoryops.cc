@@ -1027,7 +1027,7 @@ FactoryOps::getNotifyableWaitMsecs(
               parentSP.get(),
               registeredNotifyableName.c_str(),
               name.c_str(),
-              getAccessTypeString(accessType).c_str(),
+              accessTypeToString(accessType).c_str(),
               msecTimeout,
               pNotifyableSP);
 
@@ -1082,12 +1082,42 @@ FactoryOps::getNotifyableWaitMsecs(
         return true;
     }
 
+    /*
+     * Need to lock the parent if it is being LOAD_FROM_REPOSITORY or
+     * CREATE_IF_NOT_FOUND.  However, if the minimum lock is already
+     * held, there is no need to do this.
+     */
+    bool hasMinimumLock = false;
     if (parentSP != NULL) {
-        if (getOps()->getDistributedLocks()->acquireWaitMsecs(
+        DistributedLockType distributedLockType = DIST_LOCK_SHARED;
+        if (accessType == CREATE_IF_NOT_FOUND) {
+            distributedLockType = DIST_LOCK_EXCL;
+        }
+        DistributedLockType ownerDistributedLockType = DIST_LOCK_INIT;
+        hasMinimumLock = parentSP->hasLock(ClusterlibStrings::CHILD_LOCK, 
+                                           &ownerDistributedLockType);
+        if (hasMinimumLock) {
+            if ((distributedLockType == DIST_LOCK_EXCL) &&
+                (ownerDistributedLockType != DIST_LOCK_EXCL)) {
+                ostringstream oss;
+                oss << "getNotifyableWaitMsecs: Notiyable to be retrieved "
+                    << "with Notiyable key=" << notifyableKey << " has parent="
+                    << parentSP->getKey() << " that is already locked with "
+                    << distributedLockTypeToString(ownerDistributedLockType)
+                    << " but needs "
+                    << distributedLockTypeToString(distributedLockType);
+                throw InvalidMethodException(oss.str());
+            }
+        }
+        else {
+            hasMinimumLock = getOps()->getDistributedLocks()->acquireWaitMsecs(
                 msecTimeout,
                 dynamic_pointer_cast<Notifyable>(parentSP),
-                ClusterlibStrings::NOTIFYABLELOCK) == false) {
-            return false;
+                ClusterlibStrings::CHILD_LOCK,
+                distributedLockType);
+            if (false == hasMinimumLock) {
+                return false;
+            }
         }
     }
     
@@ -1114,10 +1144,10 @@ FactoryOps::getNotifyableWaitMsecs(
         (*pNotifyableSP)->initialize();
     }
     
-    if (parentSP != NULL) {
+    if ((true == hasMinimumLock) && (NULL != parentSP)) {
         getOps()->getDistributedLocks()->release(
             parentSP,
-            ClusterlibStrings::NOTIFYABLELOCK);
+            ClusterlibStrings::CHILD_LOCK);
     }
 
     return true;
@@ -1380,39 +1410,39 @@ FactoryOps::removeCachedNotifyable(
     notifyableSP->getSafeNotifyableMap()->erase(notifyableSP);
 }
 
-Mutex *
-FactoryOps::getClientsLock() 
+const Mutex &
+FactoryOps::getClientsLock() const 
 {
     TRACE(CL_LOG, "getClientsLock");
-    return &m_clLock; 
+    return m_clLock; 
 }
 
-Mutex *
-FactoryOps::getTimersLock() 
+const Mutex &
+FactoryOps::getTimersLock() const 
 { 
     TRACE(CL_LOG, "getTimersLock");
-    return &m_timerRegistryLock; 
+    return m_timerRegistryLock; 
 }
 
-Mutex *
-FactoryOps::getSyncEventLock() 
+const Mutex &
+FactoryOps::getSyncEventLock() const 
 { 
     TRACE(CL_LOG, "getSyncEventLock");
-    return &m_syncEventLock; 
+    return m_syncEventLock; 
 }
 
-Cond *
-FactoryOps::getSyncEventCond() 
+const Cond &
+FactoryOps::getSyncEventCond() const
 { 
     TRACE(CL_LOG, "getSyncEventCond");
-    return &m_syncEventCond; 
+    return m_syncEventCond; 
 }
 
-Mutex *
-FactoryOps::getEndEventLock() 
+const Mutex &
+FactoryOps::getEndEventLock() const 
 {
     TRACE(CL_LOG, "getEndEventLock");
-    return &m_endEventLock; 
+    return m_endEventLock; 
 }
 
 NameList
@@ -1509,7 +1539,8 @@ FactoryOps::registerTimer(TimerEventHandler *handler,
                           ClientData data)
 {
     Locker l(getTimersLock());
-    TimerEventPayload *tepp =
+ 
+   TimerEventPayload *tepp =
         new TimerEventPayload(afterMsecs, handler, data);
     TimerId id = m_timerEventSrc.scheduleAfter(afterMsecs, tepp);
 
@@ -1607,7 +1638,7 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
         getHandlerAndContextManager()->deleteCallbackAndContext(
             callbackAndContext);
     }
-    else if ((ep->getPath().find(ClusterlibStrings::PARTIALLOCKNODE) != 
+    else if ((ep->getPath().find(ClusterlibStrings::PARTIAL_LOCK_NODE) != 
           string::npos) && (etype == ZOO_DELETED_EVENT)) {
         notifyablePath = ep->getPath();
     }

@@ -31,8 +31,10 @@ class ClusterlibProcessThreadService : public MPITestFixture
         cleanAndBarrierMPITest(NULL, false);
     }
 
-    /* 
-     * Simple test to execute 'ls' when not capturing output.
+    /**
+     * Simple test to execute 'ls' when not capturing output.  Can't
+     * do current path, since this can cause a deadlock since files
+     * are being created in this path.
      */
     void testProcessThreadService1()
     {
@@ -43,7 +45,7 @@ class ClusterlibProcessThreadService : public MPITestFixture
                                     "testProcessThreadService1");
         vector<string> addEnv;
         string path;
-        string cmd = "/bin/ls -al";
+        string cmd = "/bin/ls -al /";
         pid_t processId = -1;
         int32_t returnCode = -1;
 
@@ -57,8 +59,11 @@ class ClusterlibProcessThreadService : public MPITestFixture
         MPI_CPPUNIT_ASSERT(returnCode == 0);
     }
 
-    /* 
-     * Simple test to execute 'ls' when capturing output.
+
+    /**
+     * Simple test to execute 'ls' when capturing output.  Can't
+     * do current path, since this can cause a deadlock since files
+     * are being created in this path.
      */
     void testProcessThreadService2()
     {
@@ -69,7 +74,7 @@ class ClusterlibProcessThreadService : public MPITestFixture
                                     "testProcessThreadService2");
         vector<string> addEnv;
         string path;
-        string cmd = "/bin/ls -al";
+        string cmd = "/bin/ls -al /";
         pid_t processId = -1;
         int32_t returnCode = -1;
         string stdoutOutput, stderrOutput;
