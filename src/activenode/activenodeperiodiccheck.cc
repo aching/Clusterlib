@@ -50,7 +50,7 @@ ActiveNodePeriodicCheck::run()
     JSONValue jsonShutdown;
     
     NotifyableLocker l(getNotifyable(),
-                       ClusterlibStrings::NOTIFYABLE_LOCK,
+                       CLString::NOTIFYABLE_LOCK,
                        DIST_LOCK_EXCL);
 
     getNotifyable()->cachedCurrentState().set(

@@ -42,7 +42,7 @@ RootImpl::getApplicationWaitMsecs(
     shared_ptr<NotifyableImpl> notifyableSP;
     bool completed = getOps()->getNotifyableWaitMsecs(
         shared_from_this(),
-        ClusterlibStrings::REGISTERED_APPLICATION_NAME,
+        CLString::REGISTERED_APPLICATION_NAME,
         name,
         accessType,
         msecTimeout,
@@ -70,7 +70,7 @@ RootImpl::getChildrenNotifyables()
     
     return getOps()->getNotifyableList(
         shared_from_this(),
-        ClusterlibStrings::REGISTERED_APPLICATION_NAME,
+        CLString::REGISTERED_APPLICATION_NAME,
         getApplicationNames(),
         LOAD_FROM_REPOSITORY);
 }

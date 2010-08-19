@@ -35,19 +35,19 @@ int main(int argc, char* argv[])
     auto_ptr<Factory> factory(new Factory(params.getZkServerPortList()));
     ActiveNode activeNode(params, factory.get());
     shared_ptr<Queue> recvQueueSP = activeNode.getActiveNode()->getQueue(
-        ClusterlibStrings::DEFAULT_RECV_QUEUE, 
+        CLString::DEFAULT_RECV_QUEUE, 
         CREATE_IF_NOT_FOUND);
     shared_ptr<Queue> completedQueueSP = activeNode.getActiveNode()->getQueue(
-        ClusterlibStrings::DEFAULT_COMPLETED_QUEUE, 
+        CLString::DEFAULT_COMPLETED_QUEUE, 
         CREATE_IF_NOT_FOUND);
     shared_ptr<PropertyList> rpcMethodHandlerPropertyListSP = 
         activeNode.getActiveNode()->getPropertyList(
-            ClusterlibStrings::DEFAULTPROPERTYLIST,
+            CLString::DEFAULT_PROPERTYLIST,
             CREATE_IF_NOT_FOUND);
     /* Try to clear the PropertyList if possible wihin 0.5 seconds */
     {
         NotifyableLocker l(rpcMethodHandlerPropertyListSP,
-                           ClusterlibStrings::NOTIFYABLE_LOCK,
+                           CLString::NOTIFYABLE_LOCK,
                            DIST_LOCK_EXCL,
                            500);
         if (l.hasLock()) {

@@ -86,7 +86,7 @@ NodeImpl::getProcessSlotWaitMsecs(
     shared_ptr<NotifyableImpl> notifyableSP;
     bool completed = getOps()->getNotifyableWaitMsecs(
         shared_from_this(),
-        ClusterlibStrings::REGISTERED_PROCESSSLOT_NAME,
+        CLString::REGISTERED_PROCESSSLOT_NAME,
         name,
         accessType,
         msecTimeout,
@@ -110,8 +110,8 @@ NodeImpl::createProcessSlotInfoJSONObjectKey(const string &nodeKey)
 {
     string res;
     res.append(nodeKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::PROCESSSLOT_INFO_JSON_OBJECT);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLStringInternal::PROCESSSLOT_INFO_JSON_OBJECT);
 
     return res;
 }
@@ -129,7 +129,7 @@ NodeImpl::getChildrenNotifyables()
     
     return getOps()->getNotifyableList(
         shared_from_this(),
-        ClusterlibStrings::REGISTERED_PROCESSSLOT_NAME,
+        CLString::REGISTERED_PROCESSSLOT_NAME,
         getProcessSlotNames(),
         LOAD_FROM_REPOSITORY);
 }

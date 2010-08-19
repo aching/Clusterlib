@@ -72,7 +72,7 @@ ZookeeperPeriodicCheck::run()
 
         if (getNotifyable() != NULL) {
             NotifyableLocker l(m_nodeSPVec[i],
-                               ClusterlibStrings::NOTIFYABLE_LOCK,
+                               CLString::NOTIFYABLE_LOCK,
                                DIST_LOCK_EXCL);
 
             m_nodeSPVec[i]->cachedCurrentState().set(
@@ -80,13 +80,13 @@ ZookeeperPeriodicCheck::run()
                 (ruokRes == "imok") ? Node::HEALTH_GOOD_VALUE : 
                 Node::HEALTH_BAD_VALUE);
             m_nodeSPVec[i]->cachedCurrentState().set(
-                ClusterlibStrings::ZK_RUOK_STATE_KEY, ruokRes);
+                CLString::ZK_RUOK_STATE_KEY, ruokRes);
             m_nodeSPVec[i]->cachedCurrentState().set(
-                ClusterlibStrings::ZK_ENVI_STATE_KEY, enviRes);
+                CLString::ZK_ENVI_STATE_KEY, enviRes);
             m_nodeSPVec[i]->cachedCurrentState().set(
-                ClusterlibStrings::ZK_REQS_STATE_KEY, reqsRes);
+                CLString::ZK_REQS_STATE_KEY, reqsRes);
             m_nodeSPVec[i]->cachedCurrentState().set(
-                ClusterlibStrings::ZK_STAT_STATE_KEY, statRes);
+                CLString::ZK_STAT_STATE_KEY, statRes);
             m_nodeSPVec[i]->cachedCurrentState().publish();
         }
     }
@@ -100,17 +100,17 @@ ZookeeperPeriodicCheck::run()
 
     if (getNotifyable() != NULL) {
         NotifyableLocker l(m_applicationSP,
-                           ClusterlibStrings::NOTIFYABLE_LOCK,
+                           CLString::NOTIFYABLE_LOCK,
                            DIST_LOCK_EXCL);
 
         m_applicationSP->cachedCurrentState().set(
-            ClusterlibStrings::ZK_AGG_NODES_STATE_KEY, 
+            CLString::ZK_AGG_NODES_STATE_KEY, 
             m_aggNodeStateObj);
         int64_t currentMsecs = TimerService::getCurrentTimeMsecs();
         m_applicationSP->cachedCurrentState().set(
-            ClusterlibStrings::STATE_SET_MSECS, currentMsecs);
+            CLString::STATE_SET_MSECS, currentMsecs);
         m_applicationSP->cachedCurrentState().set(
-            ClusterlibStrings::STATE_SET_MSECS_AS_DATE, 
+            CLString::STATE_SET_MSECS_AS_DATE, 
             TimerService::getMsecsTimeString(currentMsecs));
         m_applicationSP->cachedCurrentState().publish();
     }
@@ -159,7 +159,7 @@ ZookeeperPeriodicCheck::ZookeeperPeriodicCheck(
             nodeSP = 
                 m_applicationSP->getNode(*componentVecIt, CREATE_IF_NOT_FOUND);
             
-            nodeSP->acquireLock(ClusterlibStrings::OWNERSHIP_LOCK,
+            nodeSP->acquireLock(CLString::OWNERSHIP_LOCK,
                                 DIST_LOCK_EXCL);
             m_nodeSPVec.push_back(nodeSP);
         }
@@ -180,7 +180,7 @@ ZookeeperPeriodicCheck::~ZookeeperPeriodicCheck()
     for (nodeVecIt = m_nodeSPVec.begin(); 
          nodeVecIt != m_nodeSPVec.end(); 
          ++nodeVecIt) {
-        (*nodeVecIt)->releaseLock(ClusterlibStrings::OWNERSHIP_LOCK);
+        (*nodeVecIt)->releaseLock(CLString::OWNERSHIP_LOCK);
     }
 }
 

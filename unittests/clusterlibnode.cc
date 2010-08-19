@@ -65,7 +65,7 @@ class ClusterlibNode : public MPITestFixture
             MPI_CPPUNIT_ASSERT(_node0);
             
             NotifyableLocker l(_node0,
-                               ClusterlibStrings::NOTIFYABLE_LOCK,
+                               CLString::NOTIFYABLE_LOCK,
                                DIST_LOCK_EXCL);
 
             _node0->cachedProcessSlotInfo().setEnable(true);

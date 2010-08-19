@@ -142,15 +142,6 @@ class NotifyableKeyManipulator
                                      const std::string &nodeName);
 
     /**
-     * Generate the notifyable state as a JSON Object key
-     *
-     * @param notifyableKey the name of the notifyable key
-     * @return the generated notifyable state key
-     */
-    static std::string createNotifyableStateJSONObjectKey(
-        const std::string &notifyableKey);
-
-    /**
      * Generate the a generic JSON object key for a notifyable
      * 
      * @param notifyableKey the name of the notifyableKey
@@ -198,13 +189,6 @@ class NotifyableKeyManipulator
     static std::string createQueueParentKey(
         const std::string &queueKey);
 
-    static std::string createShardsKey(const std::string &distKey);
-    static std::string createKeyValsKey(const std::string &propListkey);
-
-    static std::string createProcessSlotsUsageKey(
-        const std::string &notifyableKey);
-    static std::string createProcessSlotsMaxKey(
-        const std::string &notifyableKey);
     static std::string createQueuePrefixKey(
         const std::string &notifyableKey);
 
@@ -242,7 +226,7 @@ class NotifyableKeyManipulator
      * .../group/client/nodes/foo-server, it will return
      * .../group/client.  If the key is .../applications/foo-app, it
      * will return an empty string since they is nothing left. The key
-     * must not end in a KEYSEPARATOR.
+     * must not end in a CLString::KEY_SEPARATOR.
      *
      * @param key a path to be trimmed * @return trimmed key or empty 
      *            string if no parent clusterlib object key
@@ -260,7 +244,7 @@ class NotifyableKeyManipulator
      * return elements that include
      * .../_group/client.  If the components are .../applications/foo-app, it
      * will return an empty string since they is nothing left. The key
-     * must not end in a KEYSEPARATOR.
+     * must not end in a CLString::KEY_SEPARATOR.
      *
      * @param components A vector of components in the key parsed by split
      *                   (i.e. first component should be "")

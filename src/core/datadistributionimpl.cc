@@ -66,8 +66,8 @@ DataDistributionImpl::createShardJsonObjectKey(
 {
     string res;
     res.append(dataDistributionKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::SHARD_JSON_OBJECT);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLStringInternal::SHARD_JSON_OBJECT);
 
     return res;
 }

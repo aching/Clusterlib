@@ -35,7 +35,7 @@ class ClusterlibHealthCheck : public MPITestFixture
             }
 
             NotifyableLocker l(notifyableSP,
-                               ClusterlibStrings::NOTIFYABLE_LOCK,
+                               CLString::NOTIFYABLE_LOCK,
                                DIST_LOCK_EXCL);
 
             notifyableSP->cachedCurrentState().set(
@@ -124,10 +124,10 @@ class ClusterlibHealthCheck : public MPITestFixture
 
             string id;
             int64_t time;
-            _node0->acquireLock(ClusterlibStrings::OWNERSHIP_LOCK,
+            _node0->acquireLock(CLString::OWNERSHIP_LOCK,
                                 DIST_LOCK_EXCL);
             bool hasOwner = _node0->getLockInfo(
-                ClusterlibStrings::OWNERSHIP_LOCK, &id, NULL, &time);
+                CLString::OWNERSHIP_LOCK, &id, NULL, &time);
             MPI_CPPUNIT_ASSERT(hasOwner == true);
             cerr << "testHealthCheck1: hasOwner=" << hasOwner 
                  << ",id=" << id << ",time=" << time << endl << endl;
@@ -147,7 +147,7 @@ class ClusterlibHealthCheck : public MPITestFixture
                                Node::HEALTH_GOOD_VALUE);
 
             _factory->cancelPeriodicThread(_healthUpdater);
-            _node0->releaseLock(ClusterlibStrings::OWNERSHIP_LOCK);
+            _node0->releaseLock(CLString::OWNERSHIP_LOCK);
         }
     }
 
@@ -163,12 +163,12 @@ class ClusterlibHealthCheck : public MPITestFixture
                                     "testHealthCheck2");
         bool cancelled = _factory->cancelPeriodicThread(_healthUpdater);
         MPI_CPPUNIT_ASSERT(cancelled == false);
-        _node0->acquireLock(ClusterlibStrings::OWNERSHIP_LOCK,
+        _node0->acquireLock(CLString::OWNERSHIP_LOCK,
 DIST_LOCK_EXCL);
         /* Do nothing */
         _healthUpdater.setNotifyable(shared_ptr<Notifyable>());
         _factory->registerPeriodicThread(_healthUpdater);
-        _node0->releaseLock(ClusterlibStrings::OWNERSHIP_LOCK);
+        _node0->releaseLock(CLString::OWNERSHIP_LOCK);
         /* Even though cancelPeriodicThread() is not called,
          * things should be cleaned up without any exceptions or
          * memory leaks */
@@ -201,7 +201,7 @@ DIST_LOCK_EXCL);
                 Node::HEALTH_KEY, jsonHealth);
             MPI_CPPUNIT_ASSERT(found == false);
 
-            _node0->acquireLock(ClusterlibStrings::OWNERSHIP_LOCK,
+            _node0->acquireLock(CLString::OWNERSHIP_LOCK,
 DIST_LOCK_EXCL);
             _healthUpdater.setNotifyable(_node0);
             _healthUpdater.setHealth(Node::HEALTH_GOOD_VALUE);
@@ -257,7 +257,7 @@ DIST_LOCK_EXCL);
 
         if (isMyRank(0)) {
             _factory->cancelPeriodicThread(_healthUpdater);
-            _node0->releaseLock(ClusterlibStrings::OWNERSHIP_LOCK);
+            _node0->releaseLock(CLString::OWNERSHIP_LOCK);
         }
    }
 

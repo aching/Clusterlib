@@ -164,7 +164,7 @@ GetLockBids::action()
     
     bool children = getArg(CliCommand::CHILDREN_ARG).getBoolArg();
     NameList lockBids = notifyableSP->getLockBids(
-        ClusterlibStrings::NOTIFYABLE_LOCK,
+        CLString::NOTIFYABLE_LOCK,
         children);
     NameList::const_iterator lockBidsIt;
     for (lockBidsIt = lockBids.begin(); 
@@ -386,7 +386,7 @@ GetAttributes::action()
     string id;
     int64_t msecs;
     bool hasOwner = notifyableSP->getLockInfo(
-        ClusterlibStrings::OWNERSHIP_LOCK, &id, NULL, &msecs);
+        CLString::OWNERSHIP_LOCK, &id, NULL, &msecs);
     CliFormat::attributeOut("has owner", hasOwner); 
     if (hasOwner) {
         CliFormat::attributeOut("owner id", id);
@@ -1022,7 +1022,7 @@ JSONRPCCommand::action()
         paramValue.get<JSONValue::JSONArray>();
     JSONValue::JSONObject paramObj = 
         paramArr[0].get<JSONValue::JSONObject>();
-    paramObj[ClusterlibStrings::JSONOBJECTKEY_RESPQUEUEKEY] = 
+    paramObj[CLString::JSONOBJECTKEY_RESPQUEUEKEY] = 
         m_respQueueSP->getKey();
     paramArr.clear();
     paramArr.push_back(paramObj);
@@ -1105,7 +1105,7 @@ ManageProcessSlot::action()
     }
 
     NotifyableLocker l(processSlotSP,
-                       ClusterlibStrings::NOTIFYABLE_LOCK,
+                       CLString::NOTIFYABLE_LOCK,
                        DIST_LOCK_EXCL);
 
     processSlotSP->cachedDesiredState().set(
@@ -1154,7 +1154,7 @@ ManageActiveNode::action()
     }
 
     NotifyableLocker l(nodeSP, 
-                       ClusterlibStrings::NOTIFYABLE_LOCK,
+                       CLString::NOTIFYABLE_LOCK,
                        DIST_LOCK_EXCL);
 
     bool start = getArg(ManageActiveNode::START_ARG).getBoolArg();

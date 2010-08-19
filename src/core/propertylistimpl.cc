@@ -68,8 +68,8 @@ PropertyListImpl::createKeyValJsonObjectKey(const string &propertyListKey)
 {
     string res;
     res.append(propertyListKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::KEYVAL_JSON_OBJECT);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLStringInternal::KEYVAL_JSON_OBJECT);
 
     return res;
 }

@@ -20,7 +20,7 @@ namespace clusterlib {
 const string &
 RegisteredQueueImpl::registeredName() const
 {
-    return ClusterlibStrings::REGISTERED_QUEUE_NAME;
+    return CLString::REGISTERED_QUEUE_NAME;
 }
 
 string
@@ -35,9 +35,9 @@ RegisteredQueueImpl::isValidName(const string &name) const
 {
     TRACE(CL_LOG, "isValidName");
 
-    if ((name.compare(ClusterlibStrings::DEFAULT_RECV_QUEUE) != 0) &&
-        (name.compare(ClusterlibStrings::DEFAULT_RESP_QUEUE) != 0) &&
-        (name.compare(ClusterlibStrings::DEFAULT_COMPLETED_QUEUE) != 0) &&
+    if ((name.compare(CLString::DEFAULT_RECV_QUEUE) != 0) &&
+        (name.compare(CLString::DEFAULT_RESP_QUEUE) != 0) &&
+        (name.compare(CLString::DEFAULT_COMPLETED_QUEUE) != 0) &&
         !NotifyableKeyManipulator::isValidNotifyableName(name)) {
         LOG_WARN(CL_LOG,
                  "isValidName: Illegal Queue name %s",
@@ -103,8 +103,8 @@ RegisteredQueueImpl::isValidKey(const vector<string> &components,
      * after the Application key there are an even number of elements
      * left.
      */
-    if ((elements < ClusterlibInts::QUEUE_COMPONENTS_MIN_COUNT) ||
-        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
+    if ((elements < CLNumericInternal::QUEUE_COMPONENTS_MIN_COUNT) ||
+        (((elements - CLNumericInternal::APP_COMPONENTS_COUNT) % 2) != 0))  {
         return false;
     }
 
@@ -112,11 +112,11 @@ RegisteredQueueImpl::isValidKey(const vector<string> &components,
      * Check that the elements of the parent notifyable are valid.
      */
     vector<string> nameVec;
-    nameVec.push_back(ClusterlibStrings::REGISTERED_ROOT_NAME);
-    nameVec.push_back(ClusterlibStrings::REGISTERED_GROUP_NAME);
-    nameVec.push_back(ClusterlibStrings::REGISTERED_DATADISTRIBUTION_NAME);
-    nameVec.push_back(ClusterlibStrings::REGISTERED_NODE_NAME);
-    nameVec.push_back(ClusterlibStrings::REGISTERED_PROCESSSLOT_NAME);
+    nameVec.push_back(CLString::REGISTERED_ROOT_NAME);
+    nameVec.push_back(CLString::REGISTERED_GROUP_NAME);
+    nameVec.push_back(CLString::REGISTERED_DATADISTRIBUTION_NAME);
+    nameVec.push_back(CLString::REGISTERED_NODE_NAME);
+    nameVec.push_back(CLString::REGISTERED_PROCESSSLOT_NAME);
     if (!getOps()->isValidKey(nameVec, components, elements - 2)) {
         return false;
     }
@@ -125,7 +125,7 @@ RegisteredQueueImpl::isValidKey(const vector<string> &components,
      * Check that the second to the last element is QUEUES and
      * that the queue name is not empty.
      */
-    if ((components.at(elements - 2) != ClusterlibStrings::QUEUES) ||
+    if ((components.at(elements - 2) != CLString::QUEUE_DIR) ||
         (components.at(elements - 1).empty() == true)) {
         return false;
     } 

@@ -20,7 +20,7 @@ namespace clusterlib {
 const string &
 RegisteredRootImpl::registeredName() const
 {
-    return ClusterlibStrings::REGISTERED_ROOT_NAME;
+    return CLString::REGISTERED_ROOT_NAME;
 }
 
 string
@@ -35,7 +35,7 @@ RegisteredRootImpl::isValidName(const string &name) const
 {
     TRACE(CL_LOG, "isValidName");
 
-    if (name.compare(ClusterlibStrings::ROOT)) {
+    if (name.compare(CLString::ROOT_DIR)) {
         return false;
     }
     else {
@@ -91,14 +91,14 @@ RegisteredRootImpl::isValidKey(const vector<string> &components,
         elements = components.size();
     }
 
-    if (elements != ClusterlibInts::ROOT_COMPONENTS_COUNT) {
+    if (elements != CLNumericInternal::ROOT_COMPONENTS_COUNT) {
         return false;
     }
 
-    if ((components.at(ClusterlibInts::CLUSTERLIB_INDEX) != 
-         ClusterlibStrings::CLUSTERLIB) ||
-        (components.at(ClusterlibInts::ROOT_INDEX) != 
-         ClusterlibStrings::ROOT)) {
+    if ((components.at(CLNumericInternal::CLUSTERLIB_INDEX) != 
+         CLStringInternal::CLUSTERLIB) ||
+        (components.at(CLNumericInternal::ROOT_INDEX) != 
+         CLString::ROOT_DIR)) {
         return false;
     } 
 
@@ -143,7 +143,7 @@ RegisteredRootImpl::getObjectFromComponents(
      */
     return getOps()->getNotifyableWaitMsecs(
         shared_ptr<NotifyableImpl>(),
-        ClusterlibStrings::REGISTERED_ROOT_NAME,
+        CLString::REGISTERED_ROOT_NAME,
         components.at(elements - 1),
         CACHED_ONLY,
         msecTimeout,

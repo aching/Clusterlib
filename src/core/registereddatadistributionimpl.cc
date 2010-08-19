@@ -20,7 +20,7 @@ namespace clusterlib {
 const string &
 RegisteredDataDistributionImpl::registeredName() const
 {
-    return ClusterlibStrings::REGISTERED_DATADISTRIBUTION_NAME;
+    return CLString::REGISTERED_DATADISTRIBUTION_NAME;
 }
 
 string
@@ -92,8 +92,8 @@ RegisteredDataDistributionImpl::isValidKey(const vector<string> &components,
      * and that after the Application key there are an even number of
      * elements left.
      */
-    if ((elements < ClusterlibInts::DIST_COMPONENTS_MIN_COUNT) ||
-        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
+    if ((elements < CLNumericInternal::DIST_COMPONENTS_MIN_COUNT) ||
+        (((elements - CLNumericInternal::APP_COMPONENTS_COUNT) % 2) != 0))  {
         return false;
     }
 
@@ -101,8 +101,8 @@ RegisteredDataDistributionImpl::isValidKey(const vector<string> &components,
      * Check that the elements of the parent group are valid.
      */
     vector<string> nameVec;
-    nameVec.push_back(ClusterlibStrings::REGISTERED_APPLICATION_NAME);
-    nameVec.push_back(ClusterlibStrings::REGISTERED_GROUP_NAME);
+    nameVec.push_back(CLString::REGISTERED_APPLICATION_NAME);
+    nameVec.push_back(CLString::REGISTERED_GROUP_NAME);
     if (!getOps()->isValidKey(nameVec, components, elements - 2)) {
         return false;
     }
@@ -111,7 +111,7 @@ RegisteredDataDistributionImpl::isValidKey(const vector<string> &components,
      * Check that the second to the last element is DISTRIBUTIONS and
      * that the distribution name is not empty.
      */
-    if ((components.at(elements - 2) != ClusterlibStrings::DISTRIBUTIONS) ||
+    if ((components.at(elements - 2) != CLString::DATADISTRIBUTION_DIR) ||
         (components.at(elements - 1).empty() == true)) {
         return false;
     } 

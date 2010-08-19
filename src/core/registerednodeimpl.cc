@@ -20,7 +20,7 @@ namespace clusterlib {
 const string &
 RegisteredNodeImpl::registeredName() const
 {
-    return ClusterlibStrings::REGISTERED_NODE_NAME;
+    return CLString::REGISTERED_NODE_NAME;
 }
 
 string
@@ -93,8 +93,8 @@ RegisteredNodeImpl::isValidKey(const vector<string> &components,
      * and that after the Application key there are an even number of
      * elements left.
      */
-    if ((elements < ClusterlibInts::NODE_COMPONENTS_MIN_COUNT) ||
-        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
+    if ((elements < CLNumericInternal::NODE_COMPONENTS_MIN_COUNT) ||
+        (((elements - CLNumericInternal::APP_COMPONENTS_COUNT) % 2) != 0))  {
         return false;
     }
 
@@ -103,7 +103,7 @@ RegisteredNodeImpl::isValidKey(const vector<string> &components,
      */
     RegisteredNotifyable *regGroup = NULL;
     regGroup = getOps()->getRegisteredNotifyable(
-        ClusterlibStrings::REGISTERED_GROUP_NAME, true);
+        CLString::REGISTERED_GROUP_NAME, true);
     if (!regGroup->isValidKey(components, elements - 2)) {
         return false;
     }
@@ -112,7 +112,7 @@ RegisteredNodeImpl::isValidKey(const vector<string> &components,
      * Check that the second to the last element is NODES and
      * that the distribution name is not empty.
      */
-    if ((components.at(elements - 2) != ClusterlibStrings::NODES) ||
+    if ((components.at(elements - 2) != CLString::NODE_DIR) ||
         (components.at(elements - 1).empty() == true)) {
         return false;
     } 

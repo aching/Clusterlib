@@ -20,7 +20,7 @@ namespace clusterlib {
 const string &
 RegisteredApplicationImpl::registeredName() const
 {
-    return ClusterlibStrings::REGISTERED_APPLICATION_NAME;
+    return CLString::REGISTERED_APPLICATION_NAME;
 }
 
 string
@@ -35,7 +35,7 @@ RegisteredApplicationImpl::isValidName(const string &name) const
 {
     TRACE(CL_LOG, "isValidName");
 
-    if ((name.compare(ClusterlibStrings::DEFAULT_CLI_APPLICATION)) &&
+    if ((name.compare(CLString::DEFAULT_CLI_APPLICATION)) &&
         (!NotifyableKeyManipulator::isValidNotifyableName(name))) {
         LOG_WARN(CL_LOG,
                  "isValidName: Illegal Application name %s",
@@ -102,16 +102,16 @@ RegisteredApplicationImpl::isValidKey(const vector<string> &components,
         elements = components.size();
     }
 
-    if (elements != ClusterlibInts::APP_COMPONENTS_COUNT) {
+    if (elements != CLNumericInternal::APP_COMPONENTS_COUNT) {
         return false;
     }
 
-    if ((components.at(ClusterlibInts::CLUSTERLIB_INDEX) != 
-         ClusterlibStrings::CLUSTERLIB) ||
-        (components.at(ClusterlibInts::ROOT_INDEX) != 
-         ClusterlibStrings::ROOT) ||
-        (components.at(ClusterlibInts::APP_INDEX) != 
-         ClusterlibStrings::APPLICATIONS)) {
+    if ((components.at(CLNumericInternal::CLUSTERLIB_INDEX) != 
+         CLStringInternal::CLUSTERLIB) ||
+        (components.at(CLNumericInternal::ROOT_INDEX) != 
+         CLString::ROOT_DIR) ||
+        (components.at(CLNumericInternal::APP_INDEX) != 
+         CLString::APPLICATION_DIR)) {
         return false;
     } 
 
@@ -122,7 +122,7 @@ RegisteredApplicationImpl::RegisteredApplicationImpl(FactoryOps *factoryOps)
     : RegisteredNotifyableImpl(factoryOps) 
 {
     setRegisteredParentNameVec(
-        vector<string>(1, ClusterlibStrings::REGISTERED_ROOT_NAME));
+        vector<string>(1, CLString::REGISTERED_ROOT_NAME));
 }
 
 }	/* End of 'namespace clusterlib' */

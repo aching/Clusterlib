@@ -20,7 +20,7 @@ namespace clusterlib {
 const string &
 RegisteredPropertyListImpl::registeredName() const
 {
-    return ClusterlibStrings::REGISTERED_PROPERTYLIST_NAME;
+    return CLString::REGISTERED_PROPERTYLIST_NAME;
 }
 
 string
@@ -35,7 +35,7 @@ RegisteredPropertyListImpl::isValidName(const string &name) const
 {
     TRACE(CL_LOG, "isValidName");
 
-    if ((name.compare(ClusterlibStrings::DEFAULTPROPERTYLIST)) &&
+    if ((name.compare(CLString::DEFAULT_PROPERTYLIST)) &&
         (!NotifyableKeyManipulator::isValidNotifyableName(name))) {
         LOG_WARN(CL_LOG,
                  "isValidName: Illegal PropertyList name '%s'",
@@ -102,8 +102,8 @@ RegisteredPropertyListImpl::isValidKey(const vector<string> &components,
      * and that after the Application key there are an even number of
      * elements left.
      */
-    if ((elements < ClusterlibInts::PROP_COMPONENTS_MIN_COUNT) ||
-        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
+    if ((elements < CLNumericInternal::PROP_COMPONENTS_MIN_COUNT) ||
+        (((elements - CLNumericInternal::APP_COMPONENTS_COUNT) % 2) != 0))  {
         return false;
     }
 
@@ -119,7 +119,7 @@ RegisteredPropertyListImpl::isValidKey(const vector<string> &components,
      * Check that the second to the last element is PROPERTYLISTS and
      * that the property list name is not empty.
      */
-    if ((components.at(elements - 2) != ClusterlibStrings::PROPERTYLISTS) ||
+    if ((components.at(elements - 2) != CLString::PROPERTYLIST_DIR) ||
         (components.at(elements - 1).empty() == true)) {
         return false;
     } 

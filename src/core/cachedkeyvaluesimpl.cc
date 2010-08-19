@@ -198,9 +198,9 @@ CachedKeyValuesImpl::get(
                       getNotifyable()->getKey().c_str());
             return false;
         }
-        parentKey.append(ClusterlibStrings::KEYSEPARATOR);
-        parentKey.append(ClusterlibStrings::PROPERTYLISTS);
-        parentKey.append(ClusterlibStrings::KEYSEPARATOR);
+        parentKey.append(CLString::KEY_SEPARATOR);
+        parentKey.append(CLString::CLString::PROPERTYLIST_DIR);
+        parentKey.append(CLString::KEY_SEPARATOR);
         parentKey.append(getNotifyable()->getName());
 
         LOG_DEBUG(CL_LOG,
@@ -211,7 +211,7 @@ CachedKeyValuesImpl::get(
         getOps()->getNotifyableFromKeyWaitMsecs(
             vector<string>(
                 1, 
-                ClusterlibStrings::REGISTERED_PROPERTYLIST_NAME), 
+                CLString::REGISTERED_PROPERTYLIST_NAME), 
             parentKey,
             CACHED_ONLY,
             ancestorMsecTimeout,

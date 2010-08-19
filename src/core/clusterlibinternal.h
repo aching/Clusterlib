@@ -14,6 +14,8 @@
 #include "clusterlib.h"
 
 #include "log.h"
+#include "clstringinternal.h"
+#include "clnumericinternal.h"
 #include "intervaltree.h"
 #include "event.h"
 #include "signalmap.h"

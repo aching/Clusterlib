@@ -358,8 +358,8 @@ CachedShardsImpl::getAllShards(
                 Shard(dynamic_pointer_cast<Root>(
                           getOps()->getNotifyable(
                               shared_ptr<NotifyableImpl>(),
-                              ClusterlibStrings::REGISTERED_ROOT_NAME,
-                              ClusterlibStrings::ROOT,
+                              CLString::REGISTERED_ROOT_NAME,
+                              CLString::ROOT_DIR,
                               CACHED_ONLY)),
                       treeIt->getStartRange(),
                       treeIt->getEndRange(),
@@ -555,8 +555,8 @@ CachedShardsImpl::unmarshalShards(const string &encodedJsonArr)
                 Shard(dynamic_pointer_cast<Root>(
                           getOps()->getNotifyable(
                               shared_ptr<NotifyableImpl>(),
-                              ClusterlibStrings::REGISTERED_ROOT_NAME,
-                              ClusterlibStrings::ROOT,
+                              CLString::REGISTERED_ROOT_NAME,
+                              CLString::ROOT_DIR,
                               CACHED_ONLY)),
                       UnknownHashRange(shardMetadataArr[0]),
                       UnknownHashRange(shardMetadataArr[1]),

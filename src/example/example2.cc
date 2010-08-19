@@ -69,7 +69,7 @@ main(int ac, char **av)
 	cerr << "dist name = " << dst->getName() << endl;
 	cerr << "dist key = " << dst->getKey() << endl;
 
-	dst->acquireLock(ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+	dst->acquireLock(CLString::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
         dst->cachedShards().insert(Uint64HashRange(0),
                                    Uint64HashRange(99), 
                                    s0SP);
@@ -80,7 +80,7 @@ main(int ac, char **av)
                                    Uint64HashRange(299),
                                    s2SP);
 	dst->cachedShards().publish();
-	dst->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+	dst->releaseLock(CLString::NOTIFYABLE_LOCK);
 
         shared_ptr<Application> application1SP = dst->getMyApplication();
         if (application0SP != application1SP) {
@@ -101,9 +101,9 @@ main(int ac, char **av)
 
 	shared_ptr<PropertyList> properyList0SP = 
             application1SP->getPropertyList(
-                ClusterlibStrings::DEFAULTPROPERTYLIST, 
+                CLString::DEFAULT_PROPERTYLIST, 
                 CREATE_IF_NOT_FOUND);
-	properyList0SP->acquireLock(ClusterlibStrings::NOTIFYABLE_LOCK,
+	properyList0SP->acquireLock(CLString::NOTIFYABLE_LOCK,
                                     DIST_LOCK_EXCL);
         
         found = properyList0SP->cachedKeyValues().get(
@@ -116,7 +116,7 @@ main(int ac, char **av)
 	properyList0SP->cachedKeyValues().set("test", "passed");
 	properyList0SP->cachedKeyValues().set("weird", "yessir");
 	properyList0SP->cachedKeyValues().publish();
-	properyList0SP->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+	properyList0SP->releaseLock(CLString::NOTIFYABLE_LOCK);
 
         found = properyList0SP->cachedKeyValues().get("test", jsonValue);
 	cerr << "(application1SP) test2 (test) = " 
@@ -125,18 +125,18 @@ main(int ac, char **av)
 
 	shared_ptr<PropertyList> properyList1SP = 
             application0SP->getPropertyList(
-                ClusterlibStrings::DEFAULTPROPERTYLIST, CREATE_IF_NOT_FOUND);
+                CLString::DEFAULT_PROPERTYLIST, CREATE_IF_NOT_FOUND);
 	properyList1SP->cachedKeyValues().get("test", jsonValue);
         string test3 = jsonValue.get<JSONValue::JSONString>();
 	cerr << "(application0SP) test3 (test) = " << test3
 	     << " and should be passed " << endl;
 	
-	properyList0SP->acquireLock(ClusterlibStrings::NOTIFYABLE_LOCK,
+	properyList0SP->acquireLock(CLString::NOTIFYABLE_LOCK,
                                     DIST_LOCK_EXCL);
 	properyList0SP->cachedKeyValues().set("avery", "ching");
 	properyList0SP->cachedKeyValues().set("test", "good");
 	properyList0SP->cachedKeyValues().publish();
-	properyList0SP->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+	properyList0SP->releaseLock(CLString::NOTIFYABLE_LOCK);
 
 	properyList1SP->cachedKeyValues().get("test", jsonValue);
         test3 = jsonValue.get<JSONValue::JSONString>();
@@ -148,18 +148,18 @@ main(int ac, char **av)
 	     << " and should be ching " << endl;
 
 	shared_ptr<PropertyList> propertyList2SP = node0SP->getPropertyList(
-            ClusterlibStrings::DEFAULTPROPERTYLIST,
+            CLString::DEFAULT_PROPERTYLIST,
             CREATE_IF_NOT_FOUND);
 	propertyList2SP->cachedKeyValues().get("test", jsonValue);
         test3 = jsonValue.get<JSONValue::JSONString>();
 	cerr << "(node) test3 (test) = " << test3 
 	     << " and should be good " << endl;
 
-	propertyList2SP->acquireLock(ClusterlibStrings::NOTIFYABLE_LOCK,
+	propertyList2SP->acquireLock(CLString::NOTIFYABLE_LOCK,
                                      DIST_LOCK_EXCL);
 	propertyList2SP->cachedKeyValues().set("test", "node");
 	propertyList2SP->cachedKeyValues().publish();
-	propertyList2SP->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+	propertyList2SP->releaseLock(CLString::NOTIFYABLE_LOCK);
 
 	propertyList2SP->cachedKeyValues().get("test", jsonValue);
         test3 = jsonValue.get<JSONValue::JSONString>();

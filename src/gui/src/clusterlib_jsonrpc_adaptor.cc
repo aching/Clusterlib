@@ -256,7 +256,7 @@ MethodAdaptor::getNotifyableId(
 
     /* Find the locks and their bids of this notifyable */
     NameList bidList = notifyableSP->getLockBids(
-        ClusterlibStrings::NOTIFYABLE_LOCK, false);
+        CLString::NOTIFYABLE_LOCK, false);
     JSONValue::JSONArray bidArr;
     NameList::const_iterator bidListIt;
     for (bidListIt = bidList.begin();
@@ -271,7 +271,7 @@ MethodAdaptor::getNotifyableId(
     string ownerId;
     int64_t acquiredOwnerTime = -1;
     bool hasOwner =
-        notifyableSP->getLockInfo(ClusterlibStrings::OWNERSHIP_LOCK, 
+        notifyableSP->getLockInfo(CLString::OWNERSHIP_LOCK, 
                                   &ownerId, 
                                   NULL, 
                                   &acquiredOwnerTime);
@@ -684,7 +684,7 @@ MethodAdaptor::setNotifyableAttributesFromKey(
                             idPropertyListProperty) ||
                 !op.compare(addProperty)) {
                 NotifyableLocker l(propertyListSP,
-                                   ClusterlibStrings::NOTIFYABLE_LOCK,
+                                   CLString::NOTIFYABLE_LOCK,
                                    DIST_LOCK_EXCL,
                                    maxLockWaitMsecs);
 
@@ -773,7 +773,7 @@ MethodAdaptor::removeNotifyableAttributesFromKey(
                 dynamic_pointer_cast<PropertyList >(notifyableSP);
             if (!op.compare(idPropertyListProperty)) {
                 NotifyableLocker l(propertyListSP,
-                                   ClusterlibStrings::NOTIFYABLE_LOCK,
+                                   CLString::NOTIFYABLE_LOCK,
                                    DIST_LOCK_EXCL,
                                    maxLockWaitMsecs);
 
@@ -1225,7 +1225,7 @@ MethodAdaptor::getApplication(
         result["nodes"] = nodes;
         result["properties"] = getPropertyList(
             applicationSP->getPropertyList(
-                ClusterlibStrings::DEFAULTPROPERTYLIST, LOAD_FROM_REPOSITORY));
+                CLString::DEFAULT_PROPERTYLIST, LOAD_FROM_REPOSITORY));
         result["propertyLists"] = propertyLists;
         result["status"] = getOneApplicationStatus(applicationSP);
 
@@ -1295,7 +1295,7 @@ MethodAdaptor::getGroup(
         result["dataDistributions"] = dataDistributions;
         result["nodes"] = nodes;
         result["properties"] = getPropertyList(groupSP->getPropertyList(
-            ClusterlibStrings::DEFAULTPROPERTYLIST, LOAD_FROM_REPOSITORY));
+            CLString::DEFAULT_PROPERTYLIST, LOAD_FROM_REPOSITORY));
         result["propertyListObjects"] = propertyLists;
         result["status"] = getOneGroupStatus(groupSP);
 
@@ -1352,7 +1352,7 @@ MethodAdaptor::getDataDistribution(
         result["shards"] = shards;
         result["properties"] =
             getPropertyList(dataDistributionSP->getPropertyList(
-                ClusterlibStrings::DEFAULTPROPERTYLIST, LOAD_FROM_REPOSITORY));
+                CLString::DEFAULT_PROPERTYLIST, LOAD_FROM_REPOSITORY));
         result["status"] = getOneDataDistributionStatus(dataDistributionSP);
 
         return result;
@@ -1374,7 +1374,7 @@ MethodAdaptor::getNode(
             dynamic_pointer_cast<Node>(getNotifyable(name, idTypeNode));
         string ownerId;
         int64_t ownerAcquiredTime = -1;
-        nodeSP->getLockInfo(ClusterlibStrings::NOTIFYABLE_LOCK,
+        nodeSP->getLockInfo(CLString::NOTIFYABLE_LOCK,
                             &ownerId,
                             NULL, 
                             &ownerAcquiredTime);
@@ -1384,7 +1384,7 @@ MethodAdaptor::getNode(
         result["parent"] = getNotifyableId(nodeSP->getMyParent());
         result["status"] = getOneNodeStatus(nodeSP);
         result["properties"] = getPropertyList(nodeSP->getPropertyList(
-            ClusterlibStrings::DEFAULTPROPERTYLIST, CREATE_IF_NOT_FOUND));
+            CLString::DEFAULT_PROPERTYLIST, CREATE_IF_NOT_FOUND));
 
         return result;
     }
@@ -1475,7 +1475,7 @@ MethodAdaptor::getOneNodeStatus(
     const shared_ptr<Node> &nodeSP)
 {
     // Should change this to other condition
-    bool owner = nodeSP->getLockInfo(ClusterlibStrings::OWNERSHIP_LOCK);
+    bool owner = nodeSP->getLockInfo(CLString::OWNERSHIP_LOCK);
     JSONValue jsonHealth;
     bool healthy = false;
     bool found = 
@@ -1910,7 +1910,7 @@ MethodAdaptor::getChildrenLockBids(
     shared_ptr<Notifyable> notifyableSP = 
         m_rootSP->getNotifyableFromKey(notifyableKey);
     NameList bidList = notifyableSP->getLockBids(
-        ClusterlibStrings::NOTIFYABLE_LOCK, true);
+        CLString::NOTIFYABLE_LOCK, true);
     JSONValue::JSONArray bidArr;
     NameList::const_iterator bidListIt;
     for (bidListIt = bidList.begin();

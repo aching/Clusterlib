@@ -82,7 +82,7 @@ CachedDataImpl::CachedDataImpl(NotifyableImpl *pNotifyable)
     Locker l(&getCachedDataLock());
 
     memset(&m_stat, 0, sizeof(m_stat));
-    m_stat.version = ClusterlibInts::INITIAL_ZK_VERSION;
+    m_stat.version = CLNumeric::INITIAL_ZK_VERSION;
 }
 
 shared_ptr<NotifyableImpl>
@@ -118,7 +118,7 @@ CachedDataImpl::updateStat(const Stat &stat)
      * accept the new stat.  If the stat is older than our stat, this
      * is impossible to received updates about the past.
      */
-    if ((m_stat.version == ClusterlibInts::INITIAL_ZK_VERSION) ||
+    if ((m_stat.version == CLNumeric::INITIAL_ZK_VERSION) ||
         (m_stat.version < stat.version)) {
         m_stat = stat;
         return true;

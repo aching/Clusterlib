@@ -113,8 +113,8 @@ FactoryOps::FactoryOps(const string &registry, int64_t connectTimeout)
      * After all other initializations, get/create the root object.
      */
     getNotifyable(shared_ptr<NotifyableImpl>(),
-                  ClusterlibStrings::REGISTERED_ROOT_NAME, 
-                  ClusterlibStrings::ROOT,
+                  CLString::REGISTERED_ROOT_NAME, 
+                  CLString::ROOT_DIR,
                   CREATE_IF_NOT_FOUND);
 }
 
@@ -363,8 +363,8 @@ FactoryOps::synchronize()
         syncEventId = m_syncEventId;
     }
 
-    string key(ClusterlibStrings::ROOTNODE);
-    key.append(ClusterlibStrings::CLUSTERLIB);
+    string key(CLStringInternal::ROOT_ZNODE);
+    key.append(CLStringInternal::CLUSTERLIB);
 
     string syncEventKey = 
         NotifyableKeyManipulator::createSyncEventKey(syncEventId);
@@ -693,7 +693,7 @@ FactoryOps::dispatchExternalEvents(void *param)
                                   zp->getPath().c_str());
                         
                         if ((zp->getType() == ZOO_SESSION_EVENT) &&
-                            (zp->getPath().compare(ClusterlibStrings::SYNC) 
+                            (zp->getPath().compare(CLStringInternal::SYNC) 
                              != 0)) {
                             dispatchSessionEvent(zp);
                         } 
@@ -1094,7 +1094,7 @@ FactoryOps::getNotifyableWaitMsecs(
             distributedLockType = DIST_LOCK_EXCL;
         }
         DistributedLockType ownerDistributedLockType = DIST_LOCK_INIT;
-        hasMinimumLock = parentSP->hasLock(ClusterlibStrings::CHILD_LOCK, 
+        hasMinimumLock = parentSP->hasLock(CLString::CHILD_LOCK, 
                                            &ownerDistributedLockType);
         if (hasMinimumLock) {
             if ((distributedLockType == DIST_LOCK_EXCL) &&
@@ -1113,7 +1113,7 @@ FactoryOps::getNotifyableWaitMsecs(
             hasMinimumLock = getOps()->getDistributedLocks()->acquireWaitMsecs(
                 msecTimeout,
                 dynamic_pointer_cast<Notifyable>(parentSP),
-                ClusterlibStrings::CHILD_LOCK,
+                CLString::CHILD_LOCK,
                 distributedLockType);
             if (false == hasMinimumLock) {
                 return false;
@@ -1147,7 +1147,7 @@ FactoryOps::getNotifyableWaitMsecs(
     if ((true == hasMinimumLock) && (NULL != parentSP)) {
         getOps()->getDistributedLocks()->release(
             parentSP,
-            ClusterlibStrings::CHILD_LOCK);
+            CLString::CHILD_LOCK);
     }
 
     return true;
@@ -1177,7 +1177,7 @@ FactoryOps::isValidKey(const vector<string> &registeredNameVec,
     TRACE(CL_LOG, "isValidKey");
 
     vector<string> components;
-    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
+    split(components, key, is_any_of(CLString::KEY_SEPARATOR));
     return isValidKey(registeredNameVec, components, -1);
 }
 
@@ -1227,10 +1227,10 @@ FactoryOps::getNotifyableKeyFromKey(const string &key)
     TRACE(CL_LOG, "getNotifyableKeyFromKey");
 
     vector<string> components;
-    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
+    split(components, key, is_any_of(CLString::KEY_SEPARATOR));
 
     if (static_cast<int32_t>(components.size()) < 
-        ClusterlibInts::ROOT_COMPONENTS_COUNT) {
+        CLNumericInternal::ROOT_COMPONENTS_COUNT) {
         return string();
     }
 
@@ -1252,7 +1252,7 @@ FactoryOps::getNotifyableKeyFromKey(const string &key)
     }
     if (isValidKey(vector<string>(), components, components.size() -1)) {
         string res = key;
-        size_t keySeparator = res.rfind(ClusterlibStrings::KEYSEPARATOR);
+        size_t keySeparator = res.rfind(CLString::KEY_SEPARATOR);
         if (keySeparator == string::npos) {
             LOG_ERROR(CL_LOG,
                       "getNotifyableKeyFromKey: Couldn't find key "
@@ -1284,7 +1284,7 @@ FactoryOps::getNotifyableFromKeyWaitMsecs(
     TRACE(CL_LOG, "getNotifyableFromKeyWaitMsecs");
 
     vector<string> components;
-    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
+    split(components, key, is_any_of(CLString::KEY_SEPARATOR));
     LOG_DEBUG(CL_LOG, "getNotifyableFromKey: key %s", key.c_str());
     return getNotifyableFromComponents(registeredNameVec, 
                                        components, 
@@ -1476,7 +1476,7 @@ FactoryOps::getChildrenNames(
          */
         *nameListIt = nameListIt->substr(
             notifyableKey.length() + 
-            ClusterlibStrings::KEYSEPARATOR.length());
+            CLString::KEY_SEPARATOR.length());
     }
 
     return nameList;
@@ -1626,7 +1626,7 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
      * 1.  A sync event.
      * 2.  A lock node deleted event.
      */
-    if (ep->getPath().compare(ClusterlibStrings::SYNC) == 0) {
+    if (ep->getPath().compare(CLStringInternal::SYNC) == 0) {
         CallbackAndContext *callbackAndContext = 
             reinterpret_cast<CallbackAndContext *>(fehp);
         int64_t syncEventId = 
@@ -1638,7 +1638,7 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
         getHandlerAndContextManager()->deleteCallbackAndContext(
             callbackAndContext);
     }
-    else if ((ep->getPath().find(ClusterlibStrings::PARTIAL_LOCK_NODE) != 
+    else if ((ep->getPath().find(CLStringInternal::PARTIAL_LOCK_NODE) != 
           string::npos) && (etype == ZOO_DELETED_EVENT)) {
         notifyablePath = ep->getPath();
     }

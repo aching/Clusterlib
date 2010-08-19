@@ -81,14 +81,14 @@ ClusterlibRPCRequest::sendRequest()
         if (!getRespQueueKey().empty()) {
             if (m_paramArr.size() == 0) {
                 JSONValue::JSONObject jsonObj;
-                jsonObj[ClusterlibStrings::JSONOBJECTKEY_RESPQUEUEKEY] = 
+                jsonObj[CLString::JSONOBJECTKEY_RESPQUEUEKEY] = 
                     getRespQueueKey();
                 m_paramArr.push_back(jsonObj);
             }
             else {
                 JSONValue::JSONObject jsonObj = 
                     m_paramArr[0].get<JSONValue::JSONObject>();
-                jsonObj[ClusterlibStrings::JSONOBJECTKEY_RESPQUEUEKEY] = 
+                jsonObj[CLString::JSONOBJECTKEY_RESPQUEUEKEY] = 
                     getRespQueueKey();
                 m_paramArr[0] = jsonObj;
             }
@@ -313,7 +313,7 @@ ClusterlibRPCMethod::setMethodStatus(const string &status,
     int32_t retries = 0;
     string statusKey = 
         ProcessThreadService::getHostnamePidTid() + " " + 
-        ClusterlibStrings::PLK_RPCMANAGER_REQ_STATUS_POSTFIX;
+        CLString::PLK_RPCMANAGER_REQ_STATUS_POSTFIX;
     JSONValue::JSONInteger time;
     JSONValue::JSONString timeString;
     JSONValue::JSONArray allStatusArr;
@@ -323,7 +323,7 @@ ClusterlibRPCMethod::setMethodStatus(const string &status,
     string encodedJsonArr;
     while ((maxRetries == -1) || (retries <= maxRetries)) {
         NotifyableLocker l(propertyListSP,
-                           ClusterlibStrings::NOTIFYABLE_LOCK, 
+                           CLString::NOTIFYABLE_LOCK, 
                            DIST_LOCK_EXCL, 
                            100);
         if (l.hasLock()) {
@@ -439,7 +439,7 @@ ClusterlibRPCManager::invokeAndResp(const string &rpcInvocation,
         const JSONValue::JSONObject &paramObj = 
             paramArr[0].get<JSONValue::JSONObject>();
         jsonInputIt = paramObj.find(
-            ClusterlibStrings::JSONOBJECTKEY_RESPQUEUEKEY);
+            CLString::JSONOBJECTKEY_RESPQUEUEKEY);
         if (jsonInputIt != paramObj.end()) {
             string respQueueKey = 
             jsonInputIt->second.get<JSONValue::JSONString>();
@@ -509,7 +509,7 @@ ClusterlibRPCManager::setBasicRequestStatus(
     int32_t retries = 0;
     string basicStatusKey = 
         ProcessThreadService::getHostnamePidTid() + " " + 
-        ClusterlibStrings::PLK_RPCMANAGER_REQ_POSTFIX;
+        CLString::PLK_RPCMANAGER_REQ_POSTFIX;
     JSONValue::JSONArray jsonBasicStatusArr;
     JSONValue::JSONObject jsonStatusObj;
     jsonStatusObj["request"] = jsonRequest;
@@ -526,7 +526,7 @@ ClusterlibRPCManager::setBasicRequestStatus(
     JSONValue::JSONArray finalTimeArr;
     while ((maxRetries == -1) || (retries <= maxRetries)) {
         NotifyableLocker l(propertyListSP,
-                           ClusterlibStrings::NOTIFYABLE_LOCK,
+                           CLString::NOTIFYABLE_LOCK,
                            DIST_LOCK_EXCL,
                            100);
         if (l.hasLock()) {

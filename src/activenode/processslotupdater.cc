@@ -151,7 +151,7 @@ ProcessSlotUpdater::run()
     }
 
     NotifyableLocker l(processSlotSP,
-                       ClusterlibStrings::NOTIFYABLE_LOCK,
+                       CLString::NOTIFYABLE_LOCK,
                        DIST_LOCK_EXCL);
 
     LOG_DEBUG(CL_LOG,

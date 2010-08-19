@@ -20,7 +20,7 @@ namespace clusterlib {
 const string &
 RegisteredGroupImpl::registeredName() const
 {
-    return ClusterlibStrings::REGISTERED_GROUP_NAME;
+    return CLString::REGISTERED_GROUP_NAME;
 }
 
 string
@@ -89,8 +89,8 @@ RegisteredGroupImpl::isValidKey(const vector<string> &components,
      * and that after the Application key there are an even number of
      * elements left.
      */
-    if ((elements < ClusterlibInts::GROUP_COMPONENTS_MIN_COUNT) ||
-        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
+    if ((elements < CLNumericInternal::GROUP_COMPONENTS_MIN_COUNT) ||
+        (((elements - CLNumericInternal::APP_COMPONENTS_COUNT) % 2) != 0))  {
         return false;
     }
 
@@ -99,14 +99,14 @@ RegisteredGroupImpl::isValidKey(const vector<string> &components,
      * application are valid.
      */
     RegisteredNotifyable *regApplication = NULL;
-    if (elements == ClusterlibInts::APP_COMPONENTS_COUNT) {
+    if (elements == CLNumericInternal::APP_COMPONENTS_COUNT) {
         regApplication = getOps()->getRegisteredNotifyable(
-            ClusterlibStrings::REGISTERED_APPLICATION_NAME, true);
+            CLString::REGISTERED_APPLICATION_NAME, true);
         if (!regApplication->isValidKey(components, elements)) {
             return false;
         }
     }
-    else if (elements >= ClusterlibInts::APP_COMPONENTS_COUNT + 2) {
+    else if (elements >= CLNumericInternal::APP_COMPONENTS_COUNT + 2) {
         if (!isValidKey(components, elements - 2)) {
             return false;
         }
@@ -122,8 +122,8 @@ RegisteredGroupImpl::isValidKey(const vector<string> &components,
      * Check that the second to the last element is APPLICATIONS or GROUPS and
      * that the group name is not empty.
      */
-    if (((components.at(elements - 2) != ClusterlibStrings::APPLICATIONS) &&
-         (components.at(elements - 2) != ClusterlibStrings::GROUPS)) ||
+    if (((components.at(elements - 2) != CLString::APPLICATION_DIR) &&
+         (components.at(elements - 2) != CLString::GROUP_DIR)) ||
         (components.at(elements - 1).empty() == true)) {
         return false;
     } 
@@ -161,7 +161,7 @@ RegisteredGroupImpl::getObjectFromComponents(
      * is a Group, this function will call itself recursively.
      */
     RegisteredNotifyable *regApplication = getOps()->getRegisteredNotifyable(
-        ClusterlibStrings::REGISTERED_APPLICATION_NAME, true);
+        CLString::REGISTERED_APPLICATION_NAME, true);
     if (regApplication->isValidKey(components, elements)) {
         return regApplication->getObjectFromComponents(
             components, elements, accessType, msecTimeout, pNotifyableSP);
@@ -211,7 +211,7 @@ RegisteredGroupImpl::getObjectFromComponents(
 
     return getOps()->getNotifyableWaitMsecs(
         parentSP,
-        ClusterlibStrings::REGISTERED_GROUP_NAME,
+        CLString::REGISTERED_GROUP_NAME,
         components.at(elements - 1),
         accessType,
         msecTimeout,

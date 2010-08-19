@@ -44,7 +44,7 @@ GroupImpl::getNodeWaitMsecs(
     shared_ptr<NotifyableImpl> notifyableSP;
     bool completed = getOps()->getNotifyableWaitMsecs(
         shared_from_this(),
-        ClusterlibStrings::REGISTERED_NODE_NAME,
+        CLString::REGISTERED_NODE_NAME,
         name,
         accessType,
         msecTimeout,
@@ -89,7 +89,7 @@ GroupImpl::getGroupWaitMsecs(
     shared_ptr<NotifyableImpl> notifyableSP;
     bool completed = getOps()->getNotifyableWaitMsecs(
         shared_from_this(),
-        ClusterlibStrings::REGISTERED_GROUP_NAME,
+        CLString::REGISTERED_GROUP_NAME,
         name,
         accessType,
         msecTimeout,
@@ -134,7 +134,7 @@ GroupImpl::getDataDistributionWaitMsecs(
     shared_ptr<NotifyableImpl> notifyableSP;
     bool completed = getOps()->getNotifyableWaitMsecs(
         shared_from_this(),
-        ClusterlibStrings::REGISTERED_DATADISTRIBUTION_NAME,
+        CLString::REGISTERED_DATADISTRIBUTION_NAME,
         name,
         accessType,
         msecTimeout,
@@ -168,19 +168,19 @@ GroupImpl::getChildrenNotifyables()
     NotifyableList tmpList, finalList;
     tmpList = getOps()->getNotifyableList(
         shared_from_this(),
-        ClusterlibStrings::REGISTERED_NODE_NAME,
+        CLString::REGISTERED_NODE_NAME,
         getNodeNames(),
         LOAD_FROM_REPOSITORY);
     finalList.insert(finalList.end(), tmpList.begin(), tmpList.end());
     tmpList = getOps()->getNotifyableList(
         shared_from_this(),
-        ClusterlibStrings::REGISTERED_GROUP_NAME,
+        CLString::REGISTERED_GROUP_NAME,
         getGroupNames(),
         LOAD_FROM_REPOSITORY);
     finalList.insert(finalList.end(), tmpList.begin(), tmpList.end());
     tmpList = getOps()->getNotifyableList(
         shared_from_this(),
-        ClusterlibStrings::REGISTERED_DATADISTRIBUTION_NAME,
+        CLString::REGISTERED_DATADISTRIBUTION_NAME,
         getDataDistributionNames(),
         LOAD_FROM_REPOSITORY);
     finalList.insert(finalList.end(), tmpList.begin(), tmpList.end());

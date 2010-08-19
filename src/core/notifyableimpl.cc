@@ -62,7 +62,7 @@ NotifyableImpl::getPropertyListWaitMsecs(
     shared_ptr<NotifyableImpl> notifyableSP;
     bool completed = getOps()->getNotifyableWaitMsecs(
         shared_from_this(),
-        ClusterlibStrings::REGISTERED_PROPERTYLIST_NAME,
+        CLString::REGISTERED_PROPERTYLIST_NAME,
         name,
         accessType,
         msecTimeout,
@@ -107,7 +107,7 @@ NotifyableImpl::getQueueWaitMsecs(
     shared_ptr<NotifyableImpl> notifyableSP;
     bool completed = getOps()->getNotifyableWaitMsecs(
         shared_from_this(),
-        ClusterlibStrings::REGISTERED_QUEUE_NAME,
+        CLString::REGISTERED_QUEUE_NAME,
         name,
         accessType,
         msecTimeout,
@@ -155,13 +155,13 @@ NotifyableImpl::getMyChildren()
     NotifyableList tmpList, finalList;
     tmpList = getOps()->getNotifyableList(
         shared_from_this(),
-        ClusterlibStrings::REGISTERED_PROPERTYLIST_NAME,
+        CLString::REGISTERED_PROPERTYLIST_NAME,
         getPropertyListNames(),
         LOAD_FROM_REPOSITORY);
     finalList.insert(finalList.end(), tmpList.begin(), tmpList.end());
     tmpList = getOps()->getNotifyableList(
         shared_from_this(),
-        ClusterlibStrings::REGISTERED_QUEUE_NAME,
+        CLString::REGISTERED_QUEUE_NAME,
         getQueueNames(),
         LOAD_FROM_REPOSITORY);
     finalList.insert(finalList.end(), tmpList.begin(), tmpList.end());
@@ -193,7 +193,7 @@ NotifyableImpl::getMyApplicationWaitMsecs(
     do {
         completed = getOps()->getNotifyableFromKeyWaitMsecs(
             vector<string>(1, 
-                           ClusterlibStrings::REGISTERED_APPLICATION_NAME),
+                           CLString::REGISTERED_APPLICATION_NAME),
             applicationKey, 
             LOAD_FROM_REPOSITORY,
             msecTimeout,
@@ -243,7 +243,7 @@ NotifyableImpl::getMyGroupWaitMsecs(
         groupKey = NotifyableKeyManipulator::removeObjectFromKey(groupKey);
         completed = getOps()->getNotifyableFromKeyWaitMsecs(
             vector<string>(1, 
-                           ClusterlibStrings::REGISTERED_GROUP_NAME),
+                           CLString::REGISTERED_GROUP_NAME),
             groupKey, 
             LOAD_FROM_REPOSITORY,
             msecTimeout,
@@ -651,8 +651,8 @@ NotifyableImpl::remove(bool removeChildren)
      * 'external' event thread. 
      */
 
-    parent->acquireLock(ClusterlibStrings::CHILD_LOCK, DIST_LOCK_EXCL);
-    acquireLock(ClusterlibStrings::CHILD_LOCK, 
+    parent->acquireLock(CLString::CHILD_LOCK, DIST_LOCK_EXCL);
+    acquireLock(CLString::CHILD_LOCK, 
                 DIST_LOCK_EXCL, 
                 removeChildren);
 
@@ -711,12 +711,12 @@ NotifyableImpl::remove(bool removeChildren)
          * that all the removes have been processed when this method
          * returns.
          */
-        parent->releaseLock(ClusterlibStrings::CHILD_LOCK);
+        parent->releaseLock(CLString::CHILD_LOCK);
         getOps()->synchronize();
     } 
     catch (const ObjectRemovedException &e) {
-        parent->releaseLock(ClusterlibStrings::CHILD_LOCK);
-        releaseLock(ClusterlibStrings::CHILD_LOCK, removeChildren);
+        parent->releaseLock(CLString::CHILD_LOCK);
+        releaseLock(CLString::CHILD_LOCK, removeChildren);
 
         LOG_ERROR(CL_LOG, 
                   "remove: released lock becauase of exception: %s",
@@ -979,12 +979,12 @@ NotifyableImpl::createStateJSONArrayKey(const string &notifyableKey,
 {
     string res;
     res.append(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(CLString::KEY_SEPARATOR);
     if (stateType == CachedStateImpl::CURRENT_STATE) {
-        res.append(ClusterlibStrings::CURRENT_STATE_JSON_VALUE);
+        res.append(CLStringInternal::CURRENT_STATE_JSON_VALUE);
     }
     else if (stateType == CachedStateImpl::DESIRED_STATE) {
-        res.append(ClusterlibStrings::DESIRED_STATE_JSON_VALUE);
+        res.append(CLStringInternal::DESIRED_STATE_JSON_VALUE);
     }
     else {
         ostringstream oss;

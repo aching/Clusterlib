@@ -62,14 +62,14 @@ int main(int argc, char* argv[])
      */
     shared_ptr<Root> rootSP = params->getClient()->getRoot();
     shared_ptr<Application> cliAppSP = rootSP->getApplication(
-        ClusterlibStrings::DEFAULT_CLI_APPLICATION, CREATE_IF_NOT_FOUND);
+        CLString::DEFAULT_CLI_APPLICATION, CREATE_IF_NOT_FOUND);
     shared_ptr<Queue> respQueueSP = cliAppSP->getQueue(
         ProcessThreadService::getHostnamePidTid() + 
-        ClusterlibStrings::DEFAULT_RESP_QUEUE, CREATE_IF_NOT_FOUND);
+        CLString::DEFAULT_RESP_QUEUE, CREATE_IF_NOT_FOUND);
     string respQueueKey = respQueueSP->getKey();
     shared_ptr<Queue> completedQueueSP = cliAppSP->getQueue(
         ProcessThreadService::getHostnamePidTid() + 
-        ClusterlibStrings::DEFAULT_COMPLETED_QUEUE, CREATE_IF_NOT_FOUND);
+        CLString::DEFAULT_COMPLETED_QUEUE, CREATE_IF_NOT_FOUND);
     string completedQueueKey = completedQueueSP->getKey();    
     Client *jsonRPCResponseClient = 
         params->getFactory()->createJSONRPCResponseClient(respQueueSP,

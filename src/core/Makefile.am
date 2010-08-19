@@ -42,8 +42,8 @@ libcluster_a_SOURCES = \
 	cachedobjectchangehandlers.cc \
 	distributedlocks.cc \
 	clientimpl.cc \
-	clusterlibstrings.cc \
-	clusterlibints.cc \
+	clstring.cc \
+	clnumeric.cc \
 	factory.cc \
 	factoryops.cc \
 	event.cc \

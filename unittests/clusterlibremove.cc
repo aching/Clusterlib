@@ -96,7 +96,7 @@ class ClusterlibRemove : public MPITestFixture
 
         if (isMyRank(0)) {
             shared_ptr<PropertyList> prop = _group0->getPropertyList(
-                ClusterlibStrings::DEFAULTPROPERTYLIST,
+                CLString::DEFAULT_PROPERTYLIST,
                 CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(prop);
             prop->remove();
@@ -201,7 +201,7 @@ class ClusterlibRemove : public MPITestFixture
 
         if (isMyRank(0)) {
             shared_ptr<PropertyList> prop = _node0->getPropertyList(
-                ClusterlibStrings::DEFAULTPROPERTYLIST,
+                CLString::DEFAULT_PROPERTYLIST,
                 CREATE_IF_NOT_FOUND);
             MPI_CPPUNIT_ASSERT(prop);
             try {

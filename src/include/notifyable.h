@@ -99,7 +99,7 @@ class Notifyable
      * Get the parent of this Notifyable (if it exists)
      *
      * @return pointer to parent 
-     * @throw Exception if Notifyable is the root
+     * @throw Exception if Notifyable is the root respective
      */
     virtual boost::shared_ptr<Notifyable> getMyParent() const = 0;
 
@@ -204,7 +204,7 @@ class Notifyable
      * Get the property lists for this object (if it is allowed). If
      * subclasses do not want to allow getPropertyList(), override it
      * and throw a clusterlib exception.  Propertylists can be named and
-     * should use the name ClusterlibStrings::DEFAULTPROPERTYLIST if no
+     * should use the name DEFAULT_PROPERTYLIST if no
      * name is selected.
      * 
      * @param name the name of the PropertyList to create
@@ -226,7 +226,7 @@ class Notifyable
      * Get the property lists for this object (if it is allowed). If
      * subclasses do not want to allow getPropertyList(), override it
      * and throw a clusterlib exception.  Propertylists can be named and
-     * should use the name ClusterlibStrings::DEFAULTPROPERTYLIST if no
+     * should use the name DEFAULT_PROPERTYLIST if no
      * name is selected.  
      * 
      * @param name the name of the PropertyList to create
@@ -249,7 +249,7 @@ class Notifyable
      * Get the queue for this object (if it is allowed). If
      * subclasses do not want to allow getQueue(), override it
      * and throw a clusterlib exception.  Queues can be named and
-     * should use the name ClusterlibStrings::DEFAULTQUEUE if no
+     * should use the name DEFAULTQUEUE if no
      * name is selected.
      * 
      * @param name the name of the Queue to create
@@ -291,7 +291,7 @@ class Notifyable
      * some resource ordering) to ensure that deadlock does not occur.
      * The only time locks are implicitly grabbed by clusterlib is
      * when trying to create/remove an object.  Locks are all
-     * specified in ClusterlibStrings (NOTIFYABLE_LOCK,
+     * specified in CLString (NOTIFYABLE_LOCK,
      * OWNERSHIP_LOCK, and CHILD_LOCK).
      *
      * @param lockName Name of the lock

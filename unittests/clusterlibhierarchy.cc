@@ -74,7 +74,7 @@ class ClusterlibHierarchy : public MPITestFixture
                                                    CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(node);
 	    shared_ptr<PropertyList> prop = node->getPropertyList(
-                ClusterlibStrings::DEFAULTPROPERTYLIST, 
+                CLString::DEFAULT_PROPERTYLIST, 
                 CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(prop);
         }
@@ -126,7 +126,7 @@ class ClusterlibHierarchy : public MPITestFixture
 	    MPI_CPPUNIT_ASSERT(node->getMyApplication() == _app);
 	    
 	    shared_ptr<PropertyList> prop = node->getPropertyList(
-                ClusterlibStrings::DEFAULTPROPERTYLIST,
+                CLString::DEFAULT_PROPERTYLIST,
                 LOAD_FROM_REPOSITORY);
 	    MPI_CPPUNIT_ASSERT(prop);
 	    MPI_CPPUNIT_ASSERT(prop->getMyParent() == node);
@@ -168,7 +168,7 @@ class ClusterlibHierarchy : public MPITestFixture
 	    MPI_CPPUNIT_ASSERT(node3);
 
             shared_ptr<PropertyList> prop = node3->getPropertyList(
-                ClusterlibStrings::DEFAULTPROPERTYLIST, 
+                CLString::DEFAULT_PROPERTYLIST, 
                 CREATE_IF_NOT_FOUND);
 	    MPI_CPPUNIT_ASSERT(prop);
         }
@@ -228,7 +228,7 @@ class ClusterlibHierarchy : public MPITestFixture
             MPI_CPPUNIT_ASSERT(node3->getMyApplication() == _app);
 
 	    shared_ptr<PropertyList> prop = node3->getPropertyList(
-                ClusterlibStrings::DEFAULTPROPERTYLIST,
+                CLString::DEFAULT_PROPERTYLIST,
                 LOAD_FROM_REPOSITORY);
             MPI_CPPUNIT_ASSERT(prop->getMyParent() == node3);
             MPI_CPPUNIT_ASSERT(prop->getMyGroup() == group2);

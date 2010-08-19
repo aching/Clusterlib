@@ -143,7 +143,7 @@ class DistributedLocks
 
     /**
      * The sequenceKey is a string that has a DistributedLockType in
-     * it and two ClusterlibStrings::SEQUENCE_SPLIT separating it.
+     * it and two SEQUENCE_SPLIT separating it.
      *
      * @param sequenceKey Input ket to find the DistributedLockType
      * @return DistributedLockType of the sequenceKey

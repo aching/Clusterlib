@@ -34,8 +34,8 @@
 #include <inttypes.h>
 
 #include "forwarddecls.h"
-#include "clusterlibstrings.h"
-#include "clusterlibints.h"
+#include "clstring.h"
+#include "clnumeric.h"
 
 #include "clusterlibexceptions.h"
 #include "processthreadservice.h"

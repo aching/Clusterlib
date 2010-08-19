@@ -157,11 +157,12 @@ class ProcessSlot
      * the desired state without holding the distributed lock.  The
      * user may do this if desired.
      *
-     * @param processSlot ProcessSlot that will be checked
+     * @param processSlotSP ProcessSlot that will be checked
      * @return True if the desired state results from the current state, 
      *         otherwise false
      */
-    static bool isCurrentStateFromDesiredState(ProcessSlot *processSlot);
+    static bool isCurrentStateFromDesiredState(
+        const boost::shared_ptr<ProcessSlot> &processSlotSP);
 
     /**
      * Destructor.

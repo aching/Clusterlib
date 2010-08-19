@@ -26,8 +26,8 @@ ClientImpl::getRoot()
 
     base = 
         getOps()->getNotifyable(shared_ptr<NotifyableImpl>(), 
-                                ClusterlibStrings::REGISTERED_ROOT_NAME,
-                                ClusterlibStrings::ROOT,
+                                CLString::REGISTERED_ROOT_NAME,
+                                CLString::ROOT_DIR,
                                 CACHED_ONLY);
     shared_ptr<Root> root =  dynamic_pointer_cast<Root>(base);
     if (root == NULL) {

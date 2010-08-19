@@ -76,12 +76,13 @@ const string ProcessSlot::BINARY_STATE_HALTING_VALUE =
     "_binaryStateHalting";
 
 bool
-ProcessSlot::isCurrentStateFromDesiredState(ProcessSlot *processSlot)
+ProcessSlot::isCurrentStateFromDesiredState(
+    const shared_ptr<ProcessSlot> &processSlotSP)
 {
     TRACE(CL_LOG, "isCurrentStateFromDesiredState");
 
     JSONValue desiredStateSetValue;
-    bool foundDesiredStateSetMsecs = processSlot->cachedCurrentState().get(
+    bool foundDesiredStateSetMsecs = processSlotSP->cachedCurrentState().get(
         ProcessSlot::DESIRED_PROCESS_STATE_SET_MSECS_KEY, 
         desiredStateSetValue);
     if (foundDesiredStateSetMsecs == false) {
@@ -89,7 +90,7 @@ ProcessSlot::isCurrentStateFromDesiredState(ProcessSlot *processSlot)
     }
 
     JSONValue processStateSetValue;
-    bool foundProcessStateSetMsecs = processSlot->cachedDesiredState().get(
+    bool foundProcessStateSetMsecs = processSlotSP->cachedDesiredState().get(
         ProcessSlot::PROCESS_STATE_SET_MSECS_KEY,
         processStateSetValue);
     if (foundProcessStateSetMsecs == false) {
@@ -115,8 +116,8 @@ ProcessSlotImpl::createProcessInfoJsonArrKey(const string &processSlotKey)
 {
     string res;
     res.append(processSlotKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::PROCESSINFO_JSON_OBJECT);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLStringInternal::PROCESSINFO_JSON_OBJECT);
 
     return res;
 }

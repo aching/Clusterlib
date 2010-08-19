@@ -54,17 +54,17 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture
                                     "testNotifyableKeyManipulator1");
 
         string expectedres =         
-            ClusterlibStrings::ROOTNODE +
-            ClusterlibStrings::CLUSTERLIB +
-            ClusterlibStrings::KEYSEPARATOR +
-            ClusterlibStrings::CLUSTERLIB_VERSION +
-            ClusterlibStrings::KEYSEPARATOR +
-            ClusterlibStrings::ROOT;
+            CLStringInternal::ROOT_ZNODE +
+            CLStringInternal::CLUSTERLIB +
+            CLString::KEY_SEPARATOR +
+            CLStringInternal::CLUSTERLIB_VERSION +
+            CLString::KEY_SEPARATOR +
+            CLString::ROOT_DIR;
         
         string res =         
             expectedres +
-            ClusterlibStrings::KEYSEPARATOR +
-            ClusterlibStrings::APPLICATIONS;
+            CLString::KEY_SEPARATOR +
+            CLString::APPLICATION_DIR;
         
         string final = NotifyableKeyManipulator::removeObjectFromKey(res);
         cerr << "initial key = " << res
@@ -85,12 +85,12 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture
                                     "testNotifyableKeyManipulator2");
 
         string res =         
-            ClusterlibStrings::ROOTNODE +
-            ClusterlibStrings::CLUSTERLIB +
-            ClusterlibStrings::KEYSEPARATOR +
-            ClusterlibStrings::CLUSTERLIB_VERSION +
-            ClusterlibStrings::KEYSEPARATOR +
-            ClusterlibStrings::ROOT;
+            CLStringInternal::ROOT_ZNODE +
+            CLStringInternal::CLUSTERLIB +
+            CLString::KEY_SEPARATOR +
+            CLStringInternal::CLUSTERLIB_VERSION +
+            CLString::KEY_SEPARATOR +
+            CLString::ROOT_DIR;
                 
         string final = NotifyableKeyManipulator::removeObjectFromKey(res);
         cerr << "initial key = " << res
@@ -113,22 +113,22 @@ class ClusterlibNotifyableKeyManipulator : public MPITestFixture
                                     "testNotifyableKeyManipulator3");
 
         string expectedres =         
-            ClusterlibStrings::ROOTNODE +
-            ClusterlibStrings::CLUSTERLIB +
-            ClusterlibStrings::KEYSEPARATOR +
-            ClusterlibStrings::CLUSTERLIB_VERSION +
-            ClusterlibStrings::KEYSEPARATOR +
-            ClusterlibStrings::ROOT +
-            ClusterlibStrings::KEYSEPARATOR +
-            ClusterlibStrings::APPLICATIONS +
-            ClusterlibStrings::KEYSEPARATOR +
+            CLStringInternal::ROOT_ZNODE +
+            CLStringInternal::CLUSTERLIB +
+            CLString::KEY_SEPARATOR +
+            CLStringInternal::CLUSTERLIB_VERSION +
+            CLString::KEY_SEPARATOR +
+            CLString::ROOT_DIR +
+            CLString::KEY_SEPARATOR +
+            CLString::APPLICATION_DIR +
+            CLString::KEY_SEPARATOR +
             string("test-app");
         
         string res =         
             expectedres +
-            ClusterlibStrings::KEYSEPARATOR +
-            ClusterlibStrings::GROUPS +
-            ClusterlibStrings::KEYSEPARATOR +
+            CLString::KEY_SEPARATOR +
+            CLString::GROUP_DIR +
+            CLString::KEY_SEPARATOR +
             string("test-group");
         
         string final = NotifyableKeyManipulator::removeObjectFromKey(res);

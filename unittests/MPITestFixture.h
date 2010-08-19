@@ -149,7 +149,7 @@ class MPITestFixture : public CppUnit::TestFixture
                     
                     clusterlib::NotifyableLocker l(
                         propertyListSP,
-                        clusterlib::ClusterlibStrings::NOTIFYABLE_LOCK,
+                        clusterlib::CLString::NOTIFYABLE_LOCK,
                         clusterlib::DIST_LOCK_EXCL);
                     
                     bool exists = propertyListSP->cachedKeyValues().get(
@@ -202,7 +202,7 @@ class MPITestFixture : public CppUnit::TestFixture
 
                 clusterlib::NotifyableLocker l(
                     propertyListSP,
-                    clusterlib::ClusterlibStrings::NOTIFYABLE_LOCK,
+                    clusterlib::CLString::NOTIFYABLE_LOCK,
                     clusterlib::DIST_LOCK_EXCL);
                 
                 bool exists = propertyListSP->cachedKeyValues().get(

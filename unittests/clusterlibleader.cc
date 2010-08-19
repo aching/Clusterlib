@@ -64,13 +64,13 @@ class ClusterlibLeader : public MPITestFixture
                                     "testLeader1");
         
         if (isMyRank(0)) {
-            _group0->acquireLock(ClusterlibStrings::OWNERSHIP_LOCK,
+            _group0->acquireLock(CLString::OWNERSHIP_LOCK,
                                  DIST_LOCK_EXCL);
             MPI_CPPUNIT_ASSERT(_group0->hasLock(
-                ClusterlibStrings::OWNERSHIP_LOCK) == true);
-            _group0->releaseLock(ClusterlibStrings::OWNERSHIP_LOCK);
+                CLString::OWNERSHIP_LOCK) == true);
+            _group0->releaseLock(CLString::OWNERSHIP_LOCK);
             MPI_CPPUNIT_ASSERT(_group0->hasLock(
-                ClusterlibStrings::OWNERSHIP_LOCK) == false);
+                CLString::OWNERSHIP_LOCK) == false);
         }
     }
 
@@ -86,23 +86,23 @@ class ClusterlibLeader : public MPITestFixture
                                     "testLeader2");
 
         if (isMyRank(0)) {
-            _group0->acquireLock(ClusterlibStrings::OWNERSHIP_LOCK,
+            _group0->acquireLock(CLString::OWNERSHIP_LOCK,
                                  DIST_LOCK_EXCL);
             MPI_CPPUNIT_ASSERT(_group0->hasLock(
-                ClusterlibStrings::OWNERSHIP_LOCK) == true);
-            _group0->releaseLock(ClusterlibStrings::OWNERSHIP_LOCK);
+                CLString::OWNERSHIP_LOCK) == true);
+            _group0->releaseLock(CLString::OWNERSHIP_LOCK);
             MPI_CPPUNIT_ASSERT(_group0->hasLock(
-                ClusterlibStrings::OWNERSHIP_LOCK) == false);
+                CLString::OWNERSHIP_LOCK) == false);
         }
         waitsForOrder(0, 1, _factory, true);
         if (isMyRank(1)) {
-            _group0->acquireLock(ClusterlibStrings::OWNERSHIP_LOCK,
+            _group0->acquireLock(CLString::OWNERSHIP_LOCK,
                                  DIST_LOCK_EXCL);
             MPI_CPPUNIT_ASSERT(_group0->hasLock(
-                ClusterlibStrings::OWNERSHIP_LOCK) == true);
-            _group0->releaseLock(ClusterlibStrings::OWNERSHIP_LOCK);
+                CLString::OWNERSHIP_LOCK) == true);
+            _group0->releaseLock(CLString::OWNERSHIP_LOCK);
             MPI_CPPUNIT_ASSERT(_group0->hasLock(
-                ClusterlibStrings::OWNERSHIP_LOCK) == false);
+                CLString::OWNERSHIP_LOCK) == false);
         }        
     }
 
@@ -118,13 +118,13 @@ class ClusterlibLeader : public MPITestFixture
                                     true, 
                                     "testLeader3");
 
-        _group0->acquireLock(ClusterlibStrings::OWNERSHIP_LOCK,
+        _group0->acquireLock(CLString::OWNERSHIP_LOCK,
                              DIST_LOCK_EXCL);
         MPI_CPPUNIT_ASSERT(_group0->hasLock(
-            ClusterlibStrings::OWNERSHIP_LOCK) == true);
-        _group0->releaseLock(ClusterlibStrings::OWNERSHIP_LOCK);
+            CLString::OWNERSHIP_LOCK) == true);
+        _group0->releaseLock(CLString::OWNERSHIP_LOCK);
         MPI_CPPUNIT_ASSERT(_group0->hasLock(
-            ClusterlibStrings::OWNERSHIP_LOCK) == false);
+            CLString::OWNERSHIP_LOCK) == false);
     }
 
   private:

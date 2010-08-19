@@ -130,7 +130,7 @@ RegisteredNotifyableImpl::isValidKey(const string &key)
     TRACE(CL_LOG, "isValidKey");
     
     vector<string> components;
-    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
+    split(components, key, is_any_of(CLString::KEY_SEPARATOR));
     return isValidKey(components, -1);
 }
 
@@ -144,7 +144,7 @@ RegisteredNotifyableImpl::getObjectFromKey(
     TRACE(CL_LOG, "getObjectFromKey");
 
     vector<string> components;
-    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
+    split(components, key, is_any_of(CLString::KEY_SEPARATOR));
     return getObjectFromComponents(
         components, -1, accessType, msecTimeout, pNotifyableSP);
 }

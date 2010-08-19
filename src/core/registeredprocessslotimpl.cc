@@ -20,7 +20,7 @@ namespace clusterlib {
 const string &
 RegisteredProcessSlotImpl::registeredName() const
 {
-    return ClusterlibStrings::REGISTERED_PROCESSSLOT_NAME;
+    return CLString::REGISTERED_PROCESSSLOT_NAME;
 }
 
 string
@@ -85,8 +85,8 @@ RegisteredProcessSlotImpl::isValidKey(const vector<string> &components,
      * and that after the Application key there are an even number of
      * elements left.
      */
-    if ((elements < ClusterlibInts::PROCESSSLOT_COMPONENTS_MIN_COUNT) ||
-        (((elements - ClusterlibInts::APP_COMPONENTS_COUNT) % 2) != 0))  {
+    if ((elements < CLNumericInternal::PROCESSSLOT_COMPONENTS_MIN_COUNT) ||
+        (((elements - CLNumericInternal::APP_COMPONENTS_COUNT) % 2) != 0))  {
         return false;
     }
 
@@ -94,7 +94,7 @@ RegisteredProcessSlotImpl::isValidKey(const vector<string> &components,
      * Check that the elements of the parent node are valid.
      */
     vector<string> nameVec;
-    nameVec.push_back(ClusterlibStrings::REGISTERED_NODE_NAME);
+    nameVec.push_back(CLString::REGISTERED_NODE_NAME);
     if (!getOps()->isValidKey(nameVec, components, elements - 2)) {
         return false;
     }
@@ -103,7 +103,7 @@ RegisteredProcessSlotImpl::isValidKey(const vector<string> &components,
      * Check that the second to the last element is PROCESSSLOTS
      * that the distribution name is not empty.
      */
-    if ((components.at(elements - 2) != ClusterlibStrings::PROCESSSLOTS) ||
+    if ((components.at(elements - 2) != CLString::PROCESSSLOT_DIR) ||
         (components.at(elements - 1).empty() == true)) {
         return false;
     } 
@@ -115,7 +115,7 @@ RegisteredProcessSlotImpl::RegisteredProcessSlotImpl(FactoryOps *factoryOps)
     : RegisteredNotifyableImpl(factoryOps)
 {
     setRegisteredParentNameVec(
-        vector<string>(1, ClusterlibStrings::REGISTERED_NODE_NAME));
+        vector<string>(1, CLString::REGISTERED_NODE_NAME));
 }
 
 }	/* End of 'namespace clusterlib' */

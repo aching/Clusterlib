@@ -76,9 +76,9 @@ class ClusterlibLock : public MPITestFixture
         if (isMyRank(0)) {
             MPI_CPPUNIT_ASSERT(_group0);
             _group0->acquireLock(
-                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+                CLString::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
             _group0->releaseLock(
-                ClusterlibStrings::NOTIFYABLE_LOCK);
+                CLString::NOTIFYABLE_LOCK);
         }
     }
 
@@ -95,14 +95,14 @@ class ClusterlibLock : public MPITestFixture
         if (isMyRank(0)) {
             MPI_CPPUNIT_ASSERT(_group0);
             _group0->acquireLock(
-                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+                CLString::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
             _group0->acquireLock(
-                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+                CLString::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
             _group0->acquireLock(
-                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
-            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
-            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
-            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+                CLString::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+            _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
+            _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
+            _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
         }
     }
 
@@ -120,10 +120,10 @@ class ClusterlibLock : public MPITestFixture
         if (isMyRank(0)) {
             MPI_CPPUNIT_ASSERT(_group0);
             _group0->acquireLock(
-                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
-            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+                CLString::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+            _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
             try {
-                _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+                _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
                 MPI_CPPUNIT_ASSERT("SHOULD HAVE THROWN EXCEPTION" == 0);
             } catch (const InvalidMethodException &e) {
             }
@@ -144,14 +144,14 @@ class ClusterlibLock : public MPITestFixture
         if (isMyRank(0)) {
             MPI_CPPUNIT_ASSERT(_group0);
             _group0->acquireLock(
-                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+                CLString::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
             try {
                 _group0->acquireLock(
-                    ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
+                    CLString::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
                 MPI_CPPUNIT_ASSERT("SHOULD HAVE THROWN EXCEPTION" == 0);
             } catch (const InvalidArgumentsException &e) {
             }
-            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+            _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
         }
     }
 
@@ -168,8 +168,8 @@ class ClusterlibLock : public MPITestFixture
         if (isMyRank(0)) {
             MPI_CPPUNIT_ASSERT(_group0);
             _group0->acquireLock(
-                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
-            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+                CLString::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
+            _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
         }
     }
 
@@ -186,17 +186,17 @@ class ClusterlibLock : public MPITestFixture
         if (isMyRank(0)) {
             MPI_CPPUNIT_ASSERT(_app0);
             _app0->acquireLock(
-                ClusterlibStrings::NOTIFYABLE_LOCK, 
+                CLString::NOTIFYABLE_LOCK, 
                 DIST_LOCK_SHARED,
                 true);
             NameList nl = _app0->getLockBids(
-                ClusterlibStrings::NOTIFYABLE_LOCK, true);
+                CLString::NOTIFYABLE_LOCK, true);
             NameList::const_iterator nlIt;
             for (nlIt = nl.begin(); nlIt != nl.end(); ++nlIt) {
                 cerr << "testLock6: Lock bid = " << *nlIt << endl;
             }
             MPI_CPPUNIT_ASSERT(nl.size() >= 2);
-            _app0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK,
+            _app0->releaseLock(CLString::NOTIFYABLE_LOCK,
                                true);
         }
     }
@@ -214,8 +214,8 @@ class ClusterlibLock : public MPITestFixture
         
         MPI_CPPUNIT_ASSERT(_group0);
         _group0->acquireLock(
-            ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
-        _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+            CLString::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+        _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
     }
 
     /** 
@@ -231,14 +231,14 @@ class ClusterlibLock : public MPITestFixture
         
         MPI_CPPUNIT_ASSERT(_group0);
         _group0->acquireLock(
-            ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+            CLString::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
         _group0->acquireLock(
-            ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+            CLString::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
         _group0->acquireLock(
-            ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
-        _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
-        _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
-        _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+            CLString::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+        _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
+        _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
+        _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
     }
 
     /** 
@@ -256,7 +256,7 @@ class ClusterlibLock : public MPITestFixture
         MPI_CPPUNIT_ASSERT(_group0);
         if (isMyRank(0)) {
             NotifyableLocker l(_group0,
-                               ClusterlibStrings::NOTIFYABLE_LOCK,
+                               CLString::NOTIFYABLE_LOCK,
                                DIST_LOCK_EXCL);
             barrier(_factory, true);
             barrier(_factory, true);
@@ -264,7 +264,7 @@ class ClusterlibLock : public MPITestFixture
         else {
             barrier(_factory, true);
             MPI_CPPUNIT_ASSERT(_group0->acquireLockWaitMsecs(
-                ClusterlibStrings::NOTIFYABLE_LOCK,
+                CLString::NOTIFYABLE_LOCK,
                 DIST_LOCK_EXCL, 
                 10LL) == false);
             barrier(_factory, true);
@@ -285,17 +285,17 @@ class ClusterlibLock : public MPITestFixture
         
         MPI_CPPUNIT_ASSERT(_group0);
         bool gotLock = _group0->acquireLockWaitMsecs(
-            ClusterlibStrings::NOTIFYABLE_LOCK,
+            CLString::NOTIFYABLE_LOCK,
             DIST_LOCK_EXCL,
             0LL);
         if (gotLock) {
             cerr << getRank() << ": I got the lock" << endl;
             barrier(_factory, true);            
-            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+            _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
         }
         else {
             MPI_CPPUNIT_ASSERT(_group0->acquireLockWaitMsecs(
-                ClusterlibStrings::NOTIFYABLE_LOCK,
+                CLString::NOTIFYABLE_LOCK,
                 DIST_LOCK_EXCL,
                 0LL) == false);
             barrier(_factory, true);
@@ -316,7 +316,7 @@ class ClusterlibLock : public MPITestFixture
         
         MPI_CPPUNIT_ASSERT(_group0);
         NotifyableLocker l(_group0,
-                           ClusterlibStrings::NOTIFYABLE_LOCK,
+                           CLString::NOTIFYABLE_LOCK,
                            DIST_LOCK_EXCL);
         MPI_CPPUNIT_ASSERT(l.hasLock() == true);
     }
@@ -335,9 +335,9 @@ class ClusterlibLock : public MPITestFixture
         
         MPI_CPPUNIT_ASSERT(_group0);
         _group0->acquireLock(
-            ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
+            CLString::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
         barrier(_factory, true);
-        _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+        _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
     }
 
     /**
@@ -354,15 +354,15 @@ class ClusterlibLock : public MPITestFixture
         MPI_CPPUNIT_ASSERT(_group0);
         if (isMyRank(0)) {
             _group0->acquireLock(
-                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
+                CLString::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
             barrier(_factory, true);
-            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+            _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
         }
         else {
             barrier(_factory, true);
             _group0->acquireLock(
-                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
-            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+                CLString::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+            _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
         }
     }
 
@@ -380,17 +380,17 @@ class ClusterlibLock : public MPITestFixture
         MPI_CPPUNIT_ASSERT(_group0);
         if (isMyRank(0)) {
             _group0->acquireLock(
-                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
+                CLString::NOTIFYABLE_LOCK, DIST_LOCK_EXCL);
             barrier(_factory, true);
-            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+            _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
             barrier(_factory, true);
         }
         else {
             barrier(_factory, true);
             _group0->acquireLock(
-                ClusterlibStrings::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
+                CLString::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
             barrier(_factory, true);
-            _group0->releaseLock(ClusterlibStrings::NOTIFYABLE_LOCK);
+            _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
         }
     }
 

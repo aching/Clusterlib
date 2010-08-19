@@ -209,7 +209,7 @@ ZooKeeperAdapter::splitSequenceNode(const string &sequenceNode,
     TRACE(LOG, "splitSequentialNode");
 
     if (sequenceNode.size() < 
-        clusterlib::ClusterlibInts::SEQUENCE_NUMBER_SIZE) {
+        clusterlib::CLNumericInternal::SEQUENCE_NUMBER_SIZE) {
         throw InconsistentInternalStateException(
             string("splitSequentialNode: Node ") +
             sequenceNode + " is too small to split");
@@ -222,7 +222,7 @@ ZooKeeperAdapter::splitSequenceNode(const string &sequenceNode,
         *pSequenceName = sequenceNode.substr(
             0, 
              sequenceNode.size() -
-            clusterlib::ClusterlibInts::SEQUENCE_NUMBER_SIZE);
+            clusterlib::CLNumericInternal::SEQUENCE_NUMBER_SIZE);
     }
 
     /*
@@ -232,7 +232,7 @@ ZooKeeperAdapter::splitSequenceNode(const string &sequenceNode,
         *pSequenceNumber = ::strtol(
             &(sequenceNode.c_str()[
                   sequenceNode.size() - 
-                  clusterlib::ClusterlibInts::SEQUENCE_NUMBER_SIZE]), 
+                  clusterlib::CLNumericInternal::SEQUENCE_NUMBER_SIZE]), 
             NULL, 
             10);
         if (*pSequenceNumber < 0) {
@@ -241,13 +241,13 @@ ZooKeeperAdapter::splitSequenceNode(const string &sequenceNode,
                      "but got %s", 
                      &(sequenceNode.c_str()[
                            sequenceNode.size() -    
-                           clusterlib::ClusterlibInts::SEQUENCE_NUMBER_SIZE]));
+                           clusterlib::CLNumericInternal::SEQUENCE_NUMBER_SIZE]));
             throw InconsistentInternalStateException(
                 string("splitSequentialNode: Expecting a valid number "
                        "but got ") +
                 &(sequenceNode.c_str()[
                       sequenceNode.size() -
-                      clusterlib::ClusterlibInts::SEQUENCE_NUMBER_SIZE]));
+                      clusterlib::CLNumericInternal::SEQUENCE_NUMBER_SIZE]));
         }
     }
 }
@@ -559,7 +559,7 @@ ZooKeeperAdapter::sync(const string &path,
                                                                  context);
     m_events.put(ZKWatcherEvent(ZOO_SESSION_EVENT, 
                                 ZOO_CONNECTED_STATE,
-                                clusterlib::ClusterlibStrings::SYNC,
+                                clusterlib::CLStringInternal::SYNC,
                                 callbackAndContext));
     return true;
 }
@@ -620,7 +620,7 @@ ZooKeeperAdapter::injectEndEvent()
     m_events.put(ZKWatcherEvent(
                      ZOO_SESSION_EVENT,
                      ZOO_EXPIRED_SESSION_STATE,
-                     clusterlib::ClusterlibStrings::ENDEVENT.c_str(),
+                     clusterlib::CLStringInternal::END_EVENT.c_str(),
                      NULL));
 }
 
@@ -629,7 +629,7 @@ ZooKeeperAdapter::isEndEvent(const ZKWatcherEvent &event) const
 {
     if ((event.getType() == ZOO_SESSION_EVENT) &&
         (event.getState() == ZOO_EXPIRED_SESSION_STATE) &&
-        (event.getPath().compare(clusterlib::ClusterlibStrings::ENDEVENT)
+        (event.getPath().compare(clusterlib::CLStringInternal::END_EVENT)
          == 0) &&
         (event.getContext() == NULL)) {
         return true;
@@ -700,7 +700,7 @@ ZooKeeperAdapter::processEvents(void *param)
                      * specify an end event for FactoryOps.
                      */
                     if (source.getPath().compare(
-                            clusterlib::ClusterlibStrings::ENDEVENT) != 0) {
+                            clusterlib::CLStringInternal::END_EVENT) != 0) {
                         setState(AS_SESSION_EXPIRED);
                     }
                 }

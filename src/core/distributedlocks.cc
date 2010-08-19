@@ -44,9 +44,9 @@ DistributedLocks::acquireWaitUsecs(
 {
     TRACE(CL_LOG, "acquireWaitUsecs");
 
-    if (lockName.compare(ClusterlibStrings::NOTIFYABLE_LOCK) &&
-        lockName.compare(ClusterlibStrings::OWNERSHIP_LOCK) &&
-        lockName.compare(ClusterlibStrings::CHILD_LOCK) &&
+    if (lockName.compare(CLString::NOTIFYABLE_LOCK) &&
+        lockName.compare(CLString::OWNERSHIP_LOCK) &&
+        lockName.compare(CLString::CHILD_LOCK) &&
         !NotifyableKeyManipulator::isValidNotifyableName(lockName)) {
         throw InvalidArgumentsException(
             string("acquireWaitUsecs: Invalid lockName=") + lockName);
@@ -639,7 +639,7 @@ DistributedLocks::getDistributedLockType(const string &sequenceKey)
     vector<string> components;
     split(components, 
           sequenceKey, 
-          is_any_of(ClusterlibStrings::SEQUENCE_SPLIT));
+          is_any_of(CLStringInternal::SEQUENCE_SPLIT));
     if (components.size() < 3) {
         throw InvalidArgumentsException(
             string("getDistributedLockType: Can't find components in ") +

@@ -44,8 +44,8 @@ CachedStateImpl::publish(bool unconditional)
      * number of historical states if necessary.
      */
     int64_t msecs = TimerService::getCurrentTimeMsecs();
-    m_state[ClusterlibStrings::STATE_SET_MSECS] = msecs;
-    m_state[ClusterlibStrings::STATE_SET_MSECS_AS_DATE] = 
+    m_state[CLString::STATE_SET_MSECS] = msecs;
+    m_state[CLString::STATE_SET_MSECS_AS_DATE] = 
         TimerService::getMsecsTimeString(msecs);
     m_historyArr.push_front(m_state);
     if (static_cast<int32_t>(m_historyArr.size()) > m_maxHistorySize) {

@@ -25,8 +25,8 @@ NotifyableKeyManipulator::createLocksKey(const string &notifyableKey)
 {
     string res;
     res.append(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::LOCKS);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLStringInternal::LOCK_DIR);
 
     return res;
 }
@@ -37,9 +37,9 @@ NotifyableKeyManipulator::createLockKey(const string &notifyableKey,
 {
     string res;
     res.append(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::LOCKS);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLStringInternal::LOCK_DIR);
+    res.append(CLString::KEY_SEPARATOR);
     res.append(lockName);
 
     return res;
@@ -53,15 +53,15 @@ NotifyableKeyManipulator::createLockNodeKey(
 {
     string res;
     res.append(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::LOCKS);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLStringInternal::LOCK_DIR);
+    res.append(CLString::KEY_SEPARATOR);
     res.append(lockName);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(CLString::KEY_SEPARATOR);
     res.append(ProcessThreadService::getHostnamePidTid());
-    res.append(ClusterlibStrings::SEQUENCE_SPLIT);
+    res.append(CLStringInternal::SEQUENCE_SPLIT);
     res.append(distributedLockTypeToString(distributedLockType));
-    res.append(ClusterlibStrings::SEQUENCE_SPLIT);
+    res.append(CLStringInternal::SEQUENCE_SPLIT);
 
     return res;
 }
@@ -73,9 +73,9 @@ NotifyableKeyManipulator::createProcessSlotKey(
 {
     string res;
     res.append(nodeKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::PROCESSSLOTS);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLString::PROCESSSLOT_DIR);
+    res.append(CLString::KEY_SEPARATOR);
     res.append(processSlotName);
 
     return res;
@@ -87,9 +87,9 @@ NotifyableKeyManipulator::createGroupKey(const string &groupKey,
 {
     string res;
     res.append(groupKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::GROUPS);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLString::GROUP_DIR);
+    res.append(CLString::KEY_SEPARATOR);
     res.append(groupName);
 
     return res;
@@ -101,8 +101,8 @@ NotifyableKeyManipulator::createPropertyListChildrenKey(
 {
     string res;
     res.append(parentKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::PROPERTYLISTS);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLString::PROPERTYLIST_DIR);
 
     return res;
 }
@@ -113,8 +113,8 @@ NotifyableKeyManipulator::createQueueChildrenKey(
 {
     string res;
     res.append(parentKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::QUEUES);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLString::QUEUE_DIR);
 
     return res;
 }
@@ -123,12 +123,12 @@ string
 NotifyableKeyManipulator::createRootKey()
 {
     string res;
-    res.append(ClusterlibStrings::ROOTNODE);
-    res.append(ClusterlibStrings::CLUSTERLIB);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::CLUSTERLIB_VERSION);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::ROOT);
+    res.append(CLStringInternal::ROOT_ZNODE);
+    res.append(CLStringInternal::CLUSTERLIB);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLStringInternal::CLUSTERLIB_VERSION);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLString::ROOT_DIR);
     
     return res;
 }
@@ -138,8 +138,8 @@ NotifyableKeyManipulator::createApplicationChildrenKey(const string &rootKey)
 {
     string res;
     res.append(rootKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::APPLICATIONS);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLString::APPLICATION_DIR);
 
     return res;
 }
@@ -148,15 +148,15 @@ string
 NotifyableKeyManipulator::createApplicationKey(const string &appName)
 {
     string res;
-        res.append(ClusterlibStrings::ROOTNODE);
-        res.append(ClusterlibStrings::CLUSTERLIB);
-        res.append(ClusterlibStrings::KEYSEPARATOR);
-        res.append(ClusterlibStrings::CLUSTERLIB_VERSION);
-        res.append(ClusterlibStrings::KEYSEPARATOR);
-        res.append(ClusterlibStrings::ROOT);
-        res.append(ClusterlibStrings::KEYSEPARATOR);
-        res.append(ClusterlibStrings::APPLICATIONS);
-        res.append(ClusterlibStrings::KEYSEPARATOR);
+        res.append(CLStringInternal::ROOT_ZNODE);
+        res.append(CLStringInternal::CLUSTERLIB);
+        res.append(CLString::KEY_SEPARATOR);
+        res.append(CLStringInternal::CLUSTERLIB_VERSION);
+        res.append(CLString::KEY_SEPARATOR);
+        res.append(CLString::ROOT_DIR);
+        res.append(CLString::KEY_SEPARATOR);
+        res.append(CLString::APPLICATION_DIR);
+        res.append(CLString::KEY_SEPARATOR);
         res.append(appName);
 
     return res;
@@ -167,8 +167,8 @@ NotifyableKeyManipulator::createGroupChildrenKey(const string &parentKey)
 {
     string res;
     res.append(parentKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::GROUPS);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLString::GROUP_DIR);
 
     return res;
 }
@@ -179,8 +179,8 @@ NotifyableKeyManipulator::createDataDistributionChildrenKey(
 {
     string res;
     res.append(parentKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::DISTRIBUTIONS);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLString::DATADISTRIBUTION_DIR);
 
     return res;
 }
@@ -190,8 +190,8 @@ NotifyableKeyManipulator::createNodeChildrenKey(const string &parentKey)
 {
     string res;
     res.append(parentKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::NODES);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLString::NODE_DIR);
 
     return res;
 }
@@ -201,8 +201,8 @@ NotifyableKeyManipulator::createProcessSlotChildrenKey(const string &parentKey)
 {
     string res;
     res.append(parentKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::PROCESSSLOTS);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLString::PROCESSSLOT_DIR);
 
     return res;
 }
@@ -213,22 +213,10 @@ NotifyableKeyManipulator::createNodeKey(const string &groupKey,
 {
     string res;
     res.append(groupKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::NODES);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLString::NODE_DIR);
+    res.append(CLString::KEY_SEPARATOR);
     res.append(nodeName);
-
-    return res;
-}
-
-string
-NotifyableKeyManipulator::createNotifyableStateJSONObjectKey(
-    const string &notifyableKey)
-{
-    string res;
-    res.append(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::NOTIFYABLESTATE_JSON_OBJECT);
 
     return res;
 }
@@ -238,8 +226,8 @@ NotifyableKeyManipulator::createJSONObjectKey(const string &notifyableKey)
 {
     string res;
     res.append(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::DEFAULT_JSON_OBJECT);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLStringInternal::DEFAULT_JSON_OBJECT);
 
     return res;
 }
@@ -250,21 +238,10 @@ NotifyableKeyManipulator::createDataDistributionKey(const string &groupKey,
 {
     string res;
     res.append(groupKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::DISTRIBUTIONS);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLString::DATADISTRIBUTION_DIR);
+    res.append(CLString::KEY_SEPARATOR);
     res.append(distName);
-
-    return res;
-}
-
-string
-NotifyableKeyManipulator::createShardsKey(const string &distKey)
-{
-    string res;
-    res.append(distKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::SHARDS);
 
     return res;
 }
@@ -275,21 +252,10 @@ NotifyableKeyManipulator::createPropertyListKey(const string &notifyableKey,
 {
     string res;
     res.append(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::PROPERTYLISTS);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLString::PROPERTYLIST_DIR);
+    res.append(CLString::KEY_SEPARATOR);
     res.append(propListName);
-
-    return res;
-}
-
-string
-NotifyableKeyManipulator::createKeyValsKey(const string &propListKey)
-{
-    string res;
-    res.append(propListKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::KEYVAL);
 
     return res;
 }
@@ -300,32 +266,10 @@ NotifyableKeyManipulator::createQueueKey(const string &notifyableKey,
 {
     string res;
     res.append(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::QUEUES);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLString::QUEUE_DIR);
+    res.append(CLString::KEY_SEPARATOR);
     res.append(queueName);
-
-    return res;
-}
-
-string
-NotifyableKeyManipulator::createProcessSlotsUsageKey(
-    const string &notifyableKey)
-{
-    string res(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::PROCESSSLOTSUSAGE);
-
-    return res;
-}
-
-string
-NotifyableKeyManipulator::createProcessSlotsMaxKey(
-    const string &notifyableKey)
-{
-    string res(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::PROCESSSLOTSMAX);
 
     return res;
 }
@@ -335,8 +279,8 @@ NotifyableKeyManipulator::createQueuePrefixKey(
     const string &notifyableKey)
 {
     string res = NotifyableKeyManipulator::createQueueParentKey(notifyableKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::QUEUE_ELEMENT_PREFIX);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLStringInternal::QUEUE_ELEMENT_PREFIX);
 
     return res;
 }
@@ -346,8 +290,8 @@ NotifyableKeyManipulator::createQueueParentKey(
     const string &queueKey)
 {
     string res(queueKey);
-    res.append(ClusterlibStrings::KEYSEPARATOR);
-    res.append(ClusterlibStrings::QUEUE_PARENT);
+    res.append(CLString::KEY_SEPARATOR);
+    res.append(CLStringInternal::QUEUE_PARENT);
    
     return res;
 }
@@ -365,7 +309,7 @@ void NotifyableKeyManipulator::splitNotifyableKey(const string &key,
 {
     TRACE(CL_LOG, "splitKey");
 
-    split(components, key, is_any_of(ClusterlibStrings::KEYSEPARATOR));
+    split(components, key, is_any_of(CLString::KEY_SEPARATOR));
 }
 
 bool
@@ -378,7 +322,7 @@ NotifyableKeyManipulator::isValidNotifyableName(const string &name)
      * char as _. 
      */
     if ((name.empty()) || 
-        (name.find(ClusterlibStrings::KEYSEPARATOR) != string::npos) ||
+        (name.find(CLString::KEY_SEPARATOR) != string::npos) ||
         (name[0] == '_')) {
         return false;
     }
@@ -400,7 +344,7 @@ NotifyableKeyManipulator::removeObjectFromKey(const string &key)
 
     if (key.empty() ||
         (key.substr(key.size() - 1) == 
-         ClusterlibStrings::ClusterlibStrings::KEYSEPARATOR)) {
+         CLString::KEY_SEPARATOR)) {
         return string();
     }
 
@@ -412,7 +356,7 @@ NotifyableKeyManipulator::removeObjectFromKey(const string &key)
         /*
          * Get rid of the leaf node 
          */
-        endKeySeparator = res.rfind(ClusterlibStrings::KEYSEPARATOR);
+        endKeySeparator = res.rfind(CLString::KEY_SEPARATOR);
         if ((endKeySeparator == string::npos) ||
             (endKeySeparator == 0)) {
             LOG_ERROR(CL_LOG,
@@ -428,7 +372,7 @@ NotifyableKeyManipulator::removeObjectFromKey(const string &key)
          * be /APPLICATIONS|GROUPS|NODES|PROCESSSLOTS|
          *     DISTRIBUTIONS|PROPERTYLISTS|QUEUE/name.
          */
-        endKeySeparator = res.rfind(ClusterlibStrings::KEYSEPARATOR);
+        endKeySeparator = res.rfind(CLString::KEY_SEPARATOR);
         if ((endKeySeparator == string::npos) ||
             (endKeySeparator == 0)) {
             LOG_ERROR(CL_LOG,
@@ -437,7 +381,7 @@ NotifyableKeyManipulator::removeObjectFromKey(const string &key)
                       res.c_str());
             return string();
         }
-        beginKeySeparator = res.rfind(ClusterlibStrings::KEYSEPARATOR, 
+        beginKeySeparator = res.rfind(CLString::KEY_SEPARATOR, 
                                       endKeySeparator - 1);
         if ((beginKeySeparator == string::npos) ||
             (beginKeySeparator == 0)) {
@@ -455,14 +399,14 @@ NotifyableKeyManipulator::removeObjectFromKey(const string &key)
         string clusterlibObject = 
             res.substr(beginKeySeparator + 1, 
                        endKeySeparator - beginKeySeparator - 1);
-        if ((!rootObject.compare(ClusterlibStrings::ROOT)) ||
-            (!clusterlibObject.compare(ClusterlibStrings::APPLICATIONS)) ||
-            (!clusterlibObject.compare(ClusterlibStrings::GROUPS)) ||
-            (!clusterlibObject.compare(ClusterlibStrings::NODES)) ||
-            (!clusterlibObject.compare(ClusterlibStrings::PROPERTYLISTS)) ||
-            (!clusterlibObject.compare(ClusterlibStrings::DISTRIBUTIONS)) ||
-            (!clusterlibObject.compare(ClusterlibStrings::PROCESSSLOTS)) ||
-            (!clusterlibObject.compare(ClusterlibStrings::QUEUES))) {
+        if ((!rootObject.compare(CLString::ROOT_DIR)) ||
+            (!clusterlibObject.compare(CLString::APPLICATION_DIR)) ||
+            (!clusterlibObject.compare(CLString::GROUP_DIR)) ||
+            (!clusterlibObject.compare(CLString::NODE_DIR)) ||
+            (!clusterlibObject.compare(CLString::PROPERTYLIST_DIR)) ||
+            (!clusterlibObject.compare(CLString::DATADISTRIBUTION_DIR)) ||
+            (!clusterlibObject.compare(CLString::PROCESSSLOT_DIR)) ||
+            (!clusterlibObject.compare(CLString::QUEUE_DIR))) {
             objectFound = true;
         }
     }
@@ -483,7 +427,7 @@ NotifyableKeyManipulator::removeObjectFromComponents(
     TRACE(CL_LOG, "removeObjectFromComponents");
 
     if (components.empty() ||
-        (components.back() == ClusterlibStrings::KEYSEPARATOR)) {
+        (components.back() == CLString::KEY_SEPARATOR)) {
         return -1;
     }
 
@@ -513,21 +457,21 @@ NotifyableKeyManipulator::removeObjectFromComponents(
          * or ROOT.  Try to find a clusterlib object in this component
          */
         if ((components.at(clusterlibObjectElements - 1).compare(
-                 ClusterlibStrings::ROOT) == 0) ||
+                 CLString::ROOT_DIR) == 0) ||
             (components.at(clusterlibObjectElements - 2).compare(
-                ClusterlibStrings::APPLICATIONS) == 0) ||
+                CLString::APPLICATION_DIR) == 0) ||
             (components.at(clusterlibObjectElements - 2).compare(
-                ClusterlibStrings::GROUPS) == 0) ||
+                CLString::GROUP_DIR) == 0) ||
             (components.at(clusterlibObjectElements - 2).compare(
-                ClusterlibStrings::NODES) == 0) ||
+                CLString::NODE_DIR) == 0) ||
             (components.at(clusterlibObjectElements - 2).compare(
-                ClusterlibStrings::PROCESSSLOTS) == 0) ||
+                CLString::PROCESSSLOT_DIR) == 0) ||
             (components.at(clusterlibObjectElements - 2).compare(
-                ClusterlibStrings::DISTRIBUTIONS) == 0)||
+                CLString::DATADISTRIBUTION_DIR) == 0)||
             (components.at(clusterlibObjectElements - 2).compare(
-                ClusterlibStrings::PROPERTYLISTS) == 0)||
+                CLString::PROPERTYLIST_DIR) == 0)||
             (components.at(clusterlibObjectElements - 2).compare(
-                ClusterlibStrings::QUEUES) == 0)) {
+                CLString::QUEUE_DIR) == 0)) {
             objectFound = true;
         }
     }
@@ -545,7 +489,7 @@ NotifyableKeyManipulator::removeObjectFromComponents(
 string
 NotifyableKeyManipulator::removeComponentFromKey(const string &key)
 {
-    size_t keySeparator = key.rfind(ClusterlibStrings::KEYSEPARATOR);
+    size_t keySeparator = key.rfind(CLString::KEY_SEPARATOR);
     if (keySeparator == string::npos) {
         return string();
     }

@@ -66,7 +66,7 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
     m_activeNodeSP = 
         m_activeNodeGroupSP->getNode(nodeName, CREATE_IF_NOT_FOUND);
     if (m_params.getEnableNodeOwnership()) {
-        m_activeNodeSP->acquireLock(ClusterlibStrings::OWNERSHIP_LOCK,
+        m_activeNodeSP->acquireLock(CLString::OWNERSHIP_LOCK,
                                     DIST_LOCK_EXCL);
     }
     m_activeNodePeriodicCheck = 
@@ -90,7 +90,7 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
 
     {
         NotifyableLocker l(m_activeNodeSP,
-                           ClusterlibStrings::NOTIFYABLE_LOCK,
+                           CLString::NOTIFYABLE_LOCK,
                            DIST_LOCK_EXCL);
 
         m_activeNodeSP->cachedProcessSlotInfo().setMaxProcessSlots(
@@ -114,7 +114,7 @@ ActiveNode::ActiveNode(const ActiveNodeParams &params, Factory *factory)
 ActiveNode::~ActiveNode()
 {    
     if (m_params.getEnableNodeOwnership()) {
-        m_activeNodeSP->releaseLock(ClusterlibStrings::OWNERSHIP_LOCK);
+        m_activeNodeSP->releaseLock(CLString::OWNERSHIP_LOCK);
     }
 }
 
@@ -151,7 +151,7 @@ ActiveNode::run(vector<ClusterlibRPCManager *> &rpcManagerVec)
 
     {
         NotifyableLocker l(m_activeNodeSP,
-                           ClusterlibStrings::NOTIFYABLE_LOCK,
+                           CLString::NOTIFYABLE_LOCK,
                            DIST_LOCK_EXCL);
 
         m_activeNodeSP->cachedProcessSlotInfo().setEnable(true);
