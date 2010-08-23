@@ -1,6 +1,6 @@
+#include "clusterlibinternal.h"
 #include "testparams.h"
 #include "MPITestFixture.h"
-#include "clusterlibinternal.h"
 
 extern TestParams globalTestParams;
 

@@ -3,10 +3,11 @@
 #include <cppunit/ui/text/TestRunner.h>
 #include <cppunit/TestResultCollector.h>
 #include <mpi.h>
+#include "clusterlib.h"
 #include "testparams.h"
 #include <iomanip>
 #include <time.h>
-#include "clusterlib.h"
+
 
 using namespace std;
 using namespace boost;

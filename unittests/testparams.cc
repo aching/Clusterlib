@@ -1,9 +1,11 @@
 #include <cppunit/CompilerOutputter.h>
 #include <cppunit/extensions/TestFactoryRegistry.h>
 #include <cppunit/ui/text/TestRunner.h>
-#include "testparams.h"
+#include <getopt.h>
+#include <mpi.h>
+#include <inttypes.h>
 #include "clusterlib.h"
-#include <stdexcept>
+#include "testparams.h"
 
 using namespace std;
 using namespace boost;
@@ -79,7 +81,7 @@ TestParams::rootParseArgs(int argc, char **argv)
         if (err == -1) {
             break;
         }
-        switch(err) {
+        switch (err) {
             case 'h':
                 printUsage(argv[0]);
                 return -1;

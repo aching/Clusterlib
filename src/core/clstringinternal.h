@@ -16,6 +16,11 @@ namespace clusterlib {
 class CLStringInternal {
   public:
     /**
+     * Only root name
+     */
+    const static std::string ROOT_NAME;
+
+    /**
      * Zookeeper root node
      * (internal)
      */

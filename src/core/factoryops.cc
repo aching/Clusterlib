@@ -59,7 +59,8 @@ FactoryOps::FactoryOps(const string &registry, int64_t connectTimeout)
         m_zk.reconnect();
         LOG_INFO(CL_LOG, 
                  "Waiting for connect event from ZooKeeper up to %" PRId64 
-                 " msecs, thread: %" PRId32,
+                 " msecs from %s, thread: %" PRId32,
+                 m_config.getHosts().c_str(),
                  connectTimeout,
                  ProcessThreadService::getTid());
         if (m_firstConnect.predWaitUsecs(connectTimeout * 1000) == false) {
@@ -114,7 +115,7 @@ FactoryOps::FactoryOps(const string &registry, int64_t connectTimeout)
      */
     getNotifyable(shared_ptr<NotifyableImpl>(),
                   CLString::REGISTERED_ROOT_NAME, 
-                  CLString::ROOT_DIR,
+                  CLStringInternal::ROOT_NAME,
                   CREATE_IF_NOT_FOUND);
 }
 

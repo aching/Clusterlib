@@ -87,6 +87,7 @@ const string CLString::QUEUE_DIR = "_queueDir";
 
 const string CLString::KEY_SEPARATOR = "/";
 
+const string CLStringInternal::ROOT_NAME = "root singleton";
 const string CLStringInternal::ROOT_ZNODE = "/";
 const string CLStringInternal::CLUSTERLIB = "_clusterlib";
 const string CLStringInternal::CLUSTERLIB_VERSION = "_1.0";

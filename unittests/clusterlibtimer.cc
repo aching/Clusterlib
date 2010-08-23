@@ -1,3 +1,4 @@
+#include "clusterlib.h"
 #include "testparams.h"
 #include "MPITestFixture.h"
 

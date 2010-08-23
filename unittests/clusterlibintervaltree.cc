@@ -2,7 +2,6 @@
 #include "testparams.h"
 #include "MPITestFixture.h"
 
-
 extern TestParams globalTestParams;
 
 using namespace clusterlib;

@@ -126,6 +126,24 @@ NotifyableImpl::getQueue(const string &name,
     return queueSP;
 }
 
+bool
+NotifyableImpl::operator==(const Notifyable &other)
+{
+    return (other.getKey() == getKey()) ? true : false;
+}
+
+const string &
+NotifyableImpl::getName() const
+{
+    return m_name; 
+}
+
+const string &
+NotifyableImpl::getKey() const
+{
+    return m_key;
+}
+
 shared_ptr<Notifyable>
 NotifyableImpl::getMyParent() const
 {
@@ -755,6 +773,12 @@ NotifyableImpl::NotifyableImpl(FactoryOps *fp,
     // Note that m_cachedCurrentState and m_cachedDesiredState cannot
     // get the shared_from_this() since it isn't ready until after the
     // contructor.
+}
+
+FactoryOps *
+NotifyableImpl::getOps()
+{
+    return mp_f;
 }
 
 void

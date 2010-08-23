@@ -1,6 +1,15 @@
-#include <iostream>
-#include <mpi.h>
-#include <getopt.h>
+/*
+ * testparams.h --
+ *
+ * Contains the test parameters.
+ *
+ * $Header:$
+ * $Revision$
+ * $Date$
+ */
+
+#ifndef	_CL_TESTPARAMS_H_
+#define _CL_TESTPARAMS_H_
 
 /**
  * Global test parameters class to be shared with all tests
@@ -33,18 +42,31 @@ class TestParams
         m_updateClPropertyList(false),
         m_testCount(0) {}
 
-    void printUsage(char *exec) const;
+    /**
+     * Default print usage command.  Intended to be overriden and/or
+     * used by subclasses.
+     *
+     * @param exec Executable string
+     */
+    virtual void printUsage(char *exec) const;
 
     /**
-     * Only the root process will actually parse the arguments
+     * Only the root process will actually parse the arguments.
+     * Intended to be overriden and/or used by subclasses.
+     *
+     * @param argc Number of argument in argv
+     * @param argv Argument vector of char *
+     * @return 0 if success, otherwise failure
      */
-    int32_t rootParseArgs(int argc, char **argv);
+    virtual int32_t rootParseArgs(int argc, char **argv);
 
     /**
      * The root process will scatter the arguments to the other
-     * processes.
+     * processes.  Intended to be overriden and/or used by subclasses.
+     *
+     * @return 0 if success, otherwise failure
      */
-    int32_t scatterArgs();
+    virtual int32_t scatterArgs();
 
     /**
      * Remove the old property list if around from last test.
@@ -140,3 +162,5 @@ class TestParams
      */
     int32_t m_testCount;
 };
+
+#endif

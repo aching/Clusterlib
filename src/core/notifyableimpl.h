@@ -66,20 +66,11 @@ class NotifyableImpl
       public virtual boost::enable_shared_from_this<NotifyableImpl>
 {
   public:
-    virtual bool operator==(const Notifyable &other)
-    {
-        return (other.getKey() == getKey()) ? true : false;
-    }
+    virtual bool operator==(const Notifyable &other);
 
-    virtual const std::string &getName() const 
-    {
-        return m_name; 
-    }
+    virtual const std::string &getName() const;
 
-    virtual const std::string &getKey() const 
-    {
-        return m_key; 
-    }
+    virtual const std::string &getKey() const;
 
     virtual boost::shared_ptr<Notifyable> getMyParent() const;
     
@@ -186,7 +177,7 @@ class NotifyableImpl
     /**
      * Get the associated factory object.
      */
-    FactoryOps *getOps() { return mp_f; }
+    FactoryOps *getOps();
 
     /**
      * Destructor.

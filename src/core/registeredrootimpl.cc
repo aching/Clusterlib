@@ -35,7 +35,7 @@ RegisteredRootImpl::isValidName(const string &name) const
 {
     TRACE(CL_LOG, "isValidName");
 
-    if (name.compare(CLString::ROOT_DIR)) {
+    if (name.compare(CLStringInternal::ROOT_NAME)) {
         return false;
     }
     else {
@@ -144,7 +144,7 @@ RegisteredRootImpl::getObjectFromComponents(
     return getOps()->getNotifyableWaitMsecs(
         shared_ptr<NotifyableImpl>(),
         CLString::REGISTERED_ROOT_NAME,
-        components.at(elements - 1),
+        CLStringInternal::ROOT_NAME,
         CACHED_ONLY,
         msecTimeout,
         pNotifyableSP);

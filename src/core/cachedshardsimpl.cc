@@ -359,7 +359,7 @@ CachedShardsImpl::getAllShards(
                           getOps()->getNotifyable(
                               shared_ptr<NotifyableImpl>(),
                               CLString::REGISTERED_ROOT_NAME,
-                              CLString::ROOT_DIR,
+                              CLStringInternal::ROOT_NAME,
                               CACHED_ONLY)),
                       treeIt->getStartRange(),
                       treeIt->getEndRange(),
@@ -556,7 +556,7 @@ CachedShardsImpl::unmarshalShards(const string &encodedJsonArr)
                           getOps()->getNotifyable(
                               shared_ptr<NotifyableImpl>(),
                               CLString::REGISTERED_ROOT_NAME,
-                              CLString::ROOT_DIR,
+                              CLStringInternal::ROOT_NAME,
                               CACHED_ONLY)),
                       UnknownHashRange(shardMetadataArr[0]),
                       UnknownHashRange(shardMetadataArr[1]),
