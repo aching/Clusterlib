@@ -60,8 +60,8 @@ FactoryOps::FactoryOps(const string &registry, int64_t connectTimeout)
         LOG_INFO(CL_LOG, 
                  "Waiting for connect event from ZooKeeper up to %" PRId64 
                  " msecs from %s, thread: %" PRId32,
-                 m_config.getHosts().c_str(),
                  connectTimeout,
+                 m_config.getHosts().c_str(),
                  ProcessThreadService::getTid());
         if (m_firstConnect.predWaitUsecs(connectTimeout * 1000) == false) {
             LOG_ERROR(CL_LOG,
