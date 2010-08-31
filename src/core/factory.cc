@@ -17,12 +17,12 @@ using namespace boost;
 
 namespace clusterlib {
 
-Factory::Factory(const string &registry, int64_t connectTimeout)
+Factory::Factory(const string &registry, int64_t msecConnectTimeout)
     : m_ops(NULL)
 {
     TRACE(CL_LOG, "Factory");
 
-    m_ops = new FactoryOps(registry, connectTimeout);
+    m_ops = new FactoryOps(registry, msecConnectTimeout);
 }
 
 /*

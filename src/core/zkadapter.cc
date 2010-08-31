@@ -418,8 +418,14 @@ ZooKeeperAdapter::reconnect()
         throw InvalidMethodException(
             "reconnect: Failed since no reconnection is allowed!");
     }
-    /* clear the connection state */
+    /* Clear the connection state */
     disconnect();
+    
+    LOG_INFO(LOG, 
+             "reconnect: Making a connection to %s with a timeout of %" 
+             PRId64 " msecs",
+             m_zkConfig.getHosts().c_str(),
+             m_zkConfig.getConnectTimeout());
     
     /* Establish a new connection to ZooKeeper */
     mp_zkHandle = zookeeper_init(m_zkConfig.getHosts().c_str(), 

@@ -25,10 +25,10 @@ class Factory
      *
      * @param registry the Zookeeper comma separated list of
      *        server:port (i.e. localhost:2221,localhost2:2222).
-     * @param connectTimeout the amount of milliseconds to wait for a 
+     * @param msecConnectTimeout the amount of milliseconds to wait for a 
      *        connection to the specified registry (defaulted to 30000)
      */
-    Factory(const std::string &registry, int64_t connectTimeout = 30000);
+    Factory(const std::string &registry, int64_t msecConnectTimeout = 30000);
 
     /**
      * Destructor.

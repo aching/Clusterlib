@@ -18,11 +18,11 @@ using namespace json;
 
 namespace clusterlib {
 
-FactoryOps::FactoryOps(const string &registry, int64_t connectTimeout)
+FactoryOps::FactoryOps(const string &registry, int64_t msecConnectTimeout)
     : m_syncEventId(0),
       m_syncEventIdCompleted(0),
       m_endEventDispatched(false),
-      m_config(registry, connectTimeout, true), 
+      m_config(registry, msecConnectTimeout, true), 
       m_zk(m_config, NULL, false),
       m_timerEventAdapter(m_timerEventSrc),
       m_zkEventAdapter(m_zk),
@@ -53,29 +53,32 @@ FactoryOps::FactoryOps(const string &registry, int64_t connectTimeout)
     m_timerHandlerThread.Create(*this, &FactoryOps::consumeTimerEvents);
 
     /*
-     * Connect to ZK.
+     * Connect to ZK using the user-defined timeout.  Add one more
+     * second to allow zookeeper_init() to complete and return.
      */
     try {
         m_zk.reconnect();
         LOG_INFO(CL_LOG, 
                  "Waiting for connect event from ZooKeeper up to %" PRId64 
                  " msecs from %s, thread: %" PRId32,
-                 connectTimeout,
+                 msecConnectTimeout,
                  m_config.getHosts().c_str(),
                  ProcessThreadService::getTid());
-        if (m_firstConnect.predWaitUsecs(connectTimeout * 1000) == false) {
+        if (m_firstConnect.predWaitUsecs((msecConnectTimeout + 1) * 1000) 
+            == false) {
             LOG_ERROR(CL_LOG,
                       "FactoryOps: Did not receive connect event from %s in "
                       "time (%" PRId64 " msecs), aborting",
                       m_config.getHosts().c_str(),
-                      connectTimeout);
+                      msecConnectTimeout);
 	    throw RepositoryConnectionFailureException(
 		"Did not receive connect event in time, aborting");
         }
         LOG_INFO(CL_LOG, 
                  "After wait, m_connected == %d",
                  static_cast<int>(m_connected));
-    } catch (zk::ZooKeeperException &e) {
+    } 
+    catch (zk::ZooKeeperException &e) {
         m_zk.disconnect();
         LOG_FATAL(CL_LOG, 
                   "Failed to connect to Zookeeper (%s)",
