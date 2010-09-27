@@ -29,6 +29,7 @@ static const char *defaultConfig[][2] =
 {
     {"httpd.port", "2188"},
     {"httpd.rootDirectory", ""},
+    {"httpd.contenttypes", "htm|text/html,html|text/html,xml|text/xml,js|text/javascript,css|text/css,jpg|image/jpeg,gif|image/gif,pdf|application/pdf,png|image/png,zip|application/zip,tar|application/x-tar,gz|application/x-gzip,tgz|application/x-gtar,txt|text/plain,tif|image/tif"},
     {"httpd.ipv6", "false"},
     {"httpd.sessionlife", "600"},
     {"zookeeper.servers", "localhost:2181"},
@@ -219,7 +220,7 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
     if (!zookeeperServers.empty()) {
         m_config["zookeeper.servers"] = zookeeperServers;
     }
-    if (!zookeeperServers.empty()) {
+    if (!rootDirectory.empty()) {
         m_config["httpd.rootDirectory"] = rootDirectory;
     }
 
