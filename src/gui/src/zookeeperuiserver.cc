@@ -121,13 +121,15 @@ ZooKeeperUIServer::printUsage()
 "                       (i.e. wm301:2181,wm302:2181)\n"
 " -l  --log4cxx         Log4cxx file location - overrides config of\n"
 "                       logger.configuration\n"
+" -r  --root            Root directory of HTTP server - overrides config of\n"
+"                       httpd.rootDirectory\n"
 " -v  --version         Displays the version of this executable\n";
 }
 
 void
 ZooKeeperUIServer::parseArgs(int argc, const char *const*argv) 
 {
-    string configFile, zookeeperServers, log4cxxFile;
+    string configFile, zookeeperServers, log4cxxFile, rootDirectory;
     apr_pool_t *pool;
     if (apr_pool_create(&pool, NULL) != APR_SUCCESS) {
         cerr << "Not enough memory for argument parsing." << endl;
@@ -146,6 +148,7 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
         {"help", 'h', 0, "Show this help."},
         {"zk_server_port", 'z', 1, "Zookeeper server port list."},
         {"log4cxx", 'l', 1, "Log4cxx file."},
+        {"root", 'r', 1, "http.rootDirectory path."},
         {NULL, 0, 0, NULL},
     };
 
@@ -173,6 +176,9 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
             case 'l':
                 log4cxxFile = optArg;
                 break;
+            case 'r':
+                rootDirectory = optArg;
+                break;
             case 'h':
             default:
                 printUsage();
@@ -184,7 +190,8 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
     apr_pool_destroy(pool);
     
     if (configFile.empty() && 
-        (zookeeperServers.empty() || log4cxxFile.empty())) {
+        (zookeeperServers.empty() || log4cxxFile.empty() || 
+         rootDirectory.empty())) {
         printUsage();
         exit(1);
     }
@@ -211,6 +218,9 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
     }
     if (!zookeeperServers.empty()) {
         m_config["zookeeper.servers"] = zookeeperServers;
+    }
+    if (!zookeeperServers.empty()) {
+        m_config["httpd.rootDirectory"] = rootDirectory;
     }
 
     if (m_config.find("logger.configuration") != m_config.end()) {
