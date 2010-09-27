@@ -110,14 +110,24 @@ void
 ZooKeeperUIServer::printUsage() 
 {
     printVersion();
-    cout << "Usage: " << appName
-         << " -c|--config <configFile> [-h|--help] [-v|--version]" << endl;
+    cout <<
+"Usage: " << appName <<
+" [OPTION]... [VAR=VALUE]...\n\n"
+" -h  --help            Display this help and exit.\n"
+" -c  --config          Use an XML formatted configuration file for all\n"
+"                       arguments.\n"
+" -z  --zk_server_port  Zookeeper server port list - overrides config of\n"
+"                       zookeeper.servers\n"
+"                       (i.e. wm301:2181,wm302:2181)\n"
+" -l  --log4cxx         Log4cxx file location - overrides config of\n"
+"                       logger.configuration\n"
+" -v  --version         Displays the version of this executable\n";
 }
 
 void
 ZooKeeperUIServer::parseArgs(int argc, const char *const*argv) 
 {
-    string configFile;
+    string configFile, zookeeperServers, log4cxxFile;
     apr_pool_t *pool;
     if (apr_pool_create(&pool, NULL) != APR_SUCCESS) {
         cerr << "Not enough memory for argument parsing." << endl;
@@ -134,6 +144,8 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
         {"config", 'c', 1, "Specify the location of the configuration file."},
         {"version", 'v', 0, "Show the version."},
         {"help", 'h', 0, "Show this help."},
+        {"zk_server_port", 'z', 1, "Zookeeper server port list."},
+        {"log4cxx", 'l', 1, "Log4cxx file."},
         {NULL, 0, 0, NULL},
     };
 
@@ -155,6 +167,12 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
                 printVersion();
                 exit(0);
                 break;
+            case 'z':
+                zookeeperServers = optArg;
+                break;
+            case 'l':
+                log4cxxFile = optArg;
+                break;
             case 'h':
             default:
                 printUsage();
@@ -165,26 +183,36 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
     
     apr_pool_destroy(pool);
     
-    if (configFile.size() == 0) {
+    if (configFile.empty() && 
+        (zookeeperServers.empty() || log4cxxFile.empty())) {
         printUsage();
         exit(1);
     }
-    
+
     /* Set default configuration */
     for (uint32_t i = 0; defaultConfig[i][0] != NULL; ++i) {
         m_config[defaultConfig[i][0]] = defaultConfig[i][1];
     }
-    
-    /* Parse the XML configuration. */
-    try {
-        configurator::XmlConfig::Parse(configFile, &m_config);
+
+    /* Parse the XML configuration. */     
+    if (!configFile.empty()) {
+        try {
+            configurator::XmlConfig::Parse(configFile, &m_config);
+        }
+        catch (configurator::ConfigurationException &ex) {
+            cerr << "The configuration file is invalid." << endl;
+            cerr << ex.what() << endl;
+            exit(1);
+        }
     }
-    catch (configurator::ConfigurationException &ex) {
-        cerr << "The configuration file is invalid." << endl;
-        cerr << ex.what() << endl;
-        exit(1);
-    }
     
+    if (!log4cxxFile.empty()) {
+        m_config["logger.configuration"] = log4cxxFile;
+    }
+    if (!zookeeperServers.empty()) {
+        m_config["zookeeper.servers"] = zookeeperServers;
+    }
+
     if (m_config.find("logger.configuration") != m_config.end()) {
         try {
             PropertyConfigurator::configure(m_config["logger.configuration"]);
