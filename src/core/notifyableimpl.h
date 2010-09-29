@@ -47,7 +47,8 @@ struct NameRef {
     std::string lockKey;
 
     /**
-     * The actual lock node created path (used to remove later)
+     * The actual lock node created path (used to remove this NameRef
+     * later)
      */
     std::string lockNodeCreatedPath;
 
@@ -215,9 +216,10 @@ class NotifyableImpl
     virtual void removeRepositoryEntries();
 
     /**
-     * Get distributed lock owner information
+     * Get distributed lock owner information for all threads sharing
+     * this Factory instance.
      *
-     * @param lockName the name of the lock
+     * @param lockName the name of the lock (i.e. NOTIFYABLE_LOCK, CHILD_LOCK)
      * @param pHostnamePidTid If not NULL, will be set to hostname pid tid
      * @param pLockNodePrefix If not NULL, will be set to the lock node prefix
      * @param pLockNodeCreatedPath If not NULL, will be set to the 
@@ -235,9 +237,10 @@ class NotifyableImpl
         int32_t *pRefCount) const;
 
     /**
-     * Set the key of the distributed lock
+     * Set the key of the distributed lock for all threads sharing
+     * this Factory instance.
      *
-     * @param lockName Name of the lock to store under
+     * @param lockName the name of the lock (i.e. NOTIFYABLE_LOCK, CHILD_LOCK)
      * @param lockKey Key of the lock
      * @param lockNodeCreatedPath Final created path of lock owner
      * @param distributedLockType Lock type
@@ -251,7 +254,7 @@ class NotifyableImpl
     /**
      * Safe reference count changes for distributed locks.
      *
-     * @param lockName the name of the lock
+     * @param lockName the name of the lock (i.e. NOTIFYABLE_LOCK, CHILD_LOCK)
      * @return the reference count after the operation
      */
     virtual int32_t incrDistributedLockOwnerCount(
@@ -262,18 +265,18 @@ class NotifyableImpl
      * reference count goes down to zero, the owner for the lockName
      * is removed.
      *
-     * @param lockName the name of the lock
+     * @param lockName the name of the lock (i.e. NOTIFYABLE_LOCK, CHILD_LOCK)
      * @return the reference count after the operation
      */
     virtual int32_t decrDistributedLockOwnerCount(
         const std::string &lockName);
 
     /**
-     * Check to see if the lock attempt is re-entrant (Do I already
-     * have this lock?)
+     * Check to see if the lock attempt is re-entrant (Does this
+     * thread already have this lock?)
      *
-     * @param lockNodeKey Key to that will be used for getting the lock
-     * @param lockNodeOwnerKey Key that already has the lock
+     * @param lockName the name of the lock (i.e. NOTIFYABLE_LOCK, CHILD_LOCK)
+     * @param lockKey Key of the lock
      * @return True if the attempt is re-entrant, false otherwise
      * @throws InvalidArgumentsException if a thread is trying to get the same
      *         lock but with a different DistributedLockType
@@ -417,9 +420,11 @@ class NotifyableImpl
     
     /** 
      * All lock info (locks, their owners and their owner's reference
-     * counts are stored here.
+     * counts) are stored here - primarily keyed by the name of lock
+     * (NOTIFYABLE_LOCK, CHILD_LOCK, etc.) and secondarily keyed by
+     * the thread id (i.e. '1328').
      */
-    std::map<std::string, NameRef> m_distLockMap;
+    std::map<std::string, std::map<int32_t, NameRef> > m_nameThreadLockMap;
 
     /**                 
      * This is the map that contains this object (and these types of

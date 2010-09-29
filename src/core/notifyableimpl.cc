@@ -320,7 +320,8 @@ NotifyableImpl::getState() const
 {
     TRACE(CL_LOG, "getState");
 
-    Locker l1(getSyncLock());
+    Locker l(getSyncLock());
+
     LOG_DEBUG(CL_LOG, 
               "getState: State for (%s) is %s", 
               getKey().c_str(), 
@@ -813,27 +814,35 @@ NotifyableImpl::getDistributedLockOwnerInfo(
     DistributedLockType *pDistributedLockType,
     int32_t *pRefCount) const
 {
-    Locker l1(getSyncLock());
+    Locker l(getSyncLock());
 
-    map<string, NameRef>::const_iterator lockIt = m_distLockMap.find(lockName);
-    if (lockIt == m_distLockMap.end()) {
+    map<string, map<int32_t, NameRef> >::const_iterator nameThreadLockMapIt = 
+        m_nameThreadLockMap.find(lockName);
+    if (nameThreadLockMapIt == m_nameThreadLockMap.end()) {
+        return false;
+    }
+
+    map<int32_t, NameRef>::const_iterator threadNameRefIt = 
+        nameThreadLockMapIt->second.find(
+        ProcessThreadService::getTid());
+    if (threadNameRefIt == nameThreadLockMapIt->second.end()) {
         return false;
     }
 
     if (pHostnamePidTid != NULL) {
-        *pHostnamePidTid = lockIt->second.hostnamePidTid;
+        *pHostnamePidTid = threadNameRefIt->second.hostnamePidTid;
     }
     if (pLockKey != NULL) {
-        *pLockKey = lockIt->second.lockKey;
+        *pLockKey = threadNameRefIt->second.lockKey;
     }
     if (pLockNodeCreatedPath != NULL) {
-        *pLockNodeCreatedPath = lockIt->second.lockNodeCreatedPath;
+        *pLockNodeCreatedPath = threadNameRefIt->second.lockNodeCreatedPath;
     }
     if (pDistributedLockType != NULL) {
-        *pDistributedLockType = lockIt->second.distributedLockType;
+        *pDistributedLockType = threadNameRefIt->second.distributedLockType;
     }
     if (pRefCount != NULL) {
-        *pRefCount = lockIt->second.refCount;
+        *pRefCount = threadNameRefIt->second.refCount;
     }
 
     return true;
@@ -846,85 +855,124 @@ NotifyableImpl::setDistributedLockOwnerInfo(
     const string &lockNodeCreatedPath,
     DistributedLockType distributedLockType)
 { 
-    Locker l1(getSyncLock());
+    Locker l(getSyncLock());
 
-    map<string, NameRef>::iterator lockIt = m_distLockMap.find(lockName);
-    if (lockIt == m_distLockMap.end()) {
+    map<int32_t, NameRef>::iterator threadNameRefIt = 
+        m_nameThreadLockMap[lockName].find(
+        ProcessThreadService::getTid());
+    if (threadNameRefIt == m_nameThreadLockMap[lockName].end()) {
         NameRef nameRef(
             0, lockKey, lockNodeCreatedPath, distributedLockType);
-        m_distLockMap.insert(make_pair<string, NameRef>(lockName, nameRef));
+        m_nameThreadLockMap[lockName].insert(
+            make_pair<int32_t, NameRef>(ProcessThreadService::getTid(), 
+                                        nameRef));
     }
     else {
-        if (lockIt->second.refCount != 0) {
+        if (threadNameRefIt->second.refCount != 0) {
             ostringstream oss;
             oss << "setDistributedLockOwnerInfo: Impossible that old lock "
-                << "still exists with "
-                << "refCount=" << lockIt->second.refCount
-                << ", hostnamePidTid=" << lockIt->second.hostnamePidTid
-                << ", lockKey=" << lockIt->second.lockKey
+                << "info still exists with "
+                << "lockName=" << lockName
+                << ", refCount=" << threadNameRefIt->second.refCount
+                << ", hostnamePidTid=" 
+                << threadNameRefIt->second.hostnamePidTid
+                << ", lockKey=" << threadNameRefIt->second.lockKey
                 << ", lockNodeCreatedPath=" 
-                << lockIt->second.lockNodeCreatedPath
+                << threadNameRefIt->second.lockNodeCreatedPath
                 << ", distributedLockType=" 
-                << lockIt->second.distributedLockType;
+                << threadNameRefIt->second.distributedLockType << "("
+                << distributedLockTypeToString(
+                    threadNameRefIt->second.distributedLockType) << ")";
             LOG_ERROR(CL_LOG, "%s", oss.str().c_str());
             throw InconsistentInternalStateException(oss.str());
         }
 
-        lockIt->second.hostnamePidTid = 
+        threadNameRefIt->second.hostnamePidTid = 
             ProcessThreadService::getHostnamePidTid();        
-        lockIt->second.lockKey = lockKey;
-        lockIt->second.lockNodeCreatedPath = lockNodeCreatedPath;
-        lockIt->second.distributedLockType = distributedLockType;
+        threadNameRefIt->second.lockKey = lockKey;
+        threadNameRefIt->second.lockNodeCreatedPath = lockNodeCreatedPath;
+        threadNameRefIt->second.distributedLockType = distributedLockType;
     }
 }
 
 int32_t
 NotifyableImpl::incrDistributedLockOwnerCount(const string &lockName)
 {
-    Locker l1(getSyncLock());
-    map<string, NameRef>::iterator lockIt = m_distLockMap.find(lockName);
-    if (lockIt == m_distLockMap.end()) {
+    Locker l(getSyncLock());
+
+    map<string, map<int32_t, NameRef> >::iterator nameThreadLockMapIt = 
+        m_nameThreadLockMap.find(lockName);
+    if (nameThreadLockMapIt == m_nameThreadLockMap.end()) {
         LOG_ERROR(CL_LOG, 
                   "incrDistributedLockOwnerCount: Couldn't find lockName %s",
                   lockName.c_str());
         throw InconsistentInternalStateException(
-            "incrDistributedLockOwnerCount: Failed");
+            "incrDistributedLockOwnerCount: Failed to get lockName map");
     }
 
-    if (lockIt->second.refCount >= 0) {
-        lockIt->second.refCount++;
+    map<int32_t, NameRef>::iterator threadNameRefIt = 
+        nameThreadLockMapIt->second.find(
+        ProcessThreadService::getTid());
+    if (threadNameRefIt == nameThreadLockMapIt->second.end()) {
+        LOG_ERROR(CL_LOG, 
+                  "incrDistributedLockOwnerCount: Couldn't find thread id %"
+                  PRId32,
+                  ProcessThreadService::getTid());
+        throw InconsistentInternalStateException(
+            "incrDistributedLockOwnerCount: Failed to get thread id map");
+
+    }
+
+    if (threadNameRefIt->second.refCount >= 0) {
+        threadNameRefIt->second.refCount++;
     }
     else {
         LOG_ERROR(CL_LOG, 
                   "incrDistributedLockOwnerCount: Impossible "
                   "refCount %d",
-                  lockIt->second.refCount);
+                  threadNameRefIt->second.refCount);
         throw InconsistentInternalStateException(
-            "incrDistributedLockLeyCount: Failed");
+            "incrDistributedLockLeyCount: Failed to increment"
+            " (negative refCount)");
     }
 
-    return lockIt->second.refCount;
+    return threadNameRefIt->second.refCount;
 }
     
 int32_t
 NotifyableImpl::decrDistributedLockOwnerCount(const string &lockName)
 {
-    Locker l1(getSyncLock());
-    map<string, NameRef>::iterator lockIt = m_distLockMap.find(lockName);
-    if (lockIt == m_distLockMap.end()) {
+    Locker l(getSyncLock());
+
+    map<string, map<int32_t, NameRef> >::iterator nameThreadLockMapIt = 
+        m_nameThreadLockMap.find(lockName);
+    if (nameThreadLockMapIt == m_nameThreadLockMap.end()) {
         LOG_ERROR(CL_LOG, 
                   "decrDistributedLockOwnerCount: Couldn't find lockName %s",
                   lockName.c_str());
         throw InconsistentInternalStateException(
-            "decrDistributedLockOwnerCount: Failed");
+            "decrDistributedLockOwnerCount: Failed to get lockName map");
     }
 
-    int32_t refCount = lockIt->second.refCount;
+    map<int32_t, NameRef>::iterator threadNameRefIt = 
+        nameThreadLockMapIt->second.find(
+        ProcessThreadService::getTid());
+    if (threadNameRefIt == nameThreadLockMapIt->second.end()) {
+        LOG_ERROR(CL_LOG, 
+                  "decrDistributedLockOwnerCount: Couldn't find thread id %"
+                  PRId32,
+                  ProcessThreadService::getTid());
+        throw InconsistentInternalStateException(
+            "decrDistributedLockOwnerCount: Failed to get thread id map");
+
+    }
+
+    int32_t refCount = threadNameRefIt->second.refCount;
     if (refCount == 1) {
-        m_distLockMap.erase(lockIt);
+        nameThreadLockMapIt->second.erase(threadNameRefIt);
     }
     else if (refCount > 1) {
-        --lockIt->second.refCount;
+        --(threadNameRefIt->second.refCount);
     }
     else {
         LOG_ERROR(CL_LOG, 
@@ -932,7 +980,7 @@ NotifyableImpl::decrDistributedLockOwnerCount(const string &lockName)
                   "refCount %" PRId32,
                   refCount);
         throw InconsistentInternalStateException(
-            "decrDistributedLockLeyCount: Failed");
+            "decrDistributedLockLeyCount: Failed with negative refCount");
     }
 
     return refCount - 1;

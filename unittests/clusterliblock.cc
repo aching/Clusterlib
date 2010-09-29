@@ -11,6 +11,35 @@ using namespace clusterlib;
 const string appName = "unittests-lock-app";
 const string groupName = "lock-group";
 
+/**
+ * Helper function for thread lock testing in testLock28.
+ */
+void *testLock28ThreadFunc(void *groupP)
+{
+    shared_ptr<Group> group = *(reinterpret_cast<shared_ptr<Group> *>(groupP));
+    group->acquireLock(
+        CLString::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
+    sleep(1);
+    group->releaseLock(CLString::NOTIFYABLE_LOCK);
+    return NULL;
+}
+
+/**
+ * Helper function for thread lock testing in testLock29.
+ */
+void *testLock29ThreadFunc(void *groupP)
+{
+    shared_ptr<Group> group = *(reinterpret_cast<shared_ptr<Group> *>(groupP));
+    group->acquireLock(
+        CLString::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
+    group->acquireLock(
+        CLString::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
+    sleep(1);
+    group->releaseLock(CLString::NOTIFYABLE_LOCK);
+    group->releaseLock(CLString::NOTIFYABLE_LOCK);
+    return NULL;
+}
+
 class ClusterlibLock : public MPITestFixture
 {
     CPPUNIT_TEST_SUITE(ClusterlibLock);
@@ -28,6 +57,8 @@ class ClusterlibLock : public MPITestFixture
     CPPUNIT_TEST(testLock25);
     CPPUNIT_TEST(testLock26);
     CPPUNIT_TEST(testLock27);
+    CPPUNIT_TEST(testLock28);
+    CPPUNIT_TEST(testLock29);
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -394,6 +425,57 @@ class ClusterlibLock : public MPITestFixture
         }
     }
 
+    /**
+     * Acquire a shared lock, and then another with another 2 threads on
+     * the same process.  When they release the locks, there should be
+     * no problem.
+     */
+    void testLock28()
+    {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testLock28");
+        MPI_CPPUNIT_ASSERT(_group0);
+        Thread groupLockThread1;
+        Thread groupLockThread2;
+        groupLockThread1.Create(&_group0, &testLock28ThreadFunc);
+        groupLockThread2.Create(&_group0, &testLock28ThreadFunc);
+        _group0->acquireLock(
+            CLString::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
+        sleep(1);
+        _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
+        groupLockThread1.Join();
+        groupLockThread2.Join();
+    }
+
+    /**
+     * Same as testLock28, but add one more level of complexity by
+     * using the refCount as well.
+     */
+    void testLock29()
+    {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    _factory, 
+                                    true, 
+                                    "testLock29");
+        MPI_CPPUNIT_ASSERT(_group0);
+        Thread groupLockThread1;
+        Thread groupLockThread2;
+        groupLockThread1.Create(&_group0, &testLock29ThreadFunc);
+        groupLockThread2.Create(&_group0, &testLock29ThreadFunc);
+        _group0->acquireLock(
+            CLString::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
+        _group0->acquireLock(
+            CLString::NOTIFYABLE_LOCK, DIST_LOCK_SHARED);
+        sleep(1);
+        _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
+        _group0->releaseLock(CLString::NOTIFYABLE_LOCK);
+        groupLockThread1.Join();
+        groupLockThread2.Join();
+    }
 
   private:
     Factory *_factory;
