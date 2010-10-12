@@ -53,7 +53,7 @@ CachedStateImpl::publish(bool unconditional)
     }
 
     string encodedJsonObject = JSONCodec::encode(m_historyArr);
-    LOG_INFO(CL_LOG,
+    LOG_DEBUG(CL_LOG,
              "Tried to publish state for notifyable %s to %s "
              "with current version %d, unconditional %d\n",
              getNotifyable()->getKey().c_str(), 

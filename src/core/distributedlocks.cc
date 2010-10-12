@@ -159,11 +159,11 @@ DistributedLocks::acquireWaitUsecs(
             int32_t refCount = -1;
             notifyableImplSP->getDistributedLockOwnerInfo(
                 lockName, NULL, NULL, NULL, NULL, &refCount);
-            LOG_INFO(CL_LOG, 
-                     "acquireWaitUsecs: Re-entering already held lock on %s "
-                     "(had %" PRId32 " references)", 
-                     notifyableImplSP->getKey().c_str(),
-                     refCount);
+            LOG_DEBUG(CL_LOG, 
+                      "acquireWaitUsecs: Re-entering already held lock on %s "
+                      "(had %" PRId32 " references)", 
+                      notifyableImplSP->getKey().c_str(),
+                      refCount);
         }
         notifyableImplSP->incrDistributedLockOwnerCount(lockName);
         return true;
@@ -416,12 +416,12 @@ DistributedLocks::acquireWaitUsecs(
         int32_t refCount = -1;
         notifyableImplSP->getDistributedLockOwnerInfo(
             lockName, NULL, NULL, NULL, NULL, &refCount);
-        LOG_INFO(CL_LOG, 
-                 "acquireWaitUsecs: Setting distributed lock key "
-                 "of Notifyable %s with %s (%" PRId32 " references)", 
-                 notifyableImplSP->getKey().c_str(),
-                 createdPath.c_str(),
-                 refCount);
+        LOG_DEBUG(CL_LOG, 
+                  "acquireWaitUsecs: Setting distributed lock key "
+                  "of Notifyable %s with %s (%" PRId32 " references)", 
+                  notifyableImplSP->getKey().c_str(),
+                  createdPath.c_str(),
+                  refCount);
     }
 
     /*

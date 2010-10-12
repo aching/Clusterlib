@@ -52,6 +52,14 @@ class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod
     
     ::json::JSONValue::JSONArray zooGetChildren(
         ::json::JSONValue::JSONString path);
+
+    ::json::JSONValue::JSONString zooCreate(
+        ::json::JSONValue::JSONString path,
+        ::json::JSONValue::JSONString value);
+
+    ::json::JSONValue::JSONBoolean zooDelete(
+        ::json::JSONValue::JSONString path,
+        ::json::JSONValue::JSONBoolean recursive);
     
   private:
     static log4cxx::LoggerPtr logger;

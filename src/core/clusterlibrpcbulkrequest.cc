@@ -85,7 +85,7 @@ ClusterlibRPCBulkRequest::waitAll(
             oss.str("");
             oss << "waitAll: Waiting for " << remainingRequestCount
                 << " of " << m_requestVec.size() << " total responses";
-            LOG_INFO(CL_LOG, "%s", oss.str().c_str());
+            LOG_DEBUG(CL_LOG, "%s", oss.str().c_str());
             method->setMethodStatus(oss.str());
         }
 

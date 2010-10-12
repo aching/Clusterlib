@@ -156,6 +156,25 @@ MethodAdaptor::invoke(const string &name,
                 "Method '" + name + "' requires one string parameter.");
         }
         return zooGetChildren(param[0].get<JSONValue::JSONString>());
+    } else if (name == "zoo_create") {
+        if (param.size() != 2 || 
+            param[0].type() != typeid(JSONValue::JSONString) ||
+            param[1].type() != typeid(JSONValue::JSONString)) {
+            throw JSONRPCInvocationException(
+                "Method '" + name + "' requires two string parameters");
+        }
+        return zooCreate(param[0].get<JSONValue::JSONString>(),
+                         param[1].get<JSONValue::JSONString>());
+    } else if (name == "zoo_delete") {
+        if (param.size() != 2 || 
+            param[0].type() != typeid(JSONValue::JSONString) ||
+            param[1].type() != typeid(JSONValue::JSONBoolean)) {
+            throw JSONRPCInvocationException(
+                "Method '" + name + "' requires one string parameter and " +
+                "one boolean.");
+        }
+        return zooDelete(param[0].get<JSONValue::JSONString>(),
+                         param[1].get<JSONValue::JSONBoolean>());
     } else {
         throw JSONRPCInvocationException(
             "Unknown method '" + name + "' invoked.");
@@ -191,7 +210,7 @@ MethodAdaptor::zooGet(JSONValue::JSONString path) {
         ret = zoo_get(zkHandle, path.c_str(), 0, buffer, &bufLen, NULL);
         if (ret != ZINVALIDSTATE) break;
         reconnect();
-        } while (true);
+    } while (true);
     
     switch (ret) {
         case ZOK:
@@ -223,6 +242,14 @@ MethodAdaptor::zooSet(JSONValue::JSONString path,
 
 JSONValue::JSONArray
 MethodAdaptor::zooGetChildren(JSONValue::JSONString path) {
+    JSONValue::JSONArray array;
+
+    /* Special case if the path is empty, just return the '/' */
+    if (path.empty()) {
+        array.push_back("/");
+        return array;
+    }
+
     String_vector children;
     int ret;
     do {
@@ -231,8 +258,6 @@ MethodAdaptor::zooGetChildren(JSONValue::JSONString path) {
         reconnect();
     } while (true);
     
-    JSONValue::JSONArray array;
-    
     switch (ret) {
         case ZOK:
             for (int i = 0; i < children.count; ++i) {
@@ -240,6 +265,75 @@ MethodAdaptor::zooGetChildren(JSONValue::JSONString path) {
             }
             deallocate_String_vector(&children);
             return array;
+        default:
+            throw JSONRPCInvocationException(
+                string("Error occurred in ZooKeeper (") + zerror(ret) + ")");
+    }
+}
+
+JSONValue::JSONString
+MethodAdaptor::zooCreate(JSONValue::JSONString path,
+                         JSONValue::JSONString value) 
+{
+    const int32_t MAX_PATH_LENGTH = 1024;
+    char realPath[MAX_PATH_LENGTH];
+    realPath[0] = 0;
+
+    int ret;
+    do {
+        ret = zoo_create(zkHandle, 
+                         path.c_str(), 
+                         value.c_str(), 
+                         value.length(), 
+                         &ZOO_OPEN_ACL_UNSAFE, 
+                         0,
+                         realPath,
+                         MAX_PATH_LENGTH);
+        if (ret != ZINVALIDSTATE) break;
+        reconnect();
+    } while (true);
+    
+    switch (ret) {
+        case ZOK:
+            return JSONValue::JSONString(realPath);
+        default:
+            throw JSONRPCInvocationException(
+                string("Error occurred in ZooKeeper (") + zerror(ret) + ")");
+    }
+}
+
+JSONValue::JSONBoolean
+MethodAdaptor::zooDelete(JSONValue::JSONString path,
+                         JSONValue::JSONBoolean recursive) {
+    int ret;
+    do {
+        ret = zoo_delete(zkHandle, path.c_str(), -1);
+        if (ret != ZINVALIDSTATE) break;
+        reconnect();
+    } while (true);
+    if (ret != ZOK) {
+        if (ret == ZNONODE) {
+            throw JSONRPCInvocationException(
+                string("Error occurred in ZooKeeper (") + zerror(ret) + ")");
+            return false;
+        }
+        if (ret == ZNOTEMPTY && recursive) {
+            // Get all children and delete them recursively...
+            JSONValue::JSONArray childArr = zooGetChildren(path);
+            for (JSONValue::JSONArray::const_iterator it = childArr.begin();
+                 it != childArr.end();
+                 ++it) {
+                zooDelete(path + "/" + it->get<JSONValue::JSONString>(), 
+                          recursive);
+            }
+            //...and finally attempt to delete the node again
+            return zooDelete(path, false); 
+        }
+    } 
+    
+    switch (ret) {
+        case ZOK:
+            return true;
         default:
             throw JSONRPCInvocationException(
                 string("Error occurred in ZooKeeper (") + zerror(ret) + ")");

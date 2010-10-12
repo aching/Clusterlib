@@ -41,13 +41,13 @@ CachedProcessSlotInfoImpl::publish(bool unconditional)
     Locker l(&getCachedDataLock());
 
     string encodedJsonObject = JSONCodec::encode(m_processSlotInfoArr);
-    LOG_INFO(CL_LOG,
-             "Tried to publish process slot info for notifyable %s to %s "
-             "with current version %d, unconditional %d\n",
-             getNotifyable()->getKey().c_str(), 
-             encodedJsonObject.c_str(),
-             getVersion(),
-             unconditional);
+    LOG_DEBUG(CL_LOG,
+              "Tried to publish process slot info for notifyable %s to %s "
+              "with current version %d, unconditional %d\n",
+              getNotifyable()->getKey().c_str(), 
+              encodedJsonObject.c_str(),
+              getVersion(),
+              unconditional);
 
     Stat stat;
     try {

@@ -33,6 +33,7 @@ static const char *defaultConfig[][2] =
     {"httpd.ipv6", "false"},
     {"httpd.sessionlife", "600"},
     {"zookeeper.servers", "localhost:2181"},
+    {"zookeeper.check", "false"},
     // Mark the end of default configurations.
     {NULL, NULL}
 };
@@ -120,6 +121,9 @@ ZooKeeperUIServer::printUsage()
 " -z  --zk_server_port  Zookeeper server port list - overrides config of\n"
 "                       zookeeper.servers\n"
 "                       (i.e. wm301:2181,wm302:2181)\n"
+" -C  --zk_check        Periodically check zookeeper servers -\n"
+"                       overrides config of zookeeper.check\n"
+"                       (i.e. 'true' or 'false')\n"
 " -l  --log4cxx         Log4cxx file location - overrides config of\n"
 "                       logger.configuration\n"
 " -r  --root            Root directory of HTTP server - overrides config of\n"
@@ -130,7 +134,8 @@ ZooKeeperUIServer::printUsage()
 void
 ZooKeeperUIServer::parseArgs(int argc, const char *const*argv) 
 {
-    string configFile, zookeeperServers, log4cxxFile, rootDirectory;
+    string configFile, zookeeperServers, zookeeperCheck, 
+        log4cxxFile, rootDirectory;
     apr_pool_t *pool;
     if (apr_pool_create(&pool, NULL) != APR_SUCCESS) {
         cerr << "Not enough memory for argument parsing." << endl;
@@ -148,6 +153,7 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
         {"version", 'v', 0, "Show the version."},
         {"help", 'h', 0, "Show this help."},
         {"zk_server_port", 'z', 1, "Zookeeper server port list."},
+        {"zk_check", 'C', 1, "Check zookeeper server list."},
         {"log4cxx", 'l', 1, "Log4cxx file."},
         {"root", 'r', 1, "http.rootDirectory path."},
         {NULL, 0, 0, NULL},
@@ -174,6 +180,9 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
             case 'z':
                 zookeeperServers = optArg;
                 break;
+            case 'C':
+                zookeeperCheck = optArg;
+                break;
             case 'l':
                 log4cxxFile = optArg;
                 break;
@@ -190,6 +199,7 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
     
     apr_pool_destroy(pool);
     
+    /* Need the configuration file or the basic options */
     if (configFile.empty() && 
         (zookeeperServers.empty() || log4cxxFile.empty() || 
          rootDirectory.empty())) {
@@ -220,6 +230,9 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
     if (!zookeeperServers.empty()) {
         m_config["zookeeper.servers"] = zookeeperServers;
     }
+    if (!zookeeperCheck.empty()) {
+        m_config["zookeeper.check"] = zookeeperCheck;
+    }
     if (!rootDirectory.empty()) {
         m_config["httpd.rootDirectory"] = rootDirectory;
     }
@@ -248,7 +261,7 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
                   iter->second.c_str());
     }
 
-    // Initialize everything
+    /* Initialize everything */
     if (m_httpd.get()) {
         return;
     }
@@ -263,11 +276,14 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
     m_clusterFactory.reset(
         new clusterlib::Factory(m_config["zookeeper.servers"]));
     clusterlib::Client *client = m_clusterFactory->createClient();
-    m_zookeeperPeriodicCheck.reset(new clusterlib::ZookeeperPeriodicCheck(
-                                     60*1000,
-                                     m_config["zookeeper.servers"],
-                                     client->getRoot()));
-    m_clusterFactory->registerPeriodicThread(*m_zookeeperPeriodicCheck.get());
+    if (m_config["zookeeper.check"] == "true") {
+        m_zookeeperPeriodicCheck.reset(new clusterlib::ZookeeperPeriodicCheck(
+            60*1000,
+            m_config["zookeeper.servers"],
+            client->getRoot()));
+        m_clusterFactory->registerPeriodicThread(
+            *m_zookeeperPeriodicCheck.get());
+    }
     m_clusterRpcMethod.reset(new clusterlib::rpc::json::MethodAdaptor(
                                m_clusterFactory->createClient()));
     m_zookeeperRpcMethod.reset(new zookeeper::rpc::json::MethodAdaptor(
@@ -355,6 +371,10 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
         "zoo_set", m_zookeeperRpcMethod.get());
     m_rpcManager->registerMethod(
         "zoo_get_children", m_zookeeperRpcMethod.get());
+    m_rpcManager->registerMethod(
+        "zoo_create", m_zookeeperRpcMethod.get());
+    m_rpcManager->registerMethod(
+        "zoo_delete", m_zookeeperRpcMethod.get());
 }
 
 void

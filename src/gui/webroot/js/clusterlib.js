@@ -32,7 +32,7 @@ function htmlEscape(htmlString, escape) {
 
 // Keep the timer running 
 function updateTimer() {
-    $("#timer").text((new Date()).toUTCString());
+    $("#timerUTC").html((new Date()).toUTCString());
 }
 
 // Keep the remaining time running
@@ -62,10 +62,13 @@ $(document).ready(function () {
     updateRemainingRefreshTimer();
     rpcCall = $.jsonrpc({url:"/jsonrpc"});
     rpcCallAsync = $.jsonrpc({url:"/jsonrpc", async: true});
-    // Used to set the current state
-    currentUri = parseUri(document.location.href);
-    reestablishState();
-    refresh();
+
+    // Start up the tabs at the top
+    $("#header").tabs({
+        collapsible: true,
+        selected: -1
+    });
+    
     // Start up the dialog box
     $("#dialogObjectInfo").dialog({ autoOpen: false,
 				    buttons: { "Menu": function() {
@@ -88,6 +91,12 @@ $(document).ready(function () {
 					   }
 					 }
 			      });
+
+    // Used to set the current state
+    currentUri = parseUri(document.location.href);
+    reestablishState();
+    refresh();
+
     showContent();
 });
 
@@ -405,7 +414,6 @@ function showContent() {
     // Refresh the timer
     remainingRefreshTimer = remainingRefreshTimerStart;
     timeSinceRefreshTimer = 0;
-
     // Set the page link
     $("#pagelink").attr("href", currentUri.path + "?state=" + escape(currentState.id));
 
@@ -568,8 +576,6 @@ function showContent() {
 	var editDeleteKeyArr = key.split(";");
 	if (editDeleteKeyArr.length == 1) {
             html += '<tr><td><strong>' + htmlEscape(key, true) + '</strong></td><td><div id="' + htmlEscape(key, true) + '"/></td></tr>';
-            debug('key1:' + key);
-            debug('key2:' + htmlEscape(key), true);
             divContent[htmlEscape(key, true)] = content[key];
 	}
 	else {
@@ -610,14 +616,7 @@ function showContent() {
 
     // Set up all jsonviewers (some are encoded JSON objects, some are native)
     for (var key in divContent) {
-        var jsonObj;
-        try {
-            jsonObj = JSON.parse(divContent[key]);
-        } 
-        catch (x) {
-            // Some of the objects to be shown are not basic JSON objects
-            jsonObj = divContent[key];
-        }
+        var jsonObj = divContent[key];
         $('div[id=' + key + ']').jsonviewer({
             json_name: key, json_data: jsonObj
         });

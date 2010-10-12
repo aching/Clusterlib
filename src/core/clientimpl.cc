@@ -171,8 +171,8 @@ ClientImpl::dispatchHandlers(const string &key, Event e)
     TRACE(CL_LOG, "dispatchHandlers");
 
     if (key.empty()) {
-        LOG_INFO(CL_LOG,
-                 "dispatchHandlers: empty key, not dispatching");
+        LOG_DEBUG(CL_LOG,
+                  "dispatchHandlers: empty key, not dispatching");
         return;
     }
 
@@ -182,10 +182,10 @@ ClientImpl::dispatchHandlers(const string &key, Event e)
     UserEventHandler *uehp;
     int32_t counter = 0;	/* Debug counter for # of handlers found. */
 
-    LOG_INFO(CL_LOG,
-             "dispatchHandlers: Looking for handlers for event: %s on: %s",
-             UserEventHandler::getEventsString(e).c_str(), 
-             key.c_str());
+    LOG_DEBUG(CL_LOG,
+              "dispatchHandlers: Looking for handlers for event: %s on: %s",
+              UserEventHandler::getEventsString(e).c_str(), 
+              key.c_str());
 
     {
         Locker l1(getEventHandlersLock());
@@ -195,10 +195,10 @@ ClientImpl::dispatchHandlers(const string &key, Event e)
          * then punt.
          */
         if (range.first == m_eventHandlers.end()) {
-            LOG_INFO(CL_LOG,
-                     "dispatchHandlers: No handlers found for event %s on %s",
-                     UserEventHandler::getEventsString(e).c_str(), 
-                     key.c_str());
+            LOG_DEBUG(CL_LOG,
+                      "dispatchHandlers: No handlers found for event %s on %s",
+                      UserEventHandler::getEventsString(e).c_str(), 
+                      key.c_str());
             return;
         }
 
@@ -245,11 +245,11 @@ ClientImpl::dispatchHandlers(const string &key, Event e)
         }
     }
 
-    LOG_INFO(CL_LOG,
-             "dispatchEventHandlers: Found %d handlers for event %s on %s",
-             counter, 
-             UserEventHandler::getEventsString(e).c_str(),  
-             key.c_str());
+    LOG_DEBUG(CL_LOG,
+              "dispatchEventHandlers: Found %d handlers for event %s on %s",
+              counter, 
+              UserEventHandler::getEventsString(e).c_str(),  
+              key.c_str());
 
     /*
      * If there are no handlers registered for this event on

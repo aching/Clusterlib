@@ -671,11 +671,11 @@ ZooKeeperAdapter::processEvents(void *param)
 {
     TRACE(LOG, "processEvents");
 
-    LOG_INFO(LOG,
-             "Starting thread with ZooKeeperAdapter::processEvents(), "
-             "this: %p, thread: %" PRIu32,
-             this,
-             clusterlib::ProcessThreadService::getTid());
+    LOG_DEBUG(LOG,
+              "Starting thread with ZooKeeperAdapter::processEvents(), "
+              "this: %p, thread: %" PRIu32,
+              this,
+              clusterlib::ProcessThreadService::getTid());
 
     while (1) {
         ZKWatcherEvent source;
@@ -754,13 +754,13 @@ ZooKeeperAdapter::processUserEvents(void *param)
         bool found = m_userEvents.takeWaitMsecs(100, source);
         if (found) {
             try {
-		LOG_INFO(LOG,
-                         "processUserEvents: processing event (type: %s, "
-                         "state: %s, path: %s, context %p)",
-                         getEventString(source.getType()).c_str(),
-                         getStateString(source.getState()).c_str(),
-                         source.getPath().c_str(),
-                         source.getContext());
+		LOG_DEBUG(LOG,
+                          "processUserEvents: processing event (type: %s, "
+                          "state: %s, path: %s, context %p)",
+                          getEventString(source.getType()).c_str(),
+                          getStateString(source.getState()).c_str(),
+                          source.getPath().c_str(),
+                          source.getContext());
 		
                 handleAsyncEvent(source);
             } 
@@ -991,9 +991,9 @@ ZooKeeperAdapter::createNode(const string &path,
         }
     } 
 
-    LOG_INFO(LOG, 
-             "%s has been created", 
-             realPath);
+    LOG_DEBUG(LOG, 
+              "%s has been created", 
+              realPath);
     createdPath = string(realPath);
     return true;
 }
@@ -1096,9 +1096,9 @@ ZooKeeperAdapter::deleteNode(const string &path,
                               m_state == AS_CONNECTED);
     } 
 
-    LOG_INFO(LOG, 
-             "%s has been deleted", 
-             path.c_str());
+    LOG_DEBUG(LOG, 
+              "%s has been deleted", 
+              path.c_str());
     return true;
 }
 

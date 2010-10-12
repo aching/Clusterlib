@@ -643,9 +643,9 @@ FactoryOps::dispatchExternalEvents(void *param)
 
     try {
         while (m_shutdown == false) { 
-            LOG_INFO(CL_LOG,
-                     "[%d]: Asking for next event",
-                     eventSeqId);
+            LOG_DEBUG(CL_LOG,
+                      "[%d]: Asking for next event",
+                      eventSeqId);
             eventSeqId++;
 
             /*
@@ -839,12 +839,12 @@ FactoryOps::dispatchSessionEvent(zk::ZKWatcherEvent *zep)
 {
     TRACE(CL_LOG, "dispatchSessionEvent");
 
-    LOG_INFO(CL_LOG,
-             "dispatchSessionEvent: (type: %d, state: %d (%s), key: %s)",
-             zep->getType(), 
-             zep->getState(),
-             zk::ZooKeeperAdapter::getStateString(zep->getState()).c_str(),
-             zep->getPath().c_str());
+    LOG_DEBUG(CL_LOG,
+              "dispatchSessionEvent: (type: %d, state: %d (%s), key: %s)",
+              zep->getType(), 
+              zep->getState(),
+              zk::ZooKeeperAdapter::getStateString(zep->getState()).c_str(),
+              zep->getPath().c_str());
 
     if ((zep->getState() == ZOO_ASSOCIATING_STATE) ||
         (zep->getState() == ZOO_CONNECTING_STATE)) {
@@ -979,11 +979,11 @@ FactoryOps::consumeTimerEvents(void *param)
                                                      tepp->getData());
             }
 
-            LOG_INFO(CL_LOG,
-                     "Serviced timer %d, handler %p, client data %p",
-                     tepp->getId(), 
-                     tepp->getHandler(),
-                     tepp->getData());
+            LOG_DEBUG(CL_LOG,
+                      "Serviced timer %d, handler %p, client data %p",
+                      tepp->getId(), 
+                      tepp->getHandler(),
+                      tepp->getData());
 
             /*
              * Deallocate the payload object.
@@ -1591,12 +1591,12 @@ FactoryOps::updateCachedObject(CachedObjectEventHandler *fehp,
 
     int32_t etype = ep->getType();
 
-    LOG_INFO(CL_LOG,
-             "updateCachedObject: (%p, %p, %s, %s)",
-             fehp,
-             ep,
-             zk::ZooKeeperAdapter::getEventString(etype).c_str(),
-             ep->getPath().c_str());
+    LOG_DEBUG(CL_LOG,
+              "updateCachedObject: (%p, %p, %s, %s)",
+              fehp,
+              ep,
+              zk::ZooKeeperAdapter::getEventString(etype).c_str(),
+              ep->getPath().c_str());
 
     /*
      * Based on the path and etype, several things need to happen.  At
