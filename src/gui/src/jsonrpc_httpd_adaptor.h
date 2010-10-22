@@ -2,7 +2,8 @@
 #define _INCLUDED_JSONRPC_HTTPD_ADAPTOR_H_
 #include "jsonrpc.h"
 #include "httpd.h"
-#include <log4cxx/logger.h>
+
+DEFINE_LOGGER(HTTP_LOG, "json.rpc.HttpServerAdaptor");
 
 namespace json { namespace rpc {
 
@@ -16,7 +17,6 @@ class HttpServerAdaptor
   private:
     httpd::HttpServer *server;
     JSONRPCManager *manager;
-    static log4cxx::LoggerPtr logger;
     
     class HttpSessionPersistableState 
         : public virtual httpd::HttpSessionState {

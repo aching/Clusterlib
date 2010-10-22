@@ -507,7 +507,8 @@ MicroHttpServer::contentReader(
                     LOG_WARN(GUI_LOG, 
                              "Directive '%s' not supported.",
                              directive.c_str());
-                    oss << "<!--MISSING INCLUDE HANDLER '" << directive << "'-->";
+                    oss << "<!--MISSING INCLUDE HANDLER '" 
+                        << directive << "'-->";
                 } 
                 else {
                     // Execute the include handler

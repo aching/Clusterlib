@@ -1,25 +1,68 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html lang="en">
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
-<title>ZooKeeper Manager</title>
-<link rel="stylesheet" type="text/css" href="css/style.css">
-<script type="text/javascript" src="js/json2.js"></script>
-<script type="text/javascript" src="js/jquery-1.4.2.min.js"></script>
-<script type="text/javascript" src="js/jquery-jsonrpc.js"></script>
-<script type="text/javascript" src="js/parseuri.js"></script>
-<script type="text/javascript" src="js/js-class.js"></script>
-<script type="text/javascript" src="js/bluff.js"></script>
-<script type="text/javascript" src="js/main.js"></script>
-<!--[if IE]><script type="text/javascript" src="js/excanvas.js"></script><![endif]-->
-</head>
-<body>
-<div id="header"><div id="bigtitle">ZooKeeper Manager for <@ZOOKEEPER_SERVERS@></div><div id="smalltitle"><@ZKUI_VERSION@></div></div>
-<div id="toolbar">
-<div class="toolbaritem"><a id="pagelink" href="">Link to this page</a></div><div class="toolbaritem"><a id="uplink" href="javascript:void(0)">Go up</a></div><div class="toolbaritem"><a id="refresh" href="javascript:void(0)">Refresh</a></div><div class="toolbaritem"><a href="zookeeper.html">ZooKeeper View</a></div><div id="timer"></div>
-</div>
-<div id="applistbox"><div class="header">Applications</div><div class="body"><ul id="applist"></ul></div>
-</div><div id="statusbox"><div id="propertybox"><div id="propertycaption"></div><div id="propertytable"><div id="propertylist"></div></div></div>
-<div id="graphbox"></div></div>
-</body>
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    <title>Zookeeper Manager</title>
+    <link rel="stylesheet" type="text/css" href="css/style.css">
+    <link rel="stylesheet" type="text/css" href="css/jqueryFileTree.css"> 
+    <link rel="stylesheet" type="text/css" href="css/ui-lightness/jquery-ui-1.8.5.custom.css">
+    <link rel="stylesheet" type="text/css" href="css/blue/style.css">
+    <style type="text/css">
+        /*demo page css*/
+      
+	body{ font: 62.5% "Trebuchet MS", sans-serif; } 
+    </style>	
+    <script type="text/javascript" src="js/jquery-1.4.2.js"></script>
+    <script type="text/javascript" src="js/jquery-ui-1.8.5.custom.min.js"></script>
+    <script type="text/javascript" src="js/jquery-jtemplates.js"></script>
+    <script type="text/javascript" src="js/autoresize.jquery.js"></script>
+
+    <script type="text/javascript" src="js/json2.js"></script>
+    <script type="text/javascript" src="js/jquery-jsonrpc.js"></script>
+    <script type="text/javascript" src="js/parseuri.js"></script>
+    <script type="text/javascript" src="js/jqueryFileTree.js"></script>
+    <script type="text/javascript" src="js/zookeeper.js"></script>
+    <script type="text/javascript" src="js/jquery.tablesorter.js"></script>
+    <script type="text/javascript" src="js/jquery.jsonviewer.js"></script>
+  </head>
+  <body>
+    <div id=dialogObjectInfo title=""></div>
+    <div id="header">
+        <ul>
+            <li><a href="#tab-1-version">Zookeeper Manager</a></li>
+            <li><a href="#tab-2-servers">Zookeeper Servers</a></li>
+            <li><a href="#tab-3-time">Time</a></li>
+            <li><a href="#tab-4-view">Change View</a></li>
+        </ul>
+        <div id="tab-1-version">
+	    <p style="margin-top : 0px; margin-bottom : 0px;">
+                <@ZKUI_VERSION@>
+            </p>
+        </div>
+        <div id="tab-2-servers">
+	    <p style="margin-top : 0px; margin-bottom : 0px;">
+                <@ZOOKEEPER_SERVERS@>
+            </p>
+        </div>
+        <div id="tab-3-time">
+	    <p style="margin-top : 0px; margin-bottom : 0px;" id="timerUTC">
+            </p>
+        </div>
+        <div id="tab-4-view">
+	    <p style="margin-top : 0px; margin-bottom : 0px;">
+            <a href="clusterlib.html">Clusterlib view</a>
+            </p>
+        </div>
+    </div>
+    <div id="clusterlibbox">
+      <div>Object Hierarchy</div>
+      <div id="tree"></div>
+    </div>
+    <div id="dialogNewValue">
+    </div>
+    <div id="dialogNotify">
+    </div>
+  </body>
 </html>
+
+

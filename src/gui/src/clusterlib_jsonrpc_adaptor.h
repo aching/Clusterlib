@@ -1,6 +1,8 @@
 #ifndef _INCLUDED_CLUSTERLIB_JSONRPC_ADAPTOR_H_
 #define _INCLUDED_CLUSTERLIB_JSONRPC_ADAPTOR_H_
 
+DEFINE_LOGGER(CLM_LOG, "clusterlib.rpc.json.MethodAdaptor");
+
 namespace clusterlib { namespace rpc { namespace json {
 
 const ::json::JSONValue::JSONString idTypeProperty = "type";
@@ -233,10 +235,14 @@ class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod
         ::json::JSONValue::JSONString notifyableKey);
 
   private:
-    static log4cxx::LoggerPtr m_logger;
-
+    /**
+     * Client context for clusterlib.
+     */
     clusterlib::Client *m_client;
 
+    /**
+     * Root for clusterlib.
+     */
     boost::shared_ptr<clusterlib::Root> m_rootSP;
 
     std::string m_name;

@@ -7,20 +7,20 @@
 #include <apr_getopt.h>
 #include <signal.h>
 #include <iostream>
-#include <log4cxx/basicconfigurator.h>
-#include <log4cxx/propertyconfigurator.h>
-#include <log4cxx/helpers/exception.h>
 
 using namespace std;
 using namespace httpd;
-using namespace log4cxx;
 using namespace boost;
 using namespace json::rpc;
 
 static const char *appName = "zkuiserver";
 extern const char *gInkBuildStamp;
 
-namespace zookeeper { namespace ui {
+namespace zookeeper 
+{ 
+
+namespace ui 
+{
     
 ZooKeeperUIServer *ZooKeeperUIServer::m_singleton = NULL;
     
@@ -84,22 +84,63 @@ void
 ZooKeeperUIServer::includeHandler(
     const string &reference, HttpContext *context) 
 {
+    map<string, string>::const_iterator directiveMapIt;
+    directiveMapIt = m_directiveMap.find(reference);
+
     if (reference == "ZKUI_VERSION") {
         context->response.body = gInkBuildStamp;
     } 
     else if (reference == "ZOOKEEPER_SERVERS") {
         context->response.body = m_config["zookeeper.servers"];
     } 
+    else if (directiveMapIt != m_directiveMap.end()) {
+        context->response.body = directiveMapIt->second;
+    }
     else {
         throw HttpServerException(reference + 
                                   " include directive is not supported.");
     }
 }
-    
+
+void 
+ZooKeeperUIServer::addDirective(const std::string &key,
+                                const std::string &value)
+{
+    map<string, string>::const_iterator directiveMapIt = 
+        m_directiveMap.find(key);
+    if (directiveMapIt != m_directiveMap.end()) {
+        LOG_WARN(ZUI_LOG, 
+                 "addDirective: Key %s already exists with value %s and "
+                 "replacing with value %s",
+                 key.c_str(),
+                 value.c_str(),
+                 directiveMapIt->second.c_str());
+    }
+    m_directiveMap[key] = value;
+}
+   
 clusterlib::Factory *
 ZooKeeperUIServer::getClusterlibFactory()
 {
     return m_clusterFactory.get();
+}
+
+bool
+ZooKeeperUIServer::registerMethodRPC(const string &name,
+                                     JSONRPCMethod *method)
+{
+    return m_rpcManager->registerMethod(name, method);
+}
+
+bool
+ZooKeeperUIServer::getConfig(const string &key, string *valueP) const
+{
+    map<string, string>::const_iterator configIt = m_config.find(key);
+    if (configIt == m_config.end()) {
+        return false;
+    }
+    *valueP = configIt->second;
+    return true;
 }
 
 void 
@@ -124,18 +165,18 @@ ZooKeeperUIServer::printUsage()
 " -C  --zk_check        Periodically check zookeeper servers -\n"
 "                       overrides config of zookeeper.check\n"
 "                       (i.e. 'true' or 'false')\n"
-" -l  --log4cxx         Log4cxx file location - overrides config of\n"
-"                       logger.configuration\n"
 " -r  --root            Root directory of HTTP server - overrides config of\n"
 "                       httpd.rootDirectory\n"
+" -p  --httpd_port      Client port of HTTP server - overrides config of\n"
+"                       httpd.port\n"
 " -v  --version         Displays the version of this executable\n";
 }
 
 void
 ZooKeeperUIServer::parseArgs(int argc, const char *const*argv) 
 {
-    string configFile, zookeeperServers, zookeeperCheck, 
-        log4cxxFile, rootDirectory;
+    map<string, string> parseArgMap;
+    string configFile;
     apr_pool_t *pool;
     if (apr_pool_create(&pool, NULL) != APR_SUCCESS) {
         cerr << "Not enough memory for argument parsing." << endl;
@@ -154,8 +195,8 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
         {"help", 'h', 0, "Show this help."},
         {"zk_server_port", 'z', 1, "Zookeeper server port list."},
         {"zk_check", 'C', 1, "Check zookeeper server list."},
-        {"log4cxx", 'l', 1, "Log4cxx file."},
-        {"root", 'r', 1, "http.rootDirectory path."},
+        {"root", 'r', 1, "Server root path (httpd.rootDirectory)."},
+        {"httpd_port", 'p', 1, "Server port (httpd.port)."},
         {NULL, 0, 0, NULL},
     };
 
@@ -178,16 +219,16 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
                 exit(0);
                 break;
             case 'z':
-                zookeeperServers = optArg;
+                parseArgMap["zookeeper.servers"] = optArg;
                 break;
             case 'C':
-                zookeeperCheck = optArg;
-                break;
-            case 'l':
-                log4cxxFile = optArg;
+                parseArgMap["zookeeper.check"] = optArg;
                 break;
             case 'r':
-                rootDirectory = optArg;
+                parseArgMap["httpd.rootDirectory"] = optArg;
+                break;
+            case 'p':
+                parseArgMap["httpd.port"] = optArg;
                 break;
             case 'h':
             default:
@@ -201,8 +242,8 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
     
     /* Need the configuration file or the basic options */
     if (configFile.empty() && 
-        (zookeeperServers.empty() || log4cxxFile.empty() || 
-         rootDirectory.empty())) {
+        ((parseArgMap.find("zookeeper.servers") == parseArgMap.end()) ||
+         (parseArgMap.find("httpd.rootDirectory") == parseArgMap.end()))) {
         printUsage();
         exit(1);
     }
@@ -224,43 +265,29 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
         }
     }
     
-    if (!log4cxxFile.empty()) {
-        m_config["logger.configuration"] = log4cxxFile;
-    }
-    if (!zookeeperServers.empty()) {
-        m_config["zookeeper.servers"] = zookeeperServers;
-    }
-    if (!zookeeperCheck.empty()) {
-        m_config["zookeeper.check"] = zookeeperCheck;
-    }
-    if (!rootDirectory.empty()) {
-        m_config["httpd.rootDirectory"] = rootDirectory;
+    /* Override the XML configuration with any command line arguments. */
+    map<string, string>::const_iterator parseArgMapIt;
+    for (parseArgMapIt = parseArgMap.begin();
+         parseArgMapIt != parseArgMap.end();
+         ++parseArgMapIt) {
+        m_config[parseArgMapIt->first] = parseArgMapIt->second;
     }
 
-    if (m_config.find("logger.configuration") != m_config.end()) {
-        try {
-            PropertyConfigurator::configure(m_config["logger.configuration"]);
-        } 
-        catch (helpers::Exception &) {
-            cerr << "Logger configuration is invalid." << endl;
-            cerr << "Fall back on default configuration." << endl;
-            BasicConfigurator::configure();
-        }
-    } 
-    else {
-        BasicConfigurator::configure();
-    }
-
-    LOG_DEBUG(GUI_LOG, "Loaded configuration:");
+    LOG_INFO(ZUI_LOG, "Loaded configuration:");
     for (configurator::Configuration::const_iterator iter = m_config.begin(); 
          iter != m_config.end(); 
          ++iter) {
-        LOG_DEBUG(GUI_LOG,
-                  "%s:%s", 
-                  iter->first.c_str(), 
-                  iter->second.c_str());
+        LOG_INFO(ZUI_LOG,
+                 "%s:%s", 
+                 iter->first.c_str(), 
+                 iter->second.c_str());
     }
 
+}
+
+void
+ZooKeeperUIServer::init() 
+{
     /* Initialize everything */
     if (m_httpd.get()) {
         return;
@@ -311,7 +338,7 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
         }
     }
     
-    // Generate list of allowed host regular expressions
+    /* Generate list of allowed host regular expressions */
     configIter = m_config.find("httpd.allowedhosts");
     if (configIter == m_config.end()) {
         m_allowedHosts.reset(NULL);
@@ -325,8 +352,20 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
                               ::atol(m_config["httpd.sessionlife"].c_str())));
     m_httpd->registerPageHandler(jsonRpcPage, m_adaptor.get());
     m_httpd->registerAccessHandler(this);
+    
+    /*
+     * Register the include handler for all the possible replacements
+     * that all use the same function.
+     */
     m_httpd->registerIncludeHandler("ZOOKEEPER_SERVERS", this);
     m_httpd->registerIncludeHandler("ZKUI_VERSION", this);
+    map<string, string>::const_iterator directiveMapIt;
+    for (directiveMapIt = m_directiveMap.begin();
+         directiveMapIt != m_directiveMap.end();
+         ++directiveMapIt) {
+        m_httpd->registerIncludeHandler(directiveMapIt->first,
+                                        this);
+    }
 
     m_rpcManager->registerMethod(
         "addNotifyableFromKey", m_clusterRpcMethod.get());
@@ -380,10 +419,10 @@ ZooKeeperUIServer::parseArgs(int argc, const char *const*argv)
 void
 ZooKeeperUIServer::start() 
 {
-    LOG_INFO(GUI_LOG, "Starting server...");
+    LOG_INFO(ZUI_LOG, "Starting server...");
         
     m_httpd->start();
-    LOG_INFO(GUI_LOG, "Server started.");
+    LOG_INFO(ZUI_LOG, "Server started.");
 }
 
 void
@@ -392,7 +431,7 @@ ZooKeeperUIServer::stop() {
         return;
     }
 
-    LOG_INFO(GUI_LOG, "Stopping server...");
+    LOG_INFO(ZUI_LOG, "Stopping server...");
     
     m_httpd->stop();
     m_httpd.reset(NULL);
@@ -404,7 +443,7 @@ ZooKeeperUIServer::stop() {
     m_zookeeperPeriodicCheck.reset(NULL);
     m_rpcManager->clearMethods();
     
-    LOG_INFO(GUI_LOG, "Server stopped.");
+    LOG_INFO(ZUI_LOG, "Server stopped.");
 }
 
 }}

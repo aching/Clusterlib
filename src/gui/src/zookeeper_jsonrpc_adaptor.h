@@ -6,6 +6,8 @@ extern "C" {
 #include <c-client-src/zookeeper.h>
 }
 
+DEFINE_LOGGER(ZKM_LOG, "zookeeper.rpc.json.MethodAdaptor");
+
 namespace zookeeper { namespace rpc { namespace json {
 
 const int32_t SESSION_TIMEOUT = 30;
@@ -62,8 +64,6 @@ class MethodAdaptor : public virtual ::json::rpc::JSONRPCMethod
         ::json::JSONValue::JSONBoolean recursive);
     
   private:
-    static log4cxx::LoggerPtr logger;
-
     std::string servers;
 
     std::string name;

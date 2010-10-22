@@ -3,11 +3,8 @@
 
 using namespace std;
 using namespace httpd;
-using namespace log4cxx;
 
 namespace json {namespace rpc {
-    LoggerPtr HttpServerAdaptor::logger(Logger::getLogger("json.rpc.HttpServerAdaptor"));
-
     HttpServerAdaptor::HttpServerAdaptor(HttpServer *s, JSONRPCManager *m) :
         server(s), manager(m) {
     }
@@ -17,18 +14,22 @@ namespace json {namespace rpc {
         manager = NULL;
     }
 
-    void HttpServerAdaptor::pageHandler(const string &path, HttpContext *context) {
+    void HttpServerAdaptor::pageHandler(const string &path, 
+                                        HttpContext *context) {
         size_t pos = 0;
-
-        context->response.headerMap[HTTP_HEADER_CONTENT_TYPE] = "application/json";
+        
+        context->response.headerMap[HTTP_HEADER_CONTENT_TYPE] = 
+            "application/json";
         context->response.responseCode = HTTP_OK;
         
         if (context->request.method == HTTP_METHOD_GET) {
-            LOG4CXX_INFO(logger, "Getting all JSON-RPC method information.");
+            LOG4CXX_INFO(HTTP_LOG, "Getting all JSON-RPC method information.");
             JSONValue::JSONArray methods;
             vector<string> methodNames = manager->getMethodNames();
             
-            for (vector<string>::const_iterator iter = methodNames.begin(); iter != methodNames.end(); ++iter) {
+            for (vector<string>::const_iterator iter = methodNames.begin();
+                 iter != methodNames.end(); 
+                 ++iter) {
                 methods.push_back(*iter);
             }
 
@@ -42,23 +43,26 @@ namespace json {namespace rpc {
         }
 
         HttpSessionStatePersistence persistence(context->session);
-        LOG4CXX_INFO(logger, "Dispatching the JSON-RPC invocation.");
+        LOG_INFO(HTTP_LOG, "Dispatching the JSON-RPC invocation.");
 
         try {
 
             do {
                 // We may have multiple calls
-                JSONValue invoke = JSONCodec::decode(context->request.body, &pos);
+                JSONValue invoke = 
+                    JSONCodec::decode(context->request.body, &pos);
 
                 // Call and encode the result
-                context->response.body += JSONCodec::encode(manager->invoke(invoke, &persistence));
+                context->response.body += 
+                    JSONCodec::encode(manager->invoke(invoke, &persistence));
             } while (pos < context->request.body.size());
         } catch (const JSONParseException &ex) {
-            LOG4CXX_WARN(logger, "Not a valid JSON object (" << ex.what() << ")");
+            LOG_WARN(HTTP_LOG, "Not a valid JSON object (%s)", ex.what());
             // Not a valid JSON invocation
             context->response.responseCode = HTTP_SERVICE_UNAVAILABLE;
             context->response.body = ex.what();
-            context->response.headerMap[HTTP_HEADER_CONTENT_TYPE] = "text/plain";
+            context->response.headerMap[HTTP_HEADER_CONTENT_TYPE] 
+                = "text/plain";
         }
     }
 

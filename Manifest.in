@@ -10,6 +10,9 @@
 @SOURCE_PATH@/src/gui/src        		/include/gui
 - *.h
 
+@SOURCE_PATH@/src/core           		/include/internal
+- *.h
+
 @SOURCE_PATH@/unittests	        		/include/unittests
 - *.h
 

@@ -4,7 +4,6 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <log4cxx/logger.h>
 #include <boost/regex.hpp>
 #include <clusterlib.h>
 #include "xmlconfig.h"
@@ -12,6 +11,8 @@
 #include "jsonrpc_httpd_adaptor.h"
 #include "clusterlib_jsonrpc_adaptor.h"
 #include "zookeeper_jsonrpc_adaptor.h"
+
+DEFINE_LOGGER(ZUI_LOG, "zookeeper.ui.ZooKeeperUIServer");
 
 namespace zookeeper { namespace ui {
 
@@ -51,6 +52,12 @@ class ZooKeeperUIServer :
     void parseArgs(int argc, const char *const*argv);
 
     /**
+     * Initialize the http server, zookeeper, clusterlib, etc.
+     * Register all JSON-RPCs and include handlers.
+     */
+    void init();
+
+    /**
      * Print the gInkBuildStamp to stdout.
      */
     void printVersion();
@@ -68,7 +75,8 @@ class ZooKeeperUIServer :
     AccessPermission canAccess(const httpd::HttpContext &context);
 
     /**
-     * Set the response body of the context.
+     * Changes directives that have been registered already.  Set the
+     * response body of the context.
      *
      * @param reference Reference string
      * @param context HttpContext to modify.
@@ -77,11 +85,43 @@ class ZooKeeperUIServer :
                         httpd::HttpContext *context);
 
     /**
-     * Access the Clusterlib Factory
+     * Adds a user-defined directive to be replaced in the html
+     * content.  Users should use this function to setup directives
+     * prior to parsing the arguments (parseArgs is called).
+     *
+     * @param key Directive to replace
+     * @param value Replaced text
+     */
+    void addDirective(const std::string &key,
+                      const std::string &value);
+
+    /**
+     * Access the Clusterlib Factory.  Be careful when doing this as
+     * it is also being used by an RPC handler.
      *
      * @return a pointer to the Clusterlib Factory
      */
     clusterlib::Factory *getClusterlibFactory();
+
+    /**
+     * Register user-defined methods (in addition to the already
+     * provided ones).  This should be done prior to start().
+     *
+     * @param name the name of the RPC method.
+     * @param method the RPC method to be registered.
+     * @return true if the registration succeeds; false otherwise.
+     */
+    bool registerMethodRPC(const std::string &name,
+                           json::rpc::JSONRPCMethod *method);
+
+    /**
+     * Get a value from the configuration (after parseArgs()).
+     *
+     * @param key Key to retrieve
+     * @param valueP Final value
+     * @return true if found, false otherwise
+     */ 
+    bool getConfig(const std::string &key, std::string *valueP) const;
 
   private:
     /**
@@ -109,6 +149,11 @@ class ZooKeeperUIServer :
      * Configuration.
      */
     configurator::Configuration m_config;
+
+    /**
+     * User defined directives.
+     */
+    std::map<std::string, std::string> m_directiveMap;
 
     /**
      * Manages RPC requests.

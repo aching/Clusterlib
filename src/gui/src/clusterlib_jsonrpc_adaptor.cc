@@ -329,7 +329,7 @@ MethodAdaptor::getApplications() {
         }
         catch (const ::clusterlib::Exception &ex) {
             // Ignore any application that cannot be retrieved
-            LOG_WARN(GUI_LOG,
+            LOG_WARN(CLM_LOG,
                      "Application %s missing (%s)",
                      iter->c_str(),
                      ex.what());
@@ -561,7 +561,7 @@ MethodAdaptor::getNotifyableAttributesFromKey(
         return attributes;
     }
     catch (const ::clusterlib::Exception &ex) {
-        LOG_WARN(GUI_LOG,
+        LOG_WARN(CLM_LOG,
                  "Getting notifyable failed (%s)",
                  ex.what());
         throw JSONRPCInvocationException(ex.what());
@@ -722,7 +722,7 @@ MethodAdaptor::setNotifyableAttributesFromKey(
         return string("0");
     }
     catch (const ::clusterlib::Exception &ex) {
-        LOG_WARN(GUI_LOG,
+        LOG_WARN(CLM_LOG,
                  "Getting notifyable failed (%s)",
                  ex.what());
         throw JSONRPCInvocationException(ex.what());
@@ -809,7 +809,7 @@ MethodAdaptor::removeNotifyableAttributesFromKey(
         return string("0");
     }
     catch (const ::clusterlib::Exception &ex) {
-        LOG_WARN(GUI_LOG,
+        LOG_WARN(CLM_LOG,
                  "Getting notifyable failed (%s)",
                  ex.what());
         throw JSONRPCInvocationException(ex.what());
@@ -981,7 +981,7 @@ MethodAdaptor::getNotifyableChildrenFromKey(
         return children;
     }
     catch (const ::clusterlib::Exception &ex) {
-        LOG_WARN(GUI_LOG,
+        LOG_WARN(CLM_LOG,
                  "Getting notifyable failed (%s)",
                  ex.what());
         throw JSONRPCInvocationException(ex.what());
@@ -1136,7 +1136,7 @@ MethodAdaptor::addNotifyableFromKey(
         return notifyableSP->getKey();
     }
     catch (const ::clusterlib::Exception &ex) {
-        LOG_WARN(GUI_LOG,
+        LOG_WARN(CLM_LOG,
                  "addNotifyableFromKey: Getting notifyable failed (%s)",
                  ex.what());
         throw JSONRPCInvocationException(ex.what());
@@ -1160,7 +1160,7 @@ MethodAdaptor::removeNotifyableFromKey(
         return string("0");
     }
     catch (const ::clusterlib::Exception &ex) {
-        LOG_WARN(GUI_LOG,
+        LOG_WARN(CLM_LOG,
                  "removeNotifyableFromKey: %s",
                  ex.what());
         throw JSONRPCInvocationException(ex.what());
@@ -1232,7 +1232,7 @@ MethodAdaptor::getApplication(
         return result;
     }
     catch (const ::clusterlib::Exception &ex) {
-        LOG_WARN(GUI_LOG,
+        LOG_WARN(CLM_LOG,
                  "Getting application failed (%s)",
                  ex.what());
         throw JSONRPCInvocationException(ex.what());
@@ -1302,7 +1302,7 @@ MethodAdaptor::getGroup(
         return result;
     }
     catch (const ::clusterlib::Exception &ex) {
-        LOG_WARN(GUI_LOG, "Getting group failed (%s)", ex.what());
+        LOG_WARN(CLM_LOG, "Getting group failed (%s)", ex.what());
         throw JSONRPCInvocationException(ex.what());
     }
 }
@@ -1358,7 +1358,7 @@ MethodAdaptor::getDataDistribution(
         return result;
     }
     catch (const ::clusterlib::Exception &ex) {
-        LOG_WARN(GUI_LOG,
+        LOG_WARN(CLM_LOG,
                  "Getting data distribution failed (%s)",
                  ex.what());
         throw JSONRPCInvocationException(ex.what());
@@ -1389,7 +1389,7 @@ MethodAdaptor::getNode(
         return result;
     }
     catch (const ::clusterlib::Exception &ex) {
-        LOG_WARN(GUI_LOG, "Getting node failed (%s)", ex.what());
+        LOG_WARN(CLM_LOG, "Getting node failed (%s)", ex.what());
         throw JSONRPCInvocationException(ex.what());
     }
 }
@@ -1411,7 +1411,7 @@ MethodAdaptor::getPropertyList(
         return result;
     }
     catch (const ::clusterlib::Exception &ex) {
-        LOG_WARN(GUI_LOG,
+        LOG_WARN(CLM_LOG,
                  "Getting propertyList failed (%s)", ex.what());
         throw JSONRPCInvocationException(ex.what());
     }
@@ -1455,7 +1455,7 @@ MethodAdaptor::getOneNotifyableStatus(
         }
     }
     catch (const ::clusterlib::Exception &ex) {
-        LOG_WARN(GUI_LOG,
+        LOG_WARN(CLM_LOG,
                  "getOneNotifyableStatus: Failed (%s)",
                  ex.what());
         throw JSONRPCInvocationException(ex.what());
@@ -1742,7 +1742,7 @@ MethodAdaptor::getApplicationStatus(
                         getNotifyable(id, idTypeApplication))));
         }
         catch (const ::clusterlib::Exception &ex) {
-            LOG_WARN(GUI_LOG, "Invalid ID (%s)", ex.what());
+            LOG_WARN(CLM_LOG, "Invalid ID (%s)", ex.what());
         }
     }
 
@@ -1764,7 +1764,7 @@ MethodAdaptor::getNodeStatus(
                                      getNotifyable(id, idTypeNode))));
         }
         catch (const ::clusterlib::Exception &ex) {
-            LOG_WARN(GUI_LOG, "Invalid ID (%s)", ex.what());
+            LOG_WARN(CLM_LOG, "Invalid ID (%s)", ex.what());
         }
     }
 
@@ -1787,7 +1787,7 @@ MethodAdaptor::getProcessSlotStatus(
                         getNotifyable(id, idTypeProcessSlot))));
         }
         catch (const ::clusterlib::Exception &ex) {
-            LOG_WARN(GUI_LOG, "Invalid ID (%s)", ex.what());
+            LOG_WARN(CLM_LOG, "Invalid ID (%s)", ex.what());
         }
     }
 
@@ -1809,7 +1809,7 @@ MethodAdaptor::getGroupStatus(
                     getNotifyable(id, idTypeGroup))));
         }
         catch (const ::clusterlib::Exception &ex) {
-            LOG_WARN(GUI_LOG, "Invalid ID (%s)", ex.what());
+            LOG_WARN(CLM_LOG, "Invalid ID (%s)", ex.what());
         }
     }
 
@@ -1832,7 +1832,7 @@ MethodAdaptor::getDataDistributionStatus(
                         getNotifyable(id, idTypeDataDistribution))));
         }
         catch (const ::clusterlib::Exception &ex) {
-            LOG_WARN(GUI_LOG, "Invalid ID (%s)", ex.what());
+            LOG_WARN(CLM_LOG, "Invalid ID (%s)", ex.what());
         }
     }
 
@@ -1855,7 +1855,7 @@ MethodAdaptor::getPropertyListStatus(
                         getNotifyable(id, idTypePropertyList))));
         }
         catch (const ::clusterlib::Exception &ex) {
-            LOG_WARN(GUI_LOG, "Invalid ID (%s)", ex.what());
+            LOG_WARN(CLM_LOG, "Invalid ID (%s)", ex.what());
         }
     }
 
@@ -1878,7 +1878,7 @@ MethodAdaptor::getQueueStatus(
                         getNotifyable(id, idTypeQueue))));
         }
         catch (const ::clusterlib::Exception &ex) {
-            LOG_WARN(GUI_LOG, "Invalid ID (%s)", ex.what());
+            LOG_WARN(CLM_LOG, "Invalid ID (%s)", ex.what());
         }
     }
 
@@ -1897,7 +1897,7 @@ MethodAdaptor::getShardStatus(
             status.push_back(getOneShardStatus(*it));
         }
         catch (const ::clusterlib::Exception &ex) {
-            LOG_WARN(GUI_LOG, "Invalid shard (%s)", ex.what());
+            LOG_WARN(CLM_LOG, "Invalid shard (%s)", ex.what());
         }
     }
     return status;

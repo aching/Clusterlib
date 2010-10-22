@@ -13,6 +13,7 @@ class ClusterlibProcessThreadService : public MPITestFixture
     CPPUNIT_TEST_SUITE(ClusterlibProcessThreadService);
     CPPUNIT_TEST(testProcessThreadService1);
     CPPUNIT_TEST(testProcessThreadService2);
+    CPPUNIT_TEST(testProcessThreadService3);
     CPPUNIT_TEST_SUITE_END();
 
   public:
@@ -27,7 +28,7 @@ class ClusterlibProcessThreadService : public MPITestFixture
 
     /* Runs after each test */
     virtual void tearDown() 
-   {
+    {
         cleanAndBarrierMPITest(NULL, false);
     }
 
@@ -45,7 +46,7 @@ class ClusterlibProcessThreadService : public MPITestFixture
                                     "testProcessThreadService1");
         vector<string> addEnv;
         string path;
-        string cmd = "/bin/ls -al /";
+        string cmd = "/bin/ls -al / >& /dev/null";
         pid_t processId = -1;
         int32_t returnCode = -1;
 
@@ -86,14 +87,52 @@ class ClusterlibProcessThreadService : public MPITestFixture
                                                           returnCode, 
                                                           stdoutOutput, 
                                                           stderrOutput);
-        cerr << "stdout='" <<  stdoutOutput << "'" << endl;
-        cerr << "stderr='" <<  stderrOutput << "'" << endl;
+        cerr << "stdout size=" << stdoutOutput.size() << ", data='" 
+             <<  stdoutOutput << "'" << endl;
+        cerr << "stderr size=" << stderrOutput.size() << ", data='" 
+             <<  stderrOutput << "'" << endl;
 
         MPI_CPPUNIT_ASSERT(success == true);
         MPI_CPPUNIT_ASSERT(processId != -1);
         MPI_CPPUNIT_ASSERT(returnCode == 0);
         MPI_CPPUNIT_ASSERT(!stdoutOutput.empty());
         MPI_CPPUNIT_ASSERT(stderrOutput.empty());
+    }
+
+    /**
+     * Exhaust the 4k buffer size.
+     */
+    void testProcessThreadService3()
+    {
+        initializeAndBarrierMPITest(-1, 
+                                    true, 
+                                    NULL,
+                                    false, 
+                                    "testProcessThreadService3");
+        vector<string> addEnv;
+        string path;
+        string cmd = "/bin/dd if=/dev/zero bs=1k count=64";
+        pid_t processId = -1;
+        int32_t returnCode = -1;
+        string stdoutOutput, stderrOutput;
+
+        bool success = ProcessThreadService::forkExecWait(addEnv, 
+                                                          path, 
+                                                          cmd, 
+                                                          processId, 
+                                                          returnCode, 
+                                                          stdoutOutput, 
+                                                          stderrOutput);
+        cerr << "stdout size=" << stdoutOutput.size() << ", data='" 
+             <<  stdoutOutput << "'" << endl;
+        cerr << "stderr size=" << stderrOutput.size() << ", data='" 
+             <<  stderrOutput << "'" << endl;
+
+        MPI_CPPUNIT_ASSERT(success == true);
+        MPI_CPPUNIT_ASSERT(processId != -1);
+        MPI_CPPUNIT_ASSERT(returnCode == 0);
+        MPI_CPPUNIT_ASSERT(stdoutOutput.size() == 64*1024);
+        MPI_CPPUNIT_ASSERT(!stderrOutput.empty());
     }
 };
 

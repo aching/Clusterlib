@@ -4,7 +4,6 @@
 
 using namespace json;
 using namespace json::rpc;
-using namespace log4cxx;
 using namespace std;
 
 namespace zookeeper { 
@@ -12,9 +11,6 @@ namespace zookeeper {
 namespace rpc {
 
 namespace json {
-
-LoggerPtr MethodAdaptor::logger(
-    Logger::getLogger("zookeeper.rpc.json.MethodAdaptor"));
 
 const string &
 MethodAdaptor::getName() const
@@ -38,7 +34,7 @@ MethodAdaptor::MethodAdaptor(const string &s)
     if (pthread_mutex_init(&mutex, NULL)) {
         pthread_cond_destroy(&cond);
         throw JSONRPCInvocationException("Cannot create a mutex.");
-        }
+    }
     connectionState = ZOO_EXPIRED_SESSION_STATE;
     zkHandle = NULL;
     reconnect();
@@ -57,13 +53,13 @@ void MethodAdaptor::reconnect() {
     }
     if (zkHandle != NULL) {
         // If we have previous handle, close it first.
-        LOG4CXX_INFO(logger, "Close existing ZooKeeper connection");
+        LOG_INFO(ZKM_LOG, "Close existing ZooKeeper connection");
         zookeeper_close(zkHandle);
         zkHandle = NULL;
     }
     
     // Connect asynchronously
-    LOG4CXX_INFO(logger, "Establishing ZooKeeper connection");
+    LOG_INFO(ZKM_LOG, "Establishing ZooKeeper connection");
     zkHandle = zookeeper_init(servers.c_str(), 
                               staticGlobalWatcher, 
                               SESSION_TIMEOUT * 1000, 
@@ -89,12 +85,12 @@ void MethodAdaptor::reconnect() {
     pthread_mutex_unlock(&mutex);
     
     if (state != ZOO_CONNECTED_STATE) {
-        LOG4CXX_ERROR(logger, "Failed to establish ZooKeeper connection");
+        LOG_ERROR(ZKM_LOG, "Failed to establish ZooKeeper connection");
         throw JSONRPCInvocationException(
             "ZooKeeper server connection cannot be established (timed-out).");
         }
     
-    LOG4CXX_INFO(logger, "Established ZooKeeper connection");
+    LOG_INFO(ZKM_LOG, "Established ZooKeeper connection");
 }
     
 void
@@ -110,9 +106,11 @@ MethodAdaptor::staticGlobalWatcher(zhandle_t *zkHandle,
 void 
 MethodAdaptor::globalWatcher(int type, int state, const char *path) {
     if (type == ZOO_SESSION_EVENT ) {
-        LOG4CXX_INFO(logger, 
-                     "Switching ZooKeeper connection state from " 
-                     << connectionState << " to " << state);
+        LOG_INFO(ZKM_LOG,
+                 "Switching ZooKeeper connection state from %" PRId32 
+                 " to %" PRId32,
+                 static_cast<int32_t>(connectionState),
+                 static_cast<int32_t>(state));
         pthread_mutex_lock(&mutex);
         connectionState = state;
         if (connectionState == ZOO_CONNECTED_STATE) {

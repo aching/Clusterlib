@@ -16,6 +16,7 @@
 #include <sys/wait.h>
 #include <linux/unistd.h>
 _syscall0(pid_t,gettid)
+#include <poll.h>
 
 using namespace std;
 
@@ -314,6 +315,7 @@ ProcessThreadService::forkExecWait(const vector<string> &addEnv,
     return ProcessThreadService::waitPid(processId, returnCode);
 }
 
+const int32_t PollMsecTimeout = 500;
 bool
 ProcessThreadService::forkExecWait(const vector<string> &addEnv, 
                                    const string &path, 
@@ -335,43 +337,71 @@ ProcessThreadService::forkExecWait(const vector<string> &addEnv,
     ostringstream oss;
     int ret = -1;
 
+    struct pollfd fds[2];
+    fds[0].fd = stdout;
+    fds[1].fd = stderr;
+    fds[0].events = POLLIN | POLLHUP;
+    fds[1].events = POLLIN | POLLHUP;
+
+    ssize_t sizeArr[2] = {1, 1};
+
     /* Collect output from stdout and stderror until the end of file */
     stdoutOutput.clear();
     stderrOutput.clear();
-    ssize_t stdoutRet = 1;
-    ssize_t stderrRet = 1;
     const int32_t bufSize = 4096;
     char buf[bufSize];
-    while ((stdoutRet > 0) || (stderrRet > 0)) {
-        if (stdoutRet > 0) {
-            bzero(buf, sizeof(buf));
-            stdoutRet = read(stdout, buf, bufSize);
-            if (stdoutRet < 0) {
-                oss.str("");
-                oss << "forkExecWait: read failed ret=" << stdoutRet
-                    << " errno="  << errno << " strerror=" << strerror(errno);
-                throw SystemFailureException(oss.str());
+    while ((sizeArr[0] > 0) || (sizeArr[1] > 0)) {
+        ret = poll(fds, 2, PollMsecTimeout);
+        if (ret > 0) {
+            for (int32_t i = 0; i < 2; ++i) {
+                if ((sizeArr[i] > 0) && (fds[i].revents & POLLIN)) {
+                    bzero(buf, sizeof(buf));
+                    sizeArr[i] = read(fds[i].fd, buf, bufSize);
+                    if (sizeArr[i] < 0) {
+                        oss.str("");
+                        oss << "forkExecWait: fd=" << i << " read failed ret=" 
+                            << sizeArr[i] << " errno="  << errno
+                            << " strerror=" << strerror(errno);
+                        throw SystemFailureException(oss.str());
+                    }
+                    LOG_DEBUG(CL_LOG, 
+                              "forkExecWait: fd=%" PRId32 " size=%" PRId32 
+                              " buf=%s",
+                              static_cast<int32_t>(fds[i].fd),
+                              static_cast<int32_t>(sizeArr[i]),
+                              buf);
+                    switch(i) {
+                        case 0:
+                            stdoutOutput.append(buf, sizeArr[i]);
+                            break;
+                        case 1:
+                            stderrOutput.append(buf, sizeArr[i]);
+                            break;
+                        default:
+                            oss.str("");
+                            oss << "forkExecWait: fd=" << i << " ret=" 
+                                << sizeArr[i] << " errno="  << errno
+                                << " strerror=" << strerror(errno);
+                            throw SystemFailureException(oss.str());
+                    }
+                }
+                if (fds[i].revents & POLLHUP) {
+                    oss.str("");
+                    oss << "forkExecWait: fd=" << i << " got POLLHUP "
+                        << " errno=" << errno << " strerror=" 
+                        << strerror(errno);
+                    sizeArr[i] = 0;
+                }
             }
-            LOG_DEBUG(CL_LOG, 
-                      "forkExecWait: stdout ret=%" PRId32 " buf=%s",
-                      static_cast<int32_t>(stdoutRet),
-                      buf);
-            stdoutOutput.append(buf, stdoutRet);
         }
-        if (stderrRet > 0) {
-            bzero(buf, sizeof(buf));
-            stderrRet = read(stderr, buf, bufSize);
-            if (stderrRet < 0) {
-                oss.str("");
-                oss << "forkExecWait: read failed ret=" << stderrRet
-                    << " errno="  << errno << " strerror=" << strerror(errno);
-                throw SystemFailureException(oss.str());
-            }
-            LOG_DEBUG(CL_LOG, 
-                      "forkExecWait: stderr ret=%" PRId32 " buf=%s",
-                      static_cast<int32_t>(stderrRet),
-                      buf);
-            stderrOutput.append(buf, stderrRet);
+        else if (ret == 0) {
+            LOG_DEBUG(CL_LOG, "forkExecWait: No poll event happened");
+        }
+        else {
+            oss.str("");
+            oss << "forkExecWait: poll failed with ret=" << ret 
+                << " errno=" << errno << " strerror=" << strerror(errno);
+            throw SystemFailureException(oss.str());
         }
     }
         

@@ -9,7 +9,6 @@
 #include <iostream>
 
 using namespace std;
-using namespace log4cxx;
 using namespace httpd;
 using namespace boost;
 using namespace json::rpc;
@@ -41,6 +40,7 @@ int main(int argc, const char *const*argv) {
         zookeeper::ui::ZooKeeperUIServer::getInstance();
 
     server->parseArgs(argc, argv);
+    server->init();
     server->start();
 
     while (true) {
