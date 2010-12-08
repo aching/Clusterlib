@@ -9,7 +9,7 @@ CallbackAndContextManager::createCallbackAndContext(void *callback,
                                                     void *context)
 {
     TRACE(CL_LOG, "createCallbackAndContext");
-    
+
     CallbackAndContext *callbackAndContext = new CallbackAndContext(callback,
                                                                     context);
 

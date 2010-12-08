@@ -779,7 +779,7 @@ class Timer
                   this, 
                   ProcessThreadService::getTid());
         
-        //iterate until terminating
+        /** Iterate until terminating */
         while (!m_terminating) {
             m_lock.lock();
             //1 step - wait until there is an event in the queue

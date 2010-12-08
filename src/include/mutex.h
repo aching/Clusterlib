@@ -30,7 +30,7 @@ class Mutex
     Mutex() : refCount(0)
     {
         pthread_mutexattr_init(&m_mutexAttr);
-        pthread_mutexattr_settype(&m_mutexAttr, PTHREAD_MUTEX_RECURSIVE_NP);
+        pthread_mutexattr_settype(&m_mutexAttr, PTHREAD_MUTEX_RECURSIVE);
         pthread_mutex_init(&mutex, &m_mutexAttr);
     }
     

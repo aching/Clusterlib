@@ -1,3 +1,1 @@
-SUBDIRS = core example activenode cli gui
-
-@makefile_inc@
+SUBDIRS = include core example activenode cli gui

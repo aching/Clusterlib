@@ -1,11 +1,7 @@
-INCLUDES = \
-	-I@LOG4CXX_INCLUDES@ \
-	-I@BOOST_INCLUDES@ \
-	-I@ZOOKEEPER_INCLUDES@ \
-        -I@top_srcdir@/src/include
-METASOURCES = AUTO
-lib_LIBRARIES = libcluster.a
-libcluster_a_SOURCES = \
+AM_CPPFLAGS = -I@top_srcdir@/src/include
+AM_CXXFLAGS = @GENERAL_CXXFLAGS@
+lib_LTLIBRARIES = libcluster.la
+libcluster_la_SOURCES = \
 	cacheddataimpl.cc \
 	cachedstateimpl.cc \
 	cachedkeyvaluesimpl.cc \
@@ -60,12 +56,50 @@ libcluster_a_SOURCES = \
 	zookeeperperiodiccheck.cc \
 	log.cc \
         md5/md5.cc
+coredir = $(includedir)/core
+dist_core_HEADERS = \
+	applicationimpl.h \
+	cacheddataimpl.h \
+	cachedkeyvaluesimpl.h \
+	cachedobjectchangehandlers.h \
+	cachedprocessinfoimpl.h \
+	cachedprocessslotinfoimpl.h \
+	cachedshardsimpl.h \
+	cachedstateimpl.h \
+	callbackandcontext.h \
+	clientimpl.h \
+	clnumericinternal.h \
+	clstringinternal.h \
+	clusterlibinternal.h \
+	datadistributionimpl.h \
+	distributedlocks.h \
+	event.h \
+	factoryops.h \
+	groupimpl.h \
+	internalchangehandlers.h \
+	intervaltree.h \
+	jsonrpcmethodhandler.h \
+	jsonrpcresponsehandler.h \
+	nodeimpl.h \
+	notifyableimpl.h \
+	notifyablekeymanipulator.h \
+	processslotimpl.h \
+	propertylistimpl.h \
+	queueimpl.h \
+	registeredapplicationimpl.h \
+	registereddatadistributionimpl.h \
+	registeredgroupimpl.h \
+	registerednodeimpl.h \
+	registerednotifyable.h \
+	registerednotifyableimpl.h \
+	registeredprocessslotimpl.h \
+	registeredpropertylistimpl.h \
+	registeredqueueimpl.h \
+	registeredrootimpl.h \
+	rootimpl.h \
+	safenotifyablemap.h \
+	signalmap.h \
+	unknownhashrange.h \
+	zkadapter.h \
+	zkexceptions.h
 SUBDIRS = md5
-
-# Special target for md5 directory cc files to be included in libcluster.a
-%.o: md5/%.cc
-	$(CXXCOMPILE) -c $<
-
-CXXFLAGS = @BASE_CXXFLAGS@
-
-@makefile_inc@

@@ -389,10 +389,10 @@ NotifyableImpl::acquireLockWaitMsecs(const string &lockName,
     throwIfRemoved();
 
     if (msecTimeout < -1) {
-        stringstream ss;
-        ss << "acquireLockWaitMsecs: Cannot have msecTimeout < -1 (" 
-           << msecTimeout << ")";
-        throw InvalidArgumentsException(ss.str());
+        ostringstream oss;
+        oss << "acquireLockWaitMsecs: Cannot have msecTimeout < -1 (" 
+	    << msecTimeout << ")";
+        throw InvalidArgumentsException(oss.str());
     }
 
     /* Adjust the curUsecTimeout for msecTimeout */

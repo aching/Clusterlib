@@ -76,5 +76,7 @@
 #include "factory.h"
 
 #include "zookeeperperiodiccheck.h"
+/** The autoconf config.h */
+#include "config.h"
 
 #endif	/* !_CL_CLUSTERLIB_H_ */

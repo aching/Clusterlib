@@ -5,7 +5,7 @@
 #include "generalcommands.h"
 #include "cliformat.h"
 
-#ifndef NO_TAB_COMPLETION
+#if(defined(HAVE_READLINE_READLINE_H) && defined(HAVE_LIBREADLINE))
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <curses.h>
@@ -15,7 +15,7 @@ using namespace std;
 using namespace clusterlib;
 using namespace boost;
 
-#ifndef NO_TAB_COMPLETION
+#if(defined(HAVE_READLINE_READLINE_H) && defined(HAVE_LIBREADLINE))
 /** 
  * Used by readline.  Try to complete based on previously seen
  * Notifyable keys, children of Notifyable keys, all command names,
@@ -181,7 +181,7 @@ CliParams::CliParams()
       m_listCommands(false)
 {
 
-#ifndef NO_TAB_COMPLETION
+#if(defined(HAVE_READLINE_READLINE_H) && defined(HAVE_LIBREADLINE))
     /* 
      * Set readline to use commandCompletion instead of the
      * default. 
@@ -425,7 +425,7 @@ CliParams::parseAndRunLine()
     }
 
     if (m_command.empty()) {
-#ifndef NO_TAB_COMPLETION
+#if(defined(HAVE_READLINE_READLINE_H) && defined(HAVE_LIBREADLINE))
         m_line = readline(generateWelcomeMessage().c_str());
         /* If the line has text, save it to history. */
         if (m_line && *m_line) {

@@ -64,10 +64,10 @@ ClusterlibRPCRequest::sendRequest()
     }
     else {
         /* Ready the response */
-        stringstream idSs;
-        idSs << ProcessThreadService::getHostnamePidTid() 
-             << m_client->fetchAndIncrRequestCounter();
-        m_id = idSs.str();
+        ostringstream idOss;
+        idOss << ProcessThreadService::getHostnamePidTid() 
+	      << m_client->fetchAndIncrRequestCounter();
+        m_id = idOss.str();
         m_client->getOps()->getResponseSignalMap()->addRefPredMutexCond(m_id);
 
         /*
@@ -98,7 +98,7 @@ ClusterlibRPCRequest::sendRequest()
         JSONValue::JSONObject rpcObj;
         rpcObj["method"] = getName();
         rpcObj["params"] = m_paramArr;
-        rpcObj["id"] = idSs.str();
+        rpcObj["id"] = idOss.str();
         LOG_DEBUG(CL_LOG, 
                   "sendRequest: Putting request (%s) on queue (%s) "
                   "with id (%s)",

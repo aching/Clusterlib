@@ -32,6 +32,11 @@ class TestParams
         m_updateClPropertyList(false),
         m_testCount(0) {}
 
+    /**
+     * Virtual destructor.
+     */
+    virtual ~TestParams() {}
+
     TestParams(int32_t myId, int32_t numProcs) :
         m_myId(myId),
         m_numProcs(numProcs),

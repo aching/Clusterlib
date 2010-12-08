@@ -138,6 +138,11 @@ while (expression) {
     statements;
 }
 
+try {
+}
+catch {
+}
+
 switch (expression) {
   case constant:
      statements;

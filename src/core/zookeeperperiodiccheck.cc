@@ -10,11 +10,13 @@
  * ============================================================================
  */
 
+#include "clusterlibinternal.h"
 #include <sys/socket.h>
+#ifdef HAVE_SYS_EPOLL_H
 #include <sys/epoll.h>
+#endif
 #include <netdb.h>
 #include <fcntl.h>
-#include "clusterlibinternal.h"
 
 using namespace json;
 using namespace clusterlib;
@@ -194,13 +196,15 @@ ZookeeperPeriodicCheck::getAggNodeState()
     return m_aggNodeStateObj;
 }
 
-static int32_t TelnetEpollMsecsTimeout = 100;
+
 string
 ZookeeperPeriodicCheck::telnetCommand(const string &host, 
                                       int32_t port, 
                                       const string &command, 
                                       int64_t maxMsecs) const
 {
+#ifdef HAVE_SYS_EPOLL_H
+    const int32_t telnetEpollMsecsTimeout = 100;
     ostringstream oss;
     string resp;
     int64_t upperLimitMsecs = TimerService::getCurrentTimeMsecs() + maxMsecs;
@@ -295,7 +299,7 @@ ZookeeperPeriodicCheck::telnetCommand(const string &host,
     do {
         bzero(&event, sizeof(event));
         ret = epoll_wait(
-            epollSock.getFd(), &event, 1, TelnetEpollMsecsTimeout);
+            epollSock.getFd(), &event, 1, telnetEpollMsecsTimeout);
         if (ret == -1) {
             oss.str("");
             oss << "telnetCommand: epoll_wait returned " << ret
@@ -370,6 +374,9 @@ ZookeeperPeriodicCheck::telnetCommand(const string &host,
     } while (TimerService::getCurrentTimeMsecs() < upperLimitMsecs);
 
     return resp;
+#else
+    return "Not implemented (epoll not supported on this system)";
+#endif
 }
 
 }

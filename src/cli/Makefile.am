@@ -1,32 +1,22 @@
-INCLUDES = \
+AM_CPPFLAGS = \
         -I@top_srcdir@/src/include \
-        -I@top_srcdir@/src/core \
-	-I@LOG4CXX_INCLUDES@ \
-	-I@BOOST_INCLUDES@ \
-	-I@ZOOKEEPER_INCLUDES@
-METASOURCES = AUTO
-lib_LIBRARIES = libcli.a
-libcli_a_SOURCES = \
+        -I@top_srcdir@/src/cli \
+        -I@top_srcdir@/src/core 
+AM_CXXFLAGS = @GENERAL_CXXFLAGS@
+lib_LTLIBRARIES = libcli.la
+libcli_la_SOURCES = \
 	generalcommands.cc \
 	cliparams.cc \
 	clicommand.cc
 bin_PROGRAMS = cli
 cli_LDADD = \
-	$(top_builddir)/src/core/libcluster.a \
-	@READLINE_LIB@ \
-	@NCURSES_LIB@ \
-	@LOG4CXX_LIB@ \
-	@ZOOKEEPER_LIB@ \
-	@APR_LIB@ \
-	@APRUTIL_LIB@ \
-	@EXPAT_LIB@ \
-	@LIB_THREAD_OS@
+	libcli.la \
+	$(top_builddir)/src/core/libcluster.la
 cli_SOURCES = \
-	generalcommands.cc \
-	cliparams.cc \
-	clicommand.cc \
 	cli.cc
-
-CXXFLAGS = @BASE_CXXFLAGS@
-
-@makefile_inc@
+clidir = $(includedir)/cli
+dist_cli_HEADERS = \
+	clicommand.h \
+	cliformat.h \
+	cliparams.h \
+	generalcommands.h

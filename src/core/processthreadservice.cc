@@ -14,9 +14,13 @@
 #include <iomanip>
 #include <sys/types.h>
 #include <sys/wait.h>
+#ifdef HAVE_LINUX_UNISTD_H
 #include <linux/unistd.h>
 _syscall0(pid_t,gettid)
+#endif
 #include <poll.h>
+
+extern char **environ;
 
 using namespace std;
 
@@ -203,7 +207,7 @@ ProcessThreadService::forkExec(const vector<string> &addEnv,
             ostringstream oss;
             oss << "ForkExec: execl failed with error " << errno << " " 
                 << strerror(errno);
-            LOG_FATAL(CL_LOG, oss.str().c_str());
+            LOG_FATAL(CL_LOG, "%s", oss.str().c_str());
             throw SystemFailureException(oss.str());
 	}
 
@@ -451,7 +455,11 @@ ProcessThreadService::getTid()
 {
     TRACE(CL_LOG, "getTid");
 
+#ifdef HAVE_LINUX_UNISTD_H
     return static_cast<int32_t>(gettid());
+#else
+    return static_cast<int32_t>(reinterpret_cast<uintptr_t>(pthread_self()));
+#endif
 }
 
 string 
@@ -463,10 +471,10 @@ ProcessThreadService::getHostnamePidTid()
      * Get the hostname, pid, and tid of the calling
      * thread.
      */
-    stringstream ss;
-    ss << getHostname() << ".pid." << getPid() 
-       << ".tid." << gettid();
-    return ss.str();
+    ostringstream oss;
+    oss << getHostname() << ".pid." << getPid() 
+	<< ".tid." << getTid();
+    return oss.str();
 }
 
 }	/* End of 'namespace clusterlib' */

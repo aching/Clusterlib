@@ -21,9 +21,9 @@ Cond::wait(const Mutex &mutex) const
     
     int ret = pthread_cond_wait(&m_cond, &mutex.mutex);
     if (ret) {
-        stringstream ss;
-        ss << "wait: pthread_cond_wait failed with " << ret;
-        throw SystemFailureException(ss.str());
+        ostringstream oss;
+        oss << "wait: pthread_cond_wait failed with " << ret;
+        throw SystemFailureException(oss.str());
     }
 }
 
@@ -33,9 +33,9 @@ Cond::waitUsecs(const Mutex &mutex, int64_t usecTimeout) const
     TRACE(CL_LOG, "waitUsecs");
 
     if (usecTimeout < -1) {
-        stringstream ss;
-        ss << "wait: Cannot have usecTimeout < -1 (" << usecTimeout << ")";
-        throw InvalidArgumentsException(ss.str());
+        ostringstream oss;
+        oss << "wait: Cannot have usecTimeout < -1 (" << usecTimeout << ")";
+        throw InvalidArgumentsException(oss.str());
     }
     else if (usecTimeout == -1) {
         wait(mutex);
@@ -237,10 +237,10 @@ PredMutexCond::predWaitUsecs(int64_t usecTimeout) const
     TRACE(CL_LOG, "predWaitUsecs");
 
     if (usecTimeout < -1) {
-        stringstream ss;
-        ss << "predWaitUsecs: Cannot have usecTimeout < -1 (" 
-           << usecTimeout << ")";
-        throw InvalidArgumentsException(ss.str());
+        ostringstream oss;
+        oss << "predWaitUsecs: Cannot have usecTimeout < -1 (" 
+	    << usecTimeout << ")";
+        throw InvalidArgumentsException(oss.str());
     }
 
     int64_t curUsecTimeout = 0;

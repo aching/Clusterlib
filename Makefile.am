@@ -2,16 +2,14 @@
 # have all needed files, that a GNU package needs
 AUTOMAKE_OPTIONS = 1.3 foreign no-installman no-installinfo no-dependencies 
 
-SUBDIRS = src unittests
-LDADD   = $(NEW_BUILDSTAMP_OBJECT)
+SUBDIRS = src misc unittests
 
-PKGDIR = @PACKAGE@_@VERSION@.@OS_TYPE@
+PKGDIR = @PACKAGE@_@VERSION@-release
 
-###
 # Packaging targets
 
-package_clusterlib: $(top_builddir)/Manifest
-	devpackage $(top_builddir)/Manifest $(top_builddir)/install
+package_clusterlib:
+	make prefix=@BUILD_PATH@/install install
 
 documentation:
 	doxygen $(top_builddir)/docs/doxygen-internal/doxygenInternalConfig
@@ -19,21 +17,18 @@ documentation:
 
 package: all package_clusterlib
 
-install: package
-
 tarball: package documentation
-	mkdir install/docs
-	cp -r $(top_builddir)/docs/doxygen-internal install/docs
-	cp -r $(top_builddir)/docs/doxygen-user install/docs
+	if [ ! -d "install/docs" ]; then mkdir install/docs; fi
+	cp -u -r $(top_builddir)/docs/doxygen-internal install/docs
+	cp -u -r $(top_builddir)/docs/doxygen-user install/docs
+	cp -u -r $(top_srcdir)/src/gui/webroot install/webroot
 	mv install $(PKGDIR)
 	if test -f $(PKGDIR)/BoM.tar.gz; \
-		then /usr/releng/bin/gtar -czf $(PKGDIR).tar.gz $(PKGDIR)/*; \
-		else /usr/releng/bin/gtar -czf $(PKGDIR).tar.gz $(PKGDIR)/*;\
+		then tar -czf $(PKGDIR).tar.gz $(PKGDIR)/*; \
+		else tar -czf $(PKGDIR).tar.gz $(PKGDIR)/*;\
 	fi;
 	mv $(PKGDIR) install
 
-test_tinderbox: package
-	inktest -a -b $(top_builddir) -c $(top_builddir)/regressions/Regressions.itc \
-                --verbose
-
-@makefile_inc@
+check: all
+	chmod +x $(top_builddir)/unittests/unittestsHelper.pl	
+	$(top_builddir)/unittests/unittestsHelper.pl --testBin $(top_builddir)/unittests/unittests --numProcs 2

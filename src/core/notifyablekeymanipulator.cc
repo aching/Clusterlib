@@ -13,7 +13,6 @@
 #include "clusterlibinternal.h"
 #include "notifyablekeymanipulator.h"
 #include <sys/types.h>
-#include <linux/unistd.h>
 
 using namespace std;
 using namespace boost;

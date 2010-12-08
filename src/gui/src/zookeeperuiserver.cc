@@ -14,7 +14,8 @@ using namespace boost;
 using namespace json::rpc;
 
 static const char *appName = "zkuiserver";
-extern const char *gInkBuildStamp;
+static const string buildStamp = string(PACKAGE_STRING) + " " + __DATE__ + " - " + __TIME__;
+
 
 namespace zookeeper 
 { 
@@ -88,7 +89,7 @@ ZooKeeperUIServer::includeHandler(
     directiveMapIt = m_directiveMap.find(reference);
 
     if (reference == "ZKUI_VERSION") {
-        context->response.body = gInkBuildStamp;
+        context->response.body = buildStamp;
     } 
     else if (reference == "ZOOKEEPER_SERVERS") {
         context->response.body = m_config["zookeeper.servers"];
@@ -146,7 +147,7 @@ ZooKeeperUIServer::getConfig(const string &key, string *valueP) const
 void 
 ZooKeeperUIServer::printVersion() 
 {
-    cout << appName << ": " << gInkBuildStamp << endl;
+    cout << appName << ": " << buildStamp << endl;
 }
     
 void

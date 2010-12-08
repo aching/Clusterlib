@@ -1,17 +1,10 @@
-INCLUDES = \
+AM_CPPFLAGS = \
 	-I. \
 	-I$(top_srcdir)/src/include \
-	-I$(top_srcdir)/src/core \
-	-I@LOG4CXX_INCLUDES@ \
-	-I@BOOST_INCLUDES@ \
-	-I$(top_srcdir)/src/include \
-	-I@ZOOKEEPER_INCLUDES@ \
-	-I@MICROHTTPD_INCLUDES@ \
-	-I@APR_INCLUDES@ \
-	-I@APRUTIL_INCLUDES@
-METASOURCES = AUTO
-lib_LIBRARIES = libzkui.a
-libzkui_a_SOURCES = \
+	-I$(top_srcdir)/src/core
+AM_CXXFLAGS = @GENERAL_CXXFLAGS@
+lib_LTLIBRARIES = libzkui.la
+libzkui_la_SOURCES = \
 	xmlconfig.cc \
 	httpd.cc \
 	microhttpserver.cc \
@@ -21,27 +14,17 @@ libzkui_a_SOURCES = \
 	zookeeperuiserver.cc	
 bin_PROGRAMS = zkuiserver
 zkuiserver_LDADD = \
-        $(top_builddir)/src/core/libcluster.a \
-	$(NEW_BUILDSTAMP_OBJECT) \
-	@BOOST_LIB@ \
-        @ZOOKEEPER_LIB@ \
-        @LOG4CXX_LIB@ \
-        @MICROHTTPD_LIB@ \
-	@APR_LIB@ \
-	@APRUTIL_LIB@ \
-	@EXPAT_LIB@ \
-	@LIB_THREAD_OS@ \
-	@LIBRT@
+        libzkui.la \
+        $(top_builddir)/src/core/libcluster.la
 zkuiserver_SOURCES = \
-	main.cc \
-	xmlconfig.cc \
-	httpd.cc \
-	microhttpserver.cc \
-	jsonrpc_httpd_adaptor.cc \
-	clusterlib_jsonrpc_adaptor.cc \
-	zookeeper_jsonrpc_adaptor.cc \
-	zookeeperuiserver.cc
-
-CXXFLAGS = @BASE_CXXFLAGS@
-
-@makefile_inc@
+	main.cc
+guidir = $(includedir)/gui
+dist_gui_HEADERS = \
+	clusterlib_jsonrpc_adaptor.h \
+	gui.h \
+	httpd.h \
+	jsonrpc_httpd_adaptor.h \
+	microhttpserver.h \
+	xmlconfig.h \
+	zookeeper_jsonrpc_adaptor.h \
+	zookeeperuiserver.h

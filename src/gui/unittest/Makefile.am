@@ -1,26 +1,14 @@
-INCLUDES = \
+AM_CPPFLAGS = \
 	-I. \
-	-I$(top_srcdir)/src/gui/src \
-	-I@LOG4CXX_INCLUDES@ \
-	-I@BOOST_INCLUDES@ \
 	-I$(top_srcdir)/src/include \
-	-I@ZOOKEEPER_INCLUDES@
-METASOURCES = AUTO
+	-I$(top_srcdir)/src/gui/src 
+AM_CXXFLAGS = @GENERAL_CXXFLAGS@
 bin_PROGRAMS = zkuitest
 zkuitest_LDADD = \
-	$(top_builddir)/src/core/libcluster.a \
-	@BOOST_LIB@ \
-	@ZOOKEEPER_LIB@ \
-	@LOG4CXX_LIB@ \
-	@APR_LIB@ \
-	@APRUTIL_LIB@ \
-	@EXPAT_LIB@ \
-	@LIB_THREAD_OS@
+	$(top_builddir)/src/core/libcluster.la \
+        $(top_builddir)/src/gui/src/libzkui.la
 zkuitest_SOURCES = \
 	test.cc \
 	jsontest.cc \
 	jsonrpctest.cc \
 	util.cc
-CXXFLAGS = @BASE_CXXFLAGS@
-
-@makefile_inc@

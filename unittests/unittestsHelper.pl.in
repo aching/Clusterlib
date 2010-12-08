@@ -5,16 +5,37 @@ use Getopt::Long;
 use Sys::Hostname;
 
 my $cwd = &getcwd();
-my $mpichDir = '@MPICH_PATH@';
-my $mpdBin = "$mpichDir\/install\/bin/mpd";
-my $mpiExec = "$mpichDir\/install\/bin\/mpiexec";
-my $zookeeperDir = '@ZOOKEEPER_PATH@';
+my $mpdBin = '@MPD@';
+my $mpiExec = '@MPIEXEC@';
+my $zookeeperDir = '@ZOOKEEPER_JARS_PATH@';
 my $buildDir = '@BUILD_PATH@';
 my $zookeeperServerDir = "$buildDir\/zookeeperServerDir";
 my $zookeeperClientPort = "2221";
 my $zookeeperCfg = "$zookeeperServerDir\/zoo\.cfg";
 my $zookeeperOut = "$zookeeperServerDir\/out";
-my $zookeeperExec = "java -cp $zookeeperDir\/lib/zookeeper-@ZOOKEEPER_VERSION@.jar:$zookeeperDir\/lib/log4j-1.2.15.jar:conf org.apache.zookeeper.server.quorum.QuorumPeerMain $zookeeperCfg";
+
+# Determine the latest ZooKeeper jar available
+my $zookeeperJar = "";
+opendir(ZK_DIR, $zookeeperDir) || 
+    die "Couldn't open zookeeper jar path $zookeeperDir";
+my @dirArr = sort readdir(ZK_DIR);
+for (my $i = scalar(@dirArr) - 1; $i > 0; --$i) {
+    if ($dirArr[$i] =~ m/^zookeeper-\d\.\d\.\d\.jar$/) {
+	$zookeeperJar = $dirArr[$i];
+	last;
+    }
+}
+closedir ZK_DIR || 
+    die "Couldn't close zookeeper jar path $zookeeperDir";
+if ($zookeeperJar eq "") {
+    die "Couldn't find any zookeeper jar files in $zookeeperDir";
+}
+else {
+    print "Using jar $zookeeperJar from $zookeeperDir\n";
+}
+
+my $zookeeperExec = "java -cp $zookeeperDir\/$zookeeperJar:$zookeeperDir\/log4j-1.2.15.jar:conf org.apache.zookeeper.server.quorum.QuorumPeerMain $zookeeperCfg";
+
 my $zookeeperPid = undef;
 my $globalDebug = undef;
 my $help = undef;
