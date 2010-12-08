@@ -26,6 +26,7 @@ TestParams::printUsage(char *exec) const
         " -o  --output_type     Choose the output type.\n"
         "                       console - console output\n"
         "                       file - file output (default)\n"
+        " -x  --xml_output      Add xml test output\n"
         " -t  --test_fixture    Run a particular test fixture or test\n"
         "                       (choices are below)\n";
     /* Get the top level suite from the registry. */
@@ -65,6 +66,7 @@ TestParams::rootParseArgs(int argc, char **argv)
         {"cl_update", 1, NULL, 'c'},
         {"test_fixture", 1, NULL, 't'},
         {"output_type", 1, NULL, 'o'},
+        {"xml_output", 1, NULL, 'x'},
         {"zk_server_port_list", 1, NULL, 'z'},
         {0,0,0,0}
     };
@@ -73,7 +75,7 @@ TestParams::rootParseArgs(int argc, char **argv)
     int32_t option_index = 0;
     int32_t err = -1;
     int32_t ret = 0;
-    const char *optstring = ":hc:t:o:z:";
+    const char *optstring = ":hc:t:o:x:z:";
 
     /* Parse all standard command line arguments */
     while (1) {
@@ -97,6 +99,9 @@ TestParams::rootParseArgs(int argc, char **argv)
                         m_updateClPropertyList = boolArg;
                     }
                 }
+                break;
+            case 'x':
+                m_xmlOutputFile = optarg;
                 break;
             case 't':
                 {

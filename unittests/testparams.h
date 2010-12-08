@@ -98,6 +98,8 @@ class TestParams
 
     void setNumProcs(int32_t numProcs) { m_numProcs = numProcs; }
 
+    const std::string &getXmlOutputFile() { return m_xmlOutputFile; }
+
     bool root() const { return m_myId == 0; }
 
     const std::string &getZkServerPortList() const 
@@ -123,6 +125,11 @@ class TestParams
      * The number of processes to run this test with
      */
     int32_t m_numProcs;
+
+    /**
+     * If not empty, write an XML output file of results
+     */
+    std::string m_xmlOutputFile;
 
     /** 
      * The command separated list of ZooKeeper Servers

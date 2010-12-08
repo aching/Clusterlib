@@ -31,4 +31,4 @@ tarball: package documentation
 
 check: all
 	chmod +x $(top_builddir)/unittests/unittestsHelper.pl	
-	$(top_builddir)/unittests/unittestsHelper.pl --testBin $(top_builddir)/unittests/unittests --numProcs 2
+	$(top_builddir)/unittests/unittestsHelper.pl --testBin $(top_builddir)/unittests/unittests --numProcs 2 --testBinOpts "-x result.xml"

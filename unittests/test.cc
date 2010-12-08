@@ -1,4 +1,5 @@
 #include <cppunit/CompilerOutputter.h>
+#include <cppunit/XmlOutputter.h>
 #include <cppunit/extensions/TestFactoryRegistry.h>
 #include <cppunit/ui/text/TestRunner.h>
 #include <cppunit/TestResultCollector.h>
@@ -7,7 +8,6 @@
 #include "testparams.h"
 #include <iomanip>
 #include <time.h>
-
 
 using namespace std;
 using namespace boost;
@@ -106,6 +106,14 @@ int main(int argc, char* argv[])
     runner.setOutputter(
         new CppUnit::CompilerOutputter(&runner.result(), std::cerr));
 
+    /* Set an XML outputter if desired */
+    std::ofstream xmlFileOut(globalTestParams.getXmlOutputFile().c_str());
+    if (!globalTestParams.getXmlOutputFile().empty()) {
+        CppUnit::XmlOutputter *xmlOutputter = 
+            new CppUnit::XmlOutputter(&runner.result(), xmlFileOut);
+        runner.setOutputter(xmlOutputter);
+    }
+    
     /* Cleanup the old property list */
     if (MPI::COMM_WORLD.Get_rank() == 0) {
         globalTestParams.resetClPropertyList();
