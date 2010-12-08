@@ -2,7 +2,9 @@ CONFIGURE_OPTS_opt := --with-ccache --enable-release --with-zookeeper-jars-path=
 
 FLAVORS := opt
 
-USE_COMMON_CONFIG := 1
+# Don't use USE_COMMON_CONFIG since AUTOCONF and AUTOMAKE are not used
+# individually to build this project
+# USE_COMMON_CONFIG := 1
 
 include /usr/releng/share/build_scripts/ci.mk
 
@@ -29,8 +31,8 @@ export LDFLAGS=-L/usr/releng/external/boost/1.39.0_gcc411/lib -L/usr/releng/inte
 ############################################################
 
 build_flavor:
-	mkdir -p $(BUILD_DIR)
 	/usr/releng/tools/autoconf/2.59/bin/autoreconf -if
+	mkdir -p $(BUILD_DIR)
 	cd $(BUILD_DIR) && $(SRC_DIR)/configure $(CONFIGURE_OPTS_$(FLAVOR))
 	$(MAKE) -C $(BUILD_DIR)
 
