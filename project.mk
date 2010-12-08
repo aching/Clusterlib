@@ -12,7 +12,8 @@ ARTIFACTS := $(BUILD_DIR)/*.tar.gz
 
 TEST_OUTPUT := $(BUILD_DIR)/Regressions_output/REPORT.tap
 
-export PATH := $(JAVA_HOME)/bin:$(PATH)
+# Mpich bin path needed for unittests
+export PATH := $(JAVA_HOME)/bin:$(PATH):/usr/releng/external/mpich2/mpich2-latest/bin
 
 # Autotools environment
 export AUTOCONF=/usr/releng/tools/autoconf/2.59/bin/autoconf 

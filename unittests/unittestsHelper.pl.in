@@ -34,6 +34,14 @@ else {
     print "Using jar $zookeeperJar from $zookeeperDir\n";
 }
 
+# Ensure that both mpiBin and mpiExec were defined
+if ($mpdBin eq "") {
+    die "No mpd found.  This should have been specified at configure time.";
+}
+if ($mpiExec eq "") {
+    die "No mpiexec found.  This should have been specified at configure time.";
+}
+
 my $zookeeperExec = "java -cp $zookeeperDir\/$zookeeperJar:$zookeeperDir\/log4j-1.2.15.jar:conf org.apache.zookeeper.server.quorum.QuorumPeerMain $zookeeperCfg";
 
 my $zookeeperPid = undef;
