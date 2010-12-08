@@ -10,8 +10,6 @@ include /usr/releng/share/build_scripts/ci.mk
 
 ARTIFACTS := $(BUILD_DIR)/*.tar.gz
 
-TEST_OUTPUT := $(BUILD_DIR)/Regressions_output/REPORT.tap
-
 # Mpich bin path needed for unittests
 export PATH := $(JAVA_HOME)/bin:$(PATH):/usr/releng/external/mpich2/mpich2-latest/bin
 
