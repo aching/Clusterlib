@@ -69,80 +69,114 @@ AC_CHECK_LIB([log4cxx], [main],,
 # Ncurses is not required, but would allows the CLI to use tab-completion
 AC_CHECK_LIB([ncurses], [tputs],,
   echo "------------------------------------------"
-  echo " The ncurses library and header files     "
-  echo " are required to get tab-completion.      "
+  echo " The ncurses library                      "
+  echo " is required to get tab-completion.      "
+  echo " The path should be specified in LDFLAGS. "
   echo " Check 'config.log' for more information. "
   echo "------------------------------------------"
 )
 
 # Readline is not required, but would allows the CLI to use tab-completion
+AC_CHECK_HEADER([readline/readline.h],,
+  echo "------------------------------------------"
+  echo " The readline headers (i.e. readline/readline.h)"
+  echo " required get tab-completion are missing. "
+  echo " The path should be specified in CPPFLAGS."
+  echo " Check 'config.log' for more information. "
+  echo "------------------------------------------"
+)
 AC_CHECK_LIB([readline], [rl_line_buffer],,
   echo "------------------------------------------"
-  echo " The readline library and header files    "
-  echo " are required to get tab-completion.      "
+  echo " The readline library                     "
+  echo " is required to get tab-completion.       "
   echo " Check 'config.log' for more information. "
   echo "------------------------------------------"
 )
 
 # Should build the GUI?
-build_gui=true;
+build_gui=true
 
 # Apr-1 is not required, but would allow the GUI to be built.
-AC_CHECK_HEADER([apr_getopt.h],
-  AC_CHECK_LIB([apr-1], [main]))
-if test x${ac_cv_lib_apr_1_main} = xno; then
+AC_CHECK_HEADER([apr_getopt.h],,
   echo "------------------------------------------"
-  echo " The apr library and header files         "
-  echo " are required to build the GUI.           "
+  echo " The apr headers (i.e. apr_getoph.h)      "
+  echo " required to build the GUI are missing.   "
+  echo " The path should be specified in CPPFLAGS."
   echo " Check 'config.log' for more information. "
   echo "------------------------------------------"
-  build_gui=false  
-fi
+  build_gui=false)
+AC_CHECK_LIB([apr-1], [main],,
+  echo "------------------------------------------"
+  echo " The apr-1 library                        "
+  echo " required to build the GUI is missing.    "
+  echo " The path should be specified in LDFLAGS. "
+  echo " Check 'config.log' for more information. "
+  echo "------------------------------------------"
+  build_gui=false)
 
 # Aprutil-1 is not required, but would allow the GUI to be built.
-AC_CHECK_HEADER([apu.h],
-  AC_CHECK_LIB([aprutil-1], [main]))
-if test x${ac_cv_lib_aprutil_1_main} = xno; then
+AC_CHECK_HEADER([apu.h],,
   echo "------------------------------------------"
-  echo " The aprutil-1 library and header files   "
-  echo " are required to build the GUI.           "
+  echo " The aprutil-1 headers (i.e. apu.h)       "
+  echo " required to build the GUI are missing.   "
+  echo " The path should be specified in CPPFLAGS."
   echo " Check 'config.log' for more information. "
   echo "------------------------------------------"
-  build_gui=false  
-fi
+  build_gui=false)
+AC_CHECK_LIB([aprutil-1], [main],,
+  echo "------------------------------------------"
+  echo " The aprutil-1 library                    "
+  echo " required to build the GUI is missing.    "
+  echo " The path should be specified in LDFLAGS. "
+  echo " Check 'config.log' for more information. "
+  echo "------------------------------------------"
+  build_gui=false)
+
+# Build the GUI unittests?
+AC_ARG_ENABLE([gui_unittests],
+  [AS_HELP_STRING([--enable-gui_unittests], 
+    [build GUI unittests] [default=no])], 
+  [build_gui_unittests=true], 
+  [build_gui_unittests=false])
+
+AM_CONDITIONAL(BUILD_GUI_UNITTESTS, [test "x${build_gui_unittests}" = x"true"])
 
 # Microhttpd is not required, but would allow the GUI to be built.
-AC_CHECK_HEADER([microhttpd.h],
-  AC_CHECK_LIB([microhttpd], [main]))
-if test x${ac_cv_lib_microhttpd_main} = xno; then
+AC_CHECK_HEADER([microhttpd.h],,
   echo "------------------------------------------"
-  echo " The microhttpd library and header files  "
-  echo " are required to build the GUI.           "
+  echo " The microhttpd headers (i.e. microhttpd.h)"
+  echo " required to build the GUI are missing.   "
+  echo " The path should be specified in CPPFLAGS."
   echo " Check 'config.log' for more information. "
   echo "------------------------------------------"
-  build_gui=false;
-fi
+  build_gui=false)
+AC_CHECK_LIB([microhttpd], [main],,
+  echo "------------------------------------------"
+  echo " The microhttpd library                    "
+  echo " required to build the GUI is missing.    "
+  echo " The path should be specified in LDFLAGS. "
+  echo " Check 'config.log' for more information. "
+  echo "------------------------------------------"
+  build_gui=false)
 
 AM_CONDITIONAL(BUILD_GUI, [test "x${build_gui}" = x"true"])
 
-# Mpich binaries are required for unittests to be run
-AC_PATH_PROG([MPIEXEC], mpiexec)
+# Mpich binaries (mpiexec, mpd) are required for unittests to be run
+AC_PATH_PROG([MPIEXEC], [mpiexec])
 if test x${MPIEXEC} = x; then
   echo "------------------------------------------"
   echo " Mpiexec is required to run the           "
   echo " unittests and cannot be found.           "
   echo " Check 'config.log' for more information. "
   echo "------------------------------------------"
-  build_gui=false;
 fi
-AC_PATH_PROG([MPD], mpd)
+AC_PATH_PROG([MPD], [mpd])
 if test x${MPD} = x; then
   echo "------------------------------------------"
-  echo " Mpiexec is required to run the           "
+  echo " Mpd is required to run the               "
   echo " unittests and cannot be found.           "
   echo " Check 'config.log' for more information. "
   echo "------------------------------------------"
-  build_gui=false;
 fi
 
 # ZooKeeper jar file locations are required to run the unittests
@@ -161,48 +195,59 @@ if test x${ZOOKEEPER_JARS_PATH} = x; then
   echo "------------------------------------------"
   echo " Zookeeper jars path is not found and     "
   echo " needed for the unittests (start/stop zk)."
+  echo " See option --with-zookeeper-jars-path.   "
   echo " Check 'config.log' for more information. "
   echo "------------------------------------------"
 fi
 
 # Should build the unittests?
-build_unittests=true;
+build_unittests=true
 
 # Mpich is not required, but would allow the unittests to be built.
 AC_LANG_PUSH([C])
-AC_CHECK_HEADER([mpi.h],
-  AC_CHECK_LIB([mpich], [MPI_Init])
-  if test x${ac_cv_lib_mpich_MPI_Init} = xno; then
-    echo "------------------------------------------"
-    echo " The mpich library and header files       "
-    echo " are required to build the unittests.     "
-    echo " Check 'config.log' for more information. "
-    echo "------------------------------------------"
-    build_unittests=false  
-  fi
-  AC_CHECK_LIB([mpichcxx], [main])
-  if test x${ac_cv_lib_mpichcxx_main} = xno; then
-    echo "------------------------------------------"
-    echo " The mpichcxx library and header files    "
-    echo " are required to build the unittests.     "
-    echo " Check 'config.log' for more information. "
-    echo "------------------------------------------"
-    build_unittests=false  
-  fi
-)
+AC_CHECK_HEADER([mpi.h],,
+  echo "------------------------------------------"
+  echo " The mpi headers (i.e. mpi.h)             "
+  echo " required to build unittests are missing. "
+  echo " The path should be specified in CPPFLAGS."
+  echo " Check 'config.log' for more information. "
+  echo "------------------------------------------"
+  build_unittests=false)
+AC_CHECK_LIB([mpich], [MPI_Init],,
+  echo "------------------------------------------"
+  echo " The mpich library                        "
+  echo " required to build unittests is missing.  "
+  echo " The path should be specified in LDFLAGS. "
+  echo " Check 'config.log' for more information. "
+  echo "------------------------------------------"
+  build_unittests=false)
+AC_CHECK_LIB([mpichcxx], [main],,
+  echo "------------------------------------------"
+  echo " The mpichcxx library                     "
+  echo " required to build unittests is missing.  "
+  echo " The path should be specified in LDFLAGS. "
+  echo " Check 'config.log' for more information. "
+  echo "------------------------------------------"
+  build_unittests=false)
 AC_LANG_POP([C])
 
 # Cppunit is not required, but would allow the unittests to be built.
-AC_CHECK_HEADER([cppunit/ui/text/TestRunner.h],
-  AC_CHECK_LIB([cppunit], [main]))
-if test x${ac_cv_lib_cppunit_main} = xno; then
+AC_CHECK_HEADER([cppunit/ui/text/TestRunner.h],,
   echo "------------------------------------------"
-  echo " The cppunit library and header files     "
-  echo " are required to build the unittests.     "
+  echo " The cppunit headers (i.e. cppunit/ui/text/TestRunner.h)"
+  echo " required to build unittests are missing. "
+  echo " The path should be specified in CPPFLAGS."
   echo " Check 'config.log' for more information. "
   echo "------------------------------------------"
-  build_unittests=false  
-fi
+  build_unittests=false)
+AC_CHECK_LIB([cppunit], [main],,
+  echo "------------------------------------------"
+  echo " The cppunit library                      "
+  echo " required to build unittests is missing.  "
+  echo " The path should be specified in LDFLAGS. "
+  echo " Check 'config.log' for more information. "
+  echo "------------------------------------------"
+  build_unittests=false)
 
 AM_CONDITIONAL(BUILD_UNITTESTS, [test "x${build_unittests}" = x"true"])
 
@@ -212,27 +257,6 @@ AC_CHECK_HEADERS([pthread.h linux/unistd.h sys/epoll.h arpa/inet.h fcntl.h intty
 # Generate a header file from configure with various configure output
 AC_CONFIG_HEADERS([config.h])
 
-
-# Enable unittests?
-#AC_ARG_ENABLE([core-unittests],
-#  [  --enable-core-unittests  enable core cppunit tests],
-#  [core_unittests=${enableval}],
-#  [core_unittests=no])
-
-
-# Check for mpi if trying to build unittests
-#if test "x${core_unittests}" = xyes; then
-#  AC_SEARCH_LIBS([mpi_init], [mpi], [have_mpi=yes])
-#  echo "------------------------------------------"
-#  echo " The mpi library and header file is       "
-#  echo " required to build unittests. Stopping... "
-#  echo " Check 'config.log' for more information. "
-#  echo "------------------------------------------"
-#  (exit 1); exit 1;
-#else
-#  AC_MSG_NOTICE([Core unittests disabled])
-#fi
-
 # Check for various library functions
 AC_CHECK_FUNCS([atexit bzero clock_gettime dup2 gethostname gettimeofday memset socket strdup strerror strtol])
 
@@ -240,25 +264,6 @@ AC_CHECK_FUNCS([atexit bzero clock_gettime dup2 gethostname gettimeofday memset 
 BUILD_PATH="`pwd`"
 AC_SUBST(BUILD_PATH)
 
-# Generate the following files
-#AC_CONFIG_FILES([
-#Manifest
-#Makefile
-#src/Makefile
-#src/activenode/Makefile
-#src/cli/Makefile
-#src/core/Makefile
-#src/core/md5/Makefile
-#src/example/Makefile
-#src/gui/Makefile
-#src/gui/src/Makefile
-#src/gui/unittest/Makefile
-#src/gui/conf/config.xml
-#unittests/Makefile
-#unittests/unittestsHelper.pl
-#regressions/Regressions.itc
-#docs/doxygen-internal/doxygenInternalConfig
-#docs/doxygen-user/doxygenUserConfig])
 AC_CONFIG_FILES([
 Makefile
 src/Makefile
@@ -284,12 +289,28 @@ AC_ARG_ENABLE([debug],
   [AS_HELP_STRING([--enable-debug], [enable debug build] [default=no])], 
   [], [enable_debug=no])
 
+# Disable Werror
+AC_ARG_ENABLE([werror],
+  [AS_HELP_STRING([--disable-werror], [allow warnings] [default=no])], 
+  [], [disable_werror=no])
+
 # Set some general CXXFLAGS 
 if test "x${enable_debug}" = xno; then
-   GENERAL_CXXFLAGS="-Wall -Werror -O3 -g -rdynamic -D__STDC_FORMAT_MACROS -fno-strict-aliasing"
+  GENERAL_CXXFLAGS="-Wall -O3 -g -rdynamic -D__STDC_FORMAT_MACROS -fno-strict-aliasing"
 else
-   GENERAL_CXXFLAGS="-Wall -Werror -O0 -g -rdynamic -D__STDC_FORMAT_MACROS -fno-strict-aliasing"
+  GENERAL_CXXFLAGS="-Wall -O0 -g -rdynamic -D__STDC_FORMAT_MACROS -fno-strict-aliasing"
 fi
+
+# Add the Werror flags unless disabled
+if test "x${disable_werror}" = xno; then
+  GENERAL_CXXFLAGS="$GENERAL_CXXFLAGS -Werror"
+fi
+
+# No extra CXXFLAGS should be added if none were specified
+if test "x$init_cxxflags" = x; then
+  CXXFLAGS=""
+fi
+
 AC_SUBST(GENERAL_CXXFLAGS)
 
 AC_OUTPUT

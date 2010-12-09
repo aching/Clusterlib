@@ -76,10 +76,14 @@ void MethodAdaptor::reconnect() {
     
     if (state != ZOO_CONNECTED_STATE) {
         // Wait for the connection
-        timespec time;
-        clock_gettime(CLOCK_REALTIME, &time);
-        time.tv_sec += CONNECTION_TIMEOUT;
-        pthread_cond_timedwait(&cond, &mutex, &time);
+	struct timeval now;
+	gettimeofday(&now, NULL);
+	struct timespec abstime;
+	int64_t usecs = now.tv_sec * 1000000LL + now.tv_usec;
+	usecs += CONNECTION_TIMEOUT * 1000000LL;
+	abstime.tv_sec = usecs / 1000000LL;
+	abstime.tv_nsec = (usecs % 1000000LL) * 1000;
+        pthread_cond_timedwait(&cond, &mutex, &abstime);
         state = connectionState;
     }
     pthread_mutex_unlock(&mutex);
