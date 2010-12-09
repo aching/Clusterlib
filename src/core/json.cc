@@ -39,72 +39,8 @@ namespace json {
     JSONValue::JSONValue(const JSONValue &other) : value(other.value) {
     }
 
-    template<> void JSONValue::set(const int64_t &value) {
-        this->value = (JSONInteger) value;
-    }
-
-    template<> void JSONValue::set(const int32_t &value) {
-        this->value = (JSONInteger) value;
-    }
-
-    template<> void JSONValue::set(const int16_t &value) {
-        this->value = (JSONInteger) value;
-    }
-
-    template<> void JSONValue::set(const int8_t &value) {
-        this->value = (JSONInteger) value;
-    }
-
-    template<> void JSONValue::set(const uint64_t &value) {
-        this->value = (JSONUInteger) value;
-    }
-
-    template<> void JSONValue::set(const uint32_t &value) {
-        this->value = (JSONUInteger) value;
-    }
-
-    template<> void JSONValue::set(const uint16_t &value) {
-        this->value = (JSONUInteger) value;
-    }
-
-    template<> void JSONValue::set(const uint8_t &value) {
-        this->value = (JSONUInteger) value;
-    }
-
-    template<> void JSONValue::set(const long double &value) {
-        this->value = (JSONFloat) value;
-    }
-
-    template<> void JSONValue::set(const double &value) {
-        this->value = (JSONFloat) value;
-    }
-
-    template<> void JSONValue::set(const float &value) {
-        this->value = (JSONFloat) value;
-    }
-
-    template<> void JSONValue::set(const JSONNull &value) {
-        this->value = value;
-    }
-
-    template<> void JSONValue::set(const JSONArray &value) {
-        this->value = value;
-    }
-
-    template<> void JSONValue::set(const JSONBoolean &value) {
-        this->value = value;
-    }
-
-    template<> void JSONValue::set(const JSONString &value) {
-        this->value = value;
-    }
-
     void JSONValue::set(const char *value) {
         this->value = string(value);
-    }
-
-    template<> void JSONValue::set(const JSONObject &value) {
-        this->value = value;
     }
 
     const type_info &JSONValue::type() const {

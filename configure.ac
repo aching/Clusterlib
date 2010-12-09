@@ -187,7 +187,7 @@ AC_ARG_WITH([zookeeper_jars_path],
     AC_ERROR(Option --with-zookeeper-jars-path requires a path argument.)
         ;;
     esac 
-  AC_MSG_RESULT([Using $with_zookeeper_jars_path])
+  AC_MSG_RESULT([Using $with_zookeeper_jars_path for zookeeper jars path])
 ])
 ZOOKEEPER_JARS_PATH="${with_zookeeper_jars_path}"
 AC_SUBST(ZOOKEEPER_JARS_PATH)
@@ -203,33 +203,15 @@ fi
 # Should build the unittests?
 build_unittests=true
 
-# Mpich is not required, but would allow the unittests to be built.
-AC_LANG_PUSH([C])
-AC_CHECK_HEADER([mpi.h],,
+AC_PATH_PROG([MPICXX], [mpicxx])
+if test x${MPICXX} = x; then
   echo "------------------------------------------"
-  echo " The mpi headers (i.e. mpi.h)             "
-  echo " required to build unittests are missing. "
-  echo " The path should be specified in CPPFLAGS."
+  echo " mpicxx is required to compile            "
+  echo " unittests and cannot be found.           "
   echo " Check 'config.log' for more information. "
   echo "------------------------------------------"
-  build_unittests=false)
-AC_CHECK_LIB([mpich], [MPI_Init],,
-  echo "------------------------------------------"
-  echo " The mpich library                        "
-  echo " required to build unittests is missing.  "
-  echo " The path should be specified in LDFLAGS. "
-  echo " Check 'config.log' for more information. "
-  echo "------------------------------------------"
-  build_unittests=false)
-AC_CHECK_LIB([mpichcxx], [main],,
-  echo "------------------------------------------"
-  echo " The mpichcxx library                     "
-  echo " required to build unittests is missing.  "
-  echo " The path should be specified in LDFLAGS. "
-  echo " Check 'config.log' for more information. "
-  echo "------------------------------------------"
-  build_unittests=false)
-AC_LANG_POP([C])
+  build_unittests=false
+fi
 
 # Cppunit is not required, but would allow the unittests to be built.
 AC_CHECK_HEADER([cppunit/ui/text/TestRunner.h],,

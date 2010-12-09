@@ -260,6 +260,86 @@ inline JSONValue::JSONInteger JSONValue::get<JSONValue::JSONInteger>() const
     }
 }
 
+template<> 
+inline void JSONValue::set(const int64_t &value) {
+    this->value = (JSONInteger) value;
+}
+
+template<> 
+inline void JSONValue::set(const int32_t &value) {
+    this->value = (JSONInteger) value;
+}
+
+template<> 
+inline void JSONValue::set(const int16_t &value) {
+    this->value = (JSONInteger) value;
+}
+
+template<> 
+inline void JSONValue::set(const int8_t &value) {
+    this->value = (JSONInteger) value;
+}
+
+template<> 
+inline void JSONValue::set(const uint64_t &value) {
+    this->value = (JSONUInteger) value;
+}
+
+template<>
+inline void JSONValue::set(const uint32_t &value) {
+    this->value = (JSONUInteger) value;
+}
+
+template<>
+inline void JSONValue::set(const uint16_t &value) {
+    this->value = (JSONUInteger) value;
+}
+
+template<>
+inline void JSONValue::set(const uint8_t &value) {
+    this->value = (JSONUInteger) value;
+}
+
+template<>
+inline void JSONValue::set(const long double &value) {
+    this->value = (JSONFloat) value;
+}
+
+template<>
+inline void JSONValue::set(const double &value) {
+    this->value = (JSONFloat) value;
+}
+
+template<>
+inline void JSONValue::set(const float &value) {
+    this->value = (JSONFloat) value;
+}
+
+template<>
+inline void JSONValue::set(const JSONNull &value) {
+    this->value = value;
+}
+
+template<>
+inline void JSONValue::set(const JSONArray &value) {
+    this->value = value;
+}
+
+template<>
+inline void JSONValue::set(const JSONBoolean &value) {
+    this->value = value;
+}
+
+template<>
+inline void JSONValue::set(const JSONString &value) {
+    this->value = value;
+}
+
+template<> 
+inline void JSONValue::set(const JSONObject &value) {
+    this->value = value;
+}
+
 /**
  * Defines the utility class of JSON parser and composer. This is
  * the single entry of the namespace.

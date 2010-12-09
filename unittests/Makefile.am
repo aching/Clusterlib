@@ -2,7 +2,8 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
 	-I$(top_srcdir)/src/core
 AM_CXXFLAGS = @GENERAL_CXXFLAGS@ -DMPICH_IGNORE_CXX_SEEK -Wno-non-virtual-dtor
-# Only build the unittests and libraries if MPICH and cppunit are present
+CXX = @MPICXX@
+# Only build the unittests and libraries if mpicxx and cppunit are present
 if BUILD_UNITTESTS
 lib_LTLIBRARIES = libunittests.la
 bin_PROGRAMS = unittests
