@@ -14,9 +14,8 @@
 #include <iomanip>
 #include <sys/types.h>
 #include <sys/wait.h>
-#ifdef HAVE_LINUX_UNISTD_H
-#include <linux/unistd.h>
-_syscall0(pid_t,gettid)
+#ifdef HAVE_SYS_SYSCALL_H
+#include <sys/syscall.h>
 #endif
 #include <poll.h>
 
@@ -165,7 +164,14 @@ ProcessThreadService::forkExec(const vector<string> &addEnv,
         
 	/* Change path if specified */
 	if (path.size() != 0) {
-	    chdir(path.c_str());
+	    ret = chdir(path.c_str());
+            if (ret != 0) {
+                oss.str("");
+                oss << "forkExec: chdir to " << path << " failed with ret=" 
+                    << ret << " errno=" << errno << " strerror=" 
+                    << strerror(errno);
+                throw SystemFailureException(oss.str());
+            }
 	}
 	
 	/* Execute */
@@ -455,8 +461,8 @@ ProcessThreadService::getTid()
 {
     TRACE(CL_LOG, "getTid");
 
-#ifdef HAVE_LINUX_UNISTD_H
-    return static_cast<int32_t>(gettid());
+#ifdef HAVE_SYS_SYSCALL_H
+    return static_cast<int32_t>(syscall(__NR_gettid));
 #else
     return static_cast<int32_t>(reinterpret_cast<uintptr_t>(pthread_self()));
 #endif

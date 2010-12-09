@@ -8,7 +8,7 @@
  
 #ifndef _CL_BLOCKINGQUEUE_H_
 #define _CL_BLOCKINGQUEUE_H_
- 
+
 namespace clusterlib  {
  
 /**
@@ -25,9 +25,9 @@ class BlockingQueue
          * \brief Adds the specified element to this queue, waiting if
          * necessary for space to become available.
          * 
-         * @param e the element to be added
+         * @param element the element to be added
          */
-        void put(E e);
+        void put(E element);
         
         /**
          * \brief Retrieves and removes the head of this queue,
@@ -44,10 +44,10 @@ class BlockingQueue
          * 
          * @param msecTimeout the amount of msecs to wait until giving up, 
          *        -1 means wait forever, 0 means return immediately
-         * @param e the element filled in if returned true
+         * @param element the element filled in if returned true
          * @return true if an element was retrieved, false otherwise
          */
-        bool takeWaitMsecs(int64_t msecTimeout, E &e);
+        bool takeWaitMsecs(int64_t msecTimeout, E &element);
         
         /**
          * Returns the current size of this blocking queue.
@@ -107,33 +107,29 @@ bool BlockingQueue<E>::empty() const
 }
 
 template<class E> 
-void BlockingQueue<E>::put(E e)
+void BlockingQueue<E>::put(E element)
 {
     m_mutex.acquire();
-    m_queue.push_back(e);
+    m_queue.push_back(element);
     m_cond.signal();
     m_mutex.release();
 }
 
-/**
- * Get an element from the blocking queue without a wait
- *
- * @param e the element returned
- */
 template<class E> 
 E BlockingQueue<E>::take()
 {
-    E e;
-    takeWaitMsecs(-1, e);
-    return e;
+    m_mutex.acquire();
+    while (m_queue.empty()) {
+        m_cond.wait(m_mutex);
+    }
+    E element = m_queue.front();
+    m_queue.pop_front();
+    m_mutex.release();
+    return element;
 }
 
-/**
- * Get an element from the blocking queue with/without a wait
- *
- */
 template<class E> 
-bool BlockingQueue<E>::takeWaitMsecs(int64_t msecTimeout, E &e)
+bool BlockingQueue<E>::takeWaitMsecs(int64_t msecTimeout, E &element)
 {
     if (msecTimeout < -1) {
         std::stringstream ss;
@@ -174,7 +170,7 @@ bool BlockingQueue<E>::takeWaitMsecs(int64_t msecTimeout, E &e)
         }
     }
     if (hasResult) {
-        e = m_queue.front();
+        element = m_queue.front();
         m_queue.pop_front();
         m_mutex.release();
         return true;

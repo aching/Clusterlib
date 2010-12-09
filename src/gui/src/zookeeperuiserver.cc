@@ -4,7 +4,7 @@
 #include "xmlconfig.h"
 #include <cstdlib>
 #include <string>
-#include <apr_getopt.h>
+#include <apr-1.0/apr_getopt.h>
 #include <signal.h>
 #include <iostream>
 

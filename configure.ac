@@ -35,12 +35,6 @@ AC_CHECK_HEADER([boost/regex.hpp],,
 AC_CHECK_LIB([boost_regex], [main],,
   AC_MSG_ERROR([boost_regex library not found.  Exiting.]))
 
-# Boost unit_test_framework header and library must exist (C++ style)
-AC_CHECK_HEADER([boost/test/auto_unit_test.hpp],,
-  AC_MSG_ERROR([boost/test/auto_unit_test.hpp not found.  Exiting.]))
-AC_CHECK_LIB([boost_unit_test_framework], [main],,
-  AC_MSG_ERROR([boost_unit_test_framework library not found.  Exiting.]))
-
 # Check for pthread library
 AC_SEARCH_LIBS([pthread_create], [pthread], [have_pthread=yes])
 
@@ -97,9 +91,9 @@ AC_CHECK_LIB([readline], [rl_line_buffer],,
 build_gui=true
 
 # Apr-1 is not required, but would allow the GUI to be built.
-AC_CHECK_HEADER([apr_getopt.h],,
+AC_CHECK_HEADER([apr-1.0/apr_getopt.h],,
   echo "------------------------------------------"
-  echo " The apr headers (i.e. apr_getoph.h)      "
+  echo " The apr headers (i.e. apr-1.0/apr_getoph.h)"
   echo " required to build the GUI are missing.   "
   echo " The path should be specified in CPPFLAGS."
   echo " Check 'config.log' for more information. "
@@ -115,9 +109,9 @@ AC_CHECK_LIB([apr-1], [main],,
   build_gui=false)
 
 # Aprutil-1 is not required, but would allow the GUI to be built.
-AC_CHECK_HEADER([apu.h],,
+AC_CHECK_HEADER([apr-1.0/apu.h],,
   echo "------------------------------------------"
-  echo " The aprutil-1 headers (i.e. apu.h)       "
+  echo " The aprutil-1 headers (i.e. apr-1.0/apu.h)       "
   echo " required to build the GUI are missing.   "
   echo " The path should be specified in CPPFLAGS."
   echo " Check 'config.log' for more information. "
@@ -138,6 +132,14 @@ AC_ARG_ENABLE([gui_unittests],
     [build GUI unittests] [default=no])], 
   [build_gui_unittests=true], 
   [build_gui_unittests=false])
+
+# Boost unit_test_framework header and library must exist for GUI unittests
+if test x${build_gui_unittests} = xtrue; then
+  AC_CHECK_HEADER([boost/test/auto_unit_test.hpp],,
+    AC_MSG_ERROR([boost/test/auto_unit_test.hpp not found for GUI unittests.  Exiting.]))
+  AC_CHECK_LIB([boost_unit_test_framework], [main],,
+    AC_MSG_ERROR([boost_unit_test_framework library not found for GUI unittests.  Exiting.]))
+fi
 
 AM_CONDITIONAL(BUILD_GUI_UNITTESTS, [test "x${build_gui_unittests}" = x"true"])
 
@@ -234,7 +236,7 @@ AC_CHECK_LIB([cppunit], [main],,
 AM_CONDITIONAL(BUILD_UNITTESTS, [test "x${build_unittests}" = x"true"])
 
 # Check to see if the following headers exist
-AC_CHECK_HEADERS([pthread.h linux/unistd.h sys/epoll.h arpa/inet.h fcntl.h inttypes.h netdb.h stdlib.h string.h strings.h sys/socket.h sys/time.h unistd.h boost/test/auto_unit_test.hpp readline/readline.h])
+AC_CHECK_HEADERS([pthread.h sys/epoll.h arpa/inet.h fcntl.h inttypes.h netdb.h stdlib.h string.h strings.h sys/socket.h sys/syscall.h sys/time.h unistd.h boost/test/auto_unit_test.hpp readline/readline.h])
 
 # Generate a header file from configure with various configure output
 AC_CONFIG_HEADERS([config.h])

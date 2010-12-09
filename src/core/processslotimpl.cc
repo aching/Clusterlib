@@ -10,8 +10,6 @@
  * ============================================================================
  */
 
-extern char **environ;
-
 #include "clusterlibinternal.h"
 #include <unistd.h>
 #include <iostream>

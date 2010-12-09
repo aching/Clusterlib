@@ -148,7 +148,7 @@ MicroHttpServer::accessHandler(MHD_Connection *connection,
                                     MHD_CONNECTION_INFO_CLIENT_ADDRESS);
         context = new HttpContext();
         context->client = getSockAddrPresentation(
-            info->client_addr, 
+            (struct sockaddr *) info->client_addr, 
             ipv6 ? sizeof(sockaddr_in6) : sizeof(sockaddr_in));
         context->request.method = method;
         context->request.url = url;
@@ -382,8 +382,7 @@ MicroHttpServer::dispatchRequest(
             off_t realFileSize = getFileSize(realFile);
 
             MHD_Response *response = MHD_create_response_from_callback(
-                fc->includeHandlerProcess ? MHD_RESPONSE_UNKNOWN_TOTAL_SIZE
-                    : realFileSize, 
+                fc->includeHandlerProcess ? MHD_SIZE_UNKNOWN : realFileSize, 
                 4*1024, 
                 contentReaderCallback, 
                 fc, 

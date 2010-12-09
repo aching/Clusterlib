@@ -1,6 +1,6 @@
 #ifndef _INCLUDED_XMLCONFIG_H_
 #define _INCLUDED_XMLCONFIG_H_
-#include <apr_xml.h>
+#include <apr-1.0/apr_xml.h>
 #include <map>
 #include <string>
 
