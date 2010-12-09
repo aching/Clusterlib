@@ -9,7 +9,7 @@
   <property>
     <!-- The root directory of the HTTP server, empty means working directory -->
     <name>httpd.rootDirectory</name>
-    <value>@top_srcdir@/src/gui/webroot</value>
+    <value>@abs_top_srcdir@/src/gui/webroot</value>
   </property>
   <property>
     <!-- The content types 'extension|MIME type,extension|MIME type,...' -->
@@ -29,6 +29,6 @@
   <property>
     <!-- The log4cxx configuration file -->
     <name>logger.configuration</name>
-    <value>@top_srcdir@/src/gui/conf/logger.conf</value>
+    <value>@abs_top_srcdir@/src/gui/conf/logger.conf</value>
   </property>
 </configuration>
