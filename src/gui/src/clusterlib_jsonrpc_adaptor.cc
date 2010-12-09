@@ -414,7 +414,7 @@ MethodAdaptor::getNotifyableAttributesFromKey(
         NameList names;
         if (dynamic_pointer_cast<Root >(notifyableSP)) {
             attributes["# of Applications"] =
-                (m_rootSP->getApplicationNames()).size();
+                static_cast<uint32_t>(m_rootSP->getApplicationNames().size());
             attributes[idApplicationSummary] =
                 getApplicationStatus(childObj["applications"].
                                      get<JSONValue::JSONArray>());
