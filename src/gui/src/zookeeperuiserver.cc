@@ -165,7 +165,7 @@ ZooKeeperUIServer::printUsage()
 "                       (i.e. wm301:2181,wm302:2181)\n"
 " -C  --zk_check        Periodically check zookeeper servers -\n"
 "                       overrides config of zookeeper.check\n"
-"                       (i.e. 'true' or 'false')\n"
+"                       (i.e. 'true' or 'false') [default=false]\n"
 " -r  --root            Root directory of HTTP server - overrides config of\n"
 "                       httpd.rootDirectory\n"
 " -p  --httpd_port      Client port of HTTP server - overrides config of\n"
