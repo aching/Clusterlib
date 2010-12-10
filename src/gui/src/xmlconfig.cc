@@ -1,5 +1,5 @@
 #include "gui.h"
-#include PATH_APR_XML_H
+#include "apr_xml.h"
 #include "xmlconfig.h"
 
 using namespace std;
