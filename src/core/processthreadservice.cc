@@ -14,7 +14,11 @@
 #include <iomanip>
 #include <sys/types.h>
 #include <sys/wait.h>
-#ifdef HAVE_SYS_SYSCALL_H
+#ifdef HAVE_MACH_THREAD_SELF
+#include <mach/mach.h>
+#include <sys/resource.h>
+#include <algorithm>
+#else
 #include <sys/syscall.h>
 #endif
 #include <poll.h>
@@ -461,10 +465,10 @@ ProcessThreadService::getTid()
 {
     TRACE(CL_LOG, "getTid");
 
-#ifdef HAVE_SYS_SYSCALL_H
-    return static_cast<int32_t>(syscall(__NR_gettid));
+#ifdef HAVE_MACH_THREAD_SELF
+    return static_cast<int32_t>(mach_thread_self());
 #else
-    return static_cast<int32_t>(reinterpret_cast<uintptr_t>(pthread_self()));
+    return static_cast<int32_t>(syscall(__NR_gettid));
 #endif
 }
 

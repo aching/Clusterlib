@@ -266,13 +266,13 @@ AC_CHECK_LIB([cppunit], [main],,
 AM_CONDITIONAL(BUILD_UNITTESTS, [test "x${build_unittests}" = x"true"])
 
 # Check to see if the following headers exist
-AC_CHECK_HEADERS([pthread.h sys/epoll.h arpa/inet.h fcntl.h inttypes.h netdb.h stdlib.h string.h strings.h sys/socket.h sys/syscall.h sys/time.h unistd.h boost/test/auto_unit_test.hpp readline/readline.h apr-1/apr_getopt.h apr-1.0/apr_getopt.h apr-1/apr_xml.h apr-1.0/apr_xml.h])
+AC_CHECK_HEADERS([pthread.h sys/epoll.h arpa/inet.h fcntl.h inttypes.h netdb.h stdlib.h string.h strings.h sys/socket.h sys/syscall.h sys/time.h unistd.h boost/test/auto_unit_test.hpp readline/readline.h apr-1/apr_getopt.h apr-1.0/apr_getopt.h apr-1/apr_xml.h apr-1.0/apr_xml.h] mach/mach.h)
 
 # Generate a header file from configure with various configure output
 AC_CONFIG_HEADERS([config.h])
 
 # Check for various library functions
-AC_CHECK_FUNCS([atexit bzero clock_gettime dup2 gethostname gettimeofday memset socket strdup strerror strtol])
+AC_CHECK_FUNCS([atexit bzero clock_gettime dup2 gethostname gettimeofday memset socket strdup strerror strtol mach_thread_self])
 
 # Get the build path for doxygen
 BUILD_PATH="`pwd`"
