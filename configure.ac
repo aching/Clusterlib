@@ -93,10 +93,10 @@ build_gui=true
 # Apr-1 is not required, but would allow the GUI to be built.
 # Check for the apr_getopt.h in either apr-1 or apr-1.0 (i.e. ubuntu)
 AC_CHECK_FILE([/usr/include/apr-1/apr_getopt.h],
-  CPPFLAGS=CPPFLAGS "-I/usr/include/apr-1"
+  CPPFLAGS="${CPPFLAGS} -I/usr/include/apr-1"
   AC_MSG_RESULT([Found /usr/include/apr-1/apr_getopt.h and adding /usr/include/apr-1 to CPPFLAGS.]))
 AC_CHECK_FILE([/usr/include/apr-1.0/apr_getopt.h],
-  CPPFLAGS=CPPFLAGS "-I/usr/include/apr-1.0"
+  CPPFLAGS="${CPPFLAGS} -I/usr/include/apr-1.0"
   AC_MSG_RESULT([Found /usr/include/apr-1.0/apr_getopt.h and adding /usr/include/apr-1.0 to CPPFLAGS.]))
 AC_CHECK_HEADER([apr_getopt.h],,
   echo "------------------------------------------"
@@ -118,10 +118,10 @@ AC_CHECK_LIB([apr-1], [main],,
 # Aprutil-1 is not required, but would allow the GUI to be built.
 # Check for the apr_xml.h in either apr-1 or apr-1.0 (i.e. ubuntu)
 AC_CHECK_FILE([/usr/include/apr-1/apr_xml.h],
-  CPPFLAGS=CPPFLAGS "-I/usr/include/apr-1"
+  CPPFLAGS="${CPPFLAGS} -I/usr/include/apr-1"
   AC_MSG_RESULT([Found /usr/include/apr-1/apr_xml.h and adding /usr/include/apr-1 to CPPFLAGS.]))
 AC_CHECK_FILE([/usr/include/apr-1.0/apr_xml.h],
-  CPPFLAGS=CPPFLAGS "-I/usr/include/apr-1.0"
+  CPPFLAGS="${CPPFLAGS} -I/usr/include/apr-1.0"
   AC_MSG_RESULT([Found /usr/include/apr-1.0/apr_xml.h and adding /usr/include/apr-1.0 to CPPFLAGS.]))
 AC_CHECK_HEADER([apr_xml.h],,
   echo "------------------------------------------"
