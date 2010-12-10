@@ -1,10 +1,10 @@
 #include "gui.h"
+#include PATH_APR_GETOPT_H
 #include "zookeeperuiserver.h"
 #include "zookeeperperiodiccheck.h"
 #include "xmlconfig.h"
 #include <cstdlib>
 #include <string>
-#include <apr-1.0/apr_getopt.h>
 #include <signal.h>
 #include <iostream>
 

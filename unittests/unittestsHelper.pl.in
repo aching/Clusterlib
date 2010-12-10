@@ -69,6 +69,7 @@ if ($hostname eq "") {
 # Subroutine prototypes
 sub setCmdPrintExec;
 sub setSystemCmdPrintExec;
+sub setBashSystemCmdPrintExec;
 sub parseArgs;
 sub usage;
 sub startMpd;
@@ -151,6 +152,18 @@ sub setSystemCmdPrintExec()
     print "system command: $cmd\n";
     if (!defined($globalDebug)) {
         return system($cmd);
+    }
+    else {
+        return 0;
+    }
+}
+
+sub setBashSystemCmdPrintExec()
+{
+    my $cmd = shift;
+    print "bash system command: $cmd\n";
+    if (!defined($globalDebug)) {
+        return system('/bin/bash -c "'.$cmd.'"');
     }
     else {
         return 0;
@@ -279,7 +292,7 @@ sub startZookeeper()
 	&setSystemCmdPrintExec("chmod 700 $zookeeperCfg");
 	print "\nStarting up zookeeper ($zookeeperExec) for user $user...\n";
 	&setCmdPrintExec("chdir(\"$zookeeperServerDir\")");
-	&setSystemCmdPrintExec("$bin \>\& $zookeeperOut \&");
+	&setBashSystemCmdPrintExec("$bin \>\& $zookeeperOut \&");
 	&setCmdPrintExec("chdir(\"$cwd\")");
 	# Make sure the process has time to start up
 	sleep(8);

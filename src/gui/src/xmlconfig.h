@@ -1,8 +1,5 @@
 #ifndef _INCLUDED_XMLCONFIG_H_
 #define _INCLUDED_XMLCONFIG_H_
-#include <apr-1.0/apr_xml.h>
-#include <map>
-#include <string>
 
 namespace configurator {
 
