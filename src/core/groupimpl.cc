@@ -56,7 +56,7 @@ GroupImpl::getNodeWaitMsecs(
 
 shared_ptr<Node>
 GroupImpl::getNode(const string &name,
-                         AccessType accessType)
+                   AccessType accessType)
 {
     shared_ptr<Node> nodeSP;
     getNodeWaitMsecs(name, accessType, -1, &nodeSP);

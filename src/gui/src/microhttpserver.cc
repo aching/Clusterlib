@@ -5,6 +5,11 @@
 #include <sys/stat.h>
 #include <cstdio>
 
+/* For older versions of libmicrohttpd */
+#ifndef MHD_SIZE_UNKNOWN 
+#define MHD_SIZE_UNKNOWN  ((uint64_t) -1LL)
+#endif
+
 using namespace std;
 
 namespace httpd { namespace microhttpd {

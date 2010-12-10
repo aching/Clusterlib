@@ -103,6 +103,6 @@ class ProcessSlotImpl
     CachedProcessInfoImpl m_cachedProcessInfo;
 };
 
-};	/* End of 'namespace clusterlib' */
+}	/* End of 'namespace clusterlib' */
 
 #endif	/* !_CL_PROCESSSLOTIMPL_H_ */

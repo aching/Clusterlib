@@ -92,29 +92,20 @@ build_gui=true
 
 # Apr-1 is not required, but would allow the GUI to be built.
 # Check for the apr_getopt.h in either apr-1 or apr-1.0 (i.e. ubuntu)
-AC_CHECK_HEADER([apr-1/apr_getopt.h], 
-  [AC_DEFINE([PATH_APR_GETOPT_H],
-    [<apr-1/apr_getopt.h>], [apr_getopt.h path])])
-AC_CHECK_HEADER([apr-1.0/apr_getopt.h], 
-  [AC_DEFINE([PATH_APR_GETOPT_H],
-    [<apr-1.0/apr_getopt.h>], [apr_getopt.h path])])
-if test x${ac_cv_header_apr_1_apr_getopt_h} = xno && test x${ac_cv_header_apr_1_0_apr_getopt_h} = xno; then
+AC_CHECK_FILE([/usr/include/apr-1/apr_getopt.h],
+  CPPFLAGS=CPPFLAGS "-I/usr/include/apr-1"
+  AC_MSG_RESULT([Found /usr/include/apr-1/apr_getopt.h and adding /usr/include/apr-1 to CPPFLAGS.]))
+AC_CHECK_FILE([/usr/include/apr-1.0/apr_getopt.h],
+  CPPFLAGS=CPPFLAGS "-I/usr/include/apr-1.0"
+  AC_MSG_RESULT([Found /usr/include/apr-1.0/apr_getopt.h and adding /usr/include/apr-1.0 to CPPFLAGS.]))
+AC_CHECK_HEADER([apr_getopt.h],,
   echo "------------------------------------------"
-  echo " The apr headers (checking for either     "
-  echo " apr-1/apr_getopt.h or apr-1.0/apr_getopt.h)"
+  echo " The apr-1 headers (i.e. apr_getopt.h)    "
   echo " required to build the GUI are missing.   "
   echo " The path should be specified in CPPFLAGS."
   echo " Check 'config.log' for more information. "
   echo "------------------------------------------"
-  build_gui=false
-elif test x${ac_cv_header_apr_1_apr_getopt_h} = xyes && test x${ac_cv_header_apr_1_0_apr_getopt_h} = xyes; then
-  echo "------------------------------------------"
-  echo " WARNING!  The apr headers                "
-  echo " apr-1/apr_getopt.h apr-1.0/apr_getopt.h  "
-  echo " both exist.  Please fix CPPFLAGS.        "
-  echo " Check 'config.log' for more information. "
-  echo "------------------------------------------"
-fi
+  build_gui=false)
 AC_CHECK_LIB([apr-1], [main],,
   echo "------------------------------------------"
   echo " The apr-1 library                        "
@@ -126,27 +117,20 @@ AC_CHECK_LIB([apr-1], [main],,
 
 # Aprutil-1 is not required, but would allow the GUI to be built.
 # Check for the apr_xml.h in either apr-1 or apr-1.0 (i.e. ubuntu)
-AC_CHECK_HEADER([apr-1/apr_xml.h],
-  [AC_DEFINE([PATH_APR_XML_H], [<apr-1/apr_xml.h>], [apr_xml.h path])])
-AC_CHECK_HEADER([apr-1.0/apr_xml.h],
-  [AC_DEFINE([PATH_APR_XML_H], [<apr-1.0/apr_xml.h>], [apr_xml.h path])])
-if test x${ac_cv_header_apr_1_apr_xml_h} = xno && test x${ac_cv_header_apr_1_0_apr_xml_h} = xno; then
+AC_CHECK_FILE([/usr/include/apr-1/apr_xml.h],
+  CPPFLAGS=CPPFLAGS "-I/usr/include/apr-1"
+  AC_MSG_RESULT([Found /usr/include/apr-1/apr_xml.h and adding /usr/include/apr-1 to CPPFLAGS.]))
+AC_CHECK_FILE([/usr/include/apr-1.0/apr_xml.h],
+  CPPFLAGS=CPPFLAGS "-I/usr/include/apr-1.0"
+  AC_MSG_RESULT([Found /usr/include/apr-1.0/apr_xml.h and adding /usr/include/apr-1.0 to CPPFLAGS.]))
+AC_CHECK_HEADER([apr_xml.h],,
   echo "------------------------------------------"
-  echo " The apr headers (checking for either     "
-  echo " apr-1/apr_xml.h or apr-1.0/apr_xml.h)"
+  echo " The aprutil-1 headers (i.e. apr_xml.h)   "
   echo " required to build the GUI are missing.   "
   echo " The path should be specified in CPPFLAGS."
   echo " Check 'config.log' for more information. "
   echo "------------------------------------------"
-  build_gui=false
-elif test x${ac_cv_header_apr_1_apr_xml_h} = xyes && test x${ac_cv_header_apr_1_0_apr_xml_h} = xyes; then
-  echo "------------------------------------------"
-  echo " WARNING!  The apr headers                "
-  echo " apr-1/apr_xml.h apr-1.0/apr_xml.h  "
-  echo " both exist.  Please fix CPPFLAGS.        "
-  echo " Check 'config.log' for more information. "
-  echo "------------------------------------------"
-fi
+  build_gui=false)
 AC_CHECK_LIB([aprutil-1], [main],,
   echo "------------------------------------------"
   echo " The aprutil-1 library                    "
@@ -266,7 +250,7 @@ AC_CHECK_LIB([cppunit], [main],,
 AM_CONDITIONAL(BUILD_UNITTESTS, [test "x${build_unittests}" = x"true"])
 
 # Check to see if the following headers exist
-AC_CHECK_HEADERS([pthread.h sys/epoll.h arpa/inet.h fcntl.h inttypes.h netdb.h stdlib.h string.h strings.h sys/socket.h sys/syscall.h sys/time.h unistd.h boost/test/auto_unit_test.hpp readline/readline.h apr-1/apr_getopt.h apr-1.0/apr_getopt.h apr-1/apr_xml.h apr-1.0/apr_xml.h] mach/mach.h)
+AC_CHECK_HEADERS([pthread.h sys/epoll.h arpa/inet.h fcntl.h inttypes.h netdb.h stdlib.h string.h strings.h sys/socket.h sys/syscall.h sys/time.h unistd.h boost/test/auto_unit_test.hpp readline/readline.h apr_getopt.h apr_xml.h mach/mach.h])
 
 # Generate a header file from configure with various configure output
 AC_CONFIG_HEADERS([config.h])

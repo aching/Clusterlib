@@ -1,5 +1,5 @@
 #include "gui.h"
-#include PATH_APR_GETOPT_H
+#include "apr_getopt.h"
 #include "zookeeperuiserver.h"
 #include "zookeeperperiodiccheck.h"
 #include "xmlconfig.h"
