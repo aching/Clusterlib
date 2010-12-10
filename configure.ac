@@ -22,6 +22,9 @@ AC_PROG_INSTALL
 # Look for the libtool
 AC_PROG_LIBTOOL
 
+# Enable large file support when possible
+AC_SYS_LARGEFILE
+
 # Allow per-product flags
 AM_PROG_CC_C_O
 
@@ -307,6 +310,10 @@ fi
 # No extra CXXFLAGS should be added if none were specified
 if test "x$init_cxxflags" = x; then
   CXXFLAGS=""
+fi
+
+if test "x${ac_cv_sys_file_offset_bits}" = xno; then
+  AC_DEFINE([_DARWIN_FEATURE_64_BIT_INODE], [1], [Make sure stat is 64 bit])
 fi
 
 AC_SUBST(GENERAL_CXXFLAGS)

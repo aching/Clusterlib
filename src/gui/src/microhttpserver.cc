@@ -425,8 +425,8 @@ MicroHttpServer::dispatchRequest(
 off_t
 MicroHttpServer::getFileSize(const string &file) 
 {
-    struct stat64 fileinfo;
-    if (stat64(file.c_str(), &fileinfo) < 0) {
+    struct stat fileinfo;
+    if (stat(file.c_str(), &fileinfo) < 0) {
         return 0;
     }
     return fileinfo.st_size;
@@ -435,8 +435,8 @@ MicroHttpServer::getFileSize(const string &file)
 bool
 MicroHttpServer::isDirectory(const string &file) 
 {
-    struct stat64 fileinfo;
-    if (stat64(file.c_str(), &fileinfo) < 0) {
+    struct stat fileinfo;
+    if (stat(file.c_str(), &fileinfo) < 0) {
         return false;
     }
     return S_ISDIR(fileinfo.st_mode);
