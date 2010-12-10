@@ -379,10 +379,15 @@ ProcessThreadService::forkExecWait(const vector<string> &addEnv,
                         throw SystemFailureException(oss.str());
                     }
                     LOG_DEBUG(CL_LOG, 
-                              "forkExecWait: fd=%" PRId32 " size=%" PRId32 
+                              "forkExecWait: (%s) fd=%" PRId32 
+                              " size=%" PRId32 ", total_buffer_size=% " PRId64 
                               " buf=%s",
+                              ((i == 0) ? "stdout" : "stderr"),
                               static_cast<int32_t>(fds[i].fd),
                               static_cast<int32_t>(sizeArr[i]),
+                              static_cast<int64_t>(
+                                  ((i == 0) ? stdoutOutput.size() : 
+                                   stderrOutput.size()) + sizeArr[i]),
                               buf);
                     switch(i) {
                         case 0:
@@ -399,11 +404,14 @@ ProcessThreadService::forkExecWait(const vector<string> &addEnv,
                             throw SystemFailureException(oss.str());
                     }
                 }
-                if (fds[i].revents & POLLHUP) {
+                else if (fds[i].revents & POLLHUP) {
                     oss.str("");
-                    oss << "forkExecWait: fd=" << i << " got POLLHUP "
-                        << " errno=" << errno << " strerror=" 
+                    oss << "forkExecWait: ("
+                        << ((i == 0) ? "stdout" : "stderr") << ") fd=" 
+                        << fds[i].fd << " got POLLHUP "
+                        << "errno=" << errno << " strerror=" 
                         << strerror(errno);
+                    LOG_DEBUG(CL_LOG, "%s", oss.str().c_str());
                     sizeArr[i] = 0;
                 }
             }
