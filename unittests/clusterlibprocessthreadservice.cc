@@ -46,7 +46,7 @@ class ClusterlibProcessThreadService : public MPITestFixture
                                     "testProcessThreadService1");
         vector<string> addEnv;
         string path;
-        string cmd = "/bin/ls -al / >& /dev/null";
+        string cmd = "/bin/ls -al / > /dev/null";
         pid_t processId = -1;
         int32_t returnCode = -1;
 
