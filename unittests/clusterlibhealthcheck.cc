@@ -164,7 +164,7 @@ class ClusterlibHealthCheck : public MPITestFixture
         bool cancelled = _factory->cancelPeriodicThread(_healthUpdater);
         MPI_CPPUNIT_ASSERT(cancelled == false);
         _node0->acquireLock(CLString::OWNERSHIP_LOCK,
-DIST_LOCK_EXCL);
+                            DIST_LOCK_EXCL);
         /* Do nothing */
         _healthUpdater.setNotifyable(shared_ptr<Notifyable>());
         _factory->registerPeriodicThread(_healthUpdater);
@@ -202,7 +202,7 @@ DIST_LOCK_EXCL);
             MPI_CPPUNIT_ASSERT(found == false);
 
             _node0->acquireLock(CLString::OWNERSHIP_LOCK,
-DIST_LOCK_EXCL);
+                                DIST_LOCK_EXCL);
             _healthUpdater.setNotifyable(_node0);
             _healthUpdater.setHealth(Node::HEALTH_GOOD_VALUE);
             _factory->registerPeriodicThread(_healthUpdater);

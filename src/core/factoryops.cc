@@ -573,17 +573,27 @@ FactoryOps::cancelPeriodicThread(Periodic &periodic)
 {
     TRACE(CL_LOG, "cancelPeriodicThread");
     
-    Locker l(&m_periodicMapLock);
+    map<Periodic *, CXXThread<FactoryOps> *>::iterator periodicMapIt;
 
-    map<Periodic *, CXXThread<FactoryOps> *>::iterator periodicMapIt =
-        m_periodicMap.find(&periodic);
+    {
+        Locker l(&m_periodicMapLock);
+
+        periodicMapIt = m_periodicMap.find(&periodic);
+    }
+
     if (periodicMapIt == m_periodicMap.end()) {
         return false;
     }
 
     periodicMapIt->second->getPredMutexCond().predSignal();
     periodicMapIt->second->Join();
-    m_periodicMap.erase(periodicMapIt);
+
+    {
+        Locker l(&m_periodicMapLock);
+
+        delete periodicMapIt->second;
+        m_periodicMap.erase(periodicMapIt);
+    }
 
     return true;
 }
@@ -594,6 +604,7 @@ FactoryOps::discardAllClients()
     TRACE(CL_LOG, "discardAllClients");
 
     Locker l(getClientsLock());
+
     ClientImplList::iterator clIt;
     for (clIt  = m_clients.begin();
          clIt != m_clients.end();
@@ -608,16 +619,20 @@ FactoryOps::discardAllPeriodicThreads()
 {
     TRACE(CL_LOG, "discardAllPeriodicThreads");
 
-    Locker l(&m_periodicMapLock);
-
     map<Periodic *, CXXThread<FactoryOps> *>::iterator periodicMapIt;
+    m_periodicMapLock.acquire();
     while (!m_periodicMap.empty()) {
         periodicMapIt = m_periodicMap.begin();
+        m_periodicMapLock.release();
+        
         periodicMapIt->second->getPredMutexCond().predSignal();
         periodicMapIt->second->Join();
+
+        m_periodicMapLock.acquire();
         delete periodicMapIt->second;
         m_periodicMap.erase(periodicMapIt);
     }
+    m_periodicMapLock.release();
 }
 
 FactoryOps *
