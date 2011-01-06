@@ -66,6 +66,12 @@ if ($hostname eq "") {
     $hostname = "localhost"
 }
 
+# Set the ps args differently for Linux and OSX
+my $psArgs = "-ef";
+if (`uname -a | grep Darwin | wc -l` =~ m/1/) {
+    $psArgs = "-je";
+}
+
 # Subroutine prototypes
 sub setCmdPrintExec;
 sub setSystemCmdPrintExec;
@@ -245,13 +251,13 @@ sub startMpd()
     }
 
     # Check for already running mpd
-    my $output = `ps -ef | grep $user | grep python | grep mpd | grep -v grep`;
+    my $output = `ps $psArgs | grep $user | grep -i python | grep mpd | grep -v grep`;
     if ($output eq "") {
 	print "\nStarting up mpd ($bin) for user $user...\n";
 	&setSystemCmdPrintExec("$bin \&");
 	# Make sure the process has time to start up
 	sleep(5);
-	$mpdPid = `ps -ef | grep $user | grep python | grep mpd | grep -v grep | awk '{print \$2}'`;
+	$mpdPid = `ps $psArgs | grep $user | grep -i python | grep mpd | grep -v grep | awk '{print \$2}'`;
 	chomp($mpdPid);
 	if ($mpdPid eq "") {
 	    print "\nFailed to start up mpd\n";
@@ -277,7 +283,7 @@ sub startZookeeper()
     my $bin = shift;
 
     # Check for an already running zookeeper process
-    my $output = `ps -ef | grep $user | grep zookeeper | grep "$zookeeperCfg" | grep -v grep`;
+    my $output = `ps $psArgs | grep $user | grep zookeeper | grep "$zookeeperCfg" | grep -v grep`;
     if ($output eq "") {
 	print "\nCreating zookeeper directory ($zookeeperServerDir)\n";
 	&setSystemCmdPrintExec("mkdir $zookeeperServerDir");
@@ -296,7 +302,7 @@ sub startZookeeper()
 	&setCmdPrintExec("chdir(\"$cwd\")");
 	# Make sure the process has time to start up
 	sleep(8);
-	$zookeeperPid = `ps -ef | grep $user | grep zookeeper | grep $zookeeperCfg | grep -v grep | awk '{print \$2}'`;
+	$zookeeperPid = `ps $psArgs | grep $user | grep zookeeper | grep $zookeeperCfg | grep -v grep | awk '{print \$2}'`;
 	chomp($zookeeperPid);
 	if ($zookeeperPid eq "") {
 	    print "\nFailed to start up zookeeperPid\n";
