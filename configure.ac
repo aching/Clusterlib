@@ -296,10 +296,11 @@ AC_ARG_ENABLE([werror],
   [], [disable_werror=no])
 
 # Set some general CXXFLAGS 
+GENERAL_CXXFLAGS="-Wall -g -rdynamic -D__STDC_FORMAT_MACROS -fno-strict-aliasing"
 if test "x${enable_debug}" = xno; then
-  GENERAL_CXXFLAGS="-Wall -O3 -g -rdynamic -D__STDC_FORMAT_MACROS -fno-strict-aliasing"
+  GENERAL_CXXFLAGS="${GENERAL_CXXFLAGS} -O3"
 else
-  GENERAL_CXXFLAGS="-Wall -O0 -g -rdynamic -D__STDC_FORMAT_MACROS -fno-strict-aliasing"
+  GENERAL_CXXFLAGS="${GENERAL_CXXFLAGS} -O0"
 fi
 
 # Add the Werror flags unless disabled
@@ -308,7 +309,7 @@ if test "x${disable_werror}" = xno; then
 fi
 
 # No extra CXXFLAGS should be added if none were specified
-if test "x$init_cxxflags" = x; then
+if test "x$ac_cv_env_CXXFLAGS_set" = x; then
   CXXFLAGS=""
 fi
 
