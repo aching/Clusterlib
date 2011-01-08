@@ -205,18 +205,23 @@ MethodAdaptor::zooExists(JSONValue::JSONString path) {
     
 JSONValue::JSONString
 MethodAdaptor::zooGet(JSONValue::JSONString path) {
-    char buffer[1024*1024];
-    int bufLen = 1024*1024;
-    int ret;
+    const int bufferSize = 1024*1024;
+    char *buffer = new char[bufferSize];
+    bzero(buffer, bufferSize);
+    int bufLen = bufferSize;
+    int ret = -1;
     do {
         ret = zoo_get(zkHandle, path.c_str(), 0, buffer, &bufLen, NULL);
         if (ret != ZINVALIDSTATE) break;
         reconnect();
     } while (true);
     
+    JSONValue::JSONString retString;
     switch (ret) {
         case ZOK:
-            return string(buffer, 0, bufLen);
+	    retString.assign(buffer, bufLen);
+	    delete [] buffer;
+	    return retString;
         default:
             throw JSONRPCInvocationException(
                 string("Error occurred in ZooKeeper (") + zerror(ret) + ")");
