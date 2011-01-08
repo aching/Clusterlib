@@ -115,9 +115,15 @@ MicroHttpServer::keyValueCallback(
     return MHD_YES;
 }
 
+#ifdef MHD_MAX_SIZE_T
+ssize_t
+MicroHttpServer::contentReaderCallback(
+    void *cls, uint64_t pos, char *buf, size_t max) 
+#else
 int
 MicroHttpServer::contentReaderCallback(
     void *cls, uint64_t pos, char *buf, int max) 
+#endif
 {
     HttpFileContext *fc = reinterpret_cast<HttpFileContext *>(cls);
     

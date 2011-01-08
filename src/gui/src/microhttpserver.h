@@ -56,8 +56,13 @@ class MicroHttpServer : public virtual HttpServer
     static int keyValueCallback(
         void *cls, MHD_ValueKind kind, const char *key, const char *value);
 
+#ifdef MHD_MAX_SIZE_T
+    static ssize_t contentReaderCallback(
+        void *cls, uint64_t pos, char *buf, size_t max);
+#else
     static int contentReaderCallback(
         void *cls, uint64_t pos, char *buf, int max);
+#endif
 
     static void contentReaderFreeCallback(void *cls);
 

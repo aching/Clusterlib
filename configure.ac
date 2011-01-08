@@ -178,6 +178,33 @@ AC_CHECK_LIB([microhttpd], [main],,
   echo "------------------------------------------"
   build_gui=false)
 
+# Microhttpd > 0.9 needs size_t max, otherwise int max
+mhd_max_type=int
+if test x${build_gui} = xtrue; then
+  AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM([[
+      #include <stdint.h>
+      #include <stdlib.h>
+      #include <stdio.h>
+      #include <unistd.h>
+      #include <microhttpd.h>
+      ]],
+      [[
+      #if MHD_VERSION >= 0x00090000
+      // MHD_VERSION >= 0x00090000 needs size_t max, not int max
+      #else
+      #  MHD_VERSION is too low
+      #endif
+      ]])],
+    mhd_max_type=size_t
+    [AC_MSG_RESULT([[The libmicrohttpd version is >= 0.9 and will use size_t max.]])],
+    [AC_MSG_RESULT([[The libmicrohttpd version is < 0.9 and will use int max.]])]
+  )
+fi
+if test "x${mhd_max_type}" = x"size_t"; then
+  AC_DEFINE([MHD_MAX_SIZE_T], [1], [Use size_t for MHD max])
+fi
+
 AM_CONDITIONAL(BUILD_GUI, [test "x${build_gui}" = x"true"])
 
 # Mpich binaries (mpiexec, mpd) are required for unittests to be run
