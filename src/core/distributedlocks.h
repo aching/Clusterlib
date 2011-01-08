@@ -119,7 +119,9 @@ class DistributedLocks
                  int64_t *pMsecs = NULL);
 
     /**
-     * Get the map that is used to signal threads trying to acquire locks.
+     * Get the map that is used to signal threads trying to acquire
+     * locks.  Note that this should be used in conjunction with
+     * getWaitMapLock.
      *
      * @return pointer to m_waitMap
      */

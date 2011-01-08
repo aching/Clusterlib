@@ -307,6 +307,7 @@ fi
 if test "x${disable_werror}" = xno; then
   GENERAL_CXXFLAGS="$GENERAL_CXXFLAGS -Werror"
 fi
+AC_SUBST(GENERAL_CXXFLAGS)
 
 # No extra CXXFLAGS should be added if none were specified
 if test "x$ac_cv_env_CXXFLAGS_set" = x; then
@@ -316,7 +317,5 @@ fi
 if test "x${ac_cv_sys_file_offset_bits}" = xno; then
   AC_DEFINE([_DARWIN_FEATURE_64_BIT_INODE], [1], [Make sure stat is 64 bit])
 fi
-
-AC_SUBST(GENERAL_CXXFLAGS)
 
 AC_OUTPUT
