@@ -1,7 +1,7 @@
 /*
- * $Copyright$
- *
  * $Id$
+ *
+ * $Copyright$
  *
  * $License$
  *
