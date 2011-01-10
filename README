@@ -32,6 +32,9 @@ Command line interface (CLI)
   It also can be used as an interactive shell for manipulating clusterlib 
   objects
 
+Unittests
+- Can be run in single or multiple process node and tests the correctness of
+  many APIs.  It is only compiled when MPICH can be found.
 
 Source Directory Structure:
 
@@ -55,7 +58,6 @@ unittests           Clusterlib unittests
 
 Generated directory structure:
 
-Regressions_output  Regression output is stored here by 'make test_tinderbox'
 zookeeperServerDir  Directory for storing Zookeeper data for testing
 install             Generated from 'make package': the essential headers, 
 		    library, configuration files, and executables
@@ -63,37 +65,33 @@ install             Generated from 'make package': the essential headers,
 
 Required Dependencies:
 
-boost     (http://www.boost.org)
-zookeeper (http://hadoop.apache.org/zookeeper/)
-logcxx    (http://logging.apache.org/log4cxx/)
+boost regex     (http://www.boost.org)
+zookeeper 	(http://hadoop.apache.org/zookeeper/)
+logcxx    	(http://logging.apache.org/log4cxx/)
 
 
 Optional Dependencies:
 
-cppunit           - core library unit tests
-readline, ncurses - CLI tab completion
-libhttpd          - ZKUI
-mpi               - clusterlib unittests
-
-
-Environment:
-
-Add the following early in your path:
-
-/usr/releng/external/cppunit-1.12.0/bin
+cppunit               - Core library unit tests
+mpich2                - clusterlib unittests
+readline, ncurses     - CLI tab completion
+libmicrohttpd         - ZKUI
+apr-1, aprutil-1      - ZKUI XML parsing
+boost auto_unit_test  - ZKUI unittests
+doxygen               - Doxygen documentation
 
 
 Building:
 
-autoconf
-automake
-./configure (with appropriate paths set for zookeeper, boost, log4cxx, etc.)
+autoreconf -if
+Set the CXX, CXXFLAGS, CPPFLAGS, and LDFLAGS appropriately.
+./configure
 make
 
 
-Running Unittests:
+Running Core Unittests:
 
-make test_tinderbox
+make check
 
 More details and options on how to run unittests are in the directory
 unittests.
@@ -107,4 +105,72 @@ Add new Notifyable objects (subclass Notifyable)
 - (optional) Create cached interfaces (i.e. class CachedKeyValues)
 - (optional) Create cached implementation (i.e. class CachedKeyValuesImpl)
 - Register your implementation in FactoryOps (i.e. registerNotifyable())
-- 
+
+=====================
+
+Clusterlib used several 3rd party open source libraries and tools. The
+following portions of this file summarize the tools used, their
+purpose, and the licenses under which they're released.
+
+Except as specifically stated below, the 3rd party software packages
+are not distributed as part of this project, but instead are
+separately downloaded from the respective provider and built on the
+developer's machine as a pre-build step. 
+
+boost 
+-Source: http://www.boost.org/
+-License: http://www.boost.org/LICENSE_1_0.txt
+
+log4cxx
+-Source: http://logging.apache.org/log4cxx/download.html
+-License: Apache License, Version 2.0
+
+zookeeper
+-Source: http://hadoop.apache.org/zookeeper/releases.html
+-License: Apache License, Version 2.0
+
+libmicrohttpd
+-Source: http://gnunet.org/libmicrohttpd/
+-License: LGPL
+
+The following 3rd Party code is included as part of this Project: 
+
+md5 test driver 
+-Souce: RSA Data Security, Inc.
+-License: none
+
+bluff.js 0.3.4
+-Source: http://bluff.jcoglan.com/
+-License: MIT
+
+excanvas.js 0.4.0 (optional)
+-Source: http://code.google.com/p/explorercanvas/
+-License: Apache License, Version 2.0
+
+query.zend.jsonrpc.js 1.0 
+-Source: http://blog.jtclark.ca/tag/javascript/
+-License: MIT
+
+jQuery UI 1.8.5
+-Source: http://jqueryui.com/
+-License: MIT
+
+jQuery JavaScript Library 1.4.2
+-Source: http://jquery.com/
+-License: MIT
+
+TableSorter 2.0.3
+-Source: http://tablesorter.com/docs/
+-License: MIT and GPL
+
+jQuery File Tree Plugin 1.01
+-Source: http://abeautifulsite.net/2008/03/jquery-file-tree/
+-License: Creative Commons 3.0
+
+js-class.js
+-Source: http://jsclass.jcoglan.com/
+-License: MIT
+
+parseUri 1.2.1
+-Source: http://blog.stevenlevithan.com/archives/parseuri
+-License: MIT
