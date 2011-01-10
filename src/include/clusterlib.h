@@ -1,5 +1,5 @@
 /*
- * clusterlib.h --
+ * $Id$
  *
  * The main include file for users of clusterlib.
  *
