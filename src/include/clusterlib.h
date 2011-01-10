@@ -1,11 +1,11 @@
 /*
+ * $Copyright$
+ *
  * $Id$
  *
- * The main include file for users of clusterlib.
+ * $License$
  *
- * $Header$
- * $Revision$
- * $Date$
+ * The main include file for users of clusterlib.
  */
 
 #ifndef	_CL_CLUSTERLIB_H_
