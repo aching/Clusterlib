@@ -1,14 +1,16 @@
 /*
- * client.h --
- *
- * Include file for client side types. Include this file if you're only writing
- * a pure clusterlib client. If you are creating a server (a node that is in a
- * group inside some app using clusterlib) then you need to include the server-
- * side functionality: server.h.
- *
- * $Header$
- * $Revision$
- * $Date$
+ * Copyright (c) 2010 Yahoo! Inc. All rights reserved. Licensed under
+ * the Apache License, Version 2.0 (the "License"); you may not use
+ * this file except in compliance with the License. You may obtain a
+ * copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ * 
+ * $Id$
  */
 
 #ifndef _CL_CLIENT_H_
@@ -41,7 +43,7 @@ class TimerEventHandler
 };
 
 /*
- * Various event notification constants.
+ * Various event notification constants in Clusterlib.
  */
 
 /** No event occured. */
@@ -433,7 +435,10 @@ class Client
                                   ClientData data) = 0;
 
     /**
-     * \brief Cancel a previously registered timer.
+     * Cancel a previously registered timer.  Returns true if the
+     * event was successfully cancelled, false otherwise (if false is
+     * returned, its possible that the timer event may still be
+     * delivered, or it has already been delivered).
      *
      * @return true if successful, false otherwise
      */
@@ -461,4 +466,4 @@ class Client
 
 }	/* End of 'namespace clusterlib' */
 
-#endif	/* !_CLUSTERCLIENT_H_ */
+#endif	/* !_CL_CLIENT_H_ */

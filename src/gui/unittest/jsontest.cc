@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2010 Yahoo! Inc. All rights reserved. Licensed under
+ * the Apache License, Version 2.0 (the "License"); you may not use
+ * this file except in compliance with the License. You may obtain a
+ * copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ * 
+ * $Id$
+ */
+
 #include <boost/test/auto_unit_test.hpp>
 #include <boost/test/floating_point_comparison.hpp>
 #include <clusterlib.h>
@@ -460,7 +475,8 @@ BOOST_AUTO_TEST_CASE(testJSONCodecDecodeObjectOneKey) {
 mt19937 seed(8347u);
 
 JSONValue generateRandomJSONValue(int depth = 0) {
-    variate_generator<mt19937&, uniform_int<> > typeRand(seed, uniform_int<>(0,6));
+    variate_generator<mt19937&, uniform_int<> > typeRand(
+        seed, uniform_int<>(0,6));
     int type = typeRand();
     // At most 5 nested levels for array and object
     while (depth == 5 && (type == 1 || type == 2))
@@ -470,9 +486,11 @@ JSONValue generateRandomJSONValue(int depth = 0) {
     {
         // Generate random string
         ostringstream oss;
-        variate_generator<mt19937&, uniform_int<> > lengthRand(seed, uniform_int<>(0,20));
+        variate_generator<mt19937&, uniform_int<> > lengthRand(
+            seed, uniform_int<>(0,20));
         int len = lengthRand();
-        variate_generator<mt19937&, uniform_int<> > charRand(seed, uniform_int<>(0,255));
+        variate_generator<mt19937&, uniform_int<> > charRand(
+            seed, uniform_int<>(0,255));
         while (len > 0) {
             oss << (char)charRand();
             --len;
@@ -482,7 +500,8 @@ JSONValue generateRandomJSONValue(int depth = 0) {
     case 1:
     {
         // Generate random array
-        variate_generator<mt19937&, uniform_int<> > lengthRand(seed, uniform_int<>(0,20));
+        variate_generator<mt19937&, uniform_int<> > lengthRand(
+            seed, uniform_int<>(0,20));
         int len = lengthRand();
         JSONValue::JSONArray array;
         while (len > 0) {
@@ -494,8 +513,10 @@ JSONValue generateRandomJSONValue(int depth = 0) {
     case 2:
     {
         // Generate random object
-        variate_generator<mt19937&, uniform_int<> > lengthRand(seed, uniform_int<>(0,20));
-        variate_generator<mt19937&, uniform_int<> > charRand(seed, uniform_int<>(0,255));
+        variate_generator<mt19937&, uniform_int<> > lengthRand(
+            seed, uniform_int<>(0,20));
+        variate_generator<mt19937&, uniform_int<> > charRand(
+            seed, uniform_int<>(0,255));
         int len = lengthRand();
         JSONValue::JSONObject object;
         while (len > 0) {
@@ -526,7 +547,8 @@ JSONValue generateRandomJSONValue(int depth = 0) {
     case 5:
     {
         // Generate random boolean
-        variate_generator<mt19937&, uniform_int<> > boolRand(seed, uniform_int<>(0,1));
+        variate_generator<mt19937&, uniform_int<> > boolRand(
+            seed, uniform_int<>(0,1));
         return JSONValue(boolRand() == 1);
     }
     default:

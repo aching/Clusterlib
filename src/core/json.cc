@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2010 Yahoo! Inc. All rights reserved. Licensed under
+ * the Apache License, Version 2.0 (the "License"); you may not use
+ * this file except in compliance with the License. You may obtain a
+ * copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ * 
+ * $Id$
+ */
+
 #include "clusterlibinternal.h"
 #include <json.h>
 #include <sstream>
@@ -11,109 +26,114 @@ DEFINE_LOGGER(J_LOG, "json");
 
 namespace json {
 
-/*JSONValue::JSONNull----------------------------------------------------------------------------*/
+JSONValue::JSONNull JSONValue::Null;
 
-    JSONValue::JSONNull JSONValue::Null;
+JSONValue::JSONNull::JSONNull() {
+}
 
-    JSONValue::JSONNull::JSONNull() {
-    }
+JSONValue::JSONNull::JSONNull(const JSONValue::JSONNull &other) {
+}
 
-    JSONValue::JSONNull::JSONNull(const JSONValue::JSONNull &other) {
-    }
+bool JSONValue::JSONNull::operator==(const JSONNull &other) const {
+    // Always true, since they represent the same Null in JSONValue.
+    return true;
+}
 
-    bool JSONValue::JSONNull::operator==(const JSONNull &other) const {
-        // Always true, since they represent the same Null in JSONValue.
-        return true;
-    }
+const JSONValue::JSONNull &JSONValue::JSONNull::operator=(
+    const JSONNull &other) {
+    // Assign does nothing
+    return other;
+}
 
-    const JSONValue::JSONNull &JSONValue::JSONNull::operator=(const JSONNull &other) {
-        // Assign does nothing
-        return other;
-    }
+JSONValue::JSONValue() : value(JSONValue::Null) {
+}
 
-/*JSONValue--------------------------------------------------------------------------------------*/
+JSONValue::JSONValue(const JSONValue &other) : value(other.value) {
+}
 
-    JSONValue::JSONValue() : value(JSONValue::Null) {
-    }
+void JSONValue::set(const char *value) {
+    this->value = string(value);
+}
 
-    JSONValue::JSONValue(const JSONValue &other) : value(other.value) {
-    }
+const type_info &JSONValue::type() const {
+    return value.type();
+}
 
-    void JSONValue::set(const char *value) {
-        this->value = string(value);
-    }
 
-    const type_info &JSONValue::type() const {
-        return value.type();
-    }
-
-/*JSONCodec--------------------------------------------------------------------------------------*/
-    class JSONCodecHelper {
-    public:
-        /**
-         * Encodes a JSONValue object into the given output string stream using JSON encoding.
-         * @param object the JSONValue to be encoded.
-         * @param out the output stream where the result should be written to.
-         * @throws JSONValueException if the value type cannot be supported.
-         */
-        static void encode(const JSONValue &object, ostringstream *out) {
-            ostringstream &ss = *out;
-            const type_info &type = object.type();
-            // For integer and floating point numbers, output to
-            // the stringstream directly.
-            if (type == typeid(JSONValue::JSONInteger)) {
-                ss << object.get<JSONValue::JSONInteger>();
-            } else if (type == typeid(JSONValue::JSONUInteger)) {
-                ss << object.get<JSONValue::JSONUInteger>();
-            } else if (type == typeid(JSONValue::JSONFloat)) {
-                ss << object.get<JSONValue::JSONFloat>();
-            } else if (type == typeid(JSONValue::JSONBoolean)) {
-                JSONValue::JSONBoolean value = object.get<JSONValue::JSONBoolean>();
-                ss << (value ? "true" : "false");
-            } else if (type == typeid(JSONValue::JSONNull)) {
-                ss << "null";
-            } else if (type == typeid(JSONValue::JSONString)) {
-                // Escape the strings
-                encode(object.get<JSONValue::JSONString>(), out);
-            } else if (type == typeid(JSONValue::JSONArray)) {
-                ss << '[';
-                JSONValue::JSONArray array = object.get<JSONValue::JSONArray>();
-                // Encode each item in the array
-                for (JSONValue::JSONArray::const_iterator iter = array.begin(); iter != array.end(); ++iter) {
-                    if (iter != array.begin()) {
-                        ss << ',';
-                    }
-                    encode(*iter, out);
+class JSONCodecHelper {
+  public:
+    /**
+     * Encodes a JSONValue object into the given output string stream 
+     * using JSON encoding.
+     *
+     * @param object the JSONValue to be encoded.
+     * @param out the output stream where the result should be written to.
+     * @throws JSONValueException if the value type cannot be supported.
+     */
+    static void encode(const JSONValue &object, ostringstream *out) {
+        ostringstream &ss = *out;
+        const type_info &type = object.type();
+        // For integer and floating point numbers, output to
+        // the stringstream directly.
+        if (type == typeid(JSONValue::JSONInteger)) {
+            ss << object.get<JSONValue::JSONInteger>();
+        } else if (type == typeid(JSONValue::JSONUInteger)) {
+            ss << object.get<JSONValue::JSONUInteger>();
+        } else if (type == typeid(JSONValue::JSONFloat)) {
+            ss << object.get<JSONValue::JSONFloat>();
+        } else if (type == typeid(JSONValue::JSONBoolean)) {
+            JSONValue::JSONBoolean value = 
+                object.get<JSONValue::JSONBoolean>();
+            ss << (value ? "true" : "false");
+        } else if (type == typeid(JSONValue::JSONNull)) {
+            ss << "null";
+        } else if (type == typeid(JSONValue::JSONString)) {
+            // Escape the strings
+            encode(object.get<JSONValue::JSONString>(), out);
+        } else if (type == typeid(JSONValue::JSONArray)) {
+            ss << '[';
+            JSONValue::JSONArray array = object.get<JSONValue::JSONArray>();
+            // Encode each item in the array
+            for (JSONValue::JSONArray::const_iterator iter = array.begin(); 
+                 iter != array.end(); 
+                 ++iter) {
+                if (iter != array.begin()) {
+                    ss << ',';
                 }
-                ss << ']';
-            } else if (type == typeid(JSONValue::JSONObject)) {
-                ss << '{';
-                JSONValue::JSONObject obj = object.get<JSONValue::JSONObject>();
-                // Encode each entry in the map
-                for (JSONValue::JSONObject::const_iterator iter = obj.begin(); iter != obj.end(); ++iter) {
-                    if (iter != obj.begin()) {
-                        ss << ',';
-                    }
-                    // Encode the property name
-                    encode(iter->first, out);
-                    ss << ':';
-                    // Encode the property value
-                    encode(iter->second, out);
-                }
-                ss << '}';
-            } else {
-                throw JSONValueException(string("Value type ") + object.type().name() + " is unknown!");
+                encode(*iter, out);
             }
+            ss << ']';
+        } else if (type == typeid(JSONValue::JSONObject)) {
+            ss << '{';
+            JSONValue::JSONObject obj = object.get<JSONValue::JSONObject>();
+            // Encode each entry in the map
+            for (JSONValue::JSONObject::const_iterator iter = obj.begin(); 
+                 iter != obj.end(); 
+                 ++iter) {
+                if (iter != obj.begin()) {
+                    ss << ',';
+                }
+                // Encode the property name
+                encode(iter->first, out);
+                ss << ':';
+                // Encode the property value
+                encode(iter->second, out);
+            }
+            ss << '}';
+        } else {
+            throw JSONValueException(
+                string("Value type ") + object.type().name() + " is unknown!");
         }
-
-        static void decode(JSONValue *out, istringstream *in) {
-            istringstream &ss = *in;
-
-            // Skip all blanks and peek at the next character to decide what to do.
-            skipBlanks(in);
-            int nextCh = ss.get();
-            
-            switch (nextCh) {
+    }
+    
+    static void decode(JSONValue *out, istringstream *in) {
+        istringstream &ss = *in;
+        
+        // Skip all blanks and peek at the next character to decide what to do.
+        skipBlanks(in);
+        int nextCh = ss.get();
+        
+        switch (nextCh) {
             case '[':
             {
                 // Array
@@ -124,25 +144,25 @@ namespace json {
                     JSONValue nextValue;
                     decode(&nextValue, in);
                     array.push_back(nextValue);
-
+                    
                     // Skip blanks and test for the item separator
                     skipBlanks(in);
                     switch (ss.peek()) {
-                    case ',':
-                        // Consume the item separator
-                        ss.get();
-                        break;
-                    case ']':
-                        // If it is not the separator, see if it is the end of array
-                        break;
-                    default:
-                        // If both not, there is an error
-                        ostringstream pos;
-                        pos << (int)ss.tellg();
-                        throw JSONParseException("',' or ']' is expected at " + pos.str());
+                        case ',':
+                            // Consume the item separator
+                            ss.get();
+                            break;
+                        case ']':
+                            // If it is not the separator, see if it is the end of array
+                            break;
+                        default:
+                            // If both not, there is an error
+                            ostringstream pos;
+                            pos << (int)ss.tellg();
+                            throw JSONParseException("',' or ']' is expected at " + pos.str());
                     }
                 }
-
+                
                 // Consume the last ']'
                 ss.get();
                 out->set(array);

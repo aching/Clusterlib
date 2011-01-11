@@ -1,14 +1,16 @@
 /*
- * internalchangehandlers.cc --
- *
- * Implementation of change handlers that are not visisble to
- * clusterlib clients.
- *
- * ============================================================================
- * $Header$
- * $Revision$
- * $Date$
- * ============================================================================
+ * Copyright (c) 2010 Yahoo! Inc. All rights reserved. Licensed under
+ * the Apache License, Version 2.0 (the "License"); you may not use
+ * this file except in compliance with the License. You may obtain a
+ * copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ * 
+ * $Id$
  */
 
 #include "clusterlibinternal.h"
@@ -18,16 +20,17 @@ using namespace boost;
 
 namespace clusterlib {
 
-/*
- * Handle existence change for preceding lock node. This is called
- * whenever a preceding lock node being watched by a thread in this
- * abdicates.  All it does is signal the lock waiting on it to wake up
- * and try again.
- */
 Event
 InternalChangeHandlers::handlePrecLockNodeExistsChange(int32_t etype,
                                                        const string &key)
 {
+    /*
+     * Handle existence change for preceding lock node. This is called
+     * whenever a preceding lock node being watched by a thread in this
+     * abdicates.  All it does is signal the lock waiting on it to wake up
+     * and try again.
+     */
+
     TRACE(CL_LOG, "handlePrecLockNodeExistsChange");
 
     LOG_DEBUG(CL_LOG,
