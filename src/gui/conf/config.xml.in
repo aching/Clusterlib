@@ -17,9 +17,11 @@
     <value>htm|text/html,html|text/html,xml|text/xml,js|text/javascript,css|text/css,jpg|image/jpeg,gif|image/gif,pdf|application/pdf,png|image/png,zip|application/zip,tar|application/x-tar,gz|application/x-gzip,tgz|application/x-gtar,txt|text/plain,tif|image/tif</value>
   </property>
   <property>
-    <!-- The allowed clients, Perl-compatible regular expressions -->
+    <!-- The allowed clients, Perl-compatible regular expressions 
+	 Default is everyone (.*), but as an example, could be something 
+	 like (localhost|.*\.yahoo\.com|.*\.yahoo\.net). -->
     <name>httpd.allowedhosts</name>
-    <value>localhost|.*\.yahoo\.com|.*\.yahoo\.net|.*\.inktomisearch\.com</value>
+    <value>.*</value>
   </property>
   <property>
     <!-- The ZooKeeper server list, comma ',' separated -->
