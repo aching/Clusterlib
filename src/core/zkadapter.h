@@ -17,7 +17,7 @@
 #define _CL_ZKADAPTER_H_
 
 extern "C" {
-#include <c-client-src/zookeeper.h>
+#include <zookeeper.h>
 }
 
 namespace zk {

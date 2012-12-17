@@ -18,7 +18,7 @@
 
 #include "jsonrpc_httpd_adaptor.h"
 extern "C" {
-#include <c-client-src/zookeeper.h>
+#include <zookeeper.h>
 }
 
 DEFINE_LOGGER(ZKM_LOG, "zookeeper.rpc.json.MethodAdaptor");

@@ -234,7 +234,10 @@ MethodAdaptor::zooGet(JSONValue::JSONString path) {
     JSONValue::JSONString retString;
     switch (ret) {
         case ZOK:
-	    retString.assign(buffer, bufLen);
+	    // bufLen can be -1 when the data is NULL
+	    if (bufLen > 0) {
+		retString.assign(buffer, bufLen);
+	    }
 	    delete [] buffer;
 	    return retString;
         default:

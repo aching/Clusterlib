@@ -52,8 +52,8 @@ if test "x${have_pthread}" = xno; then
 fi
 
 # ZooKeeper header must exist and library must exist
-AC_CHECK_HEADER([c-client-src/zookeeper.h],,
-  AC_MSG_ERROR([c-client-src/zookeeper.h not found.  Exiting.]))
+AC_CHECK_HEADER([zookeeper.h],,
+  AC_MSG_ERROR([zookeeper.h not found.  Exiting.]))
 AC_SEARCH_LIBS([zookeeper_init], [zookeeper_mt], [have_zookeeper=yes],
   AC_MSG_ERROR([zookeeper_mt library not found.  Exiting.]))
 
